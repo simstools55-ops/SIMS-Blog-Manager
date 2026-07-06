@@ -1,0 +1,15 @@
+site_name: SIMS-Blog-Manager Manual
+site_description: Google Search Console連携ブログ改善マネージャー
+nav:
+  - Home: index.md
+  - はじめに: getting-started.md
+  - セットアップ: setup-guide.md
+  - Search Console連携: search-console-setup.md
+  - Google Cloud API有効化: google-cloud-api-guide.md
+  - 毎日の使い方: daily-workflow.md
+  - スプレッドシート画面: spreadsheet-guide.md
+  - FAQ: faq.md
+  - トラブルシューティング: troubleshooting.md
+theme:
+  name: material
+  language: ja

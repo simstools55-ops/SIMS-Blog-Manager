@@ -1,0 +1,30 @@
+/** SIMS-Core Spreadsheet UX v2 - 01_Menu.gs */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('SIMS')
+    .addItem('🏠 ホームを開く', 'simsOpenHome')
+    .addItem('表示を更新', 'simsRefreshDashboard')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('⚙ セットアップ')
+      .addItem('初期シートを作成・修復', 'simsInitializeCoreSheets')
+      .addItem('ブログURLを登録', 'simsRegisterBlogUrl')
+      .addItem('Search Consoleプロパティを登録', 'simsRegisterSearchConsoleProperty'))
+    .addSubMenu(ui.createMenu('Search Console')
+      .addItem('接続テスト', 'simsTestSearchConsoleConnection')
+      .addItem('URLデータを取得', 'simsFetchSearchConsoleUrls')
+      .addItem('クエリデータを取得', 'simsFetchSearchConsoleQueries'))
+    .addSubMenu(ui.createMenu('AI Exchange')
+      .addItem('Claude改善指示書を作成', 'simsGenerateImprovementRequestV2')
+      .addItem('Claude依頼データを開く', 'simsOpenRequests')
+      .addItem('Claude改善結果を取り込む', 'simsImportClaudeImprovementResultV2')
+      .addItem('Claude結果データを開く', 'simsOpenResults'))
+    .addSubMenu(ui.createMenu('改善管理')
+      .addItem('最新結果を改善履歴へ記録', 'simsRecordLatestResultToHistory')
+      .addItem('改善履歴を開く', 'simsOpenHistory')
+      .addItem('選択した履歴を効果測定', 'simsCreateMeasurementForSelectedHistory')
+      .addItem('効果測定を開く', 'simsOpenMeasurements'))
+    .addSubMenu(ui.createMenu('表示')
+      .addItem('システムタブを表示', 'simsShowSystemSheets')
+      .addItem('システムタブを非表示', 'simsHideSystemSheets'))
+    .addToUi();
+}
