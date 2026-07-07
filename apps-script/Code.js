@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC4
+ * SIMS-Blog-Manager Product 5.0 RC5
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc4';
+const SBM_VERSION = '5.0.0-rc5';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -30,10 +30,10 @@ const SBM_HEADERS = Object.freeze({
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
   LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
-  EFFECT: ['記事タイトル','URL','改善日','改善内容','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','判定','SIMS評価','次のアクション','次の確認','コメント'],
+  EFFECT: ['記事タイトル','改善日','改善内容','判定','SIMS評価','次のアクション','詳細','URL','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','次の確認','コメント'],
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
-  MEASURE_HISTORY: ['記録日','記事タイトル','URL','改善日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ'],
-  CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事A URL','記事Aクリック','記事A順位','記事Bタイトル','記事B URL','記事Bクリック','記事B順位','推奨対応','理由','確認日'],
+  MEASURE_HISTORY: ['記事タイトル','改善日','記録日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ','URL'],
+  CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事Bタイトル','推奨対応','詳細','記事A URL','記事Aクリック','記事A順位','記事B URL','記事Bクリック','記事B順位','理由','確認日'],
   TOPICS: ['候補日','候補クエリ','元記事タイトル','元記事URL','理由','優先度','Claude用メモ','状態']
 });
 
@@ -74,7 +74,9 @@ function onOpen() {
       .addItem('効果測定を更新', 'sbmUpdateEffectiveness')
       .addItem('テスト用：今日の測定を記録', 'sbmRecordTodayMeasurement')
       .addItem('測定履歴を開く', 'sbmOpenMeasureHistory')
+      .addItem('選択行の効果詳細を開く', 'sbmShowSelectedEffectDetail')
       .addItem('カニバリ診断を開く', 'sbmOpenCannibal')
+      .addItem('選択行のカニバリ詳細を開く', 'sbmShowSelectedCannibalDetail')
       .addItem('記事ネタ候補を開く', 'sbmOpenTopics')
       .addSeparator()
       .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5')
@@ -896,11 +898,24 @@ function onEdit(e) {
   try {
     if (!e || !e.range) return;
     var sh = e.range.getSheet();
-    if (sh.getName() !== SBM_SHEETS.TODAY) return;
+    var sheetName = sh.getName();
     var row = e.range.getRow();
     if (row <= 1) return;
     var map = sbmHeaderMap_(sh);
     var col = e.range.getColumn();
+    if (sheetName === SBM_SHEETS.EFFECT && map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
+      sh.getRange(row, col).setValue(false);
+      sh.setActiveRange(sh.getRange(row, 1));
+      sbmShowEffectDetailForRow_(row);
+      return;
+    }
+    if (sheetName === SBM_SHEETS.CANNIBAL && map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
+      sh.getRange(row, col).setValue(false);
+      sh.setActiveRange(sh.getRange(row, 1));
+      sbmShowCannibalDetailForRow_(row);
+      return;
+    }
+    if (sheetName !== SBM_SHEETS.TODAY) return;
     if (map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
       sh.getRange(row, col).setValue(false);
       sh.setActiveRange(sh.getRange(row, 1));
@@ -992,6 +1007,70 @@ function sbmBriefHtml_(b) {
     + '</div>';
 }
 
+
+function sbmShowSelectedEffectDetail() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.EFFECT) { sbmAlert_('効果測定を開いてください','効果測定シートで対象行を選択してから実行してください。'); return; }
+  var row = sh.getActiveRange().getRow();
+  if (row <= 1) return;
+  sbmShowEffectDetailForRow_(row);
+}
+
+function sbmShowEffectDetailForRow_(row) {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
+  var heads = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  var vals = sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0];
+  var o = {}; heads.forEach(function(h,i){ o[h]=vals[i]; });
+  var html = HtmlService.createHtmlOutput(sbmEffectDetailHtml_(o)).setWidth(820).setHeight(680);
+  SpreadsheetApp.getUi().showModalDialog(html, '改善効果の詳細');
+}
+
+function sbmEffectDetailHtml_(o) {
+  function esc(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+  return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:18px;color:#202124">'
+    + '<h2 style="margin-top:0">改善効果の詳細</h2>'
+    + '<div style="background:#e8f0fe;padding:12px;border-radius:8px;margin-bottom:14px"><b>' + esc(o['記事タイトル']) + '</b><br><a href="' + esc(o.URL) + '" target="_blank">記事を開く</a></div>'
+    + '<h3>概要</h3><p><b>改善日:</b> ' + esc(o['改善日']) + '　<b>判定:</b> ' + esc(o['判定']) + '</p>'
+    + '<p><b>改善内容:</b> ' + esc(o['改善内容']) + '</p><p><b>修正内容:</b> ' + esc(o['修正内容']) + '</p>'
+    + '<h3>数値の変化</h3>'
+    + '<table style="border-collapse:collapse;width:100%"><tr><th style="border:1px solid #ddd;padding:8px">項目</th><th style="border:1px solid #ddd;padding:8px">改善前</th><th style="border:1px solid #ddd;padding:8px">現在</th><th style="border:1px solid #ddd;padding:8px">変化</th></tr>'
+    + '<tr><td style="border:1px solid #ddd;padding:8px">順位</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['改善前順位']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['現在順位']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['順位変化']) + '</td></tr>'
+    + '<tr><td style="border:1px solid #ddd;padding:8px">CTR</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['改善前CTR']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['現在CTR']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['CTR変化']) + '</td></tr>'
+    + '<tr><td style="border:1px solid #ddd;padding:8px">クリック</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['改善前クリック']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['現在クリック']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(o['クリック変化']) + '</td></tr></table>'
+    + '<h3>SIMS評価</h3><p>' + esc(o['SIMS評価']) + '</p>'
+    + '<h3>次のアクション</h3><p>' + esc(o['次のアクション']) + '</p>'
+    + '<h3>コメント</h3><p>' + esc(o['コメント']) + '</p></div>';
+}
+
+function sbmShowSelectedCannibalDetail() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.CANNIBAL) { sbmAlert_('カニバリ診断を開いてください','カニバリ診断シートで対象行を選択してから実行してください。'); return; }
+  var row = sh.getActiveRange().getRow();
+  if (row <= 1) return;
+  sbmShowCannibalDetailForRow_(row);
+}
+
+function sbmShowCannibalDetailForRow_(row) {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL);
+  var heads = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  var vals = sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0];
+  var o = {}; heads.forEach(function(h,i){ o[h]=vals[i]; });
+  var html = HtmlService.createHtmlOutput(sbmCannibalDetailHtml_(o)).setWidth(820).setHeight(680);
+  SpreadsheetApp.getUi().showModalDialog(html, 'カニバリ診断の詳細');
+}
+
+function sbmCannibalDetailHtml_(o) {
+  function esc(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+  return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:18px;color:#202124">'
+    + '<h2 style="margin-top:0">カニバリ診断の詳細</h2>'
+    + '<p><b>判定:</b> ' + esc(o['判定']) + '　<b>共通クエリ:</b> ' + esc(o['共通クエリ']) + '</p>'
+    + '<h3>対象記事</h3><ul><li><a href="' + esc(o['記事A URL']) + '" target="_blank">' + esc(o['記事Aタイトル']) + '</a>（クリック ' + esc(o['記事Aクリック']) + ' / 順位 ' + esc(o['記事A順位']) + '）</li>'
+    + '<li><a href="' + esc(o['記事B URL']) + '" target="_blank">' + esc(o['記事Bタイトル']) + '</a>（クリック ' + esc(o['記事Bクリック']) + ' / 順位 ' + esc(o['記事B順位']) + '）</li></ul>'
+    + '<h3>推奨対応</h3><p>' + esc(o['推奨対応']) + '</p>'
+    + '<h3>診断理由</h3><p>' + esc(o['理由']) + '</p>'
+    + '<p style="color:#5f6368">確認日: ' + esc(o['確認日']) + '</p></div>';
+}
+
 function sbmUpdateEffectiveness() {
   sbmUpdateEffectivenessCore_(true);
 }
@@ -1045,9 +1124,9 @@ function sbmUpdateEffectivenessCore_(showAlert) {
     var next = elapsed === '' ? '' : (elapsed < SBM_DEFAULTS.TEST_DAILY_DAYS ? '明日確認' : '7日テスト完了');
     var simsEval = sbmEvaluateEffectResult_(outcome, posDelta, ctrDelta, clickDelta);
     var nextAction = sbmSuggestNextAction_(outcome, l['改善内容'] || '', l['修正内容'] || '', posDelta, ctrDelta, clickDelta);
-    effectRows.push([displayTitle || '', url, l['改善日']||'', l['改善内容']||'', l['修正内容']||'', elapsed, beforePos, nowPos || '', posDelta, beforeCtr, nowCtr || '', ctrDelta, beforeClicks, nowClicks || '', clickDelta, outcome, simsEval, nextAction, next, '']);
+    effectRows.push([displayTitle || '', l['改善日']||'', l['改善内容']||'', outcome, simsEval, nextAction, false, url, l['修正内容']||'', elapsed, beforePos, nowPos || '', posDelta, beforeCtr, nowCtr || '', ctrDelta, beforeClicks, nowClicks || '', clickDelta, next, '']);
     if (elapsed !== '' && elapsed <= SBM_DEFAULTS.TEST_DAILY_DAYS) {
-      historyRowsToAppend.push([sbmDateText_(today), displayTitle || '', url, l['改善日']||'', elapsed, nowPos || '', nowCtr || '', nowClicks || '', nowImpressions || '', outcome]);
+      historyRowsToAppend.push([displayTitle || '', l['改善日']||'', sbmDateText_(today), elapsed, nowPos || '', nowCtr || '', nowClicks || '', nowImpressions || '', outcome, url]);
     }
   });
   sbmRewriteSheet_(SBM_SHEETS.EFFECT, SBM_HEADERS.EFFECT, effectRows);
@@ -1089,9 +1168,11 @@ function sbmAppendMeasurementHistoryUnique_(rows) {
   var seen = {};
   existing.forEach(function(r){ seen[String(r['記録日']) + '|' + String(r.URL) + '|' + String(r['改善日'])] = true; });
   var add = [];
-  rows.forEach(function(r){ var key = String(r[0]) + '|' + String(r[2]) + '|' + String(r[3]); if (!seen[key]) { seen[key] = true; add.push(r); } });
+  rows.forEach(function(r){ var key = String(r[2]) + '|' + String(r[9]) + '|' + String(r[1]); if (!seen[key]) { seen[key] = true; add.push(r); } });
   if (add.length) sh.getRange(sh.getLastRow()+1,1,add.length,SBM_HEADERS.MEASURE_HISTORY.length).setValues(add);
+  try { if (sh.getLastRow() > 2) sh.getRange(2,1,sh.getLastRow()-1,SBM_HEADERS.MEASURE_HISTORY.length).sort([{column:1, ascending:true},{column:3, ascending:true}]); } catch(e) {}
 }
+
 
 function sbmParseDate_(v) {
   if (!v) return null;
@@ -1157,33 +1238,46 @@ function sbmStyleEffectSheet_(sh) {
   sbmStyleDataSheet_(sh);
   try {
     sh.setFrozenRows(1);
-    sh.setColumnWidth(1,300);
-    sh.setColumnWidth(2,1);
-    sh.hideColumns(2);
-    sh.setColumnWidth(3,140);
-    sh.setColumnWidth(4,220);
-    sh.setColumnWidth(5,220);
-    sh.setColumnWidth(6,80);
-    sh.setColumnWidths(7,9,90);
-    sh.setColumnWidth(16,120);
-    sh.setColumnWidth(17,360);
-    sh.setColumnWidth(18,300);
-    sh.setColumnWidth(19,120);
-    sh.setColumnWidth(20,260);
-    sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 42);
+    sh.setColumnWidth(1,300);  // 記事タイトル
+    sh.setColumnWidth(2,120);  // 改善日
+    sh.setColumnWidth(3,180);  // 改善内容
+    sh.setColumnWidth(4,90);   // 判定
+    sh.setColumnWidth(5,260);  // SIMS評価
+    sh.setColumnWidth(6,300);  // 次のアクション
+    sh.setColumnWidth(7,70);   // 詳細
+    sh.setColumnWidths(8,14,1);
+    sh.hideColumns(8,14);
+    if (sh.getLastRow() > 1) sh.getRange(2,7,sh.getLastRow()-1,1).insertCheckboxes();
+    sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 48);
   } catch(e) {}
 }
 function sbmStyleMeasureHistorySheet_(sh) {
   sbmStyleDataSheet_(sh);
-  try { sh.setFrozenRows(1); sh.setColumnWidth(1,110); sh.setColumnWidth(2,300); sh.setColumnWidth(3,1); sh.hideColumns(3); sh.setColumnWidth(4,140); sh.setColumnWidth(5,80); sh.setColumnWidths(6,4,95); sh.setColumnWidth(10,130); } catch(e) {}
+  try {
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1,300); // 記事タイトル
+    sh.setColumnWidth(2,120); // 改善日
+    sh.setColumnWidth(3,110); // 記録日
+    sh.setColumnWidth(4,80);  // 経過日数
+    sh.setColumnWidths(5,5,95);
+    sh.setColumnWidth(10,1);
+    sh.hideColumns(10);
+    sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 36);
+  } catch(e) {}
 }
 function sbmStyleCannibalSheet_(sh) {
   sbmStyleDataSheet_(sh);
   try {
     sh.setFrozenRows(1);
-    sh.setColumnWidth(1,80); sh.setColumnWidth(2,180); sh.setColumnWidth(3,260); sh.setColumnWidth(4,1); sh.hideColumns(4);
-    sh.setColumnWidth(5,90); sh.setColumnWidth(6,80); sh.setColumnWidth(7,260); sh.setColumnWidth(8,1); sh.hideColumns(8);
-    sh.setColumnWidth(9,90); sh.setColumnWidth(10,80); sh.setColumnWidth(11,320); sh.setColumnWidth(12,360); sh.setColumnWidth(13,140);
+    sh.setColumnWidth(1,90);   // 判定
+    sh.setColumnWidth(2,180);  // 共通クエリ
+    sh.setColumnWidth(3,280);  // 記事A
+    sh.setColumnWidth(4,280);  // 記事B
+    sh.setColumnWidth(5,320);  // 推奨対応
+    sh.setColumnWidth(6,70);   // 詳細
+    sh.setColumnWidths(7,8,1);
+    sh.hideColumns(7,8);
+    if (sh.getLastRow() > 1) sh.getRange(2,6,sh.getLastRow()-1,1).insertCheckboxes();
     sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 48);
   } catch(e) {}
 }

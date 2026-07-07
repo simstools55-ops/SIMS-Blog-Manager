@@ -1,11 +1,10 @@
-# Product 5.0 RC4 Release Notes
+# Product 5.0 RC5 Release Notes
 
-## 今回の変更（3行）
+RC5 improves the screen design philosophy: each sheet shows only the most important columns, while detailed numbers and reasons are opened in popups.
 
-- 効果測定にSIMS評価を追加
-- 次に何をすべきかを表示
-- RCテスト用の日次測定と改善結果判定を連携
+## Update checklist
 
-## deploy.yml
-
-更新不要です。
+- GitHub: yes
+- Apps Script: yes
+- Sheet repair: yes
+- deploy.yml: no change

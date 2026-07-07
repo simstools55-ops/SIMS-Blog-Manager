@@ -1,9 +1,10 @@
 # Changelog
 
-## Product 5.0 RC4
+## Product 5.0 RC5
 
-- 効果測定にSIMS評価を追加
-- 効果測定に次のアクションを追加
-- 改善結果を「成功・改善傾向・様子見・要確認」で判断
-- RCテスト用の日次測定と効果測定を連携
-- 効果測定シートの列幅と見やすさを改善
+- Redesign Effectiveness sheet into compact list view
+- Add detail popup for effectiveness evaluation
+- Redesign Cannibalization sheet into compact list view
+- Add detail popup for cannibalization diagnosis
+- Reorder measurement history by article for easier review
+- Keep deploy.yml unchanged
