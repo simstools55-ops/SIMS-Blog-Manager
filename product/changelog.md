@@ -13,3 +13,8 @@
 
 - Added Google Cloud API activation guidance
 - Improved Search Console API disabled error handling
+
+
+## Product 2.1
+
+初回導線を見直し、設定シートへ手入力させる方式から、セットアップウィザードのポップアップ入力方式へ変更。接続テストOK前の自動データ取得を停止。

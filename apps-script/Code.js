@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product 2.0
+ * SIMS-Blog-Manager Product 2.1
  * User-install single-file Apps Script.
  *
- * Product 2.0 changes:
- * - Rebuilt as a SIMS-Core Slim Edition.
- * - Carries over SIMS-Core style setup UX, popup guidance, and Search Console flow.
- * - Keeps Blog Manager specific sheets: Home, Today, Article Cards, Diagnosis, Effectiveness.
+ * Product 2.1 changes:
+ * - Setup wizard now collects Blog Name and Search Console Property by popup prompts.
+ * - Daily update no longer runs until setup is complete AND Search Console connection test is OK.
+ * - SERVICE_DISABLED errors open a project-specific Google Cloud API activation guide.
  * - Keeps all end-user code in one Code.js / Code.gs file.
  */
 
@@ -132,10 +132,20 @@ function promptDailyUpdateIfNeeded_() {
   var ss = SpreadsheetApp.getActive();
   var settings = ss.getSheetByName(SBM.SHEETS.SETTINGS);
   if (!settings) return;
+
+  // 初回利用時は、GSC取得を絶対に走らせない。
+  // 1. 初期設定完了
+  // 2. Search Console接続テストOK
+  // この2条件がそろってから、その日の初回起動時取得を案内する。
   if (!isInitialSetupComplete_()) {
     refreshHome();
     return;
   }
+  if (getLastConnectionStatus_() !== 'OK') {
+    refreshHome();
+    return;
+  }
+
   var once = String(settings.getRange(SBM.SETTINGS_ROW.ONCE_PER_DAY, 2).getValue() || '').toUpperCase();
   var last = settings.getRange(SBM.SETTINGS_ROW.LAST_FETCH_DATE, 2).getValue();
   if (once === 'ON' && sameDate_(last, new Date())) return;
@@ -147,6 +157,7 @@ function promptDailyUpdateIfNeeded_() {
 function runDailyUpdate() {
   try {
     requireInitialSetup_();
+    requireConnectionOk_();
     var ss = SpreadsheetApp.getActive();
     var settings = getSettings_();
     var rows = fetchSearchConsoleRows_(settings);
@@ -509,6 +520,26 @@ function openConnectionTest() { SpreadsheetApp.setActiveSheet(SpreadsheetApp.get
 function openErrorLog() { SpreadsheetApp.setActiveSheet(SpreadsheetApp.getActive().getSheetByName(SBM.SHEETS.ERROR_LOG)); }
 function openHelp() { SpreadsheetApp.setActiveSheet(SpreadsheetApp.getActive().getSheetByName(SBM.SHEETS.HELP)); }
 
+function getLastConnectionStatus_() {
+  var sh = SpreadsheetApp.getActive().getSheetByName(SBM.SHEETS.CONNECTION);
+  if (!sh) return '';
+  var last = sh.getLastRow();
+  if (last < 3) return '';
+  var values = sh.getRange(3, 2, Math.max(1, last - 2), 1).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    var v = String(values[i][0] || '').trim().toUpperCase();
+    if (v) return v;
+  }
+  return '';
+}
+
+function requireConnectionOk_() {
+  var status = getLastConnectionStatus_();
+  if (status !== 'OK') {
+    throw new Error('Search Console接続テストが未完了です。メニュー「Search Console接続テスト」を実行し、接続OKを確認してからデータ取得してください。');
+  }
+}
+
 function requireInitialSetup_() {
   if (!isInitialSetupComplete_()) throw new Error('初期設定が未完了です。設定シート B4 にブログ名、B5 にSearch Console Propertyを入力し、「初期設定を完了」を実行してください。');
 }
@@ -654,7 +685,7 @@ function setupHelp_(sh) {
   sh.clear();
   sh.getRange('A1:D1').merge().setValue('ヘルプ').setFontSize(16).setFontWeight('bold').setFontColor('#ffffff').setBackground('#1f4e79').setHorizontalAlignment('center');
   var rows = [
-    ['最初にやること', '1. 初期セットアップ 2. 設定B4にブログ名、B5にSearch Console Property 3. 初期設定を完了 4. 接続テスト'],
+    ['最初にやること', '1. セットアップウィザード開始 2. ポップアップでブログ名とSearch Console Propertyを入力 3. Google Cloud API有効化 4. 接続テスト'],
     ['Search Console Property', 'URLプレフィックスなら https://example.com/、ドメインプロパティなら sc-domain:example.com'],
     ['毎日の使い方', 'その日に初めて開いた時、初期設定完了済みならデータ取得確認が出ます。'],
     ['構文エラーが出る場合', 'Product 1.6以降のCode.jsを全文貼り直してください。古いコードが残っていないか確認してください。'],
@@ -759,13 +790,14 @@ function handleError_(e) {
   if (sh.getLastRow() < 3) setupErrorLog_(sh);
   sh.appendRow([new Date(), message, next, e && e.stack ? e.stack : '']);
   SpreadsheetApp.getUi().alert('Error: ' + message + '\n\n次にすること: ' + next);
-  if (message.indexOf('SERVICE_DISABLED') >= 0 || message.indexOf('has not been used in project') >= 0 || message.indexOf('accessNotConfigured') >= 0) { showGoogleCloudApiHelp(); }
+  if (message.indexOf('SERVICE_DISABLED') >= 0 || message.indexOf('has not been used in project') >= 0 || message.indexOf('accessNotConfigured') >= 0) { showGoogleCloudApiHelp(extractGoogleCloudProjectId_(message)); }
   if (message.indexOf('ACCESS_TOKEN_SCOPE_INSUFFICIENT') >= 0 || message.indexOf('insufficient authentication scopes') >= 0) { showOAuthScopeHelp(); }
 }
 
 function getNextActionForError_(message) {
   var m = String(message || '');
-  if (m.indexOf('初期設定') >= 0 || m.indexOf('B4') >= 0 || m.indexOf('B5') >= 0) return '設定シートでB4ブログ名、B5 Search Console Propertyを入力し、初期設定を完了してください。';
+  if (m.indexOf('Search Console接続テストが未完了') >= 0) return 'メニュー「Search Console接続テスト」を先に実行してください。接続OKになるまでデータ取得は行いません。';
+  if (m.indexOf('初期設定') >= 0 || m.indexOf('B4') >= 0 || m.indexOf('B5') >= 0) return 'メニュー「セットアップウィザード開始」でブログ名とSearch Console Propertyを入力してください。';
   if (m.indexOf('SERVICE_DISABLED') >= 0 || m.indexOf('accessNotConfigured') >= 0 || m.indexOf('has not been used in project') >= 0 || m.indexOf('disabled') >= 0) return 'Google Cloud側で Search Console API が有効化されていません。Apps Scriptのプロジェクト設定からGoogle Cloudプロジェクトを開き、Search Console APIを有効化してください。';
   if (m.indexOf('ACCESS_TOKEN_SCOPE_INSUFFICIENT') >= 0 || m.indexOf('insufficient authentication scopes') >= 0) return 'Apps Scriptのappsscript.jsonにSearch Console読み取りスコープを追加し、保存後に再承認してください。';
   if (m.indexOf('403') >= 0) return 'Search Consoleの権限、Google Cloud API有効化、またはApps Scriptの承認を確認してください。';
@@ -797,31 +829,63 @@ function formatApiError_(code, text) {
 
 function startSetupWizard() {
   var ui = SpreadsheetApp.getUi();
+
   var step1 = ui.alert(
     'セットアップウィザード 1/4',
-    'まず初期シートを作成・修復します。既に入力済みのブログ名・Search Console Propertyは保持します。',
+    '初期シートを作成・修復します。既に入力済みの値は保持します。\n\n続行しますか？',
     ui.ButtonSet.OK_CANCEL
   );
   if (step1 !== ui.Button.OK) return;
   setupWorkbook();
 
-  var step2 = ui.alert(
-    'セットアップウィザード 2/4',
-    '設定シートを開きます。B4にブログ名、B5にSearch Console Propertyを入力してください。入力後、メニュー「初期設定を完了」を実行します。',
+  var ss = SpreadsheetApp.getActive();
+  var sh = ss.getSheetByName(SBM.SHEETS.SETTINGS);
+  if (!sh) {
+    ui.alert('設定シートを作成できませんでした。もう一度「初期セットアップ」を実行してください。');
+    return;
+  }
+  SpreadsheetApp.setActiveSheet(sh);
+
+  var currentBlog = String(sh.getRange(SBM.SETTINGS_ROW.BLOG_NAME, 2).getValue() || '').trim();
+  var blogPrompt = ui.prompt(
+    'セットアップウィザード 2/4：ブログ名',
+    '管理するブログ名を入力してください。\n例：人生いろいろ\n\n現在の値：' + (currentBlog || '未入力'),
     ui.ButtonSet.OK_CANCEL
   );
-  if (step2 === ui.Button.OK) openSettings_();
+  if (blogPrompt.getSelectedButton() !== ui.Button.OK) return;
+  var blogName = String(blogPrompt.getResponseText() || '').trim();
+  if (!blogName) {
+    ui.alert('ブログ名が空です。セットアップを中断しました。');
+    return;
+  }
+  sh.getRange(SBM.SETTINGS_ROW.BLOG_NAME, 2).setValue(blogName);
 
-  var step3 = ui.alert(
-    'セットアップウィザード 3/4',
-    'Search Console APIを使うには、Google Cloud側でAPI有効化が必要な場合があります。ガイドを表示しますか？',
+  var currentProp = String(sh.getRange(SBM.SETTINGS_ROW.PROPERTY, 2).getValue() || '').trim();
+  var propPrompt = ui.prompt(
+    'セットアップウィザード 3/4：Search Console Property',
+    'Search Consoleのプロパティを入力してください。\n\nURLプレフィックス例： https://example.com/\nドメインプロパティ例： sc-domain:example.com\n\n現在の値：' + (currentProp || '未入力'),
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (propPrompt.getSelectedButton() !== ui.Button.OK) return;
+  var property = String(propPrompt.getResponseText() || '').trim();
+  if (!property) {
+    ui.alert('Search Console Propertyが空です。セットアップを中断しました。');
+    return;
+  }
+  sh.getRange(SBM.SETTINGS_ROW.PROPERTY, 2).setValue(property);
+  sh.getRange(SBM.SETTINGS_ROW.SETUP_STATUS, 2).setValue('完了');
+  refreshHome();
+
+  var apiGuide = ui.alert(
+    'セットアップウィザード 4/4：Google Cloud API',
+    'ブログ名とSearch Console Propertyを登録しました。\n\n次はGoogle Cloud側で「Google Search Console API」が有効になっているか確認します。\nAPI有効化ガイドを開きますか？',
     ui.ButtonSet.YES_NO
   );
-  if (step3 === ui.Button.YES) showGoogleCloudApiHelp();
+  if (apiGuide === ui.Button.YES) showGoogleCloudApiHelp();
 
   ui.alert(
-    'セットアップウィザード 4/4',
-    '設定入力・API有効化が終わったら、メニュー「Search Console接続テスト」を実行してください。接続OK後に「今日のデータを取得・分析」を実行します。',
+    'セットアップ登録完了',
+    '次に行うこと：\n1. 必要に応じてGoogle CloudでSearch Console APIを有効化\n2. メニュー「Search Console接続テスト」を実行\n3. 接続OK後、「今日のデータを取得・分析」を実行\n\n※接続テストがOKになるまで、1日1回の自動取得は走りません。',
     ui.ButtonSet.OK
   );
 }
@@ -844,17 +908,28 @@ function showLinkDialog_(title, message, url) {
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(520).setHeight(360), title);
 }
 
-function showGoogleCloudApiHelp() {
-  var url = 'https://console.cloud.google.com/apis/library/searchconsole.googleapis.com';
+function showGoogleCloudApiHelp(projectId) {
+  var pid = projectId || '';
+  var url = 'https://console.cloud.google.com/apis/library/searchconsole.googleapis.com' + (pid ? '?project=' + encodeURIComponent(pid) : '');
   var text = '今回のエラーが「Search Console API has not been used in project」または「SERVICE_DISABLED」の場合、コードではなくGoogle Cloud側のAPI有効化が必要です。\n\n'
+    + (pid ? '検出したGoogle Cloudプロジェクト番号：' + pid + '\n\n' : '')
     + '手順:\n'
-    + '1. Apps Script画面左側の歯車「プロジェクトの設定」を開く\n'
-    + '2. Google Cloud Platform（GCP）プロジェクト番号を確認する\n'
-    + '3. 下のボタンからGoogle Cloud Consoleを開く\n'
-    + '4. 「Google Search Console API」を有効化する\n'
-    + '5. 数分待ってから「Search Console接続テスト」を再実行する\n\n'
-    + '補足: appsscript.jsonのOAuthスコープ設定とは別作業です。Search Console側の閲覧権限も必要です。';
+    + '1. 下のボタンからGoogle Cloud Consoleを開く\n'
+    + '2. 画面上部のプロジェクトが、このApps ScriptのGCPプロジェクトになっているか確認する\n'
+    + '3. 「Google Search Console API」を有効化する\n'
+    + '4. 数分待ってから「Search Console接続テスト」を再実行する\n\n'
+    + '補足: これはappsscript.jsonのOAuthスコープ設定とは別作業です。Search Console側の閲覧権限も必要です。';
   showLinkDialog_('Google Cloud API有効化ガイド', text, url);
+}
+
+function extractGoogleCloudProjectId_(message) {
+  var m = String(message || '');
+  var patterns = [/project=(\d+)/, /projects\/(\d+)/, /consumer\"\s*:\s*\"projects\/(\d+)\"/, /project_number\"\s*:\s*\"(\d+)\"/];
+  for (var i = 0; i < patterns.length; i++) {
+    var hit = m.match(patterns[i]);
+    if (hit && hit[1]) return hit[1];
+  }
+  return '';
 }
 
 function showOAuthScopeHelp() {

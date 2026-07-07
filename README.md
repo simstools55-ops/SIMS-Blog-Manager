@@ -1,8 +1,8 @@
-# SIMS-Blog-Manager Product 2.0
+# SIMS-Blog-Manager Product 2.1
 
 SIMS-Blog-Managerは、SIMS-Core v1.1をベースにしたブログ改善管理専用のGoogleスプレッドシート製品です。
 
-## Product 2.0 の方針
+## Product 2.1 の方針
 
 - SIMS-Coreで動作確認済みのSearch Console接続・セットアップUXを継承
 - Claude連携、AI Exchange、Knowledge Engine、Learning Engineは除外
@@ -33,3 +33,10 @@ tests/                     UATチェックリスト
 5. メニュー「SIMS-Blog-Manager」→「セットアップウィザード開始」
 
 詳細は `docs/getting-started.md` を参照してください。
+
+
+## Product 2.1
+
+- セットアップウィザードを入力式ポップアップに変更しました。
+- 接続テストOK前は、1日1回のSearch Consoleデータ取得を実行しません。
+- Search Console API未有効エラー時に、プロジェクト番号付きのGoogle Cloud有効化リンクを表示します。

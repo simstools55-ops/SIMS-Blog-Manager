@@ -13,3 +13,11 @@
 
 - Added Google Cloud API activation guidance
 - Improved Search Console API disabled error handling
+
+
+## Product 2.1
+
+- Fix setup wizard UX: collect Blog Name and Search Console Property via prompts.
+- Prevent daily GSC fetch until connection test succeeds.
+- Add project-specific Search Console API activation guide for SERVICE_DISABLED errors.
+- Improve beginner guidance for setup and connection testing.
