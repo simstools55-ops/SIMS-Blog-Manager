@@ -1,24 +1,22 @@
-# SIMS-Blog-Manager Product 5.0 RC5
+# SIMS-Blog-Manager Product 5.0 RC6.1
 
-RC5は、横に長くなりがちなシートを「一覧＋詳細ポップアップ」方式へ寄せるUI改善版です。
+This is a syntax-fix release for RC6.
 
-## 今回の変更
+# SIMS-Blog-Manager Product 5.0 RC6
 
-- 効果測定シートを、記事タイトル・改善日・内容・判定・SIMS評価・次のアクション中心の一覧に整理
-- 効果測定とカニバリ診断に「詳細」チェックボックスを追加
-- 測定履歴を記事単位で追いやすい並びへ変更
+RC6 focuses on speed and operational safety.
 
-## 更新
+## Update
 
-- GitHub: 必要
-- Apps Script: 必要
-- シート修復: 必要
-- deploy.yml: 更新不要
-- スプレッドシート作り直し: 不要
+- GitHub: yes
+- Apps Script: yes
+- Sheet repair: yes
+- deploy.yml: no change
 
-## 更新手順
+## New workflow
 
-1. GitHubへZIP内容を上書きアップロード
-2. Apps Scriptの `Code.js` を貼り替え
-3. スプレッドシートで `SIMS-Blog-Manager → 管理 → シートを作成・修復`
-4. 効果測定・カニバリ診断で「詳細」にチェックを入れてポップアップを確認
+1. Run **STEP A Search Consoleデータ取得だけ実行**.
+2. Run **STEP B 改善候補を分析**.
+3. Open **今日の改善** and review the top tasks.
+
+The former all-in-one command remains available, but the split workflow is recommended for large blogs.
