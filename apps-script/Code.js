@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC1
+ * SIMS-Blog-Manager Product 5.0 RC2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc1';
+const SBM_VERSION = '5.0.0-rc2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -18,7 +18,8 @@ const SBM_SHEETS = Object.freeze({
   SYSTEM_LOG: 'System_Log',
   BRIEF: '改善ブリーフ',
   MEASURE_HISTORY: '測定履歴',
-  CANNIBAL: 'カニバリ診断'
+  CANNIBAL: 'カニバリ診断',
+  TOPICS: '記事ネタ候補'
 });
 
 const SBM_HEADERS = Object.freeze({
@@ -32,7 +33,8 @@ const SBM_HEADERS = Object.freeze({
   EFFECT: ['記事タイトル','URL','改善日','改善内容','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','判定','次の確認','コメント'],
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記録日','記事タイトル','URL','改善日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ'],
-  CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事A URL','記事Aクリック','記事A順位','記事Bタイトル','記事B URL','記事Bクリック','記事B順位','推奨対応','理由','確認日']
+  CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事A URL','記事Aクリック','記事A順位','記事Bタイトル','記事B URL','記事Bクリック','記事B順位','推奨対応','理由','確認日'],
+  TOPICS: ['候補日','候補クエリ','元記事タイトル','元記事URL','理由','優先度','Claude用メモ','状態']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -72,6 +74,7 @@ function onOpen() {
       .addItem('効果測定を更新', 'sbmUpdateEffectiveness')
       .addItem('測定履歴を開く', 'sbmOpenMeasureHistory')
       .addItem('カニバリ診断を開く', 'sbmOpenCannibal')
+      .addItem('記事ネタ候補を開く', 'sbmOpenTopics')
       .addSeparator()
       .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5')
       .addItem('改善候補をすべて表示する', 'sbmSetTodayAll'))
@@ -134,7 +137,8 @@ function sbmEnsureDataSheets_() {
     LOG: SBM_SHEETS.LOG,
     EFFECT: SBM_SHEETS.EFFECT,
     MEASURE_HISTORY: SBM_SHEETS.MEASURE_HISTORY,
-    CANNIBAL: SBM_SHEETS.CANNIBAL
+    CANNIBAL: SBM_SHEETS.CANNIBAL,
+    TOPICS: SBM_SHEETS.TOPICS
   };
   Object.keys(dataMap).forEach(function(k){
     var sheet = sbmGetOrCreateSheet_(dataMap[k]);
@@ -173,6 +177,7 @@ function sbmEnsureUserSheets_() {
   sbmBuildBriefSheetView_();
   sbmBuildEffectSheetView_();
   sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL));
+  sbmStyleTopicSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOPICS));
 }
 
 function sbmBuildHomeSheet_() {
@@ -440,6 +445,7 @@ function sbmBuildDiagnosis_() {
 
   var cardRows = [];
   var diagnosisRows = [];
+  var topicRows = [];
   urls.forEach(function(url){
     var rows = byUrl[url].sort(function(a,b){return sbmQueryScore_(b)-sbmQueryScore_(a);});
     var main = rows[0];
@@ -452,19 +458,25 @@ function sbmBuildDiagnosis_() {
     var diag = sbmDiagnose_(totalClicks,totalImpressions,ctr,weightedPosition,rows);
     var score = managed ? sbmOpportunityScore_(totalImpressions, ctr, weightedPosition, diag.minutes) : 0;
     var classified = sbmClassifyQueries_(main.Query, rows.slice(1, Number(sbmGetSetting_('RelatedQueries', SBM_DEFAULTS.RELATED_QUERIES)) + 1));
+    var title = sbmResolveArticleTitle_(url, '');
     var important = classified.support.join('\n');
     var body = classified.support.slice(5).join('\n');
     var faq = classified.faq.join('\n');
     var separate = classified.separate.join('\n');
     var noise = classified.noise.join('\n');
     var qSummary = classified.summary;
-    cardRows.push([sbmId_('ART'), url, '', main.Query, totalClicks, totalImpressions, ctr, weightedPosition, managed ? '○' : '×', managed ? diag.status : '管理対象外', score, diag.recommendation, '', 0, sbmNowText_()]);
+    cardRows.push([sbmId_('ART'), url, title, main.Query, totalClicks, totalImpressions, ctr, weightedPosition, managed ? '○' : '×', managed ? diag.status : '管理対象外', score, diag.recommendation, '', 0, sbmNowText_()]);
     if (managed && totalImpressions >= sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS))) {
-      diagnosisRows.push([url, '', main.Query, important, faq, separate, noise, qSummary, totalClicks, totalImpressions, ctr, weightedPosition, diag.code, diag.diagnosis, diag.recommendation, diag.minutes, score, diag.reason, sbmNowText_()]);
+      diagnosisRows.push([url, title, main.Query, important, faq, separate, noise, qSummary, totalClicks, totalImpressions, ctr, weightedPosition, diag.code, diag.diagnosis, diag.recommendation, diag.minutes, score, diag.reason, sbmNowText_()]);
+      classified.separate.forEach(function(q){
+        topicRows.push([sbmDateText_(new Date()), q, title, url, '元記事のメインクエリと検索意図が異なるため、別記事候補として保存', sbmStars_(Math.min(100, score + 10)), '次のキーワードで新記事の構成案を作ってください。\nキーワード: ' + q + '\n元記事: ' + title + '\n元記事URL: ' + url, '未着手']);
+      });
     }
   });
   sbmRewriteSheet_(SBM_SHEETS.CARDS, SBM_HEADERS.CARDS, cardRows);
   sbmRewriteSheet_(SBM_SHEETS.DIAGNOSIS, SBM_HEADERS.DIAGNOSIS, diagnosisRows.sort(function(a,b){return b[16]-a[16];}));
+  sbmRewriteSheet_(SBM_SHEETS.TOPICS, SBM_HEADERS.TOPICS, sbmUniqueTopicRows_(topicRows));
+  sbmStyleTopicSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOPICS));
 }
 
 function sbmBuildTodayQueue_() {
@@ -548,41 +560,73 @@ function sbmBuildBriefText_(d) {
 function sbmClassifyQueries_(mainQuery, queryRows) {
   var main = sbmNormalizeQueryText_(mainQuery);
   var mainTokens = sbmQueryTokens_(main);
+  var mainIntent = sbmIntentLabel_(mainQuery, mainQuery);
   var support = [], faq = [], separate = [], noise = [];
-  var supportIntents = {}, separateIntents = {};
+  var supportIntents = {}, separateIntents = {}, noiseReasons = [];
   queryRows.forEach(function(r){
     var q = String(r.Query || '').trim();
     if (!q) return;
     var n = sbmNormalizeQueryText_(q);
     var qTokens = sbmQueryTokens_(n);
     var sim = sbmTokenOverlap_(mainTokens, qTokens);
+    var intent = sbmIntentLabel_(q, mainQuery);
+    var score = sbmQueryScore_(r);
     var isFaq = /とは|意味|なぜ|できない|方法|使い方|読み方|発音|違い|料金|評判|口コミ|いつ|どこ|どれ|FAQ/i.test(q);
     var looksNoise = sbmLooksNoiseQuery_(q, mainTokens, sim);
-    if (looksNoise) { noise.push(q); return; }
-    if (sim >= 0.45 || n.indexOf(main) !== -1 || main.indexOf(n) !== -1) {
-      if (isFaq && faq.length < 8) faq.push(q);
+    if (looksNoise) { noise.push(q); noiseReasons.push(q + '（関連度が低い）'); return; }
+
+    var sharesCore = sim >= 0.45 || n.indexOf(main) !== -1 || main.indexOf(n) !== -1;
+    var nearIntent = (intent === mainIntent) || (sim >= 0.25);
+    var isSeparateSignal = sbmLooksSeparateArticleQuery_(q, mainQuery, sim, intent, mainIntent);
+
+    if (sharesCore || (nearIntent && !isSeparateSignal)) {
       support.push(q);
-      supportIntents[sbmIntentLabel_(q, mainQuery)] = true;
-    } else if (sim >= 0.18) {
-      if (isFaq && faq.length < 8) faq.push(q);
-      support.push(q);
-      supportIntents[sbmIntentLabel_(q, mainQuery)] = true;
-    } else {
+      supportIntents[intent] = true;
+      if (isFaq && faq.length < 10) faq.push(q);
+    } else if (isSeparateSignal || score >= 20) {
       separate.push(q);
-      separateIntents[sbmIntentLabel_(q, mainQuery)] = true;
+      separateIntents[intent] = true;
+    } else {
+      noise.push(q);
     }
   });
-  support = sbmUniqueLimit_(support, 25);
-  faq = sbmUniqueLimit_(faq, 8);
-  separate = sbmUniqueLimit_(separate, 15);
-  noise = sbmUniqueLimit_(noise, 15);
+  support = sbmUniqueLimit_(support, 30);
+  faq = sbmUniqueLimit_(faq, 10);
+  separate = sbmUniqueLimit_(separate, 20);
+  noise = sbmUniqueLimit_(noise, 20);
+  var supportLabels = Object.keys(supportIntents).join(' / ') || '未分類';
+  var separateLabels = Object.keys(separateIntents).join(' / ') || 'なし';
   return {
     support: support,
     faq: faq,
     separate: separate,
     noise: noise,
-    summary: 'メイン検索意図に近いサブクエリ ' + support.length + '件 / 別記事候補 ' + separate.length + '件 / 除外候補 ' + noise.length + '件。別記事候補はこの記事に無理に入れず、SIMS-Coreで新記事化を検討してください。'
+    summary: 'メイン検索意図: ' + mainIntent + '\n'
+      + '本文に使うサブクエリ: ' + support.length + '件（' + supportLabels + '）\n'
+      + 'FAQ候補: ' + faq.length + '件\n'
+      + '別記事候補: ' + separate.length + '件（' + separateLabels + '）\n'
+      + '除外クエリ: ' + noise.length + '件\n'
+      + '方針: サブクエリは本文・FAQに活用し、別記事候補はこの記事に無理に入れず、新記事候補として扱ってください。'
   };
+}
+
+function sbmLooksSeparateArticleQuery_(q, mainQuery, sim, intent, mainIntent) {
+  var s = sbmNormalizeQueryText_(q);
+  var m = sbmNormalizeQueryText_(mainQuery);
+  if (/web clipper|clipper|拡張機能|extension|download|ダウンロード|インストール/.test(s) && sim < 0.55) return true;
+  if (/料金|価格|無料|有料|評判|口コミ|レビュー/.test(s) && intent !== mainIntent) return true;
+  if (/使い方|設定|方法|できない|エラー|トラブル/.test(s) && intent !== mainIntent && sim < 0.35) return true;
+  if (/意味|語源|英語|日本語|とは/.test(s) && /読み|読み方|発音|pronunciation|pronounce/.test(m) && sim < 0.25) return true;
+  return false;
+}
+
+function sbmUniqueTopicRows_(rows) {
+  var seen = {}, out = [];
+  rows.forEach(function(r){
+    var key = String(r[1]) + '|' + String(r[3]);
+    if (!seen[key]) { seen[key] = true; out.push(r); }
+  });
+  return out.slice(0, 300);
 }
 
 function sbmNormalizeQueryText_(s) { return String(s || '').toLowerCase().replace(/[　\s]+/g,' ').trim(); }
@@ -753,6 +797,7 @@ function sbmOpenLog() { sbmOpenSheet_(SBM_SHEETS.LOG); }
 function sbmOpenEffect() { sbmOpenSheet_(SBM_SHEETS.EFFECT); }
 function sbmOpenMeasureHistory() { sbmOpenSheet_(SBM_SHEETS.MEASURE_HISTORY); }
 function sbmOpenCannibal() { sbmOpenSheet_(SBM_SHEETS.CANNIBAL); }
+function sbmOpenTopics() { sbmOpenSheet_(SBM_SHEETS.TOPICS); }
 function sbmOpenSystemLog() { sbmOpenSheet_(SBM_SHEETS.SYSTEM_LOG); }
 function sbmOpenBrief() { sbmOpenSheet_(SBM_SHEETS.BRIEF); }
 
@@ -903,13 +948,13 @@ function sbmImprovementRequestText_(title, url, mainQuery, subQueries, faqQuerie
     + 'メインクエリ: ' + (mainQuery || '') + '\n\n'
     + '改善理由:\n' + (reason || '') + '\n\n'
     + '推奨改善:\n' + (recommendation || '') + '\n\n'
-    + 'クエリ分析:\n' + (querySummary || '-') + '\n\n'
-    + '本文に使うサブクエリ:\n' + (subQueries || '-') + '\n\n'
+    + 'Search Consoleクエリ分析:\n' + (querySummary || '-') + '\n\n'
+    + '本文・見出しに使うサブクエリ:\n' + (subQueries || '-') + '\n\n'
     + 'FAQ候補:\n' + (faqQueries || '-') + '\n\n'
-    + '別記事候補クエリ（この記事に無理に入れない）:\n' + (separateQueries || '-') + '\n\n'
+    + '別記事候補クエリ（この記事には無理に入れない）:\n' + (separateQueries || '-') + '\n\n'
     + '改善に使わない除外クエリ:\n' + (noiseQueries || '-') + '\n\n'
     + 'カニバリ診断:\n' + (cannibalAdvice || '-') + '\n\n'
-    + '依頼:\nメインクエリとサブクエリの検索意図に合わせて、タイトル・導入文・見出し・FAQを優先的に見直してください。別記事候補や除外クエリは、この記事に無理に入れないでください。必要なら「別記事として作るべきテーマ」として最後に提案してください。';
+    + '依頼:\nメインクエリを軸に、サブクエリだけを本文・見出し・FAQへ自然に反映して改善してください。別記事候補や除外クエリはこの記事に無理に入れないでください。必要なら最後に「別記事として作るべきテーマ」を提案してください。カニバリ候補がある場合は、どちらを主記事にするか、統合するか、メインクエリを分けるかの方針も提案してください。';
 }
 
 function sbmBriefHtml_(b) {
@@ -922,8 +967,8 @@ function sbmBriefHtml_(b) {
     + '<p><b>現在値:</b> CTR ' + esc(b.CTR) + ' / 順位 ' + esc(b.Position) + ' / クリック ' + esc(b.Clicks) + ' / 表示回数 ' + esc(b.Impressions) + '</p>'
     + '<h3>改善理由</h3><p>' + esc(b['理由']) + '</p>'
     + '<h3>推奨改善</h3><p>' + esc(b['推奨改善']) + '</p>'
-    + '<h3>クエリ分析</h3><p>' + esc(b['クエリ分析']) + '</p>'
-    + '<h3>本文に使うサブクエリ</h3><p>' + esc(b['サブクエリ']) + '</p>'
+    + '<h3>Search Consoleクエリ分析</h3><p>' + esc(b['クエリ分析']) + '</p>'
+    + '<h3>本文・見出しに使うサブクエリ</h3><p>' + esc(b['サブクエリ']) + '</p>'
     + '<h3>FAQ候補</h3><p>' + esc(b['FAQ候補']) + '</p>'
     + '<h3>別記事候補</h3><p>' + esc(b['別記事候補']) + '</p>'
     + '<h3>改善に使わない除外クエリ</h3><p>' + esc(b['除外クエリ']) + '</p>'
@@ -1093,6 +1138,23 @@ function sbmStyleCannibalSheet_(sh) {
     sh.setColumnWidth(5,90); sh.setColumnWidth(6,80); sh.setColumnWidth(7,260); sh.setColumnWidth(8,1); sh.hideColumns(8);
     sh.setColumnWidth(9,90); sh.setColumnWidth(10,80); sh.setColumnWidth(11,320); sh.setColumnWidth(12,360); sh.setColumnWidth(13,140);
     sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 48);
+  } catch(e) {}
+}
+
+function sbmStyleTopicSheet_(sh) {
+  sbmStyleDataSheet_(sh);
+  try {
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1,110);
+    sh.setColumnWidth(2,240);
+    sh.setColumnWidth(3,300);
+    sh.setColumnWidth(4,1);
+    sh.hideColumns(4);
+    sh.setColumnWidth(5,320);
+    sh.setColumnWidth(6,90);
+    sh.setColumnWidth(7,420);
+    sh.setColumnWidth(8,100);
+    sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 56);
   } catch(e) {}
 }
 

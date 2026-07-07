@@ -1,58 +1,34 @@
-# SIMS-Blog-Manager Product 5.0 RC1
+# SIMS-Blog-Manager Product 5.0 RC2
 
-Search Consoleのデータから、今日改善すべき記事を抽出し、Claude / ChatGPTへ渡せる改善ブリーフを作成するブログ改善管理システムです。
+Search Consoleのデータを、今日やるべきブログ改善タスクへ変換するGoogleスプレッドシートシステムです。
 
-## Product 5.0 RC1の主な変更
+## 今回の変更（3行）
 
-- 改善ブリーフをSEO改善指示書形式へ強化
-- Search Consoleクエリ最大50件を分類
-  - メインクエリ
-  - 本文に使うサブクエリ
-  - FAQ候補
-  - 別記事候補
-  - 改善に使わない除外クエリ
-- カニバリ診断シートを追加
-- カニバリ発生時の対応アドバイスを追加
-  - どちらの記事を主記事にするか
-  - もう一方のメインクエリ変更
-  - 統合検討
-  - 経過観察
-- 測定履歴の記事タイトル表示を改善
-- 順位・CTR・クリック数・表示回数の数値表示を統一
+- Search Consoleクエリを「サブクエリ・FAQ・別記事候補・除外クエリ」に分類します。
+- 別記事候補を「記事ネタ候補」シートへ自動保存します。
+- 改善ブリーフをSIMS-Core / Claudeへ貼り付けやすい改善指示書形式に改善しました。
 
-## 更新方法
+## 更新
 
-既存スプレッドシートはそのまま使用できます。
+- GitHub：必要
+- Apps Script：必要
+- シート修復：必要
+- スプレッドシート作り直し：不要
+- deploy.yml：更新不要
 
-1. `apps-script/Code.js` の内容をApps Scriptへ貼り替えます。
-2. Apps Scriptを保存します。
-3. スプレッドシートに戻り、メニューから `SIMS-Blog-Manager → 管理 → シートを作成・修復` を実行します。
-4. `今日のデータを取得・分析` を実行します。
+## 更新手順
 
-## 更新要否
+1. GitHubへZIP内のファイルを上書きアップロードします。
+2. Apps Scriptの`Code.js`を貼り替えます。
+3. スプレッドシートで「SIMS-Blog-Manager → 管理 → シートを作成・修復」を実行します。
+4. 「今日のデータを取得・分析」を実行します。
 
-| 項目 | 必要 |
-|---|:---:|
-| GitHub更新 | ✅ |
-| Apps Script更新 | ✅ |
-| スプレッドシート作り直し | ❌ |
-| シート修復実行 | ✅ |
+## 追加された主なシート
 
-## Commit
+- 記事ネタ候補
+  - 別記事候補クエリを保存します。
+  - SIMS-Core / Claudeへ新記事作成を依頼する材料として使えます。
 
-Title:
+## 方針
 
-```text
-Release Product 5.0 RC1
-```
-
-Description:
-
-```text
-- Add Search Console query classification for up to 50 queries
-- Add sub query, FAQ, separate article, and noise query grouping
-- Add cannibalization diagnosis and action advice
-- Improve improvement brief for Claude and ChatGPT
-- Fix measurement history article title display
-- Standardize position, CTR, clicks, and impressions formats
-```
+SIMS-Blog-ManagerはSearch Consoleデータの整理・分類・管理までを担当します。SERP分析や競合分析、本文の改善・新記事執筆はSIMS-CoreまたはClaude側で行います。
