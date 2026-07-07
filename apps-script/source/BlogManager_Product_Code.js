@@ -35,7 +35,8 @@ var SBM = {
     MIN_CLICKS: 14,
     ONCE_PER_DAY: 15,
     LAST_FETCH_DATE: 16,
-    MEASURE_DAYS: 17
+    MEASURE_DAYS: 17,
+    CONNECTION_STATUS: 18
   },
   DEFAULTS: {
     MANAGED_RATIO: '30%',
@@ -60,6 +61,7 @@ function onOpen() {
     .addItem('Search Console接続テスト', 'testSearchConsoleConnection')
     .addItem('承認スコープ設定の確認', 'showOAuthScopeHelp')
     .addItem('Google Cloud API有効化ガイド', 'showGoogleCloudApiHelp')
+    .addItem('API設定後に接続テストへ進む', 'continueAfterApiSetup')
     .addItem('接続テスト結果を開く', 'openConnectionTest')
     .addItem('今日のデータを取得・分析', 'runDailyUpdate')
     .addItem('今日の改善を更新', 'buildTodayQueue')
@@ -80,7 +82,7 @@ function onOpen() {
   }
 }
 
-function setupWorkbook() {
+function setupWorkbook(silent) {
   var ss = SpreadsheetApp.getActive();
   var names = sheetNames_();
   for (var i = 0; i < names.length; i++) getOrCreateSheet_(ss, names[i]);
@@ -99,11 +101,13 @@ function setupWorkbook() {
   markSetupStatus_();
   refreshHome();
 
-  var settings = getSettingsSafe_();
-  if (!settings.property) {
-    SpreadsheetApp.getUi().alert('初期セットアップが完了しました。次に「設定」シートでブログ名とSearch Console Propertyを入力し、メニュー「初期設定を完了」を実行してください。');
-  } else {
-    SpreadsheetApp.getUi().alert('初期セットアップが完了しました。設定値は保持されています。次にSearch Console接続テストを実行してください。');
+  if (!silent) {
+    var settings = getSettingsSafe_();
+    if (!settings.property) {
+      SpreadsheetApp.getUi().alert('初期セットアップが完了しました。次に「セットアップウィザード開始」でブログ名とSearch Console Propertyを入力してください。');
+    } else {
+      SpreadsheetApp.getUi().alert('初期セットアップが完了しました。設定値は保持されています。次にSearch Console接続テストを実行してください。');
+    }
   }
 }
 
@@ -124,8 +128,9 @@ function completeInitialSetup() {
     return;
   }
   sh.getRange(SBM.SETTINGS_ROW.SETUP_STATUS, 2).setValue('完了');
+  sh.getRange(SBM.SETTINGS_ROW.CONNECTION_STATUS, 2).setValue('未テスト');
   refreshHome();
-  SpreadsheetApp.getUi().alert('初期設定が完了しました。次に「Search Console接続テスト」を実行してください。');
+  SpreadsheetApp.getUi().alert('初期設定が完了しました。次に「API設定後に接続テストへ進む」または「Search Console接続テスト」を実行してください。');
 }
 
 function promptDailyUpdateIfNeeded_() {
@@ -138,6 +143,10 @@ function promptDailyUpdateIfNeeded_() {
   // 2. Search Console接続テストOK
   // この2条件がそろってから、その日の初回起動時取得を案内する。
   if (!isInitialSetupComplete_()) {
+    refreshHome();
+    return;
+  }
+  if (!isConnectionTestOk_()) {
     refreshHome();
     return;
   }
@@ -157,6 +166,7 @@ function promptDailyUpdateIfNeeded_() {
 function runDailyUpdate() {
   try {
     requireInitialSetup_();
+    requireConnectionTestOk_();
     requireConnectionOk_();
     var ss = SpreadsheetApp.getActive();
     var settings = getSettings_();
@@ -175,7 +185,7 @@ function runDailyUpdate() {
 
 function generateSampleData() {
   try {
-    setupWorkbook();
+    setupWorkbook(true);
     var settings = getSettingsSafe_();
     var pages = [
       ['https://example.com/windows11-tpm/', 'Windows11 TPM エラー対処', 4200, 80, 7.2],
@@ -226,9 +236,11 @@ function testSearchConsoleConnection() {
     var response = callSearchConsoleApi_(settings.property, request);
     var count = response && response.rows ? response.rows.length : 0;
     writeConnectionResult_('OK', '接続成功。取得テスト件数: ' + count, '今日のデータを取得・分析を実行してください。');
-    SpreadsheetApp.getUi().alert('Search Console接続テストに成功しました。');
+    setConnectionStatus_('OK');
+    SpreadsheetApp.getUi().alert('Search Console接続テストに成功しました。次に「今日のデータを取得・分析」を実行できます。');
   } catch (e) {
     writeConnectionResult_('ERROR', e.message || String(e), getNextActionForError_(e.message || String(e)));
+    setConnectionStatus_('ERROR');
     handleError_(e);
   }
 }
@@ -535,13 +547,33 @@ function getLastConnectionStatus_() {
 
 function requireConnectionOk_() {
   var status = getLastConnectionStatus_();
-  if (status !== 'OK') {
-    throw new Error('Search Console接続テストが未完了です。メニュー「Search Console接続テスト」を実行し、接続OKを確認してからデータ取得してください。');
+  if (status !== 'OK' || !isConnectionTestOk_()) {
+    throw new Error('Search Console接続テストが未完了です。メニュー「API設定後に接続テストへ進む」または「Search Console接続テスト」を実行し、接続OKを確認してからデータ取得してください。');
   }
 }
 
 function requireInitialSetup_() {
   if (!isInitialSetupComplete_()) throw new Error('初期設定が未完了です。設定シート B4 にブログ名、B5 にSearch Console Propertyを入力し、「初期設定を完了」を実行してください。');
+}
+
+function isConnectionTestOk_() {
+  var sh = SpreadsheetApp.getActive().getSheetByName(SBM.SHEETS.SETTINGS);
+  if (!sh) return false;
+  return String(sh.getRange(SBM.SETTINGS_ROW.CONNECTION_STATUS, 2).getValue() || '').trim() === 'OK';
+}
+
+function requireConnectionTestOk_() {
+  if (!isConnectionTestOk_()) throw new Error('Search Console接続テストが未成功です。先にメニュー「API設定後に接続テストへ進む」または「Search Console接続テスト」を実行してください。');
+}
+
+function setConnectionStatus_(status) {
+  var sh = SpreadsheetApp.getActive().getSheetByName(SBM.SHEETS.SETTINGS);
+  if (sh) sh.getRange(SBM.SETTINGS_ROW.CONNECTION_STATUS, 2).setValue(status);
+}
+
+function continueAfterApiSetup() {
+  SpreadsheetApp.getUi().alert('接続テストへ進みます', 'Google CloudでSearch Console APIを有効化済みであれば、このあと接続テストを実行します。未設定の場合はエラー案内が表示されます。', SpreadsheetApp.getUi().ButtonSet.OK);
+  testSearchConsoleConnection();
 }
 
 function isInitialSetupComplete_() {
@@ -576,6 +608,7 @@ function getSettingsSafe_() {
     oncePerDay: String(sh.getRange(SBM.SETTINGS_ROW.ONCE_PER_DAY, 2).getValue() || SBM.DEFAULTS.ONCE_PER_DAY),
     lastFetchDate: sh.getRange(SBM.SETTINGS_ROW.LAST_FETCH_DATE, 2).getValue(),
     measureDays: String(sh.getRange(SBM.SETTINGS_ROW.MEASURE_DAYS, 2).getValue() || SBM.DEFAULTS.MEASURE_DAYS),
+    connectionStatus: String(sh.getRange(SBM.SETTINGS_ROW.CONNECTION_STATUS, 2).getValue() || '未テスト'),
     managedRatioNumber: parseRatio_(sh.getRange(SBM.SETTINGS_ROW.MANAGED_RATIO, 2).getValue() || SBM.DEFAULTS.MANAGED_RATIO)
   };
 }
@@ -622,7 +655,8 @@ function setupSettings_(sh) {
     ['1日1回取得制限', preserved['1日1回取得制限'] || SBM.DEFAULTS.ONCE_PER_DAY, '初期設定完了後、その日に初めて開いた時だけ取得確認します。', '編集可'],
     ['最終取得日', preserved['最終取得日'] || '', '自動記録。', '自動'],
     ['効果測定日数', preserved['効果測定日数'] || SBM.DEFAULTS.MEASURE_DAYS, '改善後の比較日数。', '固定推奨'],
-    ['サンプルデータ', preserved['サンプルデータ'] || 'OFF', 'GSC接続前の動作確認用。メニューから生成。', 'メニューから生成']
+    ['サンプルデータ', preserved['サンプルデータ'] || 'OFF', 'GSC接続前の動作確認用。メニューから生成。', 'メニューから生成'],
+    ['接続テストステータス', preserved['接続テストステータス'] || '未テスト', 'Search Console接続テストが成功するとOKになります。OKになるまで日次取得は動きません。', '自動']
   ];
   sh.getRange(3,1,rows.length,4).setValues(rows);
   sh.getRange('A3:D3').setFontWeight('bold').setBackground('#1f4e79').setFontColor('#ffffff');
@@ -685,7 +719,7 @@ function setupHelp_(sh) {
   sh.clear();
   sh.getRange('A1:D1').merge().setValue('ヘルプ').setFontSize(16).setFontWeight('bold').setFontColor('#ffffff').setBackground('#1f4e79').setHorizontalAlignment('center');
   var rows = [
-    ['最初にやること', '1. セットアップウィザード開始 2. ポップアップでブログ名とSearch Console Propertyを入力 3. Google Cloud API有効化 4. 接続テスト'],
+    ['最初にやること', '1. セットアップウィザード開始 2. ポップアップでブログ名とSearch Console Propertyを入力 3. Google Cloud API有効化 4. API設定後に接続テストへ進む'],
     ['Search Console Property', 'URLプレフィックスなら https://example.com/、ドメインプロパティなら sc-domain:example.com'],
     ['毎日の使い方', 'その日に初めて開いた時、初期設定完了済みならデータ取得確認が出ます。'],
     ['構文エラーが出る場合', 'Product 1.6以降のCode.jsを全文貼り直してください。古いコードが残っていないか確認してください。'],
@@ -796,7 +830,7 @@ function handleError_(e) {
 
 function getNextActionForError_(message) {
   var m = String(message || '');
-  if (m.indexOf('Search Console接続テストが未完了') >= 0) return 'メニュー「Search Console接続テスト」を先に実行してください。接続OKになるまでデータ取得は行いません。';
+  if (m.indexOf('Search Console接続テストが未完了') >= 0 || m.indexOf('接続テストが未成功') >= 0) return 'メニュー「API設定後に接続テストへ進む」または「Search Console接続テスト」を先に実行してください。接続OKになるまでデータ取得は行いません。';
   if (m.indexOf('初期設定') >= 0 || m.indexOf('B4') >= 0 || m.indexOf('B5') >= 0) return 'メニュー「セットアップウィザード開始」でブログ名とSearch Console Propertyを入力してください。';
   if (m.indexOf('SERVICE_DISABLED') >= 0 || m.indexOf('accessNotConfigured') >= 0 || m.indexOf('has not been used in project') >= 0 || m.indexOf('disabled') >= 0) return 'Google Cloud側で Search Console API が有効化されていません。Apps Scriptのプロジェクト設定からGoogle Cloudプロジェクトを開き、Search Console APIを有効化してください。';
   if (m.indexOf('ACCESS_TOKEN_SCOPE_INSUFFICIENT') >= 0 || m.indexOf('insufficient authentication scopes') >= 0) return 'Apps Scriptのappsscript.jsonにSearch Console読み取りスコープを追加し、保存後に再承認してください。';
@@ -836,7 +870,7 @@ function startSetupWizard() {
     ui.ButtonSet.OK_CANCEL
   );
   if (step1 !== ui.Button.OK) return;
-  setupWorkbook();
+  setupWorkbook(true);
 
   var ss = SpreadsheetApp.getActive();
   var sh = ss.getSheetByName(SBM.SHEETS.SETTINGS);
@@ -854,6 +888,7 @@ function startSetupWizard() {
   );
   if (blogPrompt.getSelectedButton() !== ui.Button.OK) return;
   var blogName = String(blogPrompt.getResponseText() || '').trim();
+  if (!blogName && currentBlog) blogName = currentBlog;
   if (!blogName) {
     ui.alert('ブログ名が空です。セットアップを中断しました。');
     return;
@@ -868,12 +903,14 @@ function startSetupWizard() {
   );
   if (propPrompt.getSelectedButton() !== ui.Button.OK) return;
   var property = String(propPrompt.getResponseText() || '').trim();
+  if (!property && currentProp) property = currentProp;
   if (!property) {
     ui.alert('Search Console Propertyが空です。セットアップを中断しました。');
     return;
   }
   sh.getRange(SBM.SETTINGS_ROW.PROPERTY, 2).setValue(property);
   sh.getRange(SBM.SETTINGS_ROW.SETUP_STATUS, 2).setValue('完了');
+  sh.getRange(SBM.SETTINGS_ROW.CONNECTION_STATUS, 2).setValue('未テスト');
   refreshHome();
 
   var apiGuide = ui.alert(
@@ -881,11 +918,15 @@ function startSetupWizard() {
     'ブログ名とSearch Console Propertyを登録しました。\n\n次はGoogle Cloud側で「Google Search Console API」が有効になっているか確認します。\nAPI有効化ガイドを開きますか？',
     ui.ButtonSet.YES_NO
   );
-  if (apiGuide === ui.Button.YES) showGoogleCloudApiHelp();
+  if (apiGuide === ui.Button.YES) {
+    showGoogleCloudApiHelp();
+    ui.alert('API設定ガイドを開きました', 'Google CloudでAPIを有効化した後、数分待ってからメニュー「API設定後に接続テストへ進む」を実行してください。\n\n※このウィザードはここで一度終了します。', ui.ButtonSet.OK);
+    return;
+  }
 
   ui.alert(
     'セットアップ登録完了',
-    '次に行うこと：\n1. 必要に応じてGoogle CloudでSearch Console APIを有効化\n2. メニュー「Search Console接続テスト」を実行\n3. 接続OK後、「今日のデータを取得・分析」を実行\n\n※接続テストがOKになるまで、1日1回の自動取得は走りません。',
+    '次に行うこと：\n1. 必要に応じてメニュー「Google Cloud API有効化ガイド」を開く\n2. API有効化後、メニュー「API設定後に接続テストへ進む」を実行\n3. 接続OK後、「今日のデータを取得・分析」を実行\n\n※接続テストがOKになるまで、1日1回の自動取得は走りません。',
     ui.ButtonSet.OK
   );
 }
@@ -917,7 +958,7 @@ function showGoogleCloudApiHelp(projectId) {
     + '1. 下のボタンからGoogle Cloud Consoleを開く\n'
     + '2. 画面上部のプロジェクトが、このApps ScriptのGCPプロジェクトになっているか確認する\n'
     + '3. 「Google Search Console API」を有効化する\n'
-    + '4. 数分待ってから「Search Console接続テスト」を再実行する\n\n'
+    + '4. 数分待ってから、スプレッドシートのメニュー「API設定後に接続テストへ進む」を実行する\n\n'
     + '補足: これはappsscript.jsonのOAuthスコープ設定とは別作業です。Search Console側の閲覧権限も必要です。';
   showLinkDialog_('Google Cloud API有効化ガイド', text, url);
 }

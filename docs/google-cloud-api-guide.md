@@ -14,7 +14,7 @@ SERVICE_DISABLED
 3. Google Cloud Consoleで「Google Search Console API」を開く
 4. APIを有効化
 5. 数分待つ
-6. 接続テストを再実行
+6. スプレッドシートのメニュー「API設定後に接続テストへ進む」を実行
 
 APIページ:
 

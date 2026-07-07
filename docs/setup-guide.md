@@ -2,7 +2,7 @@
 
 ## 1. スプレッドシートを作る
 
-`spreadsheet/SIMS-Blog-Manager-template-Product2.0.xlsx` をGoogleスプレッドシートへインポートします。
+`spreadsheet/SIMS-Blog-Manager-template-Product2.2.xlsx` をGoogleスプレッドシートへインポートします。
 
 ## 2. Apps Scriptを貼り付ける
 

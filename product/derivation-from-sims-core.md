@@ -1,6 +1,6 @@
 # SIMS-Coreからの派生方針
 
-Product 2.0はSIMS-Core v1.1を親プロジェクトとして扱います。
+Product 2.2はSIMS-Core v1.1を親プロジェクトとして扱います。
 
 ## 継承するもの
 
