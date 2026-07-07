@@ -1,33 +1,21 @@
-# SIMS-Blog-Manager Product 4.0
+# SIMS-Blog-Manager Product 4.1
 
-Google Search Console のデータを使い、ブログ改善で「今日やること」を決めるためのGoogleスプレッドシート製品です。
+Google Search Consoleのデータを使い、ブログ改善の「今日やること」を管理するスプレッドシートシステムです。
 
-Product 4.0 は、SIMS-Coreで実地確認済みだった Search Console 接続方式をベースに、Claude連携・AI Exchange・Knowledge系を外した Slim Edition です。
+## Product 4.1の修正点
 
-## 内容
+- STEP2 Google Cloud APIガイドで止まる問題を修正
+- `Ui.showModalDialog` 用のOAuthスコープを追加
+- モーダル表示ができない場合の代替案内を追加
+- 初回・更新後のGoogle再承認案内を強化
 
-- `spreadsheet/SIMS-Blog-Manager-template-Product4.0.xlsx`
-- `apps-script/Code.js`
-- `apps-script/appsscript.json`
-- `docs/`
-- `product/`
+## 導入
 
-## 初回の流れ
+1. `spreadsheet/` のテンプレートをGoogleスプレッドシートへアップロードします。
+2. `apps-script/Code.js` をApps Scriptへ貼り付けます。
+3. `apps-script/appsscript.json` も反映します。
+4. メニュー「SIMS-Blog-Manager」からSTEPを順番に実行します。
 
-1. スプレッドシートをGoogleスプレッドシートにインポート
-2. Apps Scriptに `Code.js` を貼り付け
-3. `appsscript.json` を上書き
-4. メニュー `SIMS-Blog-Manager` から STEP1〜STEP4 を実行
+## 注意
 
-## 初回認証について
-
-初めてApps Scriptを実行すると、Googleの承認画面が表示されます。これは正常です。
-承認後に処理が止まった場合は、同じSTEPをもう一度実行してください。
-
-## Product 4.0の重要な変更
-
-- 連続ウィザードを廃止
-- Home上のチェックリスト型セットアップへ変更
-- 外部URLを開いた後は処理をそこで止める
-- Search Console接続テスト成功まで日次取得をブロック
-- `Session.getActiveUser()` を使わないログ記録へ変更
+Product 4.1ではOAuthスコープを追加しています。既存の4.0から更新した場合、Googleの再承認画面が表示されることがあります。正常な動作です。

@@ -2,7 +2,7 @@
 
 ## Product
 
-SIMS-Blog-Manager Product 4.0
+SIMS-Blog-Manager Product 4.1
 
 ## Concept
 

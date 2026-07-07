@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 4.0
+ * SIMS-Blog-Manager Product 4.1
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '4.0.0-rc1';
+const SBM_VERSION = '4.1.0-rc1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -100,7 +100,7 @@ function sbmInitializeSheets(showAlert) {
   sbmEnsureUserSheets_();
   sbmApplySheetUx_();
   sbmRefreshHome_();
-  sbmLog_('InitializeSheets','Done','Product 4.0 sheets initialized');
+  sbmLog_('InitializeSheets','Done','Product 4.1 sheets initialized');
   if (showAlert) sbmAlert_('初期化完了', '必要なシートを作成・修復しました。\n次に、メニュー「SIMS-Blog-Manager」→「セットアップ」→「STEP1 ブログ情報を登録」を実行してください。');
 }
 
@@ -240,18 +240,38 @@ function sbmSetupStep1BlogInfo() {
 function sbmSetupStep2ApiGuide() {
   sbmInitializeSheets(false);
   if (sbmGetSetting_('SetupBlogInfo','NO') !== 'YES') return sbmAlert_('STEP1が未完了です', '先にSTEP1でブログ情報を登録してください。');
-  var html = HtmlService.createHtmlOutput(sbmApiGuideHtml_()).setWidth(700).setHeight(540);
-  SpreadsheetApp.getUi().showModalDialog(html, 'STEP2 Google Cloud API有効化ガイド');
-  sbmSetSetting_('SetupApiGuide', 'YES', 'STEP2ガイド表示済み');
-  sbmLog_('SetupStep2ApiGuide','Shown','Google Cloud API guide displayed');
+  var ui = SpreadsheetApp.getUi();
+  try {
+    var html = HtmlService.createHtmlOutput(sbmApiGuideHtml_()).setWidth(700).setHeight(540);
+    ui.showModalDialog(html, 'STEP2 Google Cloud API有効化ガイド');
+    sbmSetSetting_('SetupApiGuide', 'YES', 'STEP2ガイド表示済み');
+    sbmLog_('SetupStep2ApiGuide','Shown','Google Cloud API guide displayed');
+  } catch (e) {
+    sbmSetSetting_('SetupApiGuide', 'NO', 'STEP2ガイド再実行が必要');
+    sbmLog_('SetupStep2ApiGuide','NeedsAuthorization', String(e));
+    ui.alert(
+      'STEP2 Google Cloud API有効化ガイド',
+      'Googleの再承認が必要です。\n\n' +
+      '1. このメッセージを閉じます。\n' +
+      '2. もう一度「STEP2 Google Cloud APIガイドを開く」を実行します。\n' +
+      '3. Googleの承認画面が出たら許可します。\n\n' +
+      '承認後も開けない場合は、次のURLをブラウザに貼り付けてください。\n\n' +
+      sbmSearchConsoleApiUrl_(),
+      ui.ButtonSet.OK
+    );
+  }
   sbmRefreshHome_();
+}
+
+function sbmSearchConsoleApiUrl_() {
+  return 'https://console.cloud.google.com/apis/library/searchconsole.googleapis.com';
 }
 
 function sbmApiGuideHtml_() {
   return '<div style="font-family:Arial,sans-serif;line-height:1.7;padding:12px">'
     + '<h2>STEP2 Google Cloud APIを有効化します</h2>'
     + '<p>下のボタンからGoogle Cloud Consoleを開き、<b>Google Search Console API</b>を有効化してください。</p>'
-    + '<p><a href="https://console.cloud.google.com/apis/library/searchconsole.googleapis.com" target="_blank" style="display:inline-block;background:#1a73e8;color:white;padding:10px 16px;border-radius:6px;text-decoration:none">Google Search Console APIを開く</a></p>'
+    + '<p><a href="' + sbmSearchConsoleApiUrl_() + '" target="_blank" style="display:inline-block;background:#1a73e8;color:white;padding:10px 16px;border-radius:6px;text-decoration:none">Google Search Console APIを開く</a></p>'
     + '<ol>'
     + '<li>Google Cloud Consoleが開きます。</li>'
     + '<li>「有効にする」ボタンがあればクリックします。</li>'

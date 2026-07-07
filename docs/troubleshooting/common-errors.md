@@ -1,17 +1,22 @@
 # よくあるエラー
 
-## Googleの承認画面が出た
+## 初回認証が表示される
 
-正常です。許可した後、同じSTEPをもう一度実行してください。
+正常な動作です。SIMS-Blog-Managerがスプレッドシート、画面表示、Search Console APIを利用するためにGoogleの承認が必要です。
+承認後、同じSTEPをもう一度実行してください。
+
+## Ui.showModalDialog を呼び出せません
+
+Product 4.1で修正済みです。`appsscript.json` に次のスコープを追加しています。
+
+```json
+"https://www.googleapis.com/auth/script.container.ui"
+```
+
+Product 4.1を適用後、Googleの再承認画面が出た場合は許可してください。
 
 ## Search Console API has not been used
 
-Google CloudでSearch Console APIが有効化されていません。STEP2を実行してください。
-
-## insufficient authentication scopes
-
-`appsscript.json` に `webmasters.readonly` が含まれているか確認してください。
-
-## 403 Permission denied
-
-Search Consoleプロパティ表記、またはGoogleアカウントの権限を確認してください。
+Google Cloud側でSearch Console APIが有効化されていません。
+STEP2のGoogle Cloud APIガイドを開き、Google Search Console APIを有効化してください。
+有効化後、数分待ってからSTEP3を実行してください。
