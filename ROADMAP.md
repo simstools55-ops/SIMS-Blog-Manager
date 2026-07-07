@@ -1,16 +1,14 @@
 # Roadmap
 
-## Product 3.x
+## Product 4.x
 
-- Stabilize setup flow.
-- Improve Search Console error guidance.
-- Add sample data mode.
-- Improve 今日の改善 UX.
-- Add managed-ratio expansion suggestion from 30% to 50%.
+- Stabilize setup and Search Console connection
+- Improve diagnosis code accuracy
+- Improve Today’s Improvement UX
+- Add completion logging button/menu
 
-## v1.0 Stable
+## Product 5.0
 
-- Publish GitHub Pages manual.
-- Prepare copy-ready Google Sheets template.
-- Finalize beginner setup guide.
-- Complete UAT checklist.
+- Fix spreadsheet schema as long-term stable base
+- Add documentation site release
+- Prepare public beta package

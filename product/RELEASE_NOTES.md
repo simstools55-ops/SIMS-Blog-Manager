@@ -1,5 +1,5 @@
-# Product 3.2 Release Notes
+# Release Notes Product 4.0
 
-Product 3.2 fixes the setup error that occurred in STEP1 when the setup sheet tried to write two-column rows into a four-column range.
+Product 4.0は、Product 3.xのパッチ開発を停止し、SIMS-Core Slim Editionとして再構築した版です。
 
-It also adds clear beginner guidance for the first Apps Script authorization screen. When Google asks for authorization, allow access, return to the spreadsheet, and run the same STEP again.
+最大の変更点は、連続ウィザードをやめ、初心者向けのチェックリスト型セットアップにしたことです。

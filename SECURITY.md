@@ -1,11 +1,9 @@
 # Security
 
-SIMS-Blog-Manager は、ユーザー自身のGoogleアカウントでSearch Console APIへアクセスします。
+このツールは、Search Console APIの読み取り専用スコープを使用します。
 
-必要なOAuthスコープ:
-
+- `https://www.googleapis.com/auth/webmasters.readonly`
 - `https://www.googleapis.com/auth/spreadsheets.currentonly`
 - `https://www.googleapis.com/auth/script.external_request`
-- `https://www.googleapis.com/auth/webmasters.readonly`
 
-取得したデータは利用者のスプレッドシート内に保存されます。
+記事本文や個人情報を外部AIへ送信する機能は含みません。

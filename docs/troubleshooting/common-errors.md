@@ -1,40 +1,17 @@
 # よくあるエラー
 
-## OAuthスコープ不足
+## Googleの承認画面が出た
 
-表示例：
+正常です。許可した後、同じSTEPをもう一度実行してください。
 
-```text
-Request had insufficient authentication scopes
-```
+## Search Console API has not been used
 
-対応：
+Google CloudでSearch Console APIが有効化されていません。STEP2を実行してください。
 
-`appsscript.json` に以下が含まれているか確認してください。
+## insufficient authentication scopes
 
-```text
-https://www.googleapis.com/auth/webmasters.readonly
-```
+`appsscript.json` に `webmasters.readonly` が含まれているか確認してください。
 
-## Search Console API未有効
+## 403 Permission denied
 
-表示例：
-
-```text
-Search Console API has not been used or is disabled
-```
-
-対応：
-
-STEP2 Google Cloud API設定ガイドからSearch Console APIを有効化してください。
-
-## 403 Permission
-
-原因：
-
-- Search Consoleプロパティ表記が違う
-- GoogleアカウントにSearch Console権限がない
-
-対応：
-
-Search Consoleに表示されるプロパティ表記をそのまま入力してください。
+Search Consoleプロパティ表記、またはGoogleアカウントの権限を確認してください。

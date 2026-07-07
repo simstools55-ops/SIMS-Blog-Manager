@@ -1,67 +1,33 @@
-# SIMS-Blog-Manager Product 3.0
+# SIMS-Blog-Manager Product 4.0
 
-SIMS-Blog-Manager は、Google Search Console のデータを使い、ブログ記事の改善対象を毎日判断する Google スプレッドシート製ブログ改善マネージャーです。
+Google Search Console のデータを使い、ブログ改善で「今日やること」を決めるためのGoogleスプレッドシート製品です。
 
-Product 3.0 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
+Product 4.0 は、SIMS-Coreで実地確認済みだった Search Console 接続方式をベースに、Claude連携・AI Exchange・Knowledge系を外した Slim Edition です。
 
-## Product 3.0 の方針
+## 内容
 
-- セットアップは連続ウィザードではなく、チェックリスト形式
-- 外部URLを開いたら処理を止め、利用者がシートへ戻って次のSTEPを実行
-- 初期設定と接続テストが完了するまで、日次GSC取得は実行しない
-- 利用者は主に「ホーム」「セットアップ」「今日の改善」だけを見る
-- 製品配布用に単体 `Code.js` を同梱
+- `spreadsheet/SIMS-Blog-Manager-template-Product4.0.xlsx`
+- `apps-script/Code.js`
+- `apps-script/appsscript.json`
+- `docs/`
+- `product/`
 
-## リポジトリ構成
+## 初回の流れ
 
-```text
-apps-script/
-  Code.js
-  appsscript.json
-spreadsheet/
-  SIMS-Blog-Manager-template-Product3.0.xlsx
-docs/
-  index.md
-  setup/
-  user-guide/
-  troubleshooting/
-product/
-  PRODUCT_SPEC.md
-  RELEASE_NOTES.md
-```
+1. スプレッドシートをGoogleスプレッドシートにインポート
+2. Apps Scriptに `Code.js` を貼り付け
+3. `appsscript.json` を上書き
+4. メニュー `SIMS-Blog-Manager` から STEP1〜STEP4 を実行
 
-## セットアップ手順
+## 初回認証について
 
-1. `spreadsheet/SIMS-Blog-Manager-template-Product3.0.xlsx` をGoogleスプレッドシートへインポート
-2. 拡張機能 → Apps Script を開く
-3. `apps-script/Code.js` を貼り付け
-4. `appsscript.json` の内容をマニフェストへ反映
-5. スプレッドシートを再読み込み
-6. メニュー「SIMS-Blog-Manager」からSTEP1〜STEP4を順番に実行
+初めてApps Scriptを実行すると、Googleの承認画面が表示されます。これは正常です。
+承認後に処理が止まった場合は、同じSTEPをもう一度実行してください。
 
-## コミットメッセージ
+## Product 4.0の重要な変更
 
-Commit title:
-
-```text
-Release Product 3.0 (SIMS-Core Slim Edition)
-```
-
-Commit description:
-
-```text
-- Rebuild from SIMS-Core Slim Edition foundation
-- Replace continuous wizard with checklist-based setup flow
-- Add popup input for blog name, blog URL, and Search Console property
-- Add Google Cloud API guide that stops safely after opening external URL
-- Block daily GSC fetch until setup and connection test are complete
-- Add product-ready spreadsheet template and single-file Code.js
-```
-
-
-## Product 3.2で修正したこと
-
-- STEP1完了時に `Session.getActiveUser` 権限エラーで停止する問題を修正しました。
-- 初回認証後に同じSTEPを再実行する必要があることを明記しました。
-- ブログ名・URL・Search Consoleプロパティが保存済みの場合、同じ内容を何度も聞かず、確認だけで進めるようにしました。
-- 初回実行時は認証画面の表示まで時間がかかる場合があるため、待機案内を追加しました。
+- 連続ウィザードを廃止
+- Home上のチェックリスト型セットアップへ変更
+- 外部URLを開いた後は処理をそこで止める
+- Search Console接続テスト成功まで日次取得をブロック
+- `Session.getActiveUser()` を使わないログ記録へ変更
