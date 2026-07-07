@@ -1,5 +1,9 @@
-# Release Notes Product 4.1
+# Product 4.2 Release Notes
 
-Product 4.1は、Product 3.xのパッチ開発を停止し、SIMS-Core Slim Editionとして再構築した版です。
+Product 4.2は、Search Console連携成功後の実運用画面を改善するリリースです。
 
-最大の変更点は、連続ウィザードをやめ、初心者向けのチェックリスト型セットアップにしたことです。
+- 今日の改善を5件表示に変更
+- 全候補表示メニューを追加
+- 改善ブリーフを別表示化
+- プロジェクト番号不一致の案内を追加
+- FAQとトラブルシューティングを更新

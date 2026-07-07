@@ -1,22 +1,24 @@
-# よくあるエラー
+# よくあるエラーと対処
 
-## 初回認証が表示される
+## Search Console API has not been used in project... と表示される
 
-正常な動作です。SIMS-Blog-Managerがスプレッドシート、画面表示、Search Console APIを利用するためにGoogleの承認が必要です。
-承認後、同じSTEPをもう一度実行してください。
+原因は主に2つです。
 
-## Ui.showModalDialog を呼び出せません
+1. Google CloudでSearch Console APIが有効化されていない
+2. Apps Scriptに設定されているGoogle Cloudプロジェクト番号と、APIを有効化したGoogle Cloudプロジェクト番号が違う
 
-Product 4.1で修正済みです。`appsscript.json` に次のスコープを追加しています。
+### 対処
 
-```json
-"https://www.googleapis.com/auth/script.container.ui"
-```
+1. Apps Scriptの設定画面を開く
+2. Google Cloudプロジェクト番号を確認する
+3. Google Cloud Consoleで同じプロジェクト番号を開く
+4. Search Console APIを有効化する
+5. 数分待ってからSTEP3接続テストを再実行する
 
-Product 4.1を適用後、Googleの再承認画面が出た場合は許可してください。
+## Googleの承認画面が出る
 
-## Search Console API has not been used
+正常な動作です。許可後、同じSTEPをもう一度実行してください。
 
-Google Cloud側でSearch Console APIが有効化されていません。
-STEP2のGoogle Cloud APIガイドを開き、Google Search Console APIを有効化してください。
-有効化後、数分待ってからSTEP3を実行してください。
+## Search Console APIを有効化したのに接続できない
+
+まずプロジェクト番号の不一致を確認してください。番号が違う場合、30分待っても接続できません。

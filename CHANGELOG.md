@@ -1,15 +1,14 @@
 # Changelog
 
-## Product 4.1
+## Product 4.2
 
-- Fix STEP2 Google Cloud API guide permission error caused by missing `script.container.ui` OAuth scope.
-- Add safe fallback message when the modal guide cannot open before reauthorization.
-- Clarify that Google may ask for authorization again after the script update.
-- Keep Product 4.0 stable checklist setup flow.
-
-## Product 4.0
-
-- Rebuild as SIMS-Core Slim Edition stable foundation.
-- Replace continuous wizard with checklist-based setup flow.
-- Add beginner guidance for first Google authorization.
-- Block GSC fetch until connection test succeeds.
+- Search Console接続後の実地テスト結果を反映
+- 「今日の改善」をタスクリスト形式へ改善
+- 既定表示をおすすめ5件に変更
+- メニューから改善候補をすべて表示できる機能を追加
+- 改善ブリーフを1セル表示から別管理＋ダイアログ表示へ変更
+- 選択行の記事を開く／改善ブリーフを開く／完了記録メニューを追加
+- Apps ScriptとGoogle Cloudのプロジェクト番号不一致に関する案内を強化
+- Search Console API未有効エラーの日本語説明を改善
+- System_Logと改善ブリーフを管理者向けシートとして整理
+- Product 4.2用スプレッドシートテンプレートを更新
