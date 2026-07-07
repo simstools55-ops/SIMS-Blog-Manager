@@ -1,10 +1,6 @@
-# SIMS-Blog-Manager Product 5.0 RC6.1
+# SIMS-Blog-Manager Product 5.0 RC7
 
-This is a syntax-fix release for RC6.
-
-# SIMS-Blog-Manager Product 5.0 RC6
-
-RC6 focuses on speed and operational safety.
+RC7 focuses on timeout prevention, process visibility, and clearer operational status.
 
 ## Update
 
@@ -13,10 +9,16 @@ RC6 focuses on speed and operational safety.
 - Sheet repair: yes
 - deploy.yml: no change
 
-## New workflow
+## Important
 
-1. Run **STEP A Search Consoleデータ取得だけ実行**.
-2. Run **STEP B 改善候補を分析**.
-3. Open **今日の改善** and review the top tasks.
+After replacing Code.js, run:
 
-The former all-in-one command remains available, but the split workflow is recommended for large blogs.
+SIMS-Blog-Manager → 管理 → シートを作成・修復
+
+Then use:
+
+1. STEP A Search Consoleデータ取得だけ実行
+2. STEP B 改善候補を分析
+3. 処理ログを確認
+
+Completed improvements move out of 今日の改善 and into 改善中 while results are being measured.

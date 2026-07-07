@@ -1,14 +1,11 @@
-# Product 5.0 RC6.1 Syntax Fix
-
-- Fixed Code.js syntax error caused by raw newline in dialog message strings.
-- deploy.yml unchanged.
-
 # Changelog
 
-## Product 5.0 RC6
+## Product 5.0 RC7
 
-- Split daily processing into STEP A data fetch and STEP B improvement analysis.
-- Added visible processing status via spreadsheet toast messages.
-- Added managed article and candidate counts to settings and Home.
-- Limited heavy analysis to managed articles and capped improvement candidates.
-- Disabled external title fetching by default to reduce timeout risk.
+- Added process timing log for fetch, analysis, and errors.
+- Added compact Process Log sheet with counts and duration.
+- Split daily update behavior to avoid combined fetch+analysis timeout.
+- Added Improvement In Progress sheet for completed-but-measuring articles.
+- Today’s Improvement now excludes articles already under measurement and refills the queue.
+- Limited analysis workload with AnalysisArticleLimit setting for large blogs.
+- Improved compact views for improvement log and effectiveness sheets.

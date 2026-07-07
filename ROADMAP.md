@@ -1,8 +1,3 @@
 # Roadmap
 
-## Next: Product 5.0
-
-- Finalize daily-use UX
-- Stabilize update workflow
-- Confirm improvement log and effectiveness tracking with real use
-- Publish official release package
+RC7 prepares the project for Product 5.0 stable by stabilizing large-blog processing and improving daily workflow separation.
