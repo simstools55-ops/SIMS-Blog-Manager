@@ -1,50 +1,59 @@
-# SIMS-Blog-Manager Product 2.2
+# SIMS-Blog-Manager Product 3.0
 
-SIMS-Blog-Managerは、SIMS-Core v1.1をベースにしたブログ改善管理専用のGoogleスプレッドシート製品です。
+SIMS-Blog-Manager は、Google Search Console のデータを使い、ブログ記事の改善対象を毎日判断する Google スプレッドシート製ブログ改善マネージャーです。
 
-## Product 2.2 の方針
+Product 3.0 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
 
-- SIMS-Coreで動作確認済みのSearch Console接続・セットアップUXを継承
-- Claude連携、AI Exchange、Knowledge Engine、Learning Engineは除外
-- 利用者向けには単体 `apps-script/Code.js` を提供
-- 開発者向けには `apps-script/source/` に分割ソースを保持
-- GitHub Pages用ドキュメントを `docs/` に同梱
+## Product 3.0 の方針
 
+- セットアップは連続ウィザードではなく、チェックリスト形式
+- 外部URLを開いたら処理を止め、利用者がシートへ戻って次のSTEPを実行
+- 初期設定と接続テストが完了するまで、日次GSC取得は実行しない
+- 利用者は主に「ホーム」「セットアップ」「今日の改善」だけを見る
+- 製品配布用に単体 `Code.js` を同梱
 
-## Product 2.2 の主な修正
-
-- セットアップウィザードでブログ名・Search Console Propertyをポップアップ入力できます。
-- Google Cloud APIガイドを開いた後、ウィザードを一度終了します。
-- API有効化後はメニュー「API設定後に接続テストへ進む」から再開します。
-- Search Console接続テストがOKになるまで、1日1回の自動取得は走りません。
-
-## 配布物
+## リポジトリ構成
 
 ```text
 apps-script/
-  Code.js                 利用者貼り付け用の単体Apps Script
-  appsscript.json          OAuthスコープ設定
-  source/                  開発・保守用の分割ソース
+  Code.js
+  appsscript.json
 spreadsheet/
-  SIMS-Blog-Manager-template-Product2.2.xlsx
-docs/                      マニュアルサイト用Markdown
-product/                   製品仕様・変更履歴
-tests/                     UATチェックリスト
+  SIMS-Blog-Manager-template-Product3.0.xlsx
+docs/
+  index.md
+  setup/
+  user-guide/
+  troubleshooting/
+product/
+  PRODUCT_SPEC.md
+  RELEASE_NOTES.md
 ```
 
-## 最初に行うこと
+## セットアップ手順
 
-1. `spreadsheet/SIMS-Blog-Manager-template-Product2.2.xlsx` をGoogleスプレッドシートにインポート
-2. Apps Scriptを開く
-3. `apps-script/Code.js` をコード.gsへ貼り付け
-4. `apps-script/appsscript.json` をApps Scriptのマニフェストへ貼り付け
-5. メニュー「SIMS-Blog-Manager」→「セットアップウィザード開始」
+1. `spreadsheet/SIMS-Blog-Manager-template-Product3.0.xlsx` をGoogleスプレッドシートへインポート
+2. 拡張機能 → Apps Script を開く
+3. `apps-script/Code.js` を貼り付け
+4. `appsscript.json` の内容をマニフェストへ反映
+5. スプレッドシートを再読み込み
+6. メニュー「SIMS-Blog-Manager」からSTEP1〜STEP4を順番に実行
 
-詳細は `docs/getting-started.md` を参照してください。
+## コミットメッセージ
 
+Commit title:
 
-## Product 2.2
+```text
+Release Product 3.0 (SIMS-Core Slim Edition)
+```
 
-- セットアップウィザードを入力式ポップアップに変更しました。
-- 接続テストOK前は、1日1回のSearch Consoleデータ取得を実行しません。
-- Search Console API未有効エラー時に、プロジェクト番号付きのGoogle Cloud有効化リンクを表示します。
+Commit description:
+
+```text
+- Rebuild from SIMS-Core Slim Edition foundation
+- Replace continuous wizard with checklist-based setup flow
+- Add popup input for blog name, blog URL, and Search Console property
+- Add Google Cloud API guide that stops safely after opening external URL
+- Block daily GSC fetch until setup and connection test are complete
+- Add product-ready spreadsheet template and single-file Code.js
+```

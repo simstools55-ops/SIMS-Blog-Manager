@@ -1,16 +1,11 @@
-# SIMS-Blog-Manager
+# SIMS-Blog-Manager Manual
 
-ブログ改善で迷わない。今日やることが30秒で決まる。
+SIMS-Blog-Managerは、Google Search Consoleのデータを使って、毎日どの記事を改善すべきかを判断するためのブログ改善管理ツールです。
 
-SIMS-Blog-Managerは、Google Search Consoleのデータをもとに、改善対象ページ・メインクエリ・参考クエリを整理し、毎日の改善作業を支援するGoogleスプレッドシートです。
+## まず読むページ
 
-## 特徴
-
-- Search Console連携
-- 初回セットアップウィザード
-- Google Cloud API有効化ガイド
-- 記事カルテ
-- 記事診断
-- 今日の改善
-- 改善ログ
-- 14日・30日効果測定
+- [初期セットアップ](setup/initial-setup.md)
+- [Google Cloud API設定](setup/google-cloud-api.md)
+- [Search Console接続テスト](setup/search-console-test.md)
+- [今日の改善の使い方](user-guide/todays-improvement.md)
+- [トラブルシューティング](troubleshooting/common-errors.md)
