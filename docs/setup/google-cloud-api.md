@@ -1,24 +1,16 @@
-# Google Cloud API設定
+# Google Cloud API有効化
 
-STEP2では、Google Cloud Consoleで `Google Search Console API` を有効化します。
-
-## 重要：プロジェクト番号を確認する
-
-Google CloudでAPIを有効化する前に、Apps Scriptの「プロジェクトの設定」でGoogle Cloudプロジェクト番号を確認してください。
-
-APIは、必ずその番号と同じGoogle Cloudプロジェクトで有効化してください。
-
-番号が違うプロジェクトでAPIを有効化しても、接続テストは成功しません。
+Search Consoleデータを取得するには、Apps Scriptが使っているGoogle Cloudプロジェクトで **Google Search Console API** を有効にする必要があります。
 
 ## 手順
 
-1. Apps Scriptを開く
-2. 左側の歯車アイコン「プロジェクトの設定」を開く
-3. Google Cloudプロジェクト番号を確認する
-4. Google Cloud Consoleを開く
-5. 同じプロジェクト番号のプロジェクトを選ぶ
-6. Google Search Console APIを検索して有効化する
-7. 数分待つ
-8. スプレッドシートに戻り、STEP3を実行する
+1. Apps Scriptのプロジェクト番号を確認します。
+2. Google Cloud Consoleを開きます。
+3. 同じプロジェクト番号のプロジェクトを選びます。
+4. APIとサービスから **Google Search Console API** を検索します。
+5. 「有効にする」を押します。
+6. 数分待ってから、STEP3の接続テストを再実行します。
 
-外部URLを開いた後、Apps Scriptの処理はそこで終了します。これは正常です。
+## 重要
+
+APIを有効化してもすぐに反映されないことがあります。ただし、30分以上待っても同じエラーの場合は、プロジェクト番号が違う可能性が高いです。

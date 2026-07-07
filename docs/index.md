@@ -1,21 +1,21 @@
-# SIMS-Blog-Manager マニュアル
+# SIMS-Blog-Manager 公式マニュアル
 
-SIMS-Blog-Managerは、Google Search Consoleのデータを使って、ブログ記事の改善優先順位を決めるGoogleスプレッドシートです。
+**ブログ改善で迷わない。今日やることが30秒で決まる。**
 
-## 最初に読むページ
+SIMS-Blog-Managerは、Google Search Consoleのデータを使って、今日改善すべき記事と改善に必要な材料を整理するGoogleスプレッドシートです。
 
-1. [初期セットアップ](setup/initial-setup.md)
-2. [Google Cloud API設定](setup/google-cloud-api.md)
-3. [Search Console接続テスト](setup/search-console-test.md)
-4. [今日の改善](user-guide/todays-improvement.md)
-5. [改善ログ](user-guide/improvement-log.md)
-6. [効果測定](user-guide/effectiveness.md)
-7. [よくあるエラー](troubleshooting/common-errors.md)
+## まず読むページ
 
-## Product 4.3 RC1の重点
+- [はじめに](getting-started/)：全体像を確認します。
+- [セットアップ](setup/)：初回設定から接続テストまで進めます。
+- [毎日の使い方](daily-workflow/)：実際の改善作業の流れを確認します。
+- [FAQ](faq/)：よくある疑問を確認します。
+- [トラブルシューティング](troubleshooting/)：エラーが出た時に確認します。
 
-- 今日の改善を5件中心のタスクリストに整理
-- 詳細チェックまたはメニューから改善ブリーフを表示
-- 改善完了時に修正内容をチェックで記録
-- 改善ログと効果測定を見やすく整理
-- セットアップ時のAPI・プロジェクト番号トラブルをFAQで補完
+## 毎日使う画面
+
+1. **ホーム**：今日の状態を確認します。
+2. **今日の改善**：改善候補を確認します。
+3. **改善ブリーフ**：ClaudeやChatGPTへ貼る材料を確認します。
+4. **改善ログ**：何を直したか記録します。
+5. **効果測定**：14日後・30日後の変化を確認します。

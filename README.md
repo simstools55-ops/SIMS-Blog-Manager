@@ -1,19 +1,23 @@
-# SIMS-Blog-Manager Product 4.3 RC1
+# SIMS-Blog-Manager Product 4.4 RC2
 
-Google Search Consoleのデータから、今日改善すべきブログ記事を提示するGoogleスプレッドシートシステムです。
+Google Search Consoleのデータから、今日改善すべき記事を整理するGoogleスプレッドシートシステムです。
 
-## Product 4.3 RC1
+## この版の位置づけ
 
-- Search Consoleデータ取得
-- 今日の改善タスク表示
-- 改善ブリーフ表示
-- Claude / ChatGPT向け改善依頼文
-- 改善完了チェック
-- 修正内容チェックリスト
-- 改善ログ
-- 効果測定
-- GitHub Pages用マニュアル
+Product 4.4 RC2は、Product 4.3 RC1にGitHub Pages公開用のマニュアルサイト設定を追加したリリース候補版です。
 
-## GitHub Pages
+## 主な内容
 
-`docs/` をGitHub Pagesで公開すると、セットアップ・FAQ・今日の改善・改善ログ・効果測定のマニュアルとして利用できます。
+- Product 4.3 RC1のスプレッドシート・Apps Script
+- MkDocs + Material for MkDocsの公式マニュアルサイト
+- GitHub ActionsによるGitHub Pages自動公開設定
+- 初回セットアップ・Search Console接続・403エラーの説明強化
+
+## GitHub Pages公開手順
+
+1. ZIPを展開します。
+2. リポジトリへ中身を上書きアップロードします。
+3. Commitします。
+4. GitHubの Settings → Pages で Source が GitHub Actions になっていることを確認します。
+5. Actionsで Deploy MkDocs site が成功するのを待ちます。
+6. `https://simstools55-ops.github.io/SIMS-Blog-Manager/` を開きます。

@@ -1,21 +1,5 @@
-# Product 4.3 RC1 Release Notes
+# Product 4.4 RC2 Release Notes
 
-Product 4.3 RC1は、実運用前のリリース候補版です。
+Product 4.4 RC2 adds a complete GitHub Pages documentation site and deployment workflow to Product 4.3 RC1.
 
-## 主な変更
-
-- 今日の改善を5件中心のタスクリストとして維持
-- 詳細チェックから改善ブリーフを開く導線を追加
-- 改善完了チェックで改善ログへ自動記録
-- Title / H1 / Description / 冒頭文 / H2/H3 / FAQ / 内部リンク / 本文追記 / その他の修正内容チェックを追加
-- 改善ブリーフをClaude / ChatGPTに貼り付けやすい形式へ改善
-- 改善ログと効果測定を実運用向けに整理
-- マニュアルサイトを拡充
-
-## テスト観点
-
-1. STEP1〜STEP4が完了するか
-2. データ取得後、今日の改善が5件表示されるか
-3. 詳細チェックまたはメニューで改善ブリーフが開くか
-4. 修正内容チェック後、完了チェックで改善ログに記録されるか
-5. 効果測定を更新できるか
+This release is intended for manual-guided field testing before Product 5.0.

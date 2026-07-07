@@ -1,8 +1,11 @@
 # Support
 
-問題が起きた場合は、以下を確認してください。
+困ったときは、まずGitHub PagesマニュアルのFAQとトラブルシューティングを確認してください。
 
-- STEP1〜STEP4のどこで止まったか
-- 表示されたエラーメッセージ
-- Search Consoleプロパティ表記
-- Google CloudでSearch Console APIが有効か
+特に多い問題は次の通りです。
+
+- 初回認証
+- Apps Scriptプロジェクト番号
+- Search Console API未有効
+- 403エラー
+- 今日の改善が空

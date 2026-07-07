@@ -1,14 +1,8 @@
 # Roadmap
 
-## Product 4.x
+## Next: Product 5.0
 
-- Stabilize setup and Search Console connection
-- Improve diagnosis code accuracy
-- Improve Today’s Improvement UX
-- Add completion logging button/menu
-
-## Product 5.0
-
-- Fix spreadsheet schema as long-term stable base
-- Add documentation site release
-- Prepare public beta package
+- Finalize daily-use UX
+- Stabilize update workflow
+- Confirm improvement log and effectiveness tracking with real use
+- Publish official release package

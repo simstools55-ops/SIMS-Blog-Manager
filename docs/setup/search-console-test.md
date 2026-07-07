@@ -1,10 +1,19 @@
 # Search Console接続テスト
 
-STEP3でSearch Console接続テストを行います。
+STEP3では、入力したSearch Console Propertyに接続できるか確認します。
 
-成功すると、日次データ取得が有効になります。
-失敗した場合は、以下を確認してください。
+## 成功した場合
 
-- Search Console APIが有効化されているか
-- プロパティ表記が正しいか
-- 使用中のGoogleアカウントにSearch Console権限があるか
+「接続OK」と表示されます。その後、STEP4で初回データ取得を実行します。
+
+## 失敗した場合
+
+主な原因は次の通りです。
+
+- Search Console APIが未有効
+- Apps Scriptのプロジェクト番号が違う
+- Search Console PropertyのURLが違う
+- Search Console側の権限がない
+- OAuthスコープ不足
+
+詳しくは[403エラー](../troubleshooting/error-403.md)を確認してください。
