@@ -2,9 +2,14 @@ site_name: SIMS-Blog-Manager Manual
 site_description: Google Search Consoleを使い、今日改善すべき記事を30秒で決めるブログ改善マネージャー
 site_url: https://simstools55-ops.github.io/SIMS-Blog-Manager/
 repo_url: https://github.com/simstools55-ops/SIMS-Blog-Manager
+
 theme:
   name: material
   language: ja
+  palette:
+    - scheme: default
+      primary: green
+      accent: green
   features:
     - navigation.tabs
     - navigation.sections
@@ -12,6 +17,10 @@ theme:
     - search.highlight
     - search.suggest
     - content.code.copy
+
+extra_css:
+  - assets/stylesheets/extra.css
+
 markdown_extensions:
   - admonition
   - toc:
@@ -19,11 +28,13 @@ markdown_extensions:
   - tables
   - pymdownx.details
   - pymdownx.superfences
+
 nav:
   - ホーム: index.md
   - はじめに: getting-started/index.md
   - セットアップ:
       - 全体の流れ: setup/index.md
+      - 初期設定: setup/initial-setup.md
       - 初回認証: setup/authorization.md
       - プロジェクト番号確認: setup/project-number.md
       - Google Cloud API有効化: setup/google-cloud-api.md

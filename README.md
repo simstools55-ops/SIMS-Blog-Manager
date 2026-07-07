@@ -1,36 +1,21 @@
-# SIMS-Blog-Manager Product 4.5 RC3
+# SIMS-Blog-Manager Documentation v3.1
 
-Google Search Consoleのデータを使い、毎日のブログ改善タスクを提示するGoogleスプレッドシートシステムです。
+GitHub Pages公開エラーを修正した版です。
 
-## Product 4.5 RC3の主な変更
+## 重要
 
-- URLがドメイン以下だけになり、記事が開けない問題を修正
-- 今日の改善・改善ログで記事タイトルを分かりやすく表示
-- 改善ログの見やすさを改善
-- 効果測定をRCテスト用に7日間の毎日確認へ対応
-- 測定履歴シートを追加
-
-## 更新方法
-
-既存スプレッドシートはそのまま利用できます。
-
-1. `apps-script/Code.js` をApps Scriptへ貼り替える
-2. 保存する
-3. スプレッドシートを再読み込みする
-4. メニュー「SIMS-Blog-Manager」→「管理」→「シートを作成・修復」を実行する
-5. 「今日のデータを取得・分析」または「効果測定を更新」を実行する
-
-## Commit message
+GitHubのWebアップロードでは、`.github/` フォルダがアップロードされないことがあります。
+その場合は、GitHub上で次のファイルを手動作成してください。
 
 ```text
-Release Product 4.5 RC3
+.github/workflows/deploy.yml
 ```
 
-```text
-- Fix URL normalization and article link handling
-- Improve article title display in logs
-- Redesign improvement log layout
-- Add 7-day daily measurement mode for RC testing
-- Add measurement history sheet
-- Improve effectiveness sheet readability
-```
+中身は `github-workflows-backup/deploy.yml` をコピーしてください。
+
+## v3.1の修正
+
+- `mkdocs build --strict` を通常ビルドへ変更
+- 旧ドキュメントファイルを互換ページとして追加
+- `mkdocs.yml` に旧ページ互換ナビを追加
+- `requirements.txt` を追加
