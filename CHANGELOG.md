@@ -1,17 +1,9 @@
 # Changelog
 
-## Product 4.4 RC2
+## Documentation v2.0
 
-- Add MkDocs + Material GitHub Pages manual site
-- Add GitHub Actions workflow for automatic Pages deployment
-- Add setup documentation for authorization, project number, Google Cloud API, and Search Console connection
-- Add Daily Workflow guide
-- Add Today's Improvement, Improvement Brief, Improvement Log, and Effectiveness guides
-- Add FAQ and troubleshooting pages based on field testing
-
-## Product 4.3 RC1
-
-- Redesign improvement log and effectiveness sheets
-- Add completion checkbox workflow
-- Add improvement action checklist
-- Improve improvement brief for Claude and ChatGPT
+- GitHub Pages公開に必要な`.github/workflows/deploy.yml`を同梱
+- `mkdocs.yml`と`docs/`を含む完全版に整理
+- アップロード時に`.github`が欠落した場合の確認手順を追加
+- GitHub Actionsが表示されない場合の復旧手順を追加
+- RCテスト用マニュアルサイトとして使用可能な状態に整理

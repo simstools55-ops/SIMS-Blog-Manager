@@ -1,23 +1,20 @@
-# SIMS-Blog-Manager Product 4.4 RC2
+# SIMS-Blog-Manager Documentation v2.0
 
-Google Search Consoleのデータから、今日改善すべき記事を整理するGoogleスプレッドシートシステムです。
+GitHub Pages 公開に必要な `docs/`、`mkdocs.yml`、`.github/workflows/deploy.yml` を含む完全版です。
 
-## この版の位置づけ
+## 重要
+GitHubへアップロードするときは、隠しフォルダ `.github/` も必ずアップロードしてください。
+Actions 画面が「Get started with GitHub Actions」のままなら、`.github/workflows/deploy.yml` が入っていません。
 
-Product 4.4 RC2は、Product 4.3 RC1にGitHub Pages公開用のマニュアルサイト設定を追加したリリース候補版です。
+## 公開URL
+https://simstools55-ops.github.io/SIMS-Blog-Manager/
 
-## 主な内容
+## Commit title
+Release Documentation v2.0
 
-- Product 4.3 RC1のスプレッドシート・Apps Script
-- MkDocs + Material for MkDocsの公式マニュアルサイト
-- GitHub ActionsによるGitHub Pages自動公開設定
-- 初回セットアップ・Search Console接続・403エラーの説明強化
-
-## GitHub Pages公開手順
-
-1. ZIPを展開します。
-2. リポジトリへ中身を上書きアップロードします。
-3. Commitします。
-4. GitHubの Settings → Pages で Source が GitHub Actions になっていることを確認します。
-5. Actionsで Deploy MkDocs site が成功するのを待ちます。
-6. `https://simstools55-ops.github.io/SIMS-Blog-Manager/` を開きます。
+## Commit description
+- Add complete MkDocs GitHub Pages configuration
+- Add GitHub Actions deploy workflow
+- Add manual publishing guide
+- Add fallback visible workflow copy for GitHub upload mistakes
+- Prepare documentation site for RC testing
