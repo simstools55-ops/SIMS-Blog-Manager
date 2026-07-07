@@ -1,3 +1,3 @@
 # Roadmap
 
-RC7 prepares the project for Product 5.0 stable by stabilizing large-blog processing and improving daily workflow separation.
+RC8.1でRC7土台へ上位ページ診断を再適用。次はRC9でUI・処理ログ・効果測定の最終整理。

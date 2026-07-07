@@ -1,11 +1,21 @@
 # Changelog
 
-## Product 5.0 RC7
+## Product 5.0 RC8.1
 
-- Added process timing log for fetch, analysis, and errors.
-- Added compact Process Log sheet with counts and duration.
-- Split daily update behavior to avoid combined fetch+analysis timeout.
-- Added Improvement In Progress sheet for completed-but-measuring articles.
-- Today’s Improvement now excludes articles already under measurement and refills the queue.
-- Limited analysis workload with AnalysisArticleLimit setting for large blogs.
-- Improved compact views for improvement log and effectiveness sheets.
+RC7を正しい土台として、RC8の上位ページ診断を再適用した版です。
+
+### Added
+- 上位ページ診断シート
+- STEP C：上位ページ診断メニュー
+- Homeへの上位ページ診断サマリー
+
+### Kept from RC7
+- 処理ログ
+- 改善候補／改善中の分離
+- STEP-B軽量化
+- タイムアウト対策
+
+### Notes
+- deploy.yml更新不要
+- 既存スプレッドシートは作り直し不要
+- Code.js貼り替え後、管理 → シートを作成・修復を実行してください

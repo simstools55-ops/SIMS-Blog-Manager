@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC7
+ * SIMS-Blog-Manager Product 5.0 RC8.1
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc7';
+const SBM_VERSION = '5.0.0-rc8.1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -21,7 +21,8 @@ const SBM_SHEETS = Object.freeze({
   CANNIBAL: 'カニバリ診断',
   TOPICS: '記事ネタ候補',
   PROCESS_LOG: '処理ログ',
-  IN_PROGRESS: '改善中'
+  IN_PROGRESS: '改善中',
+  TOP_PAGES: '上位ページ診断'
 });
 
 const SBM_HEADERS = Object.freeze({
@@ -38,7 +39,8 @@ const SBM_HEADERS = Object.freeze({
   CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事Bタイトル','推奨対応','詳細','記事A URL','記事Aクリック','記事A順位','記事B URL','記事Bクリック','記事B順位','理由','確認日'],
   TOPICS: ['候補日','候補クエリ','元記事タイトル','元記事URL','理由','優先度','Claude用メモ','状態'],
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
-  IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容']
+  IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
+  TOP_PAGES: ['記事タイトル','メインクエリ','状態','優先度','詳細','URL','クリック','表示回数','CTR','平均順位','現状パターン','主な課題','改善アプローチ','診断理由','診断日']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -57,6 +59,7 @@ const SBM_DEFAULTS = Object.freeze({
   ANALYSIS_CANDIDATE_LIMIT: 30,
   ANALYSIS_ARTICLE_LIMIT: 120,
   TITLE_FETCH_DEFAULT: 'OFF',
+  TOP_PAGE_LIMIT: 20,
   TIMEZONE: 'Asia/Tokyo'
 });
 
@@ -75,6 +78,8 @@ function onOpen() {
     .addSubMenu(SpreadsheetApp.getUi().createMenu('データ更新')
       .addItem('STEP A Search Consoleデータ取得だけ実行', 'sbmFetchOnlyManual')
       .addItem('STEP B 改善候補を分析', 'sbmAnalyzeOnlyManual')
+      .addItem('STEP C 上位ページ診断を実行', 'sbmBuildTopPageDiagnosisManual')
+      .addItem('上位ページ診断を開く', 'sbmOpenTopPages')
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('取得＋分析をまとめて実行', 'sbmDailyUpdateManual'))
     .addSubMenu(SpreadsheetApp.getUi().createMenu('今日の改善')
@@ -90,6 +95,8 @@ function onOpen() {
       .addItem('カニバリ診断を開く', 'sbmOpenCannibal')
       .addItem('選択行のカニバリ詳細を開く', 'sbmShowSelectedCannibalDetail')
       .addItem('記事ネタ候補を開く', 'sbmOpenTopics')
+      .addItem('上位ページ診断を開く', 'sbmOpenTopPages')
+      .addItem('選択行の上位ページ診断詳細を開く', 'sbmShowSelectedTopPageDetail')
       .addSeparator()
       .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5')
       .addItem('改善候補をすべて表示する', 'sbmSetTodayAll'))
@@ -137,7 +144,7 @@ function sbmInitializeSheets(showAlert) {
   sbmEnsureUserSheets_();
   sbmApplySheetUx_();
   sbmRefreshHome_();
-  sbmLog_('InitializeSheets','Done','Product 5.0 RC7 sheets initialized');
+  sbmLog_('InitializeSheets','Done','Product 5.0 RC8.1 sheets initialized');
   if (showAlert) sbmAlert_('初期化完了', '必要なシートを作成・修復しました。\n次に、メニュー「SIMS-Blog-Manager」→「セットアップ」→「STEP1 ブログ情報を登録」を実行してください。');
 }
 
@@ -156,7 +163,8 @@ function sbmEnsureDataSheets_() {
     CANNIBAL: SBM_SHEETS.CANNIBAL,
     TOPICS: SBM_SHEETS.TOPICS,
     PROCESS_LOG: SBM_SHEETS.PROCESS_LOG,
-    IN_PROGRESS: SBM_SHEETS.IN_PROGRESS
+    IN_PROGRESS: SBM_SHEETS.IN_PROGRESS,
+    TOP_PAGES: SBM_SHEETS.TOP_PAGES
   };
   Object.keys(dataMap).forEach(function(k){
     var sheet = sbmGetOrCreateSheet_(dataMap[k]);
@@ -199,6 +207,7 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数');
   sbmSetSettingIfEmpty_('AnalysisArticleLimit', SBM_DEFAULTS.ANALYSIS_ARTICLE_LIMIT, 'STEP Bで実際に重い分析を行う最大記事数。タイムアウト対策用');
   sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。高速化のため通常OFF');
+  sbmSetSettingIfEmpty_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT, '上位ページ診断で分析する記事数');
   sbmSetSettingIfEmpty_('LastFetchRows', '0', '直近のSearch Console取得行数');
   sbmSetSettingIfEmpty_('ManagedArticleCount', '0', '直近の管理対象記事数');
   sbmSetSettingIfEmpty_('ImprovementCandidateCount', '0', '直近の改善候補数');
@@ -216,6 +225,7 @@ function sbmEnsureUserSheets_() {
   sbmStyleProcessLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG));
   sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL));
   sbmStyleTopicSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOPICS));
+  sbmStyleTopPageSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOP_PAGES));
 }
 
 function sbmBuildHomeSheet_() {
@@ -894,6 +904,18 @@ function sbmRefreshHome_() {
   sh.getRange('B28').setValue(flat + '件');
   sh.getRange('B29').setValue(retry + '件');
   sh.getRange('B30').setValue(wait + '件');
+  var topRows = sbmRowsAsObjects_(SBM_SHEETS.TOP_PAGES);
+  var topSummary = sbmTopPageSummary_(topRows);
+  try {
+    sh.getRange('A32:B37').clearContent();
+    sh.getRange('A32').setValue('上位ページ診断');
+    sh.getRange('B32').setValue(topRows.length ? ('診断済み ' + topRows.length + '件') : '未実行');
+    sh.getRange('A33').setValue('CTR改善'); sh.getRange('B33').setValue((topSummary['CTR改善']||0) + '件');
+    sh.getRange('A34').setValue('リライト'); sh.getRange('B34').setValue((topSummary['リライト']||0) + '件');
+    sh.getRange('A35').setValue('全面改善'); sh.getRange('B35').setValue((topSummary['全面改善']||0) + '件');
+    sh.getRange('A36').setValue('要調査'); sh.getRange('B36').setValue((topSummary['要調査']||0) + '件');
+    sh.getRange('A37').setValue('良好'); sh.getRange('B37').setValue((topSummary['良好']||0) + '件');
+  } catch(ignore) {}
 }
 
 
@@ -908,6 +930,7 @@ function sbmOpenProcessLog() { sbmOpenSheet_(SBM_SHEETS.PROCESS_LOG); }
 function sbmOpenMeasureHistory() { sbmOpenSheet_(SBM_SHEETS.MEASURE_HISTORY); }
 function sbmOpenCannibal() { sbmOpenSheet_(SBM_SHEETS.CANNIBAL); }
 function sbmOpenTopics() { sbmOpenSheet_(SBM_SHEETS.TOPICS); }
+function sbmOpenTopPages() { sbmOpenSheet_(SBM_SHEETS.TOP_PAGES); }
 function sbmOpenSystemLog() { sbmOpenSheet_(SBM_SHEETS.SYSTEM_LOG); }
 function sbmOpenBrief() { sbmOpenSheet_(SBM_SHEETS.BRIEF); }
 
@@ -1508,3 +1531,161 @@ function sbmStyleBriefSheet_(sh) {
 }
 function sbmStyleUserSheet_(sh, color) { var lc=Math.max(sh.getLastColumn(),2); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setFontSize(15).setBackground(color).setFontColor('#ffffff'); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); sh.getRange(1,1,lr,lc).setBorder(true,true,true,true,true,true); }
 function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.LOG, SBM_SHEETS.SETUP, SBM_SHEETS.EFFECT].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
+
+
+/**
+ * Product 5.0 RC8.1: 上位ページ診断（RC7ベース再実装）
+ * Search Console取得済みデータからクリック数上位ページを抽出し、ブログ全体のSEO状況を俯瞰する。
+ * 重い処理を避けるため、データ取得や今日の改善分析とは分離して実行する。
+ */
+function sbmBuildTopPageDiagnosisManual() {
+  sbmInitializeSheets(false);
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
+  if (!rows.length) return sbmAlert_('上位ページ診断', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
+  var started = new Date();
+  try {
+    sbmToast_('クリック数上位ページを診断中です。', 'STEP C 上位ページ診断', 8);
+    var count = sbmBuildTopPageDiagnosis_();
+    var sec = sbmSecondsSince_(started);
+    sbmProcessLog_('STEP C 上位ページ診断', '完了', Number(sbmGetSetting_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT)) || SBM_DEFAULTS.TOP_PAGE_LIMIT, count, sec, '上位ページ診断を作成しました。');
+    sbmSetSetting_('LastTopPageDiagnosisAt', sbmNowText_(), '上位ページ診断の最終実行日時');
+    sbmRefreshHome_();
+    sbmOpenTopPages();
+    sbmAlert_('上位ページ診断完了', '上位ページ診断を作成しました。\n診断件数: ' + count + '件\n所要時間: ' + sec + '秒');
+  } catch(e) {
+    var secErr = sbmSecondsSince_(started);
+    sbmProcessLog_('STEP C 上位ページ診断', 'エラー', '', '', secErr, String(e));
+    sbmAlert_('上位ページ診断エラー', String(e));
+  }
+}
+
+function sbmBuildTopPageDiagnosis_() {
+  var queryRows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
+  var byUrl = {};
+  queryRows.forEach(function(q){
+    var url = sbmNormalizeUrl_(String(q.URL || ''));
+    if (!url) return;
+    if (!byUrl[url]) byUrl[url] = [];
+    byUrl[url].push(q);
+  });
+  var pages = Object.keys(byUrl).map(function(url){
+    var rows = byUrl[url].slice().sort(function(a,b){ return sbmQueryScore_(b) - sbmQueryScore_(a); });
+    var clicks = rows.reduce(function(sum,r){ return sum + sbmNumber_(r.Clicks); }, 0);
+    var impressions = rows.reduce(function(sum,r){ return sum + sbmNumber_(r.Impressions); }, 0);
+    var position = impressions ? rows.reduce(function(sum,r){ return sum + sbmNumber_(r.Position) * sbmNumber_(r.Impressions); }, 0) / impressions : 0;
+    var ctr = impressions ? clicks / impressions : 0;
+    var main = rows[0] ? String(rows[0].Query || '') : '';
+    return {url:url, rows:rows, title:sbmResolveArticleTitle_(url, '', false), mainQuery:main, clicks:clicks, impressions:impressions, ctr:ctr, position:position};
+  }).sort(function(a,b){ return b.clicks - a.clicks; });
+
+  var limit = Number(sbmGetSetting_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT)) || SBM_DEFAULTS.TOP_PAGE_LIMIT;
+  var targets = pages.slice(0, limit);
+  var out = [];
+  var now = sbmNowText_();
+  targets.forEach(function(p){
+    var d = sbmTopPageDiagnosisFor_(p);
+    out.push([
+      p.title,
+      p.mainQuery,
+      d.status,
+      d.priority,
+      '詳細を見る',
+      p.url,
+      p.clicks,
+      p.impressions,
+      p.ctr,
+      p.position,
+      d.pattern,
+      d.issue,
+      d.action,
+      d.reason,
+      now
+    ]);
+  });
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.TOP_PAGES);
+  sh.clear();
+  sbmEnsureHeaders_(sh, SBM_HEADERS.TOP_PAGES);
+  if (out.length) sh.getRange(2,1,out.length,SBM_HEADERS.TOP_PAGES.length).setValues(out);
+  sbmStyleTopPageSheet_(sh);
+  return out.length;
+}
+
+function sbmTopPageDiagnosisFor_(p) {
+  var ctrPct = p.ctr * 100;
+  var status = '良好', priority = '★★☆☆☆', pattern = '順位・CTRともに良好', issue = '大きな問題は見つかりません', action = '維持・関連記事追加・内部リンク強化', reason = 'クリック数上位で安定しています。';
+  if (p.position <= 5 && ctrPct < 3) {
+    status = 'CTR改善'; priority = '★★★★★'; pattern = '順位は高いがCTRが低い'; issue = '検索結果でユーザーの目を引けていない可能性'; action = 'タイトル・ディスクリプション・導入文を優先改善'; reason = '平均順位は高い一方でCTRが低いため、クリック率改善の余地があります。';
+  } else if (p.impressions >= 1000 && p.position > 5 && p.position <= 15) {
+    status = 'リライト'; priority = '★★★★☆'; pattern = '表示回数は多いが順位が伸び悩む'; issue = '需要はあるがコンテンツ競争力が不足している可能性'; action = '記事リライト・網羅性強化・検索意図の再確認'; reason = '表示回数が多く、順位改善でクリック増加が見込めます。';
+  } else if (p.impressions >= 500 && p.position > 15 && p.position <= 30) {
+    status = '全面改善'; priority = '★★★☆☆'; pattern = '表示回数はあるが順位が低い'; issue = '構成・情報量・検索意図の一致に課題がある可能性'; action = '構成見直し・大幅リライト・FAQ追加'; reason = '需要は確認できますが、順位改善にはやや大きな修正が必要です。';
+  } else if (p.clicks < 3 && p.impressions >= 1000) {
+    status = '要調査'; priority = '★★★☆☆'; pattern = '表示回数は多いがクリックが少ない'; issue = 'タイトル不一致・検索意図違い・競合の強さを確認'; action = '競合確認・タイトル改善・別記事化の検討'; reason = '表示されているのにクリックにつながっていません。';
+  } else if (p.impressions < 100 && p.ctr >= 0.08) {
+    status = '展開候補'; priority = '★★★☆☆'; pattern = '表示回数は少ないがCTRが高い'; issue = 'ニッチだが刺さっているテーマ'; action = '関連記事展開・ロングテール拡張'; reason = '少ない表示でもクリックされており、関連記事展開の余地があります。';
+  }
+  return {status:status, priority:priority, pattern:pattern, issue:issue, action:action, reason:reason};
+}
+
+function sbmStyleTopPageSheet_(sh) {
+  sbmEnsureHeaders_(sh, SBM_HEADERS.TOP_PAGES);
+  sh.setFrozenRows(1);
+  sh.setFrozenColumns(1);
+  sh.getRange(1,1,1,SBM_HEADERS.TOP_PAGES.length).setFontWeight('bold').setBackground('#e8f0fe');
+  var widths = [240,180,100,90,90,80,80,90,80,80,180,220,260,300,140];
+  widths.forEach(function(w,i){ try { sh.setColumnWidth(i+1,w); } catch(e){} });
+  try {
+    sh.hideColumns(6, 10); // URL以降の詳細データは一覧では隠す。詳細ポップアップで確認。
+  } catch(e) {}
+  if (sh.getMaxRows() > 1) {
+    sh.getRange(2,7,Math.max(1, sh.getMaxRows()-1),2).setNumberFormat('#,##0');
+    sh.getRange(2,9,Math.max(1, sh.getMaxRows()-1),1).setNumberFormat('0.00%');
+    sh.getRange(2,10,Math.max(1, sh.getMaxRows()-1),1).setNumberFormat('0.0');
+  }
+}
+
+function sbmShowSelectedTopPageDetail() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  if (sh.getName() !== SBM_SHEETS.TOP_PAGES) return sbmAlert_('上位ページ診断', '「上位ページ診断」シートで対象行を選択してから実行してください。');
+  var row = sh.getActiveRange().getRow();
+  if (row <= 1) return sbmAlert_('上位ページ診断', '診断行を選択してください。');
+  var map = sbmHeaderMap_(sh);
+  var obj = {};
+  Object.keys(map).forEach(function(h){ obj[h] = sh.getRange(row, map[h]).getValue(); });
+  var html = HtmlService.createHtmlOutput(sbmTopPageDetailHtml_(obj)).setWidth(760).setHeight(680);
+  SpreadsheetApp.getUi().showModalDialog(html, '上位ページ診断 詳細');
+}
+
+function sbmTopPageDetailHtml_(r) {
+  function e(v){ return sbmEscapeHtml_(String(v == null ? '' : v)); }
+  function pct(v){ return (sbmNumber_(v)*100).toFixed(2) + '%'; }
+  function pos(v){ return sbmNumber_(v).toFixed(1); }
+  return '<div style="font-family:Arial,\'Noto Sans JP\',sans-serif;padding:22px;line-height:1.7;color:#202124">'
+    + '<h2 style="margin-top:0">上位ページ診断</h2>'
+    + '<h3>' + e(r['記事タイトル']) + '</h3>'
+    + '<p><a href="' + e(r['URL']) + '" target="_blank">記事を開く</a></p>'
+    + '<hr>'
+    + '<p><b>メインクエリ:</b> ' + e(r['メインクエリ']) + '</p>'
+    + '<p><b>状態:</b> ' + e(r['状態']) + '　<b>優先度:</b> ' + e(r['優先度']) + '</p>'
+    + '<table style="border-collapse:collapse;width:100%;margin:12px 0">'
+    + '<tr><th style="text-align:left;border-bottom:1px solid #ddd">クリック</th><th style="text-align:left;border-bottom:1px solid #ddd">表示回数</th><th style="text-align:left;border-bottom:1px solid #ddd">CTR</th><th style="text-align:left;border-bottom:1px solid #ddd">平均順位</th></tr>'
+    + '<tr><td>' + sbmFormatInt_(r['クリック']) + '</td><td>' + sbmFormatInt_(r['表示回数']) + '</td><td>' + pct(r['CTR']) + '</td><td>' + pos(r['平均順位']) + '</td></tr>'
+    + '</table>'
+    + '<h3>現状パターン</h3><p>' + e(r['現状パターン']) + '</p>'
+    + '<h3>主な課題</h3><p>' + e(r['主な課題']) + '</p>'
+    + '<h3>改善アプローチ</h3><p>' + e(r['改善アプローチ']) + '</p>'
+    + '<h3>診断理由</h3><p>' + e(r['診断理由']) + '</p>'
+    + '<p style="margin-top:18px;color:#5f6368">この診断はSearch Consoleデータに基づく簡易診断です。記事改善の詳細作業は、改善ブリーフをSIMS-Core / Claudeへ渡して進めてください。</p>'
+    + '</div>';
+}
+
+function sbmTopPageSummary_(rows) {
+  var out = {};
+  (rows || []).forEach(function(r){ var k = String(r['状態'] || '').trim(); if (!k) return; out[k] = (out[k] || 0) + 1; });
+  return out;
+}
+
+function sbmFormatInt_(v) {
+  var n = Math.round(sbmNumber_(v));
+  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}

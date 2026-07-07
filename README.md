@@ -1,24 +1,24 @@
-# SIMS-Blog-Manager Product 5.0 RC7
+# SIMS-Blog-Manager Product 5.0 RC8.1
 
-RC7 focuses on timeout prevention, process visibility, and clearer operational status.
+RC7をベースに、RC8の「上位ページ診断」を再実装したリポジトリ版です。
 
-## Update
+## 今回の変更
 
-- GitHub: yes
-- Apps Script: yes
-- Sheet repair: yes
-- deploy.yml: no change
+- RC7の処理ログ・改善中管理・タイムアウト対策を維持
+- 上位ページ診断をSTEP Cとして追加
+- Homeに上位ページ診断サマリーを追加
 
-## Important
+## 更新
 
-After replacing Code.js, run:
+- GitHub: 必要
+- Apps Script: 必要
+- シート修復: 必要
+- deploy.yml: 更新不要
 
-SIMS-Blog-Manager → 管理 → シートを作成・修復
+## 更新手順
 
-Then use:
-
-1. STEP A Search Consoleデータ取得だけ実行
-2. STEP B 改善候補を分析
-3. 処理ログを確認
-
-Completed improvements move out of 今日の改善 and into 改善中 while results are being measured.
+1. GitHubへこのZIPの内容を上書きアップロード
+2. `apps-script/Code.js` をApps Scriptへ貼り替え
+3. 保存
+4. スプレッドシートで「SIMS-Blog-Manager → 管理 → シートを作成・修復」
+5. 必要に応じて「STEP C 上位ページ診断」を実行
