@@ -407,6 +407,7 @@ function sbmFetchOnlyManual(silent) {
     return sbmAlert_('データ取得はまだできません', 'STEP1〜STEP3を完了してから実行してください。\n日次取得も接続テスト成功までは実行されません。');
   }
   var started = new Date();
+  var startedText = sbmNowText_();
   try {
     sbmToast_('Search Consoleデータを取得中です。少しお待ちください。', 'STEP A データ取得', 10);
     var rows = sbmFetchSearchConsoleQueries_();
@@ -416,13 +417,13 @@ function sbmFetchOnlyManual(silent) {
     sbmSetSetting_('LastFetchRows', rows.length, '直近のSearch Console取得行数');
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
-    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, '取得完了。次はSTEP B改善候補分析。');
+    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, '利用者待ち時間を含む取得処理全体。次はSTEP B改善候補分析。', startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
     sbmRefreshHome_();
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e));
+    sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
     sbmLog_('FetchOnly','Error',String(e));
     sbmAlert_('データ取得エラー', sbmFriendlyGscError_(String(e)));
   }
@@ -434,6 +435,7 @@ function sbmAnalyzeOnlyManual(silent) {
   var qRows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
   if (!qRows.length) return sbmAlert_('分析できません', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
   var started = new Date();
+  var startedText = sbmNowText_();
   try {
     sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', 'STEP B 改善分析', 10);
     var result = sbmBuildDiagnosis_();
@@ -443,7 +445,7 @@ function sbmAnalyzeOnlyManual(silent) {
     try { sbmUpdateEffectivenessSilent_(); } catch(ignore) {}
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
-    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件 / カニバリ ' + (can || 0) + '件');
+    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件 / カニバリ ' + (can || 0) + '件', startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Done', 'analyzed ' + ((result && result.analyzedCount)||'') + ' / ' + sec + ' sec');
     sbmRefreshHome_();
     sbmOpenToday();
@@ -453,7 +455,7 @@ function sbmAnalyzeOnlyManual(silent) {
     if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\n所要時間: ' + sec + '秒');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e));
+    sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e), startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Error',String(e));
     sbmAlert_('改善分析エラー', String(e));
   }
@@ -637,6 +639,16 @@ function sbmTitleFromPath_(url) {
   try { last = decodeURIComponent(last); } catch(e) {}
   last = last.replace(/[-_]+/g, ' ').trim();
   return last || s;
+}
+
+
+function sbmCleanDisplayTitle_(title, url) {
+  title = String(title || '').trim();
+  url = sbmNormalizeUrl_(url || '');
+  if (!title || title === url || /^https?:\/\//i.test(title) || /^\d+(\.\d+)?$/.test(title) || /^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(title)) {
+    return sbmTitleFromPath_(url);
+  }
+  return title;
 }
 
 function sbmResolveArticleTitle_(url, fallback, allowFetch) {
@@ -1086,15 +1098,18 @@ function sbmSecondsSince_(started) {
   return Math.round((new Date().getTime() - started.getTime()) / 1000);
 }
 
-function sbmProcessLog_(name, status, targetCount, processedCount, seconds, detail) {
+function sbmProcessLog_(name, status, targetCount, processedCount, seconds, detail, startedAt, endedAt) {
   try {
+    var endText = endedAt || sbmNowText_();
     sbmAppendObject_(SBM_SHEETS.PROCESS_LOG, SBM_HEADERS.PROCESS_LOG, {
-      '日時': sbmNowText_(),
+      '日時': endText,
       '処理': name || '',
       '状態': status || '',
       '対象件数': targetCount === undefined ? '' : targetCount,
       '処理件数': processedCount === undefined ? '' : processedCount,
       '所要秒': seconds === undefined ? '' : seconds,
+      '開始時刻': startedAt || '',
+      '終了時刻': endText,
       '詳細': detail || ''
     });
     sbmStyleProcessLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG));
@@ -1123,10 +1138,30 @@ function sbmBuildInProgressSheet_() {
   return rows.length;
 }
 
-function sbmRewriteSheet_(sheetName, headers, rows) { var sh=sbmGetOrCreateSheet_(sheetName); sh.clear(); sbmEnsureHeaders_(sh, headers); if(rows.length) sh.getRange(2,1,rows.length,headers.length).setValues(rows); sbmStyleDataSheet_(sh); }
+function sbmRewriteSheet_(sheetName, headers, rows) {
+  var sh = sbmGetOrCreateSheet_(sheetName);
+  sh.clear();
+  sbmEnsureHeaders_(sh, headers);
+  var normalized = sbmNormalizeRowsToWidth_(rows || [], headers.length);
+  if (normalized.length) sh.getRange(2, 1, normalized.length, headers.length).setValues(normalized);
+  sbmStyleDataSheet_(sh);
+}
+
+function sbmNormalizeRowsToWidth_(rows, width) {
+  return (rows || []).map(function(row){
+    var r = Array.isArray(row) ? row.slice(0, width) : [];
+    while (r.length < width) r.push('');
+    return r;
+  });
+}
 function sbmGetOrCreateSheet_(name) { var ss=SpreadsheetApp.getActiveSpreadsheet(); return ss.getSheetByName(name) || ss.insertSheet(name); }
 function sbmOpenSheet_(name) { var sh=sbmGetOrCreateSheet_(name); sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); return sh; }
-function sbmEnsureHeaders_(sh, headers) { if (sh.getLastRow() < 1 || sh.getLastColumn() < headers.length || sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0].join('') === '') sh.getRange(1,1,1,headers.length).setValues([headers]); sh.setFrozenRows(1); }
+function sbmEnsureHeaders_(sh, headers) {
+  if (!sh || !headers || !headers.length) return;
+  if (sh.getMaxColumns() < headers.length) sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
+  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sh.setFrozenRows(1);
+}
 function sbmRowsAsObjects_(sheetName) { var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName); if(!sh || sh.getLastRow()<2) return []; var vals=sh.getDataRange().getValues(); var heads=vals.shift().map(String); return vals.map(function(row,idx){ var o={_rowNumber:idx+2}; heads.forEach(function(h,i){o[h]=row[i];}); return o; }); }
 function sbmHeaderMap_(sh) { var heads=sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0]; var map={}; heads.forEach(function(h,i){ if(String(h)) map[String(h)] = i+1; }); return map; }
 function sbmFindRowByValue_(sheetName, headerName, value) { var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName); if(!sh || sh.getLastRow()<2) return null; var col=sbmHeaderMap_(sh)[headerName]; if(!col) return null; var vals=sh.getRange(2,col,sh.getLastRow()-1,1).getValues(); for(var i=0;i<vals.length;i++){ if(String(vals[i][0])===String(value)) return i+2; } return null; }
@@ -1543,24 +1578,32 @@ function sbmBuildTopPageDiagnosisManual() {
   var rows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
   if (!rows.length) return sbmAlert_('上位ページ診断', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
   var started = new Date();
+  var startedText = sbmNowText_();
   try {
     sbmToast_('クリック数上位ページを診断中です。', 'STEP C 上位ページ診断', 8);
     var count = sbmBuildTopPageDiagnosis_();
     var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP C 上位ページ診断', '完了', Number(sbmGetSetting_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT)) || SBM_DEFAULTS.TOP_PAGE_LIMIT, count, sec, '上位ページ診断を作成しました。');
+    sbmProcessLog_('STEP C 上位ページ診断', '完了', Number(sbmGetSetting_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT)) || SBM_DEFAULTS.TOP_PAGE_LIMIT, count, sec, '利用者待ち時間を含む上位ページ診断処理全体。上位ページ診断を作成しました。', startedText, sbmNowText_());
     sbmSetSetting_('LastTopPageDiagnosisAt', sbmNowText_(), '上位ページ診断の最終実行日時');
     sbmRefreshHome_();
     sbmOpenTopPages();
     sbmAlert_('上位ページ診断完了', '上位ページ診断を作成しました。\n診断件数: ' + count + '件\n所要時間: ' + sec + '秒');
   } catch(e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP C 上位ページ診断', 'エラー', '', '', secErr, String(e));
+    sbmProcessLog_('STEP C 上位ページ診断', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
     sbmAlert_('上位ページ診断エラー', String(e));
   }
 }
 
 function sbmBuildTopPageDiagnosis_() {
   var queryRows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
+  var titleByUrl = {};
+  try {
+    sbmRowsAsObjects_(SBM_SHEETS.CARDS).forEach(function(c){
+      var u = sbmNormalizeUrl_(String(c.URL || ''));
+      if (u && c.Title) titleByUrl[u] = String(c.Title);
+    });
+  } catch(e) {}
   var byUrl = {};
   queryRows.forEach(function(q){
     var url = sbmNormalizeUrl_(String(q.URL || ''));
@@ -1575,7 +1618,8 @@ function sbmBuildTopPageDiagnosis_() {
     var position = impressions ? rows.reduce(function(sum,r){ return sum + sbmNumber_(r.Position) * sbmNumber_(r.Impressions); }, 0) / impressions : 0;
     var ctr = impressions ? clicks / impressions : 0;
     var main = rows[0] ? String(rows[0].Query || '') : '';
-    return {url:url, rows:rows, title:sbmResolveArticleTitle_(url, '', false), mainQuery:main, clicks:clicks, impressions:impressions, ctr:ctr, position:position};
+    var rawTitle = titleByUrl[url] || sbmResolveArticleTitle_(url, '', false);
+    return {url:url, rows:rows, title:sbmCleanDisplayTitle_(rawTitle, url), mainQuery:main, clicks:clicks, impressions:impressions, ctr:ctr, position:position};
   }).sort(function(a,b){ return b.clicks - a.clicks; });
 
   var limit = Number(sbmGetSetting_('TopPageLimit', SBM_DEFAULTS.TOP_PAGE_LIMIT)) || SBM_DEFAULTS.TOP_PAGE_LIMIT;
@@ -1605,24 +1649,24 @@ function sbmBuildTopPageDiagnosis_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.TOP_PAGES);
   sh.clear();
   sbmEnsureHeaders_(sh, SBM_HEADERS.TOP_PAGES);
-  if (out.length) sh.getRange(2,1,out.length,SBM_HEADERS.TOP_PAGES.length).setValues(out);
+  if (out.length) sh.getRange(2,1,out.length,SBM_HEADERS.TOP_PAGES.length).setValues(sbmNormalizeRowsToWidth_(out, SBM_HEADERS.TOP_PAGES.length));
   sbmStyleTopPageSheet_(sh);
   return out.length;
 }
 
 function sbmTopPageDiagnosisFor_(p) {
   var ctrPct = p.ctr * 100;
-  var status = '良好', priority = '★★☆☆☆', pattern = '順位・CTRともに良好', issue = '大きな問題は見つかりません', action = '維持・関連記事追加・内部リンク強化', reason = 'クリック数上位で安定しています。';
+  var status = '良好（維持）', priority = '★★☆☆☆', pattern = '順位・CTRともに良好', issue = '大きな問題は見つかりません', action = '維持・関連記事追加・内部リンク強化', reason = 'クリック数上位で安定しています。';
   if (p.position <= 5 && ctrPct < 3) {
     status = 'CTR改善'; priority = '★★★★★'; pattern = '順位は高いがCTRが低い'; issue = '検索結果でユーザーの目を引けていない可能性'; action = 'タイトル・ディスクリプション・導入文を優先改善'; reason = '平均順位は高い一方でCTRが低いため、クリック率改善の余地があります。';
   } else if (p.impressions >= 1000 && p.position > 5 && p.position <= 15) {
-    status = 'リライト'; priority = '★★★★☆'; pattern = '表示回数は多いが順位が伸び悩む'; issue = '需要はあるがコンテンツ競争力が不足している可能性'; action = '記事リライト・網羅性強化・検索意図の再確認'; reason = '表示回数が多く、順位改善でクリック増加が見込めます。';
+    status = 'リライト推奨'; priority = '★★★★☆'; pattern = '表示回数は多いが順位が伸び悩む'; issue = '需要はあるがコンテンツ競争力が不足している可能性'; action = '記事リライト・網羅性強化・検索意図の再確認'; reason = '表示回数が多く、順位改善でクリック増加が見込めます。';
   } else if (p.impressions >= 500 && p.position > 15 && p.position <= 30) {
     status = '全面改善'; priority = '★★★☆☆'; pattern = '表示回数はあるが順位が低い'; issue = '構成・情報量・検索意図の一致に課題がある可能性'; action = '構成見直し・大幅リライト・FAQ追加'; reason = '需要は確認できますが、順位改善にはやや大きな修正が必要です。';
   } else if (p.clicks < 3 && p.impressions >= 1000) {
     status = '要調査'; priority = '★★★☆☆'; pattern = '表示回数は多いがクリックが少ない'; issue = 'タイトル不一致・検索意図違い・競合の強さを確認'; action = '競合確認・タイトル改善・別記事化の検討'; reason = '表示されているのにクリックにつながっていません。';
   } else if (p.impressions < 100 && p.ctr >= 0.08) {
-    status = '展開候補'; priority = '★★★☆☆'; pattern = '表示回数は少ないがCTRが高い'; issue = 'ニッチだが刺さっているテーマ'; action = '関連記事展開・ロングテール拡張'; reason = '少ない表示でもクリックされており、関連記事展開の余地があります。';
+    status = '新記事展開'; priority = '★★★☆☆'; pattern = '表示回数は少ないがCTRが高い'; issue = 'ニッチだが刺さっているテーマ'; action = '関連記事展開・ロングテール拡張'; reason = '少ない表示でもクリックされており、関連記事展開の余地があります。';
   }
   return {status:status, priority:priority, pattern:pattern, issue:issue, action:action, reason:reason};
 }

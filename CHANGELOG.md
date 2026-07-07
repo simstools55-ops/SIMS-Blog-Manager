@@ -1,21 +1,11 @@
 # Changelog
 
-## Product 5.0 RC8.1
+## Product 5.0 RC9
 
-RC7を正しい土台として、RC8の上位ページ診断を再適用した版です。
-
-### Added
-- 上位ページ診断シート
-- STEP C：上位ページ診断メニュー
-- Homeへの上位ページ診断サマリー
-
-### Kept from RC7
-- 処理ログ
-- 改善候補／改善中の分離
-- STEP-B軽量化
-- タイムアウト対策
-
-### Notes
-- deploy.yml更新不要
-- 既存スプレッドシートは作り直し不要
-- Code.js貼り替え後、管理 → シートを作成・修復を実行してください
+- Fixed analysis range mismatch error caused by row/header width differences.
+- Added row width normalization before sheet writes.
+- Fixed top page diagnosis article title mapping.
+- Improved top page diagnosis status labels for end users.
+- Added start/end timestamps to process log.
+- Clarified elapsed time as user-facing waiting time.
+- Stabilized header repair for existing sheets.

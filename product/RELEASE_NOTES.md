@@ -1,10 +1,10 @@
-# Product 5.0 RC5 Release Notes
+# Release Notes - Product 5.0 RC9
 
-RC5 improves the screen design philosophy: each sheet shows only the most important columns, while detailed numbers and reasons are opened in popups.
+RC9 is a quality improvement release focused on reliability and visibility.
 
-## Update checklist
+## Highlights
 
-- GitHub: yes
-- Apps Script: yes
-- Sheet repair: yes
-- deploy.yml: no change
+- Fixes STEP-B improvement analysis column mismatch.
+- Fixes top page diagnosis title mapping.
+- Adds better process timing records.
+- Keeps deploy.yml unchanged.
