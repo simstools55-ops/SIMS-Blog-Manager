@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.0 RC2
+# SIMS-Blog-Manager Product 5.0 RC3
 
 Search Consoleのデータを、今日やるべきブログ改善タスクへ変換するGoogleスプレッドシートシステムです。
 
@@ -32,3 +32,17 @@ Search Consoleのデータを、今日やるべきブログ改善タスクへ変
 ## 方針
 
 SIMS-Blog-ManagerはSearch Consoleデータの整理・分類・管理までを担当します。SERP分析や競合分析、本文の改善・新記事執筆はSIMS-CoreまたはClaude側で行います。
+
+
+## Product 5.0 RC3 update note
+
+RCテスト期間中は、改善後7日間だけ毎日、効果測定を確認できます。
+
+手順:
+
+1. Code.js を貼り替える
+2. 管理 → シートを作成・修復
+3. 今日の改善 → テスト用：今日の測定を記録
+4. 測定履歴と効果測定を確認
+
+正式運用では14日・30日測定へ戻す想定です。

@@ -1,16 +1,15 @@
 # Changelog
 
+## Product 5.0 RC3
+
+- Add RC testing daily measurement workflow for 7 days after each improvement.
+- Add menu item to record today's measurement during test operation.
+- Rename test measurement date columns to 初回測定日 and 7日測定完了日.
+- Keep normal 14-day / 30-day evaluation as the intended production policy after RC testing.
+- Improve update notes for spreadsheet reuse and sheet repair.
+
 ## Product 5.0 RC2
 
-### Added
-- Search Consoleクエリ分類の精度を改善。
-- 「記事ネタ候補」シートを追加し、別記事候補クエリを自動保存。
-- 改善ブリーフに「本文・見出しに使うサブクエリ」「別記事候補」「除外クエリ」「カニバリ方針」を明確化。
-
-### Improved
-- 改善ブリーフをSIMS-Core / Claudeへ貼り付けやすい形式に改善。
-- メインクエリと検索意図が異なるクエリを、記事改善に混ぜず別記事候補へ分離。
-- カニバリ候補がある場合、主記事・統合・メインクエリ分離の判断材料を出す方針を強化。
-
-### Fixed
-- 記事カルテ・記事診断で記事タイトルが空欄またはURL化しやすい問題を改善。
+- Improve Search Console query classification.
+- Add topic stock sheet for separate article candidates.
+- Improve improvement brief for SIMS-Core and Claude.

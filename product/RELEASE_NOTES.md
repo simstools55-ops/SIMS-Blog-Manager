@@ -1,20 +1,14 @@
-# Product 5.0 RC2 Release Notes
+# Product 5.0 RC3 Release Notes
 
-## Summary
+## 今回の変更（3行）
 
-Product 5.0 RC2 focuses on Search Console query classification and cannibalization-aware improvement briefs.
+- RCテスト用に、改善後7日間の日次測定を追加しました。
+- 「テスト用：今日の測定を記録」メニューを追加しました。
+- 既存スプレッドシートを作り直さず、シート修復で反映できるようにしました。
 
-## Update checklist
+## 更新
 
-- GitHub update: yes
-- Apps Script update: yes
-- Sheet repair: yes
-- Spreadsheet rebuild: no
-- deploy.yml update: no
-
-## Changes
-
-- Add better query grouping for sub queries, FAQ candidates, separate article candidates, and noise queries.
-- Add topic stock sheet for separate article candidates.
-- Improve improvement request text for SIMS-Core / Claude.
-- Improve article title resolution in article cards and diagnosis data.
+- GitHub：必要
+- Apps Script：必要
+- シート修復：必要
+- deploy.yml：更新不要

@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC2
+ * SIMS-Blog-Manager Product 5.0 RC3
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc2';
+const SBM_VERSION = '5.0.0-rc3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -29,7 +29,7 @@ const SBM_HEADERS = Object.freeze({
   CARDS: ['ArticleId','URL','Title','MainQuery','Clicks','Impressions','CTR','Position','Managed','ArticleStatus','OpportunityScore','Recommendation','LastImprovedAt','ImproveCount','LastAnalyzedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
-  LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','14日測定日','30日測定日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
+  LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
   EFFECT: ['記事タイトル','URL','改善日','改善内容','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','判定','次の確認','コメント'],
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記録日','記事タイトル','URL','改善日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ'],
@@ -49,7 +49,7 @@ const SBM_DEFAULTS = Object.freeze({
   MAX_QUERY_ROWS: 5000,
   MEASURE_DAYS: '14,30',
   TEST_DAILY_DAYS: 7,
-  MEASUREMENT_MODE: 'TEST_7D',
+  MEASUREMENT_MODE: 'TEST_DAILY_7D',
   TIMEZONE: 'Asia/Tokyo'
 });
 
@@ -72,6 +72,7 @@ function onOpen() {
       .addItem('選択行の記事を開く', 'sbmOpenSelectedArticle')
       .addItem('選択行を完了にする', 'sbmCompleteSelectedImprovement')
       .addItem('効果測定を更新', 'sbmUpdateEffectiveness')
+      .addItem('テスト用：今日の測定を記録', 'sbmRecordTodayMeasurement')
       .addItem('測定履歴を開く', 'sbmOpenMeasureHistory')
       .addItem('カニバリ診断を開く', 'sbmOpenCannibal')
       .addItem('記事ネタ候補を開く', 'sbmOpenTopics')
@@ -117,6 +118,7 @@ function sbmLightStartup_() {
 function sbmInitializeSheets(showAlert) {
   showAlert = showAlert !== false;
   sbmEnsureDataSheets_();
+  sbmMigrateRc3Headers_();
   sbmEnsureDefaultSettings_();
   sbmEnsureUserSheets_();
   sbmApplySheetUx_();
@@ -147,6 +149,17 @@ function sbmEnsureDataSheets_() {
   });
 }
 
+
+function sbmMigrateRc3Headers_() {
+  // 既存シートを作り直さずに、測定日カラム名だけRC3仕様へ寄せます。
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.LOG);
+  if (sh && sh.getLastRow() >= 1) {
+    var map = sbmHeaderMap_(sh);
+    if (map['14日測定日']) sh.getRange(1, map['14日測定日']).setValue('初回測定日');
+    if (map['30日測定日']) sh.getRange(1, map['30日測定日']).setValue('7日測定完了日');
+  }
+}
+
 function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('Version', SBM_VERSION, 'システムバージョン');
   sbmSetSettingIfEmpty_('BlogName', '', '管理するブログ名');
@@ -166,7 +179,7 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS, 'Search Console取得日数');
   sbmSetSettingIfEmpty_('OncePerDay', 'ON', '1日1回取得制限');
   sbmSetSettingIfEmpty_('LastFetchDate', '', '最終取得日');
-  sbmSetSettingIfEmpty_('MeasurementMode', SBM_DEFAULTS.MEASUREMENT_MODE, '効果測定モード。TEST_7Dはテスト用に毎日7日分を確認');
+  sbmSetSettingIfEmpty_('MeasurementMode', SBM_DEFAULTS.MEASUREMENT_MODE, '効果測定モード。TEST_DAILY_7Dはテスト用に毎日7日分を確認');
 }
 
 function sbmEnsureUserSheets_() {
@@ -860,8 +873,8 @@ function sbmCompleteImprovementRow_(row, showAlert) {
     '修正内容': actions || '未選択',
     '所要時間': obj['時間'] || '',
     'メモ': obj['メモ'] || '',
-    '14日測定日': sbmDateAfterText_(1),
-    '30日測定日': sbmDateAfterText_(SBM_DEFAULTS.TEST_DAILY_DAYS),
+    '初回測定日': sbmDateAfterText_(1),
+    '7日測定完了日': sbmDateAfterText_(SBM_DEFAULTS.TEST_DAILY_DAYS),
     '状態': '測定待ち',
     '改善前CTR': brief ? brief.CTR : '',
     '改善前順位': brief ? brief.Position : '',
@@ -987,6 +1000,13 @@ function sbmUpdateEffectivenessSilent_() {
   sbmUpdateEffectivenessCore_(false);
 }
 
+function sbmRecordTodayMeasurement() {
+  // RCテスト用：改善後7日間は、毎日この日の測定値を履歴へ残します。
+  // 同じ日・同じ記事・同じ改善日の重複記録は自動で防止します。
+  sbmUpdateEffectivenessCore_(false);
+  sbmAlert_('本日の測定を記録しました', '測定履歴に本日の値を記録しました。\n\nテスト期間中は、改善後7日間だけ毎日確認できます。\n通常運用では14日・30日評価へ戻す想定です。');
+}
+
 function sbmUpdateEffectivenessCore_(showAlert) {
   var logs = sbmRowsAsObjects_(SBM_SHEETS.LOG);
   var cards = sbmRowsAsObjects_(SBM_SHEETS.CARDS);
@@ -1033,7 +1053,7 @@ function sbmUpdateEffectivenessCore_(showAlert) {
   sbmStyleEffectSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT));
   sbmStyleMeasureHistorySheet_(sbmGetOrCreateSheet_(SBM_SHEETS.MEASURE_HISTORY));
   sbmRefreshHome_();
-  if (showAlert) sbmAlert_('効果測定を更新しました', '改善ログをもとに効果測定を更新しました。\nテスト期間中は、測定履歴で7日分の日次推移を確認できます。');
+  if (showAlert) sbmAlert_('効果測定を更新しました', '改善ログをもとに効果測定を更新しました。\nRCテスト期間中は、改善後7日間だけ毎日、測定履歴に日次推移を記録できます。');
 }
 
 function sbmAppendMeasurementHistoryUnique_(rows) {
