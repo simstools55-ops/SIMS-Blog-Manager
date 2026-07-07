@@ -1,5 +1,5 @@
 /**
- * SIMS-Blog-Manager Product 3.1
+ * SIMS-Blog-Manager Product 3.2
  * SIMS-Core Slim Edition for daily SEO improvement management.
  *
  * Product policy:
@@ -9,7 +9,7 @@
  * - Daily GSC fetch is blocked until setup and connection test are complete.
  */
 
-var SBM_VERSION = '3.1.0-rc1';
+var SBM_VERSION = '3.2.0-rc1';
 
 var SBM_SHEETS = {
   HOME: '🏠 ホーム',
@@ -232,7 +232,33 @@ function sbmApplyUx_() {
 function sbmSetupBlogInfo() {
   sbmEnsureBaseSheets_();
   var ui = SpreadsheetApp.getUi();
-  var currentName = sbmGetSetting_('BlogName', '');
+
+  var existingName = sbmTrim_(sbmGetSetting_('BlogName', ''));
+  var existingUrl = sbmTrim_(sbmGetSetting_('BlogUrl', ''));
+  var existingProperty = sbmTrim_(sbmGetSetting_('SearchConsoleProperty', ''));
+
+  if (existingName && existingUrl && existingProperty) {
+    var keep = ui.alert(
+      'STEP1 ブログ情報は入力済みです',
+      '現在の内容を使いますか？\n\nブログ名：' + existingName + '\nブログURL：' + existingUrl + '\nSearch Console：' + existingProperty + '\n\n「はい」＝この内容でSTEP1を完了します。\n「いいえ」＝入力し直します。',
+      ui.ButtonSet.YES_NO_CANCEL
+    );
+    if (keep === ui.Button.YES) {
+      sbmSetSetting_('SetupStep', '1', 'Blog info confirmed');
+      sbmSafeLog_('SetupBlogInfo', 'Confirmed', existingName + ' / ' + existingUrl + ' / ' + existingProperty);
+      sbmEnsureSetupSheet_();
+      sbmRefreshHome();
+      sbmOpenSetup();
+      return sbmAlert_('STEP1完了', '登録済みのブログ情報を確認しました。\n\n次は、メニューから\n「STEP2 Google Cloud API設定ガイド」\nを開いてください。');
+    }
+    if (keep !== ui.Button.NO) return;
+  }
+
+  sbmAlert_(
+    'STEP1 ブログ情報を入力します',
+    'これから3つの入力画面が順番に表示されます。\n\n1. ブログ名\n2. ブログURL\n3. Search Consoleプロパティ\n\n初回認証が表示された場合は、許可後に同じSTEPをもう一度実行してください。'
+  );
+
   var nameRes = ui.prompt('STEP1-1 ブログ名', 'ブログ名を入力してください。\n例：ガジェット探検記', ui.ButtonSet.OK_CANCEL);
   if (nameRes.getSelectedButton() !== ui.Button.OK) return;
   var blogName = sbmTrim_(nameRes.getResponseText());
@@ -244,7 +270,7 @@ function sbmSetupBlogInfo() {
   if (!blogUrl) return sbmAlert_('入力不足', 'ブログURLが入力されていません。');
 
   var propDefault = sbmGuessScProperty_(blogUrl);
-  var propRes = ui.prompt('STEP1-3 Search Consoleプロパティ', 'Search Consoleプロパティを入力してください。\n\nドメインプロパティ例：sc-domain:example.com\nURLプレフィックス例：https://example.com/\n\n迷ったらSearch Consoleに表示されている表記をそのまま入力してください。', ui.ButtonSet.OK_CANCEL);
+  var propRes = ui.prompt('STEP1-3 Search Consoleプロパティ', 'Search Consoleプロパティを入力してください。\n\nドメインプロパティ例：sc-domain:example.com\nURLプレフィックス例：https://example.com/\n推奨候補：' + propDefault + '\n\n迷ったらSearch Consoleに表示されている表記をそのまま入力してください。', ui.ButtonSet.OK_CANCEL);
   if (propRes.getSelectedButton() !== ui.Button.OK) return;
   var property = sbmTrim_(propRes.getResponseText()) || propDefault;
   if (!property) return sbmAlert_('入力不足', 'Search Consoleプロパティが入力されていません。');
@@ -254,7 +280,7 @@ function sbmSetupBlogInfo() {
   sbmSetSetting_('SearchConsoleProperty', property, 'Search Console property');
   sbmSetSetting_('SetupStep', '1', 'Blog info entered');
   sbmSetSetting_('SearchConsoleStatus', '未確認', 'Connection must be tested again after property changes');
-  sbmLog_('SetupBlogInfo', 'Done', blogName + ' / ' + blogUrl + ' / ' + property);
+  sbmSafeLog_('SetupBlogInfo', 'Done', blogName + ' / ' + blogUrl + ' / ' + property);
   sbmEnsureSetupSheet_();
   sbmRefreshHome();
   sbmOpenSetup();
@@ -809,7 +835,16 @@ function sbmRewriteSheet_(sheetName, headers, rows) { var sh=sbmGetOrCreateSheet
 function sbmGetSetting_(key, defaultValue) { var rows=sbmRowsAsObjects_(SBM_SHEETS.SETTINGS); for(var i=0;i<rows.length;i++) if(String(rows[i].Key)===String(key)) return rows[i].Value; return defaultValue; }
 function sbmSetSetting_(key, value, description) { var sh=sbmGetOrCreateSheet_(SBM_SHEETS.SETTINGS); sbmEnsureHeaders_(sh,SBM_HEADERS.SETTINGS); var row=sbmFindRowByValue_(SBM_SHEETS.SETTINGS,'Key',key); if(row) sbmSetObjectValues_(sh,row,{Value:value,Description:description||'',UpdatedAt:sbmNowText_()}); else sbmAppendObject_(SBM_SHEETS.SETTINGS,SBM_HEADERS.SETTINGS,{Key:key,Value:value,Description:description||'',UpdatedAt:sbmNowText_()}); }
 function sbmSetSettingIfEmpty_(key, value, description) { var existing = sbmGetSetting_(key, null); if (existing === null || existing === '') sbmSetSetting_(key, value, description); }
-function sbmLog_(action, status, detail) { sbmAppendObject_(SBM_SHEETS.SYSTEM_LOG, SBM_HEADERS.SYSTEM_LOG, {CreatedAt:sbmNowText_(),Action:action,Status:status,Detail:detail||'',User:Session.getActiveUser().getEmail()||''}); }
+function sbmLog_(action, status, detail) { sbmSafeLog_(action, status, detail); }
+function sbmSafeLog_(action, status, detail) {
+  var user = '';
+  try { user = Session.getEffectiveUser().getEmail() || ''; } catch (e1) { user = ''; }
+  try {
+    sbmAppendObject_(SBM_SHEETS.SYSTEM_LOG, SBM_HEADERS.SYSTEM_LOG, {CreatedAt:sbmNowText_(),Action:action,Status:status,Detail:detail||'',User:user});
+  } catch (e2) {
+    console.log('System log skipped: ' + e2);
+  }
+}
 function sbmErrorLog_(action, type, message, detail) { sbmAppendObject_(SBM_SHEETS.ERROR_LOG, SBM_HEADERS.ERROR_LOG, {CreatedAt:sbmNowText_(),Action:action,ErrorType:type,Message:message,Detail:detail}); }
 function sbmAlert_(title, message) { SpreadsheetApp.getUi().alert(title, message, SpreadsheetApp.getUi().ButtonSet.OK); }
 function sbmToast_(message, title, seconds) { sbmSs_().toast(message, title || 'SIMS-Blog-Manager', seconds || 4); }

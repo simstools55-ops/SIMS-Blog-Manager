@@ -1,10 +1,10 @@
-# SIMS-Blog-Manager Product 3.1
+# SIMS-Blog-Manager Product 3.0
 
 SIMS-Blog-Manager は、Google Search Console のデータを使い、ブログ記事の改善対象を毎日判断する Google スプレッドシート製ブログ改善マネージャーです。
 
-Product 3.1 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
+Product 3.0 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
 
-## Product 3.1 の方針
+## Product 3.0 の方針
 
 - セットアップは連続ウィザードではなく、チェックリスト形式
 - 外部URLを開いたら処理を止め、利用者がシートへ戻って次のSTEPを実行
@@ -44,7 +44,7 @@ product/
 Commit title:
 
 ```text
-Release Product 3.1 (SIMS-Core Slim Edition)
+Release Product 3.0 (SIMS-Core Slim Edition)
 ```
 
 Commit description:
@@ -57,3 +57,11 @@ Commit description:
 - Block daily GSC fetch until setup and connection test are complete
 - Add product-ready spreadsheet template and single-file Code.js
 ```
+
+
+## Product 3.2で修正したこと
+
+- STEP1完了時に `Session.getActiveUser` 権限エラーで停止する問題を修正しました。
+- 初回認証後に同じSTEPを再実行する必要があることを明記しました。
+- ブログ名・URL・Search Consoleプロパティが保存済みの場合、同じ内容を何度も聞かず、確認だけで進めるようにしました。
+- 初回実行時は認証画面の表示まで時間がかかる場合があるため、待機案内を追加しました。
