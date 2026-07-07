@@ -24,7 +24,6 @@ nav:
   - はじめに: getting-started/index.md
   - セットアップ:
       - 全体の流れ: setup/index.md
-      - 初期設定: setup/initial-setup.md
       - 初回認証: setup/authorization.md
       - プロジェクト番号確認: setup/project-number.md
       - Google Cloud API有効化: setup/google-cloud-api.md
@@ -39,7 +38,6 @@ nav:
   - FAQ: faq/index.md
   - トラブルシューティング:
       - よくあるエラー: troubleshooting/index.md
-      - 共通エラー一覧: troubleshooting/common-errors.md
       - 403エラー: troubleshooting/error-403.md
       - 今日の改善が空: troubleshooting/empty-queue.md
   - リリースノート: release-notes/index.md

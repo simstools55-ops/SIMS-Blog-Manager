@@ -6,11 +6,11 @@ SIMS-Blog-Managerは、Google Search Consoleのデータを使って、今日改
 
 ## まず読むページ
 
-- [はじめに](getting-started/index.md)：全体像を確認します。
-- [セットアップ](setup/index.md)：初回設定から接続テストまで進めます。
-- [毎日の使い方](daily-workflow/index.md)：実際の改善作業の流れを確認します。
-- [FAQ](faq/index.md)：よくある疑問を確認します。
-- [トラブルシューティング](troubleshooting/index.md)：エラーが出た時に確認します。
+- [はじめに](getting-started/)：全体像を確認します。
+- [セットアップ](setup/)：初回設定から接続テストまで進めます。
+- [毎日の使い方](daily-workflow/)：実際の改善作業の流れを確認します。
+- [FAQ](faq/)：よくある疑問を確認します。
+- [トラブルシューティング](troubleshooting/)：エラーが出た時に確認します。
 
 ## 毎日使う画面
 
