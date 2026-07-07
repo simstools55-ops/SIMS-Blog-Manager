@@ -1,20 +1,15 @@
-# SIMS-Blog-Manager Documentation v2.0
+# SIMS-Blog-Manager Documentation v3.0
 
-GitHub Pages 公開に必要な `docs/`、`mkdocs.yml`、`.github/workflows/deploy.yml` を含む完全版です。
+GitHub Pages公開用の修正版です。
 
-## 重要
-GitHubへアップロードするときは、隠しフォルダ `.github/` も必ずアップロードしてください。
-Actions 画面が「Get started with GitHub Actions」のままなら、`.github/workflows/deploy.yml` が入っていません。
+## 修正内容
 
-## 公開URL
-https://simstools55-ops.github.io/SIMS-Blog-Manager/
+- MkDocs strict buildで失敗していた相対リンクを修正
+- nav未登録ページを追加
+- `.github/workflows/deploy.yml` を同梱
+- GitHub Actionsで公開できる構成に整理
 
-## Commit title
-Release Documentation v2.0
+## 注意
 
-## Commit description
-- Add complete MkDocs GitHub Pages configuration
-- Add GitHub Actions deploy workflow
-- Add manual publishing guide
-- Add fallback visible workflow copy for GitHub upload mistakes
-- Prepare documentation site for RC testing
+GitHubのWebアップロードでは `.github` フォルダが漏れることがあります。
+表示されない場合は、`github-workflows-backup/deploy.yml` の内容を `.github/workflows/deploy.yml` として手動作成してください。

@@ -1,9 +1,9 @@
 # Changelog
 
-## Documentation v2.0
+## Documentation v3.0
 
-- GitHub Pages公開に必要な`.github/workflows/deploy.yml`を同梱
-- `mkdocs.yml`と`docs/`を含む完全版に整理
-- アップロード時に`.github`が欠落した場合の確認手順を追加
-- GitHub Actionsが表示されない場合の復旧手順を追加
-- RCテスト用マニュアルサイトとして使用可能な状態に整理
+- Fix MkDocs strict build failure
+- Fix index.md relative links
+- Add missing nav entries for setup/initial-setup.md and troubleshooting/common-errors.md
+- Keep GitHub Actions deploy workflow
+- Prepare GitHub Pages publishing retry
