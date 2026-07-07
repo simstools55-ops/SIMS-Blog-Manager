@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC3
+ * SIMS-Blog-Manager Product 5.0 RC4
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc3';
+const SBM_VERSION = '5.0.0-rc4';
 const SBM_SHEETS = Object.freeze({
   HOME: 'ホーム',
   TODAY: '今日の改善',
@@ -30,7 +30,7 @@ const SBM_HEADERS = Object.freeze({
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
   LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
-  EFFECT: ['記事タイトル','URL','改善日','改善内容','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','判定','次の確認','コメント'],
+  EFFECT: ['記事タイトル','URL','改善日','改善内容','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','判定','SIMS評価','次のアクション','次の確認','コメント'],
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記録日','記事タイトル','URL','改善日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ'],
   CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事A URL','記事Aクリック','記事A順位','記事Bタイトル','記事B URL','記事Bクリック','記事B順位','推奨対応','理由','確認日'],
@@ -1043,7 +1043,9 @@ function sbmUpdateEffectivenessCore_(showAlert) {
       else outcome = '横ばい';
     }
     var next = elapsed === '' ? '' : (elapsed < SBM_DEFAULTS.TEST_DAILY_DAYS ? '明日確認' : '7日テスト完了');
-    effectRows.push([displayTitle || '', url, l['改善日']||'', l['改善内容']||'', l['修正内容']||'', elapsed, beforePos, nowPos || '', posDelta, beforeCtr, nowCtr || '', ctrDelta, beforeClicks, nowClicks || '', clickDelta, outcome, next, '']);
+    var simsEval = sbmEvaluateEffectResult_(outcome, posDelta, ctrDelta, clickDelta);
+    var nextAction = sbmSuggestNextAction_(outcome, l['改善内容'] || '', l['修正内容'] || '', posDelta, ctrDelta, clickDelta);
+    effectRows.push([displayTitle || '', url, l['改善日']||'', l['改善内容']||'', l['修正内容']||'', elapsed, beforePos, nowPos || '', posDelta, beforeCtr, nowCtr || '', ctrDelta, beforeClicks, nowClicks || '', clickDelta, outcome, simsEval, nextAction, next, '']);
     if (elapsed !== '' && elapsed <= SBM_DEFAULTS.TEST_DAILY_DAYS) {
       historyRowsToAppend.push([sbmDateText_(today), displayTitle || '', url, l['改善日']||'', elapsed, nowPos || '', nowCtr || '', nowClicks || '', nowImpressions || '', outcome]);
     }
@@ -1054,6 +1056,29 @@ function sbmUpdateEffectivenessCore_(showAlert) {
   sbmStyleMeasureHistorySheet_(sbmGetOrCreateSheet_(SBM_SHEETS.MEASURE_HISTORY));
   sbmRefreshHome_();
   if (showAlert) sbmAlert_('効果測定を更新しました', '改善ログをもとに効果測定を更新しました。\nRCテスト期間中は、改善後7日間だけ毎日、測定履歴に日次推移を記録できます。');
+}
+
+
+function sbmEvaluateEffectResult_(outcome, posDelta, ctrDelta, clickDelta) {
+  if (outcome === '成功' || outcome === '改善傾向') {
+    if ((posDelta && posDelta >= 3) || ctrDelta >= 0.01 || clickDelta >= 20) return '★★★★★ 改善成功。順位・CTR・クリックのいずれかに明確な改善が見られます。';
+    return '★★★★☆ 改善傾向。しばらく測定を続けてください。';
+  }
+  if (outcome === '要再改善' || outcome === '要確認') return '★★☆☆☆ 要確認。改善後に数値が悪化、または伸びが弱い可能性があります。';
+  if (outcome === '横ばい') return '★★★☆☆ 横ばい。追加改善または測定継続を検討してください。';
+  return '★★★☆☆ 測定待ち。十分なデータがたまるまで様子を見ます。';
+}
+
+function sbmSuggestNextAction_(outcome, improvement, actions, posDelta, ctrDelta, clickDelta) {
+  var text = String(improvement || '') + ' ' + String(actions || '');
+  if (outcome === '成功' || outcome === '改善傾向') return 'このまま測定継続。追加改善は急がず、7日分の推移を確認してください。';
+  if (outcome === '要再改善' || outcome === '要確認') {
+    if (text.indexOf('タイトル') === -1 && text.indexOf('Title') === -1) return 'タイトル・ディスクリプション・導入文を再確認してください。';
+    if (text.indexOf('FAQ') === -1) return 'FAQ追加、本文補強、検索意図に合うH2追加を検討してください。';
+    return '改善内容を見直し、別記事候補・カニバリ候補も確認してください。';
+  }
+  if (outcome === '横ばい') return '測定継続。動きが弱い場合はFAQ追加または内部リンク追加を検討してください。';
+  return 'まだ判断しません。RCテストでは毎日測定し、7日分の推移を確認してください。';
 }
 
 function sbmAppendMeasurementHistoryUnique_(rows) {
@@ -1141,8 +1166,10 @@ function sbmStyleEffectSheet_(sh) {
     sh.setColumnWidth(6,80);
     sh.setColumnWidths(7,9,90);
     sh.setColumnWidth(16,120);
-    sh.setColumnWidth(17,120);
-    sh.setColumnWidth(18,260);
+    sh.setColumnWidth(17,360);
+    sh.setColumnWidth(18,300);
+    sh.setColumnWidth(19,120);
+    sh.setColumnWidth(20,260);
     sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 42);
   } catch(e) {}
 }

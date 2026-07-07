@@ -1,15 +1,9 @@
 # Changelog
 
-## Product 5.0 RC3
+## Product 5.0 RC4
 
-- Add RC testing daily measurement workflow for 7 days after each improvement.
-- Add menu item to record today's measurement during test operation.
-- Rename test measurement date columns to 初回測定日 and 7日測定完了日.
-- Keep normal 14-day / 30-day evaluation as the intended production policy after RC testing.
-- Improve update notes for spreadsheet reuse and sheet repair.
-
-## Product 5.0 RC2
-
-- Improve Search Console query classification.
-- Add topic stock sheet for separate article candidates.
-- Improve improvement brief for SIMS-Core and Claude.
+- 効果測定にSIMS評価を追加
+- 効果測定に次のアクションを追加
+- 改善結果を「成功・改善傾向・様子見・要確認」で判断
+- RCテスト用の日次測定と効果測定を連携
+- 効果測定シートの列幅と見やすさを改善
