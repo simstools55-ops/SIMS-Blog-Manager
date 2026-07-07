@@ -1,5 +1,17 @@
-# Product 4.4 RC2 Release Notes
+# Product 5.0 RC1 Release Notes
 
-Product 4.4 RC2 adds a complete GitHub Pages documentation site and deployment workflow to Product 4.3 RC1.
+Product 5.0 RC1は、SIMS-Blog-Managerの役割を「Search Consoleデータの整理・分析・改善ブリーフ作成」に明確化したリリース候補です。
 
-This release is intended for manual-guided field testing before Product 5.0.
+## 重要な設計方針
+
+- Blog ManagerはSERP分析・競合分析・記事執筆までは行いません。
+- Blog ManagerはSearch Consoleのクエリデータから、記事改善に使うべきクエリと使わないクエリを整理します。
+- 改善ブリーフはSIMS-Core、Claude、ChatGPTへ渡す材料として使います。
+
+## テストしてほしい項目
+
+1. 改善ブリーフのサブクエリ分類が妥当か。
+2. 別記事候補が記事に混ぜるべきでないクエリとして出ているか。
+3. 除外クエリが改善に使わないものとして分離されているか。
+4. カニバリ診断が実際の運用判断に役立つか。
+5. 測定履歴・効果測定の数値表示が見やすくなったか。
