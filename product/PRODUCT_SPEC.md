@@ -1,26 +1,28 @@
-# Product Specification
+# SIMS-Blog-Manager Product Specification
 
-## Product
+## Purpose
 
-SIMS-Blog-Manager Product 4.1
+Google Search Consoleのデータを使い、忙しいブロガーが短時間で効果の高い改善を行えるようにする。
 
-## Concept
+## Core Workflow
 
-ブログ改善で迷わない。今日やることが30秒で決まる。
+1. Search Consoleデータ取得
+2. 記事診断
+3. 今日の改善タスク生成
+4. 改善ブリーフ確認
+5. 記事改善
+6. 改善ログ記録
+7. 14日・30日で効果測定
 
-## Scope
+## Product 4.3 RC1 Focus
 
-- Google Search Console integration
-- Blog setup checklist
-- Article cards
-- Query diagnosis
-- Today's improvement queue
-- Improvement brief
-- 14/30 day measurement base sheets
+- 日常利用画面の仕上げ
+- 改善ログの実用化
+- 効果測定の可読性向上
+- マニュアルサイトの追加
 
 ## Out of Scope
 
-- Claude integration
-- AI Exchange
-- Knowledge Engine
-- Learning Engine
+- Claude API連携
+- AI本文生成
+- 自動投稿

@@ -1,14 +1,13 @@
 # Changelog
 
-## Product 4.2
+## Product 4.3 RC1
 
-- Search Console接続後の実地テスト結果を反映
-- 「今日の改善」をタスクリスト形式へ改善
-- 既定表示をおすすめ5件に変更
-- メニューから改善候補をすべて表示できる機能を追加
-- 改善ブリーフを1セル表示から別管理＋ダイアログ表示へ変更
-- 選択行の記事を開く／改善ブリーフを開く／完了記録メニューを追加
-- Apps ScriptとGoogle Cloudのプロジェクト番号不一致に関する案内を強化
-- Search Console API未有効エラーの日本語説明を改善
-- System_Logと改善ブリーフを管理者向けシートとして整理
-- Product 4.2用スプレッドシートテンプレートを更新
+- Redesign improvement completion workflow
+- Add detail checkbox for improvement brief access
+- Add completion checkbox workflow
+- Add improvement action checklist columns
+- Improve improvement brief for Claude/ChatGPT copy use
+- Redesign improvement log headers
+- Redesign effectiveness tracking headers
+- Add manual pages for improvement log and effectiveness
+- Improve setup/API troubleshooting docs
