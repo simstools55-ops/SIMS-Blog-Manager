@@ -1,5 +1,5 @@
 /**
- * SIMS-Blog-Manager Product 3.0
+ * SIMS-Blog-Manager Product 3.1
  * SIMS-Core Slim Edition for daily SEO improvement management.
  *
  * Product policy:
@@ -9,7 +9,7 @@
  * - Daily GSC fetch is blocked until setup and connection test are complete.
  */
 
-var SBM_VERSION = '3.0.0-rc1';
+var SBM_VERSION = '3.1.0-rc1';
 
 var SBM_SHEETS = {
   HOME: '🏠 ホーム',
@@ -151,13 +151,15 @@ function sbmEnsureSetupSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.SETUP);
   sh.clear();
   var rows = [
-    ['SIMS-Blog-Manager セットアップ', 'チェックリスト形式で進めます。外部URLを開いたら、このシートに戻って次のSTEPを実行してください。'],
-    ['', ''],
+    ['SIMS-Blog-Manager セットアップ', 'チェックリスト形式で進めます。外部URLを開いたら、このシートに戻って次のSTEPを実行してください。', '', ''],
+    ['初回認証について', '初めてApps Scriptを実行するとGoogleの承認画面が表示されます。内容を確認し、詳細→安全ではないページに移動→許可の順で承認してください。これはスプレッドシートとSearch Consoleを使うために必要です。', '', ''],
     ['STEP', '状態', 'やること', '操作'],
     ['1', sbmCheckMark_(sbmHasBlogInfo_()), 'ブログ名・ブログURL・Search Consoleプロパティを入力', 'メニュー：SIMS-Blog-Manager → セットアップ → STEP1 ブログ情報を入力'],
     ['2', sbmCheckMark_(sbmGetSetting_('GoogleCloudGuideOpened', 'NO') === 'YES'), 'Google CloudでSearch Console APIを有効化', 'メニュー：STEP2 Google Cloud API設定ガイド'],
     ['3', sbmCheckMark_(sbmGetSetting_('SearchConsoleStatus', '') === 'OK'), 'Search Console接続テストを実行', 'メニュー：STEP3 Search Console接続テスト'],
     ['4', sbmCheckMark_(sbmGetSetting_('SetupComplete', 'NO') === 'YES'), '初回データ取得・分析を実行', 'メニュー：STEP4 初回データ取得・分析'],
+    ['', '', '', ''],
+    ['認証メモ', '初回実行時にGoogleの認証画面が出たら、許可してからもう一度同じSTEPを実行してください。', '', ''],
     ['', '', '', ''],
     ['現在の設定', '', '', ''],
     ['ブログ名', sbmGetSetting_('BlogName', '未入力'), '', ''],

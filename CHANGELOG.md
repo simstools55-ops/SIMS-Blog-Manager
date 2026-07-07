@@ -1,13 +1,9 @@
-# Changelog
+# CHANGELOG
 
-## Product 3.0
+## Product 3.1
 
-- Rebuilt as SIMS-Core Slim Edition.
-- Removed Claude / AI Exchange / Knowledge related workflows.
-- Added checklist-based setup flow.
-- Added popup input for blog name, blog URL, and Search Console property.
-- Added Google Cloud API setup guide with clickable links.
-- Prevented daily GSC fetch before setup completion and connection test success.
-- Added Article_Cards, Article_Diagnosis, 今日の改善, Improvement_Log, Effectiveness.
-- Added product-ready spreadsheet template.
-- Added single-file Code.js for end users.
+- Fix setup STEP1 range/column mismatch error.
+- Add first-run Google authorization notice to Home and Setup sheets.
+- Add guidance to rerun the same setup step after authorization.
+- Update spreadsheet template to Product 3.1.
+- Keep checklist-based setup flow from Product 3.0.

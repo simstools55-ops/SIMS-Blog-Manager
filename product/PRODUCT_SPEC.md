@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 3.0 Specification
+# SIMS-Blog-Manager Product 3.1 Specification
 
 ## Purpose
 
@@ -45,7 +45,7 @@ Effectiveness is measured later
 
 ## Setup Flow
 
-Product 3.0 does not use a continuous wizard. It uses a checklist because Apps Script cannot safely continue a wizard after opening an external Google Cloud URL.
+Product 3.1 does not use a continuous wizard. It uses a checklist because Apps Script cannot safely continue a wizard after opening an external Google Cloud URL.
 
 1. Blog information input
 2. Google Cloud API guide

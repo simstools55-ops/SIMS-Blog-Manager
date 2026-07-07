@@ -1,7 +1,5 @@
-# Product 3.0 Release Notes
+# Product 3.1 Release Notes
 
-Product 3.0 is a rebuild release candidate.
+Product 3.1 fixes the setup error that occurred in STEP1 when the setup sheet tried to write two-column rows into a four-column range.
 
-The biggest change is the setup UX. Instead of automatically moving through a multi-step wizard, Product 3.0 uses a checklist so beginners can proceed one step at a time.
-
-This avoids the Apps Script limitation where processing cannot continue reliably after opening external Google Cloud pages.
+It also adds clear beginner guidance for the first Apps Script authorization screen. When Google asks for authorization, allow access, return to the spreadsheet, and run the same STEP again.

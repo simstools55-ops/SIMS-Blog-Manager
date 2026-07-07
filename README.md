@@ -1,10 +1,10 @@
-# SIMS-Blog-Manager Product 3.0
+# SIMS-Blog-Manager Product 3.1
 
 SIMS-Blog-Manager は、Google Search Console のデータを使い、ブログ記事の改善対象を毎日判断する Google スプレッドシート製ブログ改善マネージャーです。
 
-Product 3.0 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
+Product 3.1 は **SIMS-Core Slim Edition** として再構築したリリース候補です。Claude連携・AI Exchange・Knowledge Engineを除外し、Search Console接続・セットアップUX・ブログ改善管理に集中しています。
 
-## Product 3.0 の方針
+## Product 3.1 の方針
 
 - セットアップは連続ウィザードではなく、チェックリスト形式
 - 外部URLを開いたら処理を止め、利用者がシートへ戻って次のSTEPを実行
@@ -44,7 +44,7 @@ product/
 Commit title:
 
 ```text
-Release Product 3.0 (SIMS-Core Slim Edition)
+Release Product 3.1 (SIMS-Core Slim Edition)
 ```
 
 Commit description:
