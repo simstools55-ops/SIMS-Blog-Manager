@@ -1,8 +1,7 @@
-# Changelog
+# CHANGELOG
 
-## Product 5.0 Official - Visible Tabs Reset
+## Product 5.0.0 Filename Encoding Fix
 
-- 利用者に見えるタブを5枚に限定
-- 管理用シートを非表示化
-- スプレッドシート正式名を `SIMS-Blog-Manager.xlsx` に統一
-- Apps Scriptは `コード.gs` 1本で提供
+- ZIP内の日本語ファイル名による文字化けを防ぐため、Apps Scriptファイル名を `apps-script/Code.gs` に変更。
+- Apps Scriptは従来通り1ファイル構成を維持。
+- 利用者向けの製品本体構成は変更なし。

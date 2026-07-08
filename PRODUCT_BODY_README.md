@@ -1,32 +1,17 @@
-# Product 5.0 Official 製品本体
+# 製品本体の場所
 
-このZIPの製品本体は次の2つです。
+Product 5.0 Official の製品本体は、このZIP内の次の2つです。
 
-## 1. スプレッドシート
+## 1. スプレッドシート本体
 
 `spreadsheet/SIMS-Blog-Manager.xlsx`
 
-Googleドライブへアップロードし、Googleスプレッドシートとして開いて使用します。
-
-利用者に見えるタブは次の5つだけです。
-
-1. Home
-2. 今日の改善
-3. 改善中
-4. ブログ診断
-5. 処理ログ
-
-以下の管理用シートは通常表示しません。
-
-- 設定
-- SearchConsole_Data
-- Improvement_Queue
-- Improvement_Log
+Googleドライブへアップロードし、Googleスプレッドシートとして開いて使います。
 
 ## 2. Apps Script
 
-`apps-script/コード.gs`
+`apps-script/Code.gs`
 
-Apps Scriptの `コード.gs` に貼り付けて使用します。
+ZIP内で日本語ファイル名が文字化けする環境があるため、配布ファイル名は `Code.gs` に統一します。
 
-Product 5.0 Officialでは、利用者向けスクリプトはこの1ファイルに集約します。
+Google Apps Scriptへ貼り付けるコードはこの1ファイルだけです。Apps Script画面上のファイル名は、必要に応じて「コード」に変更して構いません。
