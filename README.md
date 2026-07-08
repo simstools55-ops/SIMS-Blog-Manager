@@ -30,3 +30,9 @@ RC9をSingle Source of Truthとして、正式版に向けたReset Baseを実施
 - `docs/`：マニュアルサイト
 - `product/`：製品仕様・リリースノート
 - `spreadsheet/`：スプレッドシート仕様・テンプレート
+
+## Product 5.0 Spreadsheet Confirmation Base
+
+既存のRC9スプレッドシートで確認する場合は、Apps Scriptを更新したあと、メニュー `SIMS-Blog-Manager` → `管理` → `シートを作成・修復` を実行してください。
+
+その後、`ホーム`、`今日の改善`、`改善中`、`処理ログ` を確認します。

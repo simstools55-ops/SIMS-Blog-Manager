@@ -35,6 +35,7 @@ nav:
       - 改善ログ: user-guide/improvement-log.md
       - 効果測定: user-guide/effectiveness.md
   - 改善ガイド: improvement-guide/index.md
+  - スプレッドシート確認: spreadsheet-guide.md
   - FAQ: faq/index.md
   - トラブルシューティング:
       - よくあるエラー: troubleshooting/index.md

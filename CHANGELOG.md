@@ -1,3 +1,10 @@
+
+## Product 5.0 Official Spreadsheet Confirmation Base
+
+- その日最初の起動時に、Search Console取得だけでなく改善候補抽出まで自動実行するよう調整。
+- スプレッドシート確認ガイドとSpreadsheet UI Specを追加。
+- RC9既存シートを使った確認用に、シート作成・修復手順を明文化。
+
 # Changelog
 
 ## Product 5.0 Official
