@@ -1,29 +1,32 @@
-# 公開手順
+# GitHub Pages公開手順
 
-## 1. GitHub Pages
+## 重要
 
-1. ZIPを展開します。
-2. ファイル一式をGitHubへアップロードします。
-3. `.github/workflows/deploy.yml` が反映されていることを確認します。
-4. `Settings` → `Pages` → `Source` を `GitHub Actions` にします。
-5. `Actions` が成功したら公開完了です。
+GitHubのWebアップロードでは、`.github` のようなドットから始まる隠しフォルダが一括アップロードされない場合があります。
 
-## 2. Googleスプレッドシートテンプレート
-
-1. `spreadsheet/` 内のテンプレートをGoogle Driveへアップロードします。
-2. Googleスプレッドシートとして開きます。
-3. 書式・シート構成を確認します。
-4. 共有設定を「リンクを知っている全員が閲覧可」にします。
-5. URLからスプレッドシートIDを取得します。
-6. 次の形式でコピーURLを作ります。
+その場合は、次のファイルだけ手動で作成してください。
 
 ```text
-https://docs.google.com/spreadsheets/d/スプレッドシートID/copy
+.github/workflows/deploy.yml
 ```
 
-7. `docs/download.md` のコメントアウトされたボタンを有効化します。
-8. GitHubへ反映します。
+## 手順
 
-## 3. 重要
+1. ZIPを展開します。
+2. 通常のファイルをGitHubへアップロードします。
+3. GitHub上で `Add file` → `Create new file` を選びます。
+4. ファイル名に `.github/workflows/deploy.yml` と入力します。
+5. ZIP内の `.github/workflows/deploy.yml` の内容を貼り付けます。
+6. Commitします。
+7. `Settings` → `Pages` → `Source` を `GitHub Actions` にします。
+8. `Actions` が成功したら公開完了です。
 
-`YOUR_TEMPLATE_SPREADSHEET_ID` のような仮URLは、利用者向けページに残さないでください。
+公開URLの例：
+
+```text
+https://simstools55-ops.github.io/SIMS-Blog-Manager/
+```
+
+## Actionsが失敗した場合
+
+`Actions` → 失敗した実行 → `build` → `Build site` の赤いエラーを確認してください。

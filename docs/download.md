@@ -1,71 +1,33 @@
 # ダウンロード
 
-Product 5.0 Official は、マニュアルサイトから **Googleスプレッドシートをコピーして使う方式** を標準にします。
+Product 5.0 Officialでは、製品本体はZIPで配布します。
 
-Product 5.0 の方針は、RC9 を踏襲しながら、不要なものをそぎ落として必要なものだけに絞ることです。
+## 製品本体に含まれるもの
 
-## 利用者の始め方
+- Googleスプレッドシート用テンプレート
+- Apps Script用 `コード.gs`
+- 利用者向けマニュアル
+- 製品仕様・更新履歴
 
-### 1. Googleスプレッドシートをコピーする
+## 使うファイル
 
-下のボタンから、SIMS-Blog-Manager のテンプレートを自分の Google ドライブへコピーします。
+### 1. スプレッドシート本体
 
-> 正式公開時に、ここへ実在する GoogleスプレッドシートのコピーURLを入れます。
-> 仮URLは利用者向けページには出しません。
+`spreadsheet/SIMS-Blog-Manager-template-Product5.0-Official-Lean.xlsx`
 
-<!--
-正式公開時だけ有効化：
-[SIMS-Blog-Manager テンプレートをコピー](https://docs.google.com/spreadsheets/d/正式なスプレッドシートID/copy)
--->
+Google Driveへアップロードし、Googleスプレッドシートとして開きます。
 
-現在は確認用として、ZIP内のExcelテンプレートを使います。
-
-### 2. Apps Script を貼り付ける
-
-利用者向け Apps Script は、次の1ファイルだけです。
+### 2. Apps Script
 
 `apps-script/コード.gs`
 
-Googleスプレッドシートの **拡張機能 → Apps Script** を開き、既存の `コード.gs` に貼り付けます。
+Googleスプレッドシートの **拡張機能 → Apps Script** を開き、コードを貼り付けます。
 
-### 3. 初回セットアップを実行する
+### 3. セットアップ
 
-メニューから次の順に進めます。
+初回セットアップは、[セットアップガイド](setup/index.md) に沿って進めます。
 
-1. ブログ情報を登録
-2. Google Cloud APIを設定
-3. Search Console接続テスト
-4. 初回データ取得
+## 補足
 
-## ZIPで配布するもの
-
-GitHub Releases では、次の最小構成を ZIP として配布します。
-
-```text
-SIMS-Blog-Manager-Product-5.0.0.zip
-├─ spreadsheet/
-│  └─ SIMS-Blog-Manager-template-Product5.0-Official-Lean.xlsx
-├─ apps-script/
-│  └─ コード.gs
-├─ docs/
-├─ product/
-├─ README.md
-├─ CHANGELOG.md
-└─ LICENSE
-```
-
-## Excelテンプレートを使う場合
-
-GoogleスプレッドシートのコピーURLがまだ使えない場合は、ZIP内のExcelテンプレートを使います。
-
-1. `spreadsheet/SIMS-Blog-Manager-template-Product5.0-Official-Lean.xlsx` をダウンロード
-2. Google Driveへアップロード
-3. Googleスプレッドシートとして開く
-4. `apps-script/コード.gs` を貼り付ける
-5. 初回セットアップを実行する
-
-## 管理者向け
-
-GoogleスプレッドシートのコピーURLを公開する手順は、次のページで管理します。
-
-- [テンプレートコピーURLの設定](admin/template-url-setup.md)
+マニュアルサイトから直接Googleスプレッドシートをコピーする方式は、Product 5.0では採用しません。
+まずはZIP配布を正式方式とします。
