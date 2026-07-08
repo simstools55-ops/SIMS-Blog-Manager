@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-official';
+const SBM_VERSION = '5.0.0-official-progress-home';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   DATA_LIST: 'データ一覧',
@@ -224,7 +224,13 @@ function sbmBuildHomeSheet_() {
     ['今日やること', '', '', ''],
     ['次にやること', 'セットアップまたは今日の改善を確認してください。', '', ''],
     ['おすすめ改善', '未作成', '', ''],
-    ['推定時間', '-', '', '']
+    ['推定時間', '-', '', ''],
+    ['', '', '', ''],
+    ['処理状況', '', '', ''],
+    ['現在の状態', '待機中', '実行中/最後の処理', '-'],
+    ['開始時刻', '-', '完了時刻', '-'],
+    ['経過時間', '-', '処理結果', '-'],
+    ['お願い', '処理中は他のメニューを実行しないでください。シートの閲覧は可能ですが、編集はしないでください。', '', '']
   ];
   sh.getRange(1,1,values.length,4).setValues(values);
   sh.setColumnWidths(1,1,170);
@@ -242,20 +248,26 @@ function sbmStyleHomeSheet_(sh) {
     sh.getRange('A2:D2').merge().setBackground('#111827').setFontColor('#D1D5DB').setFontSize(11).setHorizontalAlignment('left');
     sh.setRowHeight(1, 42);
     sh.setRowHeight(2, 30);
-    ['A4:B8','C4:D8','A10:D13'].forEach(function(r){
+    ['A4:B8','C4:D8','A10:D13','A15:D19'].forEach(function(r){
       sh.getRange(r).setBackground('#FFFFFF').setBorder(true,true,true,true,true,true,'#E5E7EB',SpreadsheetApp.BorderStyle.SOLID);
     });
     sh.getRange('A4:B4').merge().setBackground('#0F766E').setFontColor('#FFFFFF').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
     sh.getRange('C4:D4').merge().setBackground('#1D4ED8').setFontColor('#FFFFFF').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
     sh.getRange('A10:D10').merge().setBackground('#F59E0B').setFontColor('#111827').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
+    sh.getRange('A15:D15').merge().setBackground('#7C3AED').setFontColor('#FFFFFF').setFontSize(14).setFontWeight('bold').setHorizontalAlignment('center');
     sh.getRange('A5:A8').setFontColor('#374151').setFontWeight('bold').setBackground('#F9FAFB');
     sh.getRange('C5:C8').setFontColor('#374151').setFontWeight('bold').setBackground('#F9FAFB');
     sh.getRange('A11:A13').setFontColor('#374151').setFontWeight('bold').setBackground('#FFFBEB');
+    sh.getRange('A16:A19').setFontColor('#374151').setFontWeight('bold').setBackground('#F5F3FF');
+    sh.getRange('C16:C18').setFontColor('#374151').setFontWeight('bold').setBackground('#F5F3FF');
     sh.getRange('B5:B8').setFontSize(13).setFontWeight('bold').setFontColor('#111827');
     sh.getRange('D5:D8').setFontSize(13).setFontWeight('bold').setFontColor('#111827');
     sh.getRange('B11:D13').setFontSize(12).setWrap(true);
-    sh.getRange('A1:D13').setVerticalAlignment('middle');
-    sh.setRowHeights(4, 10, 34);
+    sh.getRange('B16:D18').setFontSize(12).setWrap(true);
+    sh.getRange('B19:D19').merge().setFontSize(11).setWrap(true).setFontColor('#6B21A8');
+    sh.getRange('A1:D19').setVerticalAlignment('middle');
+    sh.setRowHeights(4, 16, 34);
+    sh.setRowHeight(19, 46);
   } catch(e) {
     sbmStyleUserSheet_(sh, '#0b8043');
   }
@@ -430,24 +442,35 @@ function sbmDailyUpdateManual() {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    sbmProgress_('日次更新開始', 'Search Consoleデータ取得 → 改善候補抽出 → 今日の改善5件表示の順に処理します。時間がかかる場合があります。');
-    sbmToast_('Search Consoleデータ収集を開始しました', 'Product 5.0 日次更新', 10);
+    sbmStartProcessStatus_('日次処理', 'Search Consoleデータ取得 → 改善候補分析 → データ一覧更新 → 今日の改善更新 → Home更新の順に実行します。');
+    sbmProgress_('Search Consoleデータ取得開始', 'Search Console APIから最新データを取得しています。');
     sbmFetchOnlyManual(true);
-    sbmProgress_('改善候補抽出開始', '取得したSearch Consoleデータから改善候補を抽出します。');
-    sbmToast_('改善候補抽出を開始しました', 'Product 5.0 日次更新', 10);
+
+    sbmProgress_('改善候補分析開始', '取得済みデータから改善候補を抽出しています。');
     sbmAnalyzeOnlyManual(true);
-    var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('日次更新（取得＋改善候補抽出）', '完了', sbmGetSetting_('LastFetchRows',''), sbmGetSetting_('ImprovementCandidateCount',''), sec, 'Search Console取得から今日の改善5件表示までをまとめて実行。', startedText, sbmNowText_());
+
+    sbmProgress_('データ一覧更新開始', '分析結果をデータ一覧へ反映し、状態順に並べ替えています。');
+    try { sbmRefreshDataList_(); } catch(ignoreDataList) {}
+
+    sbmProgress_('今日の改善更新開始', '改善候補から今日取り組む5件を準備しています。');
+    try { sbmBuildTodayQueue_(); } catch(ignoreToday) {}
+
+    sbmProgress_('Home更新開始', 'ブログ全体の状況と今日やることを更新しています。');
     sbmRefreshHome_();
-    sbmOpenToday();
-    sbmAlert_('日次更新完了', 'Search Consoleデータ取得と改善候補抽出が完了しました。\n今日の改善には上位5件を表示しています。');
+
+    var sec = sbmSecondsSince_(started);
+    var detail = 'Search Console取得、改善候補分析、データ一覧更新、今日の改善、Home更新を実行。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 今日の改善 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件。';
+    sbmProcessLog_('日次処理', '完了', sbmGetSetting_('LastFetchRows',''), sbmGetSetting_('ImprovementCandidateCount',''), sec, detail, startedText, sbmNowText_());
+    sbmCompleteProcessStatus_('日次処理', detail, startedText, sec);
+    sbmOpenHome();
+    sbmAlert_('日次処理完了', '今日の改善準備が完了しました。\n改善候補: ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件\n今日の改善: ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件\n所要時間: ' + sec + '秒');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('日次更新（取得＋改善候補抽出）', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
-    sbmAlert_('日次更新エラー', String(e));
+    sbmProcessLog_('日次処理', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
+    sbmErrorProcessStatus_('日次処理', String(e), startedText, secErr);
+    sbmAlert_('日次処理エラー', String(e));
   }
 }
-
 
 function sbmFetchOnlyManual(silent) {
   silent = silent === true;
@@ -458,7 +481,8 @@ function sbmFetchOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    if (!silent) sbmProgress_('Search Consoleデータ収集開始', 'Search Console APIからクエリとURLのデータを取得します。');
+    if (!silent) sbmStartProcessStatus_('Search Consoleデータ取得', 'Search Console APIからクエリとURLのデータを取得します。');
+    if (!silent) sbmProgress_('Search Consoleデータ取得開始', 'Search Console APIからクエリとURLのデータを取得します。');
     sbmToast_('Search Consoleデータ取得を開始しました。少しお待ちください。', 'データ取得', 10);
     var rows = sbmFetchSearchConsoleQueries_();
     sbmWriteQueryData_(rows);
@@ -468,12 +492,14 @@ function sbmFetchOnlyManual(silent) {
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
     sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, '利用者待ち時間を含む取得処理全体。次はSTEP B改善候補分析。', startedText, sbmNowText_());
+    if (!silent) sbmCompleteProcessStatus_('Search Consoleデータ取得', '取得件数: ' + rows.length + '件', startedText, sec);
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
     sbmRefreshHome_();
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
+    if (!silent) sbmErrorProcessStatus_('Search Consoleデータ取得', String(e), startedText, secErr);
     sbmLog_('FetchOnly','Error',String(e));
     sbmAlert_('データ取得エラー', sbmFriendlyGscError_(String(e)));
   }
@@ -487,7 +513,8 @@ function sbmAnalyzeOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    if (!silent) sbmProgress_('改善候補抽出開始', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
+    if (!silent) sbmStartProcessStatus_('改善候補分析', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
+    if (!silent) sbmProgress_('改善候補分析開始', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
     sbmToast_('改善候補分析を開始しました。対象記事を絞って処理します。', '改善候補抽出', 10);
     sbmDeleteDeprecatedSheets_(false);
     var result = sbmBuildDiagnosis_();
@@ -500,6 +527,7 @@ function sbmAnalyzeOnlyManual(silent) {
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
     sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件。Product 5.0では保留機能は実行しません。', startedText, sbmNowText_());
+    if (!silent) sbmCompleteProcessStatus_('改善候補分析', '改善候補: ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 今日の改善: ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件', startedText, sec);
     sbmLog_('AnalyzeOnly','Done', 'analyzed ' + ((result && result.analyzedCount)||'') + ' / ' + sec + ' sec');
     sbmRefreshHome_();
     sbmDeleteDeprecatedSheets_(false);
@@ -511,6 +539,7 @@ function sbmAnalyzeOnlyManual(silent) {
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e), startedText, sbmNowText_());
+    if (!silent) sbmErrorProcessStatus_('改善候補分析', String(e), startedText, secErr);
     sbmLog_('AnalyzeOnly','Error',String(e));
     sbmAlert_('改善分析エラー', String(e));
   }
@@ -1605,8 +1634,51 @@ function sbmToast_(message, title, seconds) {
   try { SpreadsheetApp.getActiveSpreadsheet().toast(String(message || ''), String(title || 'SIMS-Blog-Manager'), seconds || 5); } catch(e) {}
 }
 
+
+function sbmStartProcessStatus_(processName, detail) {
+  sbmSetProcessStatus_('処理中', processName, sbmNowText_(), '-', '-', detail || '処理を開始しました。');
+}
+
+function sbmCompleteProcessStatus_(processName, result, startedText, seconds) {
+  sbmSetProcessStatus_('完了', processName, startedText || '-', sbmNowText_(), (seconds || 0) + '秒', result || '処理が完了しました。');
+}
+
+function sbmErrorProcessStatus_(processName, errorMessage, startedText, seconds) {
+  sbmSetProcessStatus_('エラー', processName, startedText || '-', sbmNowText_(), (seconds || 0) + '秒', errorMessage || 'エラーが発生しました。');
+}
+
+function sbmSetProcessStatus_(status, processName, startedAt, finishedAt, elapsed, detail) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName(SBM_SHEETS.HOME) || sbmGetOrCreateSheet_(SBM_SHEETS.HOME);
+    // Homeに処理状況欄がない既存シートでも、ここで最低限の枠を作る。
+    if (String(sh.getRange('A15').getValue()) !== '処理状況') {
+      sh.getRange('A15:D19').clearContent();
+      sh.getRange('A15:D15').merge().setValue('処理状況');
+      sh.getRange('A16:D19').setValues([
+        ['現在の状態', '待機中', '実行中/最後の処理', '-'],
+        ['開始時刻', '-', '完了時刻', '-'],
+        ['経過時間', '-', '処理結果', '-'],
+        ['お願い', '処理中は他のメニューを実行しないでください。シートの閲覧は可能ですが、編集はしないでください。', '', '']
+      ]);
+      sbmStyleHomeSheet_(sh);
+    }
+    sh.getRange('B16').setValue(status || '処理中');
+    sh.getRange('D16').setValue(processName || '-');
+    sh.getRange('B17').setValue(startedAt || sbmNowText_());
+    sh.getRange('D17').setValue(finishedAt || '-');
+    sh.getRange('B18').setValue(elapsed || '-');
+    sh.getRange('D18').setValue(detail || '-');
+    var color = status === 'エラー' ? '#FEE2E2' : (status === '完了' ? '#DCFCE7' : '#FEF3C7');
+    sh.getRange('B16:D18').setBackground(color).setWrap(true);
+    ss.setActiveSheet(sh);
+    SpreadsheetApp.flush();
+  } catch (e) {}
+}
+
 function sbmProgress_(title, message) {
-  try { SpreadsheetApp.getUi().alert(title, message, SpreadsheetApp.getUi().ButtonSet.OK); } catch(e) { sbmToast_(message, title, 10); }
+  sbmSetProcessStatus_('処理中', title, sbmNowText_(), '-', '-', message || '処理中です。');
+  try { sbmToast_(message || title, title, 10); } catch(e) {}
 }
 
 function sbmAlert_(title,msg) { SpreadsheetApp.getUi().alert(title, msg, SpreadsheetApp.getUi().ButtonSet.OK); }
