@@ -1754,3 +1754,46 @@ function sbmFormatInt_(v) {
   var n = Math.round(sbmNumber_(v));
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
+
+/**
+ * Product 5.0 Official - Home Phase 1
+ * Homeは「ブログ全体の状況」「改善作業の状況」「今日やること」の3ブロックだけを表示する。
+ */
+function sbmP50RefreshHome() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const home = ss.getSheetByName('Home') || ss.getSheetByName('ホーム');
+  if (!home) return;
+
+  const now = new Date();
+  const today = ss.getSheetByName('今日の改善');
+  const inProgress = ss.getSheetByName('改善中');
+  const queue = ss.getSheetByName('Improvement_Queue');
+  const processLog = ss.getSheetByName('処理ログ');
+
+  home.getRange('A1').setValue('SIMS-Blog-Manager Product 5.0 Official');
+  home.getRange('A2').setValue('毎日最初に見る画面：ブログ全体・改善状況・今日やることだけを表示します。');
+
+  home.getRange('B13').setValue(now);
+
+  if (today) {
+    const todayValues = today.getRange(2, 1, 5, Math.min(6, today.getLastColumn())).getValues();
+    for (let i = 0; i < 5; i++) {
+      const row = todayValues[i] || [];
+      home.getRange(11 + i, 4).setValue(row[0] || '');
+      home.getRange(11 + i, 5).setValue(row[1] || '');
+      home.getRange(11 + i, 6).setValue(row[2] || '');
+      home.getRange(11 + i, 7).setValue(row[5] || '');
+      home.getRange(11 + i, 8).setValue(row[1] ? '改善後、完了' : '');
+    }
+  }
+
+  const candidateCount = queue ? Math.max(0, queue.getLastRow() - 1) : 0;
+  const inProgressCount = inProgress ? Math.max(0, inProgress.getLastRow() - 1) : 0;
+  home.getRange('D5').setValue(inProgressCount);
+  home.getRange('G5').setValue(candidateCount);
+
+  if (processLog && processLog.getLastRow() >= 2) {
+    const last = processLog.getRange(processLog.getLastRow(), 1, 1, Math.min(7, processLog.getLastColumn())).getValues()[0];
+    home.getRange('B14').setValue(last[5] || last[1] || '');
+  }
+}
