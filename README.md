@@ -1,10 +1,14 @@
 # SIMS-Blog-Manager Product 5.0.0
 
-製品本体は次の2点です。
+Product 5.0 Official は、RC9を踏襲しつつ、不要なものをそぎ落として必要なものだけに絞ったブログ改善管理ツールです。
 
-- `spreadsheet/SIMS-Blog-Manager.xlsx`
-- `apps-script/Code.gs`
+## 製品本体
 
-Product 5.0では、RC9を踏襲しながら不要なものをそぎ落とし、ブログ改善管理に必要な画面と処理だけを残します。
+- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
+- Apps Script: `apps-script/Code.gs`
 
-今回の版では、現段階で不要な上位ページ診断と「取得＋分析をまとめて実行」メニューを外し、Search Console取得後ではなく改善候補分析後にデータ一覧を更新する運用へ整理しました。
+## 今回の整理
+
+- 上位ページ診断、カニバリ診断、記事ネタ候補、効果測定、測定履歴は現行機能から削除対象としました。
+- メニューから保留機能を削除しました。
+- Home画面を見やすいダッシュボード形式に改善しました。
