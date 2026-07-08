@@ -230,7 +230,7 @@ function sbmBuildHomeSheet_() {
     ['現在の状態', '待機中', '実行中/最後の処理', '-'],
     ['開始時刻', '-', '完了時刻', '-'],
     ['経過時間', '-', '処理結果', '-'],
-    ['お願い', '処理中は他のメニューを実行しないでください。シートの閲覧は可能ですが、編集はしないでください。', '', '']
+    ['お願い', '', '', '']
   ];
   sh.getRange(1,1,values.length,4).setValues(values);
   sh.setColumnWidths(1,1,170);
@@ -439,36 +439,29 @@ function sbmSetupStep4InitialFetch() {
 }
 
 function sbmDailyUpdateManual() {
+  var ui = SpreadsheetApp.getUi();
+  ui.alert('本日のデータ収集をスタートします！', 'Search Consoleから最新データを取得します。\n\n処理中は他のメニューを実行せず、そのままお待ちください。\nシートの閲覧は可能ですが、編集はしないでください。', ui.ButtonSet.OK);
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    sbmStartProcessStatus_('日次処理', 'Search Consoleデータ取得 → 改善候補分析 → データ一覧更新 → 今日の改善更新 → Home更新の順に実行します。');
+    sbmStartProcessStatus_('本日のデータ収集', 'Search Consoleデータ取得のみ実行します。分析はSTEP Bで別途実行してください。');
     sbmProgress_('Search Consoleデータ取得開始', 'Search Console APIから最新データを取得しています。');
     sbmFetchOnlyManual(true);
 
-    sbmProgress_('改善候補分析開始', '取得済みデータから改善候補を抽出しています。');
-    sbmAnalyzeOnlyManual(true);
-
-    sbmProgress_('データ一覧更新開始', '分析結果をデータ一覧へ反映し、状態順に並べ替えています。');
-    try { sbmRefreshDataList_(); } catch(ignoreDataList) {}
-
-    sbmProgress_('今日の改善更新開始', '改善候補から今日取り組む5件を準備しています。');
-    try { sbmBuildTodayQueue_(); } catch(ignoreToday) {}
-
-    sbmProgress_('Home更新開始', 'ブログ全体の状況と今日やることを更新しています。');
+    sbmProgress_('Home更新開始', '取得結果をHomeへ反映しています。');
     sbmRefreshHome_();
 
     var sec = sbmSecondsSince_(started);
-    var detail = 'Search Console取得、改善候補分析、データ一覧更新、今日の改善、Home更新を実行。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 今日の改善 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件。';
-    sbmProcessLog_('日次処理', '完了', sbmGetSetting_('LastFetchRows',''), sbmGetSetting_('ImprovementCandidateCount',''), sec, detail, startedText, sbmNowText_());
-    sbmCompleteProcessStatus_('日次処理', detail, startedText, sec);
+    var detail = 'Search Consoleデータ取得のみ実行。取得件数 ' + sbmGetSetting_('LastFetchRows','0') + '件。次はSTEP B改善候補分析を実行してください。';
+    sbmProcessLog_('日次処理', '完了', sbmGetSetting_('LastFetchRows',''), '', sec, detail, startedText, sbmNowText_());
+    sbmCompleteProcessStatus_('本日のデータ収集', detail, startedText, sec);
     sbmOpenHome();
-    sbmAlert_('日次処理完了', '今日の改善準備が完了しました。\n改善候補: ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件\n今日の改善: ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件\n所要時間: ' + sec + '秒');
+    sbmAlert_('本日のデータ収集完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + sbmGetSetting_('LastFetchRows','0') + '件\n所要時間: ' + sec + '秒\n\n次に必要に応じて「STEP B 改善候補を分析」を実行してください。');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('日次処理', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
-    sbmErrorProcessStatus_('日次処理', String(e), startedText, secErr);
-    sbmAlert_('日次処理エラー', String(e));
+    sbmErrorProcessStatus_('本日のデータ収集', String(e), startedText, secErr);
+    sbmAlert_('本日のデータ収集エラー', String(e));
   }
 }
 
@@ -1636,7 +1629,7 @@ function sbmToast_(message, title, seconds) {
 
 
 function sbmStartProcessStatus_(processName, detail) {
-  sbmSetProcessStatus_('処理中', processName, sbmNowText_(), '-', '-', detail || '処理を開始しました。');
+  sbmSetProcessStatus_('● 処理中', processName, sbmNowText_(), '-', '-', detail || '処理を開始しました。');
 }
 
 function sbmCompleteProcessStatus_(processName, result, startedText, seconds) {
@@ -1651,7 +1644,6 @@ function sbmSetProcessStatus_(status, processName, startedAt, finishedAt, elapse
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName(SBM_SHEETS.HOME) || sbmGetOrCreateSheet_(SBM_SHEETS.HOME);
-    // Homeに処理状況欄がない既存シートでも、ここで最低限の枠を作る。
     if (String(sh.getRange('A15').getValue()) !== '処理状況') {
       sh.getRange('A15:D19').clearContent();
       sh.getRange('A15:D15').merge().setValue('処理状況');
@@ -1659,25 +1651,44 @@ function sbmSetProcessStatus_(status, processName, startedAt, finishedAt, elapse
         ['現在の状態', '待機中', '実行中/最後の処理', '-'],
         ['開始時刻', '-', '完了時刻', '-'],
         ['経過時間', '-', '処理結果', '-'],
-        ['お願い', '処理中は他のメニューを実行しないでください。シートの閲覧は可能ですが、編集はしないでください。', '', '']
+        ['お願い', '', '', '']
       ]);
       sbmStyleHomeSheet_(sh);
     }
-    sh.getRange('B16').setValue(status || '処理中');
+    sh.getRange('B16').setValue(status || '● 処理中');
     sh.getRange('D16').setValue(processName || '-');
     sh.getRange('B17').setValue(startedAt || sbmNowText_());
     sh.getRange('D17').setValue(finishedAt || '-');
     sh.getRange('B18').setValue(elapsed || '-');
     sh.getRange('D18').setValue(detail || '-');
-    var color = status === 'エラー' ? '#FEE2E2' : (status === '完了' ? '#DCFCE7' : '#FEF3C7');
-    sh.getRange('B16:D18').setBackground(color).setWrap(true);
+
+    var isRunning = String(status || '').indexOf('処理中') !== -1;
+    var isError = String(status || '') === 'エラー';
+    var isComplete = String(status || '') === '完了';
+    if (isRunning) {
+      sh.getRange('B16').setBackground('#DC2626').setFontColor('#FFFFFF').setFontWeight('bold');
+      sh.getRange('A19:D19').setFontColor('#DC2626').setFontWeight('bold').setBackground('#FFF1F2');
+      sh.getRange('B19').setValue('処理中は他のメニューを実行しないでください。シートの閲覧は可能ですが、編集しないでください。');
+      sh.getRange('B16:D18').setWrap(true);
+    } else if (isError) {
+      sh.getRange('B16').setBackground('#FEE2E2').setFontColor('#B91C1C').setFontWeight('bold');
+      sh.getRange('A19:D19').setFontColor('#B91C1C').setFontWeight('bold').setBackground('#FEE2E2');
+      sh.getRange('B19').setValue('エラーが発生しました。処理ログを確認してください。');
+    } else if (isComplete) {
+      sh.getRange('B16').setBackground('#DCFCE7').setFontColor('#166534').setFontWeight('bold');
+      sh.getRange('A19:D19').setFontColor('#000000').setFontWeight('normal').setBackground('#FFFFFF');
+      sh.getRange('B19:D19').clearContent();
+    } else {
+      sh.getRange('B16:D18').setBackground('#FFFFFF').setFontColor('#000000').setFontWeight('normal');
+      sh.getRange('B19:D19').clearContent();
+    }
     ss.setActiveSheet(sh);
     SpreadsheetApp.flush();
   } catch (e) {}
 }
 
 function sbmProgress_(title, message) {
-  sbmSetProcessStatus_('処理中', title, sbmNowText_(), '-', '-', message || '処理中です。');
+  sbmSetProcessStatus_('● 処理中', title, sbmNowText_(), '-', '-', message || '処理中です。');
   try { sbmToast_(message || title, title, 10); } catch(e) {}
 }
 
