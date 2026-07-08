@@ -1,33 +1,27 @@
-# ダウンロード
+# 製品本体の場所
 
-Product 5.0 Officialでは、製品本体はZIPで配布します。
+Product 5.0 Officialの製品本体は、このZIP内にあります。
 
-## 製品本体に含まれるもの
+## スプレッドシート
 
-- Googleスプレッドシート用テンプレート
-- Apps Script用 `コード.gs`
-- 利用者向けマニュアル
-- 製品仕様・更新履歴
+`spreadsheet/SIMS-Blog-Manager.xlsx`
 
-## 使うファイル
+Googleドライブへアップロードし、Googleスプレッドシートとして開きます。
 
-### 1. スプレッドシート本体
-
-`spreadsheet/SIMS-Blog-Manager-template-Product5.0-Official-Lean.xlsx`
-
-Google Driveへアップロードし、Googleスプレッドシートとして開きます。
-
-### 2. Apps Script
+## Apps Script
 
 `apps-script/コード.gs`
 
-Googleスプレッドシートの **拡張機能 → Apps Script** を開き、コードを貼り付けます。
+Apps Scriptの `コード.gs` に貼り付けます。
 
-### 3. セットアップ
+## 利用者が見る画面
 
-初回セットアップは、[セットアップガイド](setup/index.md) に沿って進めます。
+通常表示するタブは次の5つです。
 
-## 補足
+1. Home
+2. 今日の改善
+3. 改善中
+4. ブログ診断
+5. 処理ログ
 
-マニュアルサイトから直接Googleスプレッドシートをコピーする方式は、Product 5.0では採用しません。
-まずはZIP配布を正式方式とします。
+管理用シートは非表示です。
