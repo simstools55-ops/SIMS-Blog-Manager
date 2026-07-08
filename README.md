@@ -1,3 +1,12 @@
+# SIMS-Blog-Manager Product 5.0.0 Home UI Restore Fast
+
+製品本体は以下です。
+
+- `apps-script/Code.gs`
+- `apps-script/appsscript.json`
+
+Search Console取得が高速化したRC8.1系の取得処理を維持し、Home画面の処理中表示と不要タブ整理だけを戻した確認版です。
+
 # SIMS-Blog-Manager Product 5.0 RC9
 
 Search Consoleデータを使って、日々のブログ改善を管理するGoogleスプレッドシートシステムです。
