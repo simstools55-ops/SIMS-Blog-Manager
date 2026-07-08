@@ -1,8 +1,7 @@
 # CHANGELOG
 
-## Product 5.0.0 Data List Status Fix
+## Product 5.0.0 - Remove Top Page Diagnosis and Analyze DataList Update
 
-- データ一覧のステータスを「良好」「様子見」に分離
-- H1タイトルとtitleタグの取得仕様を明確化
-- データ一覧のソート順を「良好 → 改善中 → 改善候補 → 様子見 → 管理対象外」に変更
-- Search Console取得直後のデータ一覧更新を削除
+- 現段階で不要な「上位ページ診断」機能を利用者メニューとApps Scriptから削除しました。
+- 「取得＋分析をまとめて実行」メニューを削除し、取得と分析はSTEP A / STEP Bの分離運用に戻しました。
+- 改善候補分析後にデータ一覧を更新し、データ一覧の更新・開くと同じ状態順表示へ揃えました。

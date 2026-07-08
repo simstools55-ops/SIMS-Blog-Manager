@@ -1,16 +1,17 @@
-# 製品本体
+# 製品本体の場所
 
-このZIPの製品本体は次の2つです。
+Product 5.0.0 の製品本体は以下です。
 
-- `spreadsheet/SIMS-Blog-Manager.xlsx`
-- `apps-script/Code.gs`
+1. スプレッドシート
+   - `spreadsheet/SIMS-Blog-Manager.xlsx`
 
-利用者はスプレッドシートをGoogle Driveへアップロードし、Apps Scriptに `Code.gs` の中身を貼り付けて使います。
+2. Apps Script
+   - `apps-script/Code.gs`
 
-## 今回の確認ポイント
+利用者はスプレッドシートをGoogleスプレッドシートとして開き、Apps Scriptに `Code.gs` の内容を貼り付けて使用します。
 
-- データ一覧のステータスが「良好/様子見」ではなく、どちらか一方で表示されること
-- H1タイトルは記事本文のH1を表示すること
-- titleタグはHTMLの `<title>` を表示すること
-- 一覧が `良好 → 改善中 → 改善候補 → 様子見 → 管理対象外` の順に並ぶこと
-- Search Console取得だけではデータ一覧が更新されず、改善候補分析後に更新されること
+## 今回の整理
+
+- 上位ページ診断は現段階では不要なため外しました。
+- 「取得＋分析をまとめて実行」メニューは外しました。
+- データ一覧は、改善候補分析後に更新されます。
