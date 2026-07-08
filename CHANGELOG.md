@@ -1,7 +1,8 @@
 # Changelog
 
-## Product 5.0.0 - Search Console RC9 Fetch Restore
+## Product 5.0.0 Daily Fetch Fast Path
 
-- Search Console取得エンジンをRC9安定動作優先へ戻しました。
-- 日次取得の軽量化は周辺処理のみに限定しました。
-- Advanced Serviceが使える場合はSearchConsoleサービス、未設定時はRC9同等のUrlFetch方式へフォールバックします。
+- 日次処理をSearch Console取得だけに固定しました。
+- 日次取得時のHome更新を開始・完了の2回だけに削減しました。
+- 日次取得専用の取得上限 `DailyFetchMaxRows` を追加し、標準1500件にしました。
+- 処理ログにAPI取得秒数・シート書込秒数・取得上限を記録するようにしました。

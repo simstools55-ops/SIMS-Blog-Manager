@@ -1,8 +1,8 @@
-# 製品本体
+# Product Body
 
-このZIPの製品本体は次の2つです。
+製品本体は以下です。
 
-1. `spreadsheet/SIMS-Blog-Manager.xlsx`
-2. `apps-script/Code.gs`
+- `spreadsheet/SIMS-Blog-Manager.xlsx`
+- `apps-script/Code.gs`
 
-Search Console取得権限を確実に反映する場合は、`apps-script/appsscript.json` も反映してください。
+今回の版では、日次処理を軽快にするため、日次取得ではSearch Console取得のみを実行します。分析、データ一覧更新、今日の改善作成は別メニューで実行します。

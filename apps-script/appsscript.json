@@ -7,14 +7,5 @@
     "https://www.googleapis.com/auth/webmasters.readonly"
   ],
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8",
-  "dependencies": {
-    "enabledAdvancedServices": [
-      {
-        "userSymbol": "SearchConsole",
-        "serviceId": "searchconsole",
-        "version": "v1"
-      }
-    ]
-  }
+  "runtimeVersion": "V8"
 }

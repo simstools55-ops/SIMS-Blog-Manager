@@ -4,10 +4,14 @@
 
 - spreadsheet/SIMS-Blog-Manager.xlsx
 - apps-script/Code.gs
-- apps-script/appsscript.json
 
-## 今回の確認ポイント
+## 今回の重点
 
-Search Console取得部分はRC9の安定動作を優先し、軽量化はHome更新・シート修復・列幅調整などの周辺処理だけに限定しました。
+Search Consoleデータ取得を軽量化しました。日次処理ではデータ取得だけを行い、シート修復・全体初期化・列幅自動調整などの重い処理は実行しません。
 
-権限エラーが出る場合は、Code.gsだけでなく apps-script/appsscript.json もApps Scriptへ反映してください。
+処理ログには、API取得・シート書込・設定更新の時間内訳が残ります。
+
+
+## Product 5.0.0 Daily Fetch Fast Path
+
+日次処理はSearch Consoleデータ取得のみに固定しています。軽快運用のため、日次取得上限は `Settings` の `DailyFetchMaxRows` で管理します。標準値は1500件です。
