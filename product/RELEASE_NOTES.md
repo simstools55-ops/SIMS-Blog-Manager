@@ -1,17 +1,10 @@
-# Product 5.0 Official Lean Base Release Notes
+# Release Notes - Product 5.0 RC9
 
-## 概要
+RC9 is a quality improvement release focused on reliability and visibility.
 
-RC9をSingle Source of Truthとして、正式版に必要なものだけに絞ったLean Baseです。
+## Highlights
 
-## 変更点
-
-- Apps Scriptを利用者向けに `コード.gs` へ一本化
-- スプレッドシートテンプレートをProduct 5.0 Official Leanとして同梱
-- Home、今日の改善、改善中、ブログ診断、処理ログを中心にシート構成を整理
-- 古いテンプレートや分割ソースを配布物から除外
-- ダウンロードページを追加
-
-## deploy.yml
-
-変更なし。
+- Fixes STEP-B improvement analysis column mismatch.
+- Fixes top page diagnosis title mapping.
+- Adds better process timing records.
+- Keeps deploy.yml unchanged.

@@ -20,10 +20,8 @@ markdown_extensions:
   - pymdownx.details
   - pymdownx.superfences
 nav:
-  - Home: home.md
   - ホーム: index.md
   - はじめに: getting-started/index.md
-  - ダウンロード: download.md
   - セットアップ:
       - 全体の流れ: setup/index.md
       - 初回認証: setup/authorization.md
@@ -37,7 +35,6 @@ nav:
       - 改善ログ: user-guide/improvement-log.md
       - 効果測定: user-guide/effectiveness.md
   - 改善ガイド: improvement-guide/index.md
-  - スプレッドシート確認: spreadsheet-guide.md
   - FAQ: faq/index.md
   - トラブルシューティング:
       - よくあるエラー: troubleshooting/index.md

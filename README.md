@@ -1,17 +1,32 @@
-# SIMS-Blog-Manager Product 5.0.0
+# SIMS-Blog-Manager Product 5.0 RC9
 
-## 製品本体
+Search Consoleデータを使って、日々のブログ改善を管理するGoogleスプレッドシートシステムです。
 
-- spreadsheet/SIMS-Blog-Manager.xlsx
-- apps-script/Code.gs
+## RC9の主な修正
 
-## 今回の重点
+- 改善候補分析の列数不一致エラーを修正
+- 上位ページ診断の記事タイトル表示と列マッピングを修正
+- 上位ページ診断の状態名を利用者向けに改善
+- 処理ログに開始時刻・終了時刻・利用者待ち時間を記録
+- 既存シートのヘッダー更新を安定化
 
-Search Consoleデータ取得を軽量化しました。日次処理ではデータ取得だけを行い、シート修復・全体初期化・列幅自動調整などの重い処理は実行しません。
+## 更新手順
 
-処理ログには、API取得・シート書込・設定更新の時間内訳が残ります。
+1. GitHubへZIPの中身を上書きアップロード
+2. Apps Scriptの `apps-script/Code.js` を貼り替え
+3. 保存
+4. スプレッドシートで「SIMS-Blog-Manager → 管理 → シートを作成・修復」を実行
+5. STEP A / STEP B / STEP Cを順番に確認
+
+## deploy.yml
+
+更新不要です。
 
 
-## Product 5.0.0 Daily Fetch Fast Path
+## Product 5.0 RC8.1 Fast Path
 
-日次処理はSearch Consoleデータ取得のみに固定しています。軽快運用のため、日次取得上限は `Settings` の `DailyFetchMaxRows` で管理します。標準値は1500件です。
+- Search Console取得エンジンはRC8.1ベースを維持。
+- onOpenはメニュー作成だけに限定。
+- STEP AはSearch Consoleデータ取得のみ。
+- 日次取得上限 DailyFetchMaxRows の標準値を1500件に設定。
+- Homeの処理状況表示を維持しつつ、処理中の注意文を明確化。
