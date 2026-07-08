@@ -23,6 +23,7 @@ nav:
   - ホーム: index.md
   - はじめに: getting-started/index.md
   - ダウンロード: download.md
+  - Googleスプレッドシートテンプレート: google-spreadsheet-template.md
   - セットアップ:
       - 全体の流れ: setup/index.md
       - 初回認証: setup/authorization.md

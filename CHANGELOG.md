@@ -1,3 +1,11 @@
+
+## Product 5.0 Official Template Copy Base
+
+- マニュアルサイトからGoogleスプレッドシートテンプレートをコピーする方式を標準化
+- `docs/download.md` にテンプレートコピー導線を追加
+- 管理者向けに `docs/google-spreadsheet-template.md` を追加
+- 利用者向けApps Scriptは引き続き `apps-script/コード.gs` に一本化
+
 # Changelog
 
 ## Product 5.0 Official Lean Base
