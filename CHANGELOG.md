@@ -1,19 +1,9 @@
-
-## Product 5.0 Official Spreadsheet Confirmation Base
-
-- その日最初の起動時に、Search Console取得だけでなく改善候補抽出まで自動実行するよう調整。
-- スプレッドシート確認ガイドとSpreadsheet UI Specを追加。
-- RC9既存シートを使った確認用に、シート作成・修復手順を明文化。
-
 # Changelog
 
-## Product 5.0 Official
+## Product 5.0 Official Lean Base
 
-- RC9をSingle Source of TruthとしてProduct 5.0 Reset Baseを実施。
-- Apps Scriptのバージョン表記を正式版へ更新。
-- Home画面を正式仕様に合わせて3領域へ整理。
-- 日次起動時の自動取得・自動分析フローを正式仕様へ整理。
-- 改善候補30件、今日の改善5件、候補除外条件を整理。
-- 効果測定を週1回・最大2か月へ更新。
-- 処理ログの記録項目を開始時刻、終了時刻、利用者待ち時間、件数へ整理。
-- docs/とproduct/文書をProduct 5.0 Official仕様へ更新。
+- Product 5.0の表現を「不要なものをそぎ落とし、必要なものだけに絞る」に統一
+- 利用者向けApps Scriptを `apps-script/コード.gs` に一本化
+- スプレッドシートテンプレートを Product 5.0 Official Lean 版へ整理
+- 過去テンプレートと分割ソースを正式配布物から除外
+- docs にダウンロード手順を追加
