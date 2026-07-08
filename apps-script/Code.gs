@@ -430,13 +430,13 @@ function sbmDailyUpdateManual() {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    sbmProgress_('日次更新を開始します', 'Search Consoleデータ取得 → 改善候補抽出 → 今日の改善5件表示の順に処理します。時間がかかる場合があります。');
-    sbmToast_('Search Consoleデータ収集中', 'Product 5.0 日次更新', 10);
+    sbmProgress_('日次更新開始', 'Search Consoleデータ取得 → 改善候補抽出 → 今日の改善5件表示の順に処理します。時間がかかる場合があります。');
+    sbmToast_('Search Consoleデータ収集を開始しました', 'Product 5.0 日次更新', 10);
     sbmFetchOnlyManual(true);
-    sbmProgress_('改善候補抽出中', '取得したSearch Consoleデータから改善候補を抽出します。');
-    sbmToast_('改善候補抽出中', 'Product 5.0 日次更新', 10);
+    sbmProgress_('改善候補抽出開始', '取得したSearch Consoleデータから改善候補を抽出します。');
+    sbmToast_('改善候補抽出を開始しました', 'Product 5.0 日次更新', 10);
     sbmAnalyzeOnlyManual(true);
-    sbmProgress_('データ一覧更新中', 'Search Console取得データを記事単位で整理しています。');
+    sbmProgress_('データ一覧更新開始', 'Search Console取得データを記事単位で整理しています。');
     try { sbmRefreshDataList_(); } catch(e) {}
     var sec = sbmSecondsSince_(started);
     sbmProcessLog_('日次更新（取得＋改善候補抽出）', '完了', sbmGetSetting_('LastFetchRows',''), sbmGetSetting_('ImprovementCandidateCount',''), sec, 'Search Console取得から今日の改善5件表示までをまとめて実行。', startedText, sbmNowText_());
@@ -460,8 +460,8 @@ function sbmFetchOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    if (!silent) sbmProgress_('Search Consoleデータ収集中', 'Search Console APIからクエリとURLのデータを取得します。');
-    sbmToast_('Search Consoleデータを取得中です。少しお待ちください。', 'データ取得', 10);
+    if (!silent) sbmProgress_('Search Consoleデータ収集開始', 'Search Console APIからクエリとURLのデータを取得します。');
+    sbmToast_('Search Consoleデータ取得を開始しました。少しお待ちください。', 'データ取得', 10);
     var rows = sbmFetchSearchConsoleQueries_();
     sbmWriteQueryData_(rows);
     var sec = sbmSecondsSince_(started);
@@ -471,6 +471,10 @@ function sbmFetchOnlyManual(silent) {
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
     sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, '利用者待ち時間を含む取得処理全体。次はSTEP B改善候補分析。', startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
+    try {
+      sbmProgress_('データ一覧更新開始', '取得したSearch Consoleデータをデータ一覧へ反映します。');
+      sbmRefreshDataList_();
+    } catch(ignoreDataList) {}
     sbmRefreshHome_();
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
   } catch (e) {
@@ -489,13 +493,17 @@ function sbmAnalyzeOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    if (!silent) sbmProgress_('改善候補抽出中', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
-    sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', '改善候補抽出', 10);
+    if (!silent) sbmProgress_('改善候補抽出開始', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
+    sbmToast_('改善候補分析を開始しました。対象記事を絞って処理します。', '改善候補抽出', 10);
     var result = sbmBuildDiagnosis_();
     var can = sbmBuildCannibalDiagnosis_();
     sbmBuildTodayQueue_();
     sbmBuildInProgressSheet_();
     try { sbmUpdateEffectivenessSilent_(); } catch(ignore) {}
+    try {
+      sbmProgress_('データ一覧更新開始', '改善候補の分析結果をデータ一覧へ反映します。');
+      sbmRefreshDataList_();
+    } catch(ignoreDataList) {}
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
     sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件 / カニバリ ' + (can || 0) + '件', startedText, sbmNowText_());
