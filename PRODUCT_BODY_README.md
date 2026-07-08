@@ -1,9 +1,8 @@
-# 製品本体
+# Product Body
 
-このZIPで利用者が使う本体は次の2つです。
+製品本体は以下です。
 
-- `spreadsheet/SIMS-Blog-Manager.xlsx`
-- `apps-script/Code.gs`
+- spreadsheet/SIMS-Blog-Manager.xlsx
+- apps-script/Code.gs
 
-今回の修正では、日次処理を Search Console データ取得のみに変更しました。
-Apps Script実行中は Home に赤い処理状況と注意文を表示します。
+今回の修正は Apps Script 中心です。既存シートでテストする場合は、Code.gsのみ入れ替えて確認できます。
