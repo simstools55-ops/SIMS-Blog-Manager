@@ -31,7 +31,7 @@ const SBM_HEADERS = Object.freeze({
   QUERY_DATA: ['StartDate','EndDate','Query','URL','Clicks','Impressions','CTR','Position','CapturedAt'],
   CARDS: ['ArticleId','URL','Title','MainQuery','Clicks','Impressions','CTR','Position','Managed','ArticleStatus','OpportunityScore','Recommendation','LastImprovedAt','ImproveCount','LastAnalyzedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
-  TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
+  TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','改善ブリーフ','完了','メモ','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','Score','URL','状態','完了日'],
   LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
   EFFECT: ['記事タイトル','改善日','改善内容','判定','SIMS評価','次のアクション','詳細','URL','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','次の確認','コメント'],
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
@@ -70,11 +70,10 @@ function onOpen() {
     .addItem('ホームを開く', 'sbmOpenHome')
     .addSeparator()
     .addSubMenu(SpreadsheetApp.getUi().createMenu('セットアップ')
-      .addItem('STEP1 ブログ情報を登録', 'sbmSetupStep1BlogInfo')
-      .addItem('STEP2 Google Cloud APIガイドを開く', 'sbmSetupStep2ApiGuide')
-      .addItem('STEP3 Search Console接続テスト', 'sbmSetupStep3ConnectionTest')
-      .addItem('STEP4 初回データ取得', 'sbmSetupStep4InitialFetch')
-      .addItem('セットアップシートを開く', 'sbmOpenSetup'))
+      .addItem('初回セットアップを開始', 'sbmStartInitialSetup')
+      .addItem('登録情報を更新', 'sbmSetupStep1BlogInfo')
+      .addItem('Search Console接続テスト', 'sbmSetupStep3ConnectionTest')
+      .addItem('初回データ取得', 'sbmSetupStep4InitialFetch'))
     .addSeparator()
     .addSubMenu(SpreadsheetApp.getUi().createMenu('データ更新')
       .addItem('STEP A Search Consoleデータ取得だけ実行', 'sbmFetchOnlyManual')
@@ -86,7 +85,6 @@ function onOpen() {
     .addSubMenu(SpreadsheetApp.getUi().createMenu('今日の改善')
       .addItem('今日の改善を開く', 'sbmOpenToday')
       .addItem('選択行の改善ブリーフを開く', 'sbmShowSelectedBrief')
-      .addItem('選択行の記事を開く', 'sbmOpenSelectedArticle')
       .addItem('選択行を完了にする', 'sbmCompleteSelectedImprovement')
       .addItem('効果測定を更新', 'sbmUpdateEffectiveness')
       .addItem('改善中を開く', 'sbmOpenInProgress')
@@ -222,16 +220,11 @@ function sbmEnsureDefaultSettings_() {
 
 function sbmEnsureUserSheets_() {
   sbmBuildHomeSheet_();
-  sbmBuildSetupSheet_();
   sbmBuildTodaySheetView_();
-  sbmBuildLogSheetView_();
-  sbmBuildBriefSheetView_();
-  sbmBuildEffectSheetView_();
   sbmBuildInProgressSheet_();
+  sbmBuildBlogDashboardSheet_();
   sbmStyleProcessLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG));
-  sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL));
-  sbmStyleTopicSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOPICS));
-  sbmStyleTopPageSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOP_PAGES));
+  sbmStyleBriefSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.BRIEF));
 }
 
 function sbmBuildHomeSheet_() {
@@ -242,7 +235,8 @@ function sbmBuildHomeSheet_() {
     ['バージョン', SBM_VERSION],
     ['', ''],
     ['1. ブログ全体の状況', ''],
-    ['良好記事数', '0件'],
+    ['総記事数', '0件'],
+    ['良好記事数', '0件 / 0件（0%）'],
     ['改善中記事数', '0件'],
     ['改善候補数', '0件'],
     ['', ''],
@@ -254,23 +248,47 @@ function sbmBuildHomeSheet_() {
     ['3. 今日やること', ''],
     ['次にやること', 'セットアップまたは今日の改善を確認してください。'],
     ['おすすめ改善', '未作成'],
-    ['推定時間', '-'],
-    ['', ''],
-    ['セットアップ状況', '状態'],
-    ['STEP1 ブログ情報', ''],
-    ['STEP2 Google Cloud APIガイド', ''],
-    ['STEP3 Search Console接続', ''],
-    ['STEP4 初回データ取得', ''],
-    ['', ''],
-    ['登録ブログ名', ''],
-    ['ブログURL', ''],
-    ['Search Consoleプロパティ', ''],
-    ['接続状態', '']
+    ['推定時間', '-']
   ];
   sh.getRange(1,1,values.length,2).setValues(values);
   sh.setColumnWidths(1,1,190);
   sh.setColumnWidths(2,1,720);
   sbmStyleUserSheet_(sh, '#0b8043');
+}
+
+function sbmBuildBlogDashboardSheet_() {
+  var sh = sbmGetOrCreateSheet_('ブログ診断');
+  if (sh.getLastRow() === 0 || sh.getRange('A1').getValue() !== 'ブログ診断') {
+    sh.clear();
+    sh.getRange(1,1,7,3).setValues([
+      ['ブログ診断', 'ブログ全体の状態を確認する画面です。', ''],
+      ['総記事数', '0件', ''],
+      ['良好記事数', '0件 / 0件（0%）', ''],
+      ['改善中記事数', '0件', ''],
+      ['改善候補数', '0件', ''],
+      ['最終取得日', '未取得', ''],
+      ['メモ', '詳しい作業は「今日の改善」と「改善中」を確認してください。', '']
+    ]);
+    sh.setColumnWidths(1,1,180);
+    sh.setColumnWidths(2,1,360);
+    sh.setColumnWidths(3,1,240);
+  }
+  sbmStyleUserSheet_(sh, '#1a73e8');
+}
+
+function sbmRefreshBlogDashboard_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ブログ診断');
+  if (!sh) return;
+  var cards = sbmRowsAsObjects_(SBM_SHEETS.CARDS);
+  var total = sbmNumber_(sbmGetSetting_('TotalArticleCount','0')) || cards.length;
+  var good = 0;
+  cards.forEach(function(c){ var st = String(c.ArticleStatus || ''); if (st.indexOf('良好') !== -1 || st.indexOf('様子見') !== -1) good++; });
+  var goodRate = total ? Math.round(good / total * 100) : 0;
+  sh.getRange('B2').setValue(total + '件');
+  sh.getRange('B3').setValue(good + '件 / ' + total + '件（' + goodRate + '%）');
+  sh.getRange('B4').setValue(sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS).length + '件');
+  sh.getRange('B5').setValue(sbmGetSetting_('ImprovementCandidateCount','0') + '件');
+  sh.getRange('B6').setValue(sbmGetSetting_('LastFetchDate','未取得'));
 }
 
 function sbmBuildSetupSheet_() {
@@ -304,7 +322,12 @@ function sbmBuildEffectSheetView_() { sbmStyleEffectSheet_(sbmGetOrCreateSheet_(
 function sbmBuildInProgressSheetView_() { sbmBuildInProgressSheet_(); }
 function sbmBuildCannibalSheetView_() { sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL)); }
 
-function sbmSetupStep1BlogInfo() {
+function sbmStartInitialSetup() {
+  sbmAlert_('初回セットアップを開始します', 'ブログ情報の登録から順番に進めます。外部サイトでAPIを有効化した後は、スプレッドシートに戻って「Search Console接続テスト」を実行してください。');
+  sbmSetupStep1BlogInfo(true);
+}
+
+function sbmSetupStep1BlogInfo(autoNext) {
   sbmInitializeSheets(false);
   var ui = SpreadsheetApp.getUi();
   sbmAlert_('STEP1 ブログ情報', 'ブログ名、ブログURL、Search Consoleプロパティを登録します。\n\n初回のみGoogleの承認画面が出ることがあります。承認後に止まった場合は、このSTEP1をもう一度実行してください。');
@@ -323,7 +346,7 @@ function sbmSetupStep1BlogInfo() {
   sbmSetSetting_('SetupBlogInfo', 'YES', 'STEP1完了状態');
   sbmLog_('SetupStep1BlogInfo','Done',blogName + ' / ' + property);
   sbmRefreshHome_();
-  sbmAlert_('STEP1完了', 'ブログ情報を登録しました。\n\n次は「STEP2 Google Cloud APIガイドを開く」を実行してください。');
+  if (autoNext === true) { sbmSetupStep2ApiGuide(); } else { sbmAlert_('登録情報を更新しました', 'ブログ情報を保存しました。'); }
 }
 
 function sbmSetupStep2ApiGuide() {
@@ -402,8 +425,10 @@ function sbmDailyUpdateManual() {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
+    sbmProgress_('日次更新を開始します', 'Search Consoleデータ取得 → 改善候補抽出 → 今日の改善5件表示の順に処理します。時間がかかる場合があります。');
     sbmToast_('Search Consoleデータ収集中', 'Product 5.0 日次更新', 10);
     sbmFetchOnlyManual(true);
+    sbmProgress_('改善候補抽出中', '取得したSearch Consoleデータから改善候補を抽出します。');
     sbmToast_('改善候補抽出中', 'Product 5.0 日次更新', 10);
     sbmAnalyzeOnlyManual(true);
     var sec = sbmSecondsSince_(started);
@@ -428,7 +453,8 @@ function sbmFetchOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    sbmToast_('Search Consoleデータを取得中です。少しお待ちください。', 'STEP A データ取得', 10);
+    if (!silent) sbmProgress_('Search Consoleデータ収集中', 'Search Console APIからクエリとURLのデータを取得します。');
+    sbmToast_('Search Consoleデータを取得中です。少しお待ちください。', 'データ取得', 10);
     var rows = sbmFetchSearchConsoleQueries_();
     sbmWriteQueryData_(rows);
     var sec = sbmSecondsSince_(started);
@@ -456,7 +482,8 @@ function sbmAnalyzeOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
-    sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', 'STEP B 改善分析', 10);
+    if (!silent) sbmProgress_('改善候補抽出中', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
+    sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', '改善候補抽出', 10);
     var result = sbmBuildDiagnosis_();
     var can = sbmBuildCannibalDiagnosis_();
     sbmBuildTodayQueue_();
@@ -496,7 +523,10 @@ function sbmFetchSearchConsoleQueries_() {
   var property = sbmGetSetting_('SearchConsoleProperty','');
   var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['query','page'], rowLimit: Number(sbmGetSetting_('MaxQueryRows', SBM_DEFAULTS.MAX_QUERY_ROWS)) || SBM_DEFAULTS.MAX_QUERY_ROWS});
   var capturedAt = sbmNowText_();
-  return (data.rows || []).map(function(r){
+  return (data.rows || []).filter(function(r){
+    var page = String((r.keys && r.keys[1]) || '');
+    return page && page.indexOf('#') === -1;
+  }).map(function(r){
     return [range.startDate, range.endDate, r.keys[0], r.keys[1], r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
   });
 }
@@ -616,10 +646,13 @@ function sbmBuildTodayQueue_() {
     var m = sbmNumber_(d.EstimatedMinutes) || 10;
     var title = sbmResolveArticleTitle_(url, d.Title || '');
     var score = sbmNumber_(d.OpportunityScore);
-    var openFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","記事を開く")';
+    var titleFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","' + String(title).replace(/"/g,'""') + '")';
+    var briefRow = briefRows.length + 2;
+    var briefUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl() + '#gid=' + sbmGetOrCreateSheet_(SBM_SHEETS.BRIEF).getSheetId() + '&range=A' + briefRow;
+    var briefFormula = '=HYPERLINK("' + briefUrl + '","ブリーフ")';
     var cannibal = sbmCannibalAdviceForUrl_(url, d.MainQuery);
     var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, cannibal, d.Reason, d.Recommendation);
-    out.push([sbmStars_(score), m + '分', title, d.MainQuery, d.Recommendation, openFormula, false, false, false, false, false, false, false, false, false, false, false, '', score, url, '未着手', '']);
+    out.push([sbmStars_(score), m + '分', titleFormula, d.MainQuery, d.Recommendation, briefFormula, false, '', false, false, false, false, false, false, false, false, false, score, url, '未着手', '']);
     briefRows.push([sbmId_('BRF'), url, title, d.MainQuery, d.SubQueries || '', d.FAQQueries || '', d.SeparateArticleQueries || '', d.NoiseQueries || '', d.QuerySummary || '', cannibal || '', d.Diagnosis || '', d.Recommendation || '', d.Reason || '', m, score, d.CTR || '', d.Position || '', d.Clicks || '', d.Impressions || '', requestText, sbmNowText_()]);
   }
   sbmSetSetting_('DisplayedImprovementCount', out.length, '今日の改善に表示している件数');
@@ -880,8 +913,8 @@ function sbmCannibalAdviceForUrl_(url, mainQuery) {
 
 function sbmDiagnose_(clicks, impressions, ctr, position, rows) {
   var ctrPct = ctr * 100;
-  if (position <= 5 && ctrPct < 3) return {code:'D01', status:'改善候補', diagnosis:'上位表示だがCTRが低い', recommendation:'タイトル・ディスクリプション・導入文を優先確認', minutes:10, reason:'順位は高い一方でクリック率に改善余地があります。'};
-  if (position <= 10 && ctrPct < 2.5) return {code:'D02', status:'改善候補', diagnosis:'1ページ目でCTR改善余地あり', recommendation:'タイトル・導入文・検索意図の一致確認', minutes:15, reason:'表示回数があるため、クリック率改善で成果が見込めます。'};
+  if (position <= 5 && ctrPct < 3) return {code:'D01', status:'改善候補', diagnosis:'上位表示だがCTRが低い', recommendation:'タイトル修正・ディスクリプション修正・導入文修正', minutes:10, reason:'順位は高い一方でクリック率に改善余地があります。'};
+  if (position <= 10 && ctrPct < 2.5) return {code:'D02', status:'改善候補', diagnosis:'1ページ目でCTR改善余地あり', recommendation:'タイトル修正・導入文修正・検索意図調整', minutes:15, reason:'表示回数があるため、クリック率改善で成果が見込めます。'};
   if (position > 10 && position <= 20) return {code:'D03', status:'改善候補', diagnosis:'2ページ目上位で伸びしろあり', recommendation:'H2追加・本文補強・FAQ追加', minutes:30, reason:'少しの補強で1ページ目入りを狙える可能性があります。'};
   if (position > 20 && position <= 40) return {code:'D04', status:'改善候補', diagnosis:'順位改善余地あり', recommendation:'本文補強・構成見直し', minutes:40, reason:'検索意図を補強すると順位改善が期待できます。'};
   if (rows.length >= 15) return {code:'D05', status:'改善候補', diagnosis:'関連クエリが多い', recommendation:'FAQ追加・見出し補強', minutes:20, reason:'関連クエリが多く、本文やFAQで拾える余地があります。'};
@@ -916,36 +949,32 @@ function sbmRefreshHome_() {
   var setup2 = sbmGetSetting_('SetupApiGuide','NO') === 'YES';
   var conn = sbmGetSetting_('ConnectionStatus','未確認');
   var setup4 = sbmGetSetting_('SetupInitialFetch','NO') === 'YES';
-  var next = 'メニュー「SIMS-Blog-Manager」→「セットアップ」→「STEP1 ブログ情報を登録」を実行してください。';
-  if (setup1 && !setup2) next = 'STEP2 Google Cloud APIガイドを開いてください。';
-  if (setup1 && setup2 && conn !== 'OK') next = 'STEP3 Search Console接続テストを実行してください。';
-  if (setup1 && setup2 && conn === 'OK' && !setup4) next = 'STEP4 初回データ取得を実行してください。';
+  var next = 'メニュー「SIMS-Blog-Manager」→「セットアップ」→「初回セットアップを開始」を実行してください。';
+  if (setup1 && !setup2) next = 'Google Cloud APIガイドを確認してください。';
+  if (setup1 && setup2 && conn !== 'OK') next = 'Search Console接続テストを実行してください。';
+  if (setup1 && setup2 && conn === 'OK' && !setup4) next = '初回データ取得を実行してください。';
   if (setup1 && setup2 && conn === 'OK' && setup4) next = '今日の改善を上から順番に実施してください。';
   var cards = sbmRowsAsObjects_(SBM_SHEETS.CARDS);
+  var total = sbmNumber_(sbmGetSetting_('TotalArticleCount','0')) || cards.length;
   var good = 0;
   cards.forEach(function(c){ var st = String(c.ArticleStatus || ''); if (st.indexOf('良好') !== -1 || st.indexOf('様子見') !== -1) good++; });
-  var inProgress = sbmBuildInProgressSheet_ ? sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS).length : 0;
+  var goodRate = total ? Math.round(good / total * 100) : 0;
+  var inProgress = sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS).length;
   var today = sbmRowsAsObjects_(SBM_SHEETS.TODAY);
   var logs = sbmRowsAsObjects_(SBM_SHEETS.PROCESS_LOG);
   var lastLog = logs.length ? (logs[logs.length-1]['処理'] + ' / ' + logs[logs.length-1]['状態'] + ' / ' + logs[logs.length-1]['利用者待ち時間']) : '未実行';
   sh.getRange('B2').setValue(SBM_VERSION);
-  sh.getRange('B5').setValue(good + '件');
-  sh.getRange('B6').setValue(inProgress + '件');
-  sh.getRange('B7').setValue(sbmGetSetting_('ImprovementCandidateCount','0') + '件');
-  sh.getRange('B10').setValue(today.length + '件');
-  sh.getRange('B11').setValue(sbmGetSetting_('LastFetchDate','未取得'));
-  sh.getRange('B12').setValue(lastLog);
-  sh.getRange('B15').setValue(next);
-  sh.getRange('B16').setValue(today.length ? today[0]['記事タイトル'] + ' / ' + today[0]['改善内容'] : '未作成');
-  sh.getRange('B17').setValue(today.length ? today[0]['時間'] : '-');
-  sh.getRange('B20').setValue(setup1 ? '☑ 完了' : '□ 未完了');
-  sh.getRange('B21').setValue(setup2 ? '☑ ガイド表示済み' : '□ 未完了');
-  sh.getRange('B22').setValue(conn === 'OK' ? '☑ 接続OK' : '□ ' + conn);
-  sh.getRange('B23').setValue(setup4 ? '☑ 完了' : '□ 未完了');
-  sh.getRange('B25').setValue(sbmGetSetting_('BlogName','未入力'));
-  sh.getRange('B26').setValue(sbmGetSetting_('BlogUrl','未入力'));
-  sh.getRange('B27').setValue(sbmGetSetting_('SearchConsoleProperty','未入力'));
-  sh.getRange('B28').setValue(conn);
+  sh.getRange('B5').setValue(total + '件');
+  sh.getRange('B6').setValue(good + '件 / ' + total + '件（' + goodRate + '%）');
+  sh.getRange('B7').setValue(inProgress + '件');
+  sh.getRange('B8').setValue(sbmGetSetting_('ImprovementCandidateCount','0') + '件');
+  sh.getRange('B11').setValue(today.length + '件');
+  sh.getRange('B12').setValue(sbmGetSetting_('LastFetchDate','未取得'));
+  sh.getRange('B13').setValue(lastLog);
+  sh.getRange('B16').setValue(next);
+  sh.getRange('B17').setValue(today.length ? today[0]['記事タイトル'] + ' / ' + today[0]['改善内容'] : '未作成');
+  sh.getRange('B18').setValue(today.length ? today[0]['時間'] : '-');
+  sbmRefreshBlogDashboard_();
 }
 
 
@@ -973,14 +1002,24 @@ function sbmShowSelectedBrief() {
 }
 
 function sbmShowBriefForRow_(row) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   var map = sbmHeaderMap_(sh);
   var url = map.URL ? String(sh.getRange(row, map.URL).getValue()) : '';
   if (!url) return sbmAlert_('改善ブリーフ', 'この行のURLを確認できませんでした。');
-  var brief = sbmFindBriefByUrl_(url);
-  if (!brief) return sbmAlert_('改善ブリーフ', '改善ブリーフが見つかりませんでした。今日のデータを再取得してください。');
-  var html = HtmlService.createHtmlOutput(sbmBriefHtml_(brief)).setWidth(820).setHeight(700);
-  SpreadsheetApp.getUi().showModalDialog(html, '改善ブリーフ');
+  var briefSh = ss.getSheetByName(SBM_SHEETS.BRIEF);
+  if (!briefSh) return sbmAlert_('改善ブリーフ', '改善ブリーフシートが見つかりませんでした。');
+  var bMap = sbmHeaderMap_(briefSh);
+  var last = briefSh.getLastRow();
+  for (var r = 2; r <= last; r++) {
+    if (bMap.URL && sbmNormalizeUrl_(briefSh.getRange(r, bMap.URL).getValue()) === sbmNormalizeUrl_(url)) {
+      briefSh.showSheet();
+      ss.setActiveSheet(briefSh);
+      briefSh.setActiveRange(briefSh.getRange(r, 1));
+      return;
+    }
+  }
+  sbmAlert_('改善ブリーフ', '該当記事の改善ブリーフが見つかりませんでした。今日のデータを再取得してください。');
 }
 
 function sbmOpenSelectedArticle() {
@@ -1439,6 +1478,10 @@ function sbmToast_(message, title, seconds) {
   try { SpreadsheetApp.getActiveSpreadsheet().toast(String(message || ''), String(title || 'SIMS-Blog-Manager'), seconds || 5); } catch(e) {}
 }
 
+function sbmProgress_(title, message) {
+  try { SpreadsheetApp.getUi().alert(title, message, SpreadsheetApp.getUi().ButtonSet.OK); } catch(e) { sbmToast_(message, title, 10); }
+}
+
 function sbmAlert_(title,msg) { SpreadsheetApp.getUi().alert(title, msg, SpreadsheetApp.getUi().ButtonSet.OK); }
 
 function sbmApplyCommonNumberFormats_(sh) {
@@ -1453,14 +1496,13 @@ function sbmApplyCommonNumberFormats_(sh) {
 function sbmStyleDataSheet_(sh) { var lc=Math.max(sh.getLastColumn(),1); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setBackground('#e8f0fe').setWrap(true); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); try{ sh.autoResizeColumns(1, Math.min(lc,12)); }catch(e){} try{ sbmApplyCommonNumberFormats_(sh); }catch(e){} }
 function sbmStyleTodaySheet_(sh) {
   sbmStyleDataSheet_(sh);
-  var widths = [70,70,260,190,230,110,70,70,55,55,85,65,65,55,85,75,65,180,60,1,80,120];
+  var widths = [70,70,320,190,250,110,70,180,55,55,85,65,65,55,85,75,65,60,1,80,120];
   widths.forEach(function(w,i){ try{ sh.setColumnWidth(i+1,w); }catch(e){} });
-  try { sh.hideColumns(20); } catch(e) {}
+  try { sh.hideColumns(19); } catch(e) {}
   var lr = Math.max(sh.getLastRow(),2);
   if (lr > 1) {
     sh.setRowHeights(2, lr-1, 42);
     try { sh.getRange(2,7,lr-1,1).insertCheckboxes(); } catch(e) {}
-    try { sh.getRange(2,8,lr-1,1).insertCheckboxes(); } catch(e) {}
     try { sh.getRange(2,9,lr-1,9).insertCheckboxes(); } catch(e) {}
   }
   sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold');
@@ -1586,7 +1628,7 @@ function sbmStyleBriefSheet_(sh) {
   try { sh.hideSheet(); } catch(e) {}
 }
 function sbmStyleUserSheet_(sh, color) { var lc=Math.max(sh.getLastColumn(),2); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setFontSize(15).setBackground(color).setFontColor('#ffffff'); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); sh.getRange(1,1,lr,lc).setBorder(true,true,true,true,true,true); }
-function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.LOG, SBM_SHEETS.SETUP, SBM_SHEETS.EFFECT].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
+function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); sbmHideSystemSheets(); [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.IN_PROGRESS, 'ブログ診断', SBM_SHEETS.PROCESS_LOG].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); }
 
 
 /**
