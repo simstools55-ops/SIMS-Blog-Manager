@@ -6,7 +6,7 @@
 
 const SBM_VERSION = '5.0.0-official';
 const SBM_SHEETS = Object.freeze({
-  HOME: 'ホーム',
+  HOME: 'Home',
   TODAY: '今日の改善',
   LOG: '改善ログ',
   SETUP: 'セットアップ',
@@ -1127,8 +1127,30 @@ function onEdit(e) {
 
 
 
-function sbmShowSystemSheets() { [SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.CARDS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.BRIEF].forEach(function(n){ var s=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if(s) s.showSheet(); }); }
-function sbmHideSystemSheets() { [SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.CARDS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.BRIEF].forEach(function(n){ var s=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(n); if(s) s.hideSheet(); }); sbmOpenHome(); }
+function sbmVisibleUserSheets_() {
+  return [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.IN_PROGRESS, 'ブログ診断', SBM_SHEETS.PROCESS_LOG];
+}
+
+function sbmIsUserVisibleSheet_(name) {
+  return sbmVisibleUserSheets_().indexOf(String(name || '')) !== -1;
+}
+
+function sbmShowSystemSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ss.getSheets().forEach(function(s) { s.showSheet(); });
+}
+
+function sbmHideSystemSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var home = ss.getSheetByName(SBM_SHEETS.HOME) || ss.insertSheet(SBM_SHEETS.HOME);
+  home.showSheet();
+  ss.setActiveSheet(home);
+  ss.getSheets().forEach(function(s) {
+    if (!sbmIsUserVisibleSheet_(s.getName())) {
+      try { s.hideSheet(); } catch (e) {}
+    }
+  });
+}
 
 function sbmProjectNumberNote_() { return 'Apps Scriptの設定画面で、使用中のGoogle Cloudプロジェクト番号と、Search Console APIを有効化したプロジェクト番号が一致しているか確認してください。'; }
 
@@ -1628,7 +1650,7 @@ function sbmStyleBriefSheet_(sh) {
   try { sh.hideSheet(); } catch(e) {}
 }
 function sbmStyleUserSheet_(sh, color) { var lc=Math.max(sh.getLastColumn(),2); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setFontSize(15).setBackground(color).setFontColor('#ffffff'); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); sh.getRange(1,1,lr,lc).setBorder(true,true,true,true,true,true); }
-function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); sbmHideSystemSheets(); [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.IN_PROGRESS, 'ブログ診断', SBM_SHEETS.PROCESS_LOG].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); }
+function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); sbmVisibleUserSheets_().forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
 
 
 /**
