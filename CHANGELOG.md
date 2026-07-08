@@ -1,8 +1,7 @@
-# CHANGELOG
+# Changelog
 
-## Product 5.0.0 Search Console Auth / Daily Fetch Stability Fix
+## Product 5.0.0 - Search Console RC9 Fetch Restore
 
-- Search Console取得時の `UrlFetchApp.fetch` 権限不足エラーを利用者向けメッセージに変換。
-- 日次処理をSearch Console取得だけに限定し、Home更新を開始・完了の2回に削減。
-- `apps-script/appsscript.json` に必要スコープを明記。
-
+- Search Console取得エンジンをRC9安定動作優先へ戻しました。
+- 日次取得の軽量化は周辺処理のみに限定しました。
+- Advanced Serviceが使える場合はSearchConsoleサービス、未設定時はRC9同等のUrlFetch方式へフォールバックします。

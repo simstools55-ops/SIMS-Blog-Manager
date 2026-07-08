@@ -1,7 +1,8 @@
-# 製品本体の場所
+# 製品本体
 
-- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
-- 利用者向けApps Script: `apps-script/Code.gs`
-- 権限設定: `apps-script/appsscript.json`
+このZIPの製品本体は次の2つです。
 
-`Code.gs`だけを差し替えても `UrlFetchApp.fetch` 権限エラーが出る場合は、`appsscript.json`も差し替えて再承認してください。
+1. `spreadsheet/SIMS-Blog-Manager.xlsx`
+2. `apps-script/Code.gs`
+
+Search Console取得権限を確実に反映する場合は、`apps-script/appsscript.json` も反映してください。

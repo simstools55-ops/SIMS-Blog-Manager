@@ -1,19 +1,12 @@
-# UrlFetchApp.fetch 権限エラー
+# Search Console取得権限エラー
 
-Search Consoleデータ取得時に次のようなエラーが出る場合があります。
+Search Console取得で `UrlFetchApp.fetch を呼び出せません` と表示された場合は、Apps Scriptの権限が不足しています。
 
-```text
-指定された権限では UrlFetchApp.fetch を呼び出すことができません。
-必要な権限: https://www.googleapis.com/auth/script.external_request
-```
+対処方法:
 
-この場合は、Apps Script の `appsscript.json` に外部リクエスト権限が反映されていません。
+1. `apps-script/Code.gs` を貼り替える
+2. `apps-script/appsscript.json` も反映する
+3. スクリプトを再読み込みする
+4. メニューを再実行し、再承認する
 
-## 対応
-
-1. Apps Script画面でプロジェクト設定を開く。
-2. 「appsscript.json マニフェスト ファイルをエディタで表示する」をオンにする。
-3. ZIP内の `apps-script/appsscript.json` の内容を貼り付ける。
-4. スクリプトを保存して再読み込みする。
-5. STEP Aを再実行し、Googleの承認画面で許可する。
-
+Product 5.0ではSearch Console取得部分はRC9の安定動作を優先し、軽量化は周辺処理だけに限定しています。

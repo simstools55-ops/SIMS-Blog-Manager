@@ -2,13 +2,12 @@
 
 ## 製品本体
 
-- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
-- Apps Script: `apps-script/Code.gs`
-- Apps Script manifest: `apps-script/appsscript.json`
+- spreadsheet/SIMS-Blog-Manager.xlsx
+- apps-script/Code.gs
+- apps-script/appsscript.json
 
-## 今回の注意
+## 今回の確認ポイント
 
-Search Consoleデータ取得で `UrlFetchApp.fetch` 権限エラーが出る場合は、`Code.gs` だけでなく `appsscript.json` もApps Scriptへ反映してください。
+Search Console取得部分はRC9の安定動作を優先し、軽量化はHome更新・シート修復・列幅調整などの周辺処理だけに限定しました。
 
-Apps Script画面で `appsscript.json` を表示し、ZIP内の `apps-script/appsscript.json` の内容に差し替えたうえで、スクリプトを再読み込みして再承認してください。
-
+権限エラーが出る場合は、Code.gsだけでなく apps-script/appsscript.json もApps Scriptへ反映してください。
