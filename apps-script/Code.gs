@@ -85,8 +85,7 @@ function onOpen() {
       .addItem('選択行を完了にする', 'sbmCompleteSelectedImprovement')
       .addItem('改善中を開く', 'sbmOpenInProgress')
       .addSeparator()
-      .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5')
-      .addItem('改善候補をすべて表示する', 'sbmSetTodayAll'))
+      .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5'))
     .addSubMenu(SpreadsheetApp.getUi().createMenu('管理')
       .addItem('シートを作成・修復', 'sbmInitializeSheets')
       .addItem('不要シートを削除', 'sbmDeleteDeprecatedSheets')
@@ -490,20 +489,20 @@ function sbmAnalyzeOnlyManual(silent) {
   try {
     if (!silent) sbmProgress_('改善候補抽出開始', '改善中・測定中・良好・改善不要を除外し、最大30件の候補を作成します。');
     sbmToast_('改善候補分析を開始しました。対象記事を絞って処理します。', '改善候補抽出', 10);
+    sbmDeleteDeprecatedSheets_(false);
     var result = sbmBuildDiagnosis_();
-    var can = sbmBuildCannibalDiagnosis_();
     sbmBuildTodayQueue_();
     sbmBuildInProgressSheet_();
-    try { sbmUpdateEffectivenessSilent_(); } catch(ignore) {}
     try {
       sbmProgress_('データ一覧更新開始', '改善候補の分析結果をデータ一覧へ反映し、状態順に並べ替えます。');
       sbmRefreshDataList_();
     } catch(ignoreDataList) {}
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
-    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件 / カニバリ ' + (can || 0) + '件', startedText, sbmNowText_());
+    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件。Product 5.0では保留機能は実行しません。', startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Done', 'analyzed ' + ((result && result.analyzedCount)||'') + ' / ' + sec + ' sec');
     sbmRefreshHome_();
+    sbmDeleteDeprecatedSheets_(false);
     if (silent) { sbmOpenToday(); } else { sbmOpenDataList(); }
     var total = sbmGetSetting_('ImprovementCandidateCount','0');
     var shown = sbmGetSetting_('DisplayedImprovementCount','0');
@@ -1983,4 +1982,31 @@ function sbmStyleDataListSheet_(sh) {
     sh.getRange(2, 9, max - 1, 1).setNumberFormat('0.0');
     sh.getRange(1, 1, max, headers.length).setBorder(true, true, true, true, true, true, '#dddddd', SpreadsheetApp.BorderStyle.SOLID);
   } catch(e) {}
+}
+
+
+/**
+ * Product 5.0 Slim Guard
+ * 現段階で未実装にする保留機能。
+ * RC9由来の処理が誤って呼ばれても、シート作成や分析は行わない。
+ */
+function sbmBuildCannibalDiagnosis_() {
+  sbmDeleteDeprecatedSheets_(false);
+  return 0;
+}
+function sbmUpdateEffectivenessSilent_() {
+  sbmDeleteDeprecatedSheets_(false);
+  return 0;
+}
+function sbmUpdateEffectivenessFromLog() {
+  sbmDeleteDeprecatedSheets_(false);
+  sbmAlert_('未実装です', '効果測定はProduct 5.0の現段階では未実装です。改善中シートの確認後に正式仕様として追加します。');
+}
+function sbmRecordTodayMeasurement() {
+  sbmDeleteDeprecatedSheets_(false);
+  sbmAlert_('未実装です', '測定履歴はProduct 5.0の現段階では未実装です。');
+}
+function sbmShowSelectedCannibalDetail() {
+  sbmDeleteDeprecatedSheets_(false);
+  sbmAlert_('未実装です', 'カニバリ診断はProduct 5.0の現段階では未実装です。');
 }
