@@ -1,22 +1,10 @@
-# 製品本体の場所
+# 製品本体
 
-このZIPで利用者が使う製品本体は次の2つです。
+Product 5.0.0 の製品本体は次の2つです。
 
-1. `spreadsheet/SIMS-Blog-Manager.xlsx`
-2. `apps-script/Code.gs`
+- `spreadsheet/SIMS-Blog-Manager.xlsx`
+- `apps-script/Code.gs`
 
-GoogleスプレッドシートへExcelをアップロードし、Apps Scriptに `Code.gs` の中身を貼り付けて使います。
+Googleスプレッドシートへ `SIMS-Blog-Manager.xlsx` を取り込み、Apps Script に `Code.gs` の内容を貼り付けて使用します。
 
-## Product 5.0の表示方針
-
-利用者が使う画面だけを残します。
-
-- Home
-- データ一覧
-- 今日の改善
-- 改善中
-- ブログ診断
-- 処理ログ
-- 改善ブリーフ
-
-上位ページ診断・カニバリ診断など、現段階で使わない機能は削除対象です。
+今回の確認対象は、改善ブリーフと改善中シートです。

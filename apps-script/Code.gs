@@ -35,7 +35,7 @@ const SBM_HEADERS = Object.freeze({
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','改善ブリーフ','完了','メモ','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','Score','URL','状態','完了日'],
   LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
   EFFECT: ['記事タイトル','改善日','改善内容','判定','SIMS評価','次のアクション','詳細','URL','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','次の確認','コメント'],
-  BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
+  BRIEF: ['優先度','記事タイトル','メインキーワード','改善内容','予想時間','期待効果','改善依頼（詳細）','URL','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','改善理由','具体的な修正方法','修正例','Score','CTR','平均順位','クリック数','表示回数','Claude改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記事タイトル','改善日','記録日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ','URL'],
   CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事Bタイトル','推奨対応','詳細','記事A URL','記事Aクリック','記事A順位','記事B URL','記事Bクリック','記事B順位','理由','確認日'],
   TOPICS: ['候補日','候補クエリ','元記事タイトル','元記事URL','理由','優先度','Claude用メモ','状態'],
@@ -656,14 +656,18 @@ function sbmBuildTodayQueue_() {
     var m = sbmNumber_(d.EstimatedMinutes) || 10;
     var title = sbmResolveArticleTitle_(url, d.Title || '');
     var score = sbmNumber_(d.OpportunityScore);
+    var priority = sbmStars_(score);
     var titleFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","' + String(title).replace(/"/g,'""') + '")';
     var briefRow = briefRows.length + 2;
     var briefUrl = SpreadsheetApp.getActiveSpreadsheet().getUrl() + '#gid=' + sbmGetOrCreateSheet_(SBM_SHEETS.BRIEF).getSheetId() + '&range=A' + briefRow;
     var briefFormula = '=HYPERLINK("' + briefUrl + '","ブリーフ")';
-    var cannibal = sbmCannibalAdviceForUrl_(url, d.MainQuery);
-    var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, cannibal, d.Reason, d.Recommendation);
-    out.push([sbmStars_(score), m + '分', titleFormula, d.MainQuery, d.Recommendation, briefFormula, false, '', false, false, false, false, false, false, false, false, false, score, url, '未着手', '']);
-    briefRows.push([sbmId_('BRF'), url, title, d.MainQuery, d.SubQueries || '', d.FAQQueries || '', d.SeparateArticleQueries || '', d.NoiseQueries || '', d.QuerySummary || '', cannibal || '', d.Diagnosis || '', d.Recommendation || '', d.Reason || '', m, score, d.CTR || '', d.Position || '', d.Clicks || '', d.Impressions || '', requestText, sbmNowText_()]);
+    var humanReason = sbmPlainReasonForHuman_(d.Reason, d.Recommendation, d.CTR, d.Position);
+    var concrete = sbmConcreteFixText_(d.Recommendation, d.MainQuery, d.SubQueries);
+    var example = sbmFixExampleText_(d.Recommendation, d.MainQuery);
+    var effect = sbmExpectedEffect_(d.Recommendation, score, d.CTR, d.Position);
+    var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, humanReason, d.Recommendation, concrete, example);
+    out.push([priority, m + '分', titleFormula, d.MainQuery, d.Recommendation, briefFormula, false, '', false, false, false, false, false, false, false, false, false, score, url, '未着手', '']);
+    briefRows.push([priority, titleFormula, d.MainQuery, d.Recommendation || '', m + '分', effect, false, url, d.SubQueries || '', d.FAQQueries || '', d.SeparateArticleQueries || '', d.NoiseQueries || '', d.QuerySummary || '', humanReason, concrete, example, score, d.CTR || '', d.Position || '', d.Clicks || '', d.Impressions || '', requestText, sbmNowText_()]);
   }
   sbmSetSetting_('DisplayedImprovementCount', out.length, '今日の改善に表示している件数');
   sbmRewriteSheet_(SBM_SHEETS.TODAY, SBM_HEADERS.TODAY, out);
@@ -1111,10 +1115,10 @@ function onEdit(e) {
       sbmShowInProgressDetailForRow_(row);
       return;
     }
-    if (sheetName === SBM_SHEETS.CANNIBAL && map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
+    if (sheetName === SBM_SHEETS.BRIEF && map['改善依頼（詳細）'] && col === map['改善依頼（詳細）'] && String(e.value).toUpperCase() === 'TRUE') {
       sh.getRange(row, col).setValue(false);
       sh.setActiveRange(sh.getRange(row, 1));
-      sbmShowCannibalDetailForRow_(row);
+      sbmShowBriefDetailForRow_(row);
       return;
     }
     if (sheetName !== SBM_SHEETS.TODAY) return;
@@ -1265,7 +1269,7 @@ function sbmBuildInProgressSheet_() {
     var improvedAt = sbmParseDate_(l['改善日']);
     var elapsed = improvedAt ? Math.max(0, Math.floor((today - improvedAt) / 86400000)) : '';
     var e = effectByUrl[url] || {};
-    rows.push([l['改善日'] || '', l['記事タイトル'] || sbmResolveArticleTitle_(url,''), elapsed, e['判定'] || status || '測定中', e['SIMS評価'] || '測定中', e['次のアクション'] || '次回測定を確認', false, url, l['修正内容'] || '', l['改善内容'] || '']);
+    rows.push([l['改善日'] || '', l['記事タイトル'] || sbmResolveArticleTitle_(url,''), elapsed, sbmInProgressStatus_(elapsed, status), sbmInProgressEval_(e['SIMS評価'], elapsed), sbmInProgressNextAction_(e['次のアクション'], elapsed), false, url, l['修正内容'] || '', l['改善内容'] || '']);
   });
   sbmRewriteSheet_(SBM_SHEETS.IN_PROGRESS, SBM_HEADERS.IN_PROGRESS, rows);
   sbmStyleInProgressSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.IN_PROGRESS));
@@ -1304,42 +1308,94 @@ function sbmAppendObject_(sheetName, headers, obj) { var sh=sbmGetOrCreateSheet_
 function sbmGetSetting_(key, def) { var rows=sbmRowsAsObjects_(SBM_SHEETS.SETTINGS); for(var i=0;i<rows.length;i++){ if(String(rows[i].Key)===String(key)) return rows[i].Value; } return def; }
 function sbmSetSettingIfEmpty_(key, value, desc) { var current=sbmGetSetting_(key, null); if(current === null || current === '') sbmSetSetting_(key,value,desc); }
 function sbmSetSetting_(key,value,desc) { var sh=sbmGetOrCreateSheet_(SBM_SHEETS.SETTINGS); sbmEnsureHeaders_(sh, SBM_HEADERS.SETTINGS); var row=sbmFindRowByValue_(SBM_SHEETS.SETTINGS,'Key',key); if(row) sbmSetObjectValues_(sh,row,{Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); else sbmAppendObject_(SBM_SHEETS.SETTINGS, SBM_HEADERS.SETTINGS, {Key:key,Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); }
-function sbmFindBriefByUrl_(url) { var rows = sbmRowsAsObjects_(SBM_SHEETS.BRIEF); for (var i=0;i<rows.length;i++){ if(String(rows[i].URL) === String(url)) return rows[i]; } return null; }
-function sbmImprovementRequestText_(title, url, mainQuery, subQueries, faqQueries, separateQueries, noiseQueries, querySummary, cannibalAdvice, reason, recommendation) {
+
+function sbmExpectedEffect_(recommendation, score, ctr, position) {
+  var rec = String(recommendation || '');
+  if (/タイトル/.test(rec)) return 'CTR改善';
+  if (/導入|冒頭|リード/.test(rec)) return '離脱低下・検索意図一致';
+  if (/FAQ|よくある/.test(rec)) return 'ロングテール流入増';
+  if (/H2|見出し|構成/.test(rec)) return '順位改善・網羅性向上';
+  if (/内部リンク/.test(rec)) return '回遊性向上';
+  if (sbmNumber_(position) > 8) return '順位改善';
+  if (sbmNumber_(ctr) < 0.02) return 'CTR改善';
+  return '検索意図一致・記事品質改善';
+}
+
+function sbmConcreteFixText_(recommendation, mainQuery, subQueries) {
+  var rec = String(recommendation || '');
+  var q = String(mainQuery || '');
+  var refs = String(subQueries || '').split('\n').filter(Boolean).slice(0,3).join('、');
+  if (/タイトル/.test(rec)) return 'titleタグと記事タイトルの先頭付近に「' + q + '」を自然に入れ、検索者が得られる答えを一目で分かる表現にします。';
+  if (/導入|冒頭|リード/.test(rec)) return '冒頭で「この記事で分かること」と結論を先に書き、' + (refs ? '参考クエリ（' + refs + '）にも触れます。' : '検索者の疑問に先回りして答えます。');
+  if (/FAQ|よくある/.test(rec)) return '記事末尾にFAQを2〜3問追加し、Search Consoleで実際に出ている疑問系クエリに短く答えます。';
+  if (/H2|見出し|構成/.test(rec)) return '不足している検索意図をH2またはH3として追加し、その直下に結論と具体例を入れます。';
+  if (/内部リンク/.test(rec)) return '関連する既存記事への内部リンクを、本文中の自然な位置に1〜3本追加します。';
+  return 'メインキーワードに対する答えを冒頭・見出し・FAQで分かりやすく補強します。';
+}
+
+function sbmFixExampleText_(recommendation, mainQuery) {
+  var rec = String(recommendation || '');
+  var q = String(mainQuery || '');
+  if (/タイトル/.test(rec)) return '例：' + q + 'の原因と直し方｜初心者向けに手順を解説';
+  if (/導入|冒頭|リード/.test(rec)) return '例：この記事では、' + q + 'で困っている人向けに、原因・確認手順・解決方法を順番に解説します。';
+  if (/FAQ|よくある/.test(rec)) return '例：Q. ' + q + 'は自分で直せますか？ A. 多くの場合は設定確認で直せます。まずは本文の手順を上から試してください。';
+  if (/H2|見出し|構成/.test(rec)) return '例：H2「' + q + 'でまず確認すること」を追加し、最初に結論、その後に具体的な手順を書きます。';
+  return '例：検索者が最初に知りたい答えを冒頭に1〜2文で追記します。';
+}
+
+function sbmPlainReasonForHuman_(reason, recommendation, ctr, position) {
+  var base = String(reason || '').trim();
+  if (base) return base;
+  if (sbmNumber_(ctr) < 0.02) return '検索結果には表示されていますが、クリック率が低いため、タイトルや説明文で記事の内容をもっと分かりやすく伝える必要があります。';
+  if (sbmNumber_(position) > 8) return '平均順位がまだ低めなので、検索者が知りたい内容を見出しや本文で補強すると順位改善が期待できます。';
+  return 'Search Console上で改善余地があるため、検索意図に合わせて記事の分かりやすさを高めます。';
+}
+
+function sbmShowBriefDetailForRow_(row) {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.BRIEF);
+  if (!sh) return sbmAlert_('改善ブリーフ', '改善ブリーフシートが見つかりません。');
+  var heads = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  var vals = sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0];
+  var b = {}; heads.forEach(function(h,i){ b[h]=vals[i]; });
+  var html = HtmlService.createHtmlOutput(sbmBriefHtml_(b)).setWidth(860).setHeight(760);
+  SpreadsheetApp.getUi().showModalDialog(html, '改善依頼（詳細）');
+}
+
+function sbmFindBriefByUrl_(url) { var rows = sbmRowsAsObjects_(SBM_SHEETS.BRIEF); var n = sbmNormalizeUrl_(url); for (var i=0;i<rows.length;i++){ if(sbmNormalizeUrl_(rows[i].URL || '') === n) return rows[i]; } return null; }
+function sbmImprovementRequestText_(title, url, mainQuery, subQueries, faqQueries, separateQueries, noiseQueries, querySummary, reason, recommendation, concrete, example) {
   return '次の記事を改善してください。\n\n'
     + '記事タイトル: ' + (title || '') + '\n'
     + 'URL: ' + (url || '') + '\n'
-    + 'メインクエリ: ' + (mainQuery || '') + '\n\n'
+    + 'メインキーワード: ' + (mainQuery || '') + '\n\n'
+    + '改善内容:\n' + (recommendation || '') + '\n\n'
     + '改善理由:\n' + (reason || '') + '\n\n'
-    + '推奨改善:\n' + (recommendation || '') + '\n\n'
-    + 'Search Consoleクエリ分析:\n' + (querySummary || '-') + '\n\n'
-    + '本文・見出しに使うサブクエリ:\n' + (subQueries || '-') + '\n\n'
+    + '具体的な修正方法:\n' + (concrete || '-') + '\n\n'
+    + '修正例:\n' + (example || '-') + '\n\n'
+    + '参考クエリ:\n' + (subQueries || '-') + '\n\n'
     + 'FAQ候補:\n' + (faqQueries || '-') + '\n\n'
     + '別記事候補クエリ（この記事には無理に入れない）:\n' + (separateQueries || '-') + '\n\n'
     + '改善に使わない除外クエリ:\n' + (noiseQueries || '-') + '\n\n'
-    + 'カニバリ診断:\n' + (cannibalAdvice || '-') + '\n\n'
-    + '依頼:\nメインクエリを軸に、サブクエリだけを本文・見出し・FAQへ自然に反映して改善してください。別記事候補や除外クエリはこの記事に無理に入れないでください。必要なら最後に「別記事として作るべきテーマ」を提案してください。カニバリ候補がある場合は、どちらを主記事にするか、統合するか、メインクエリを分けるかの方針も提案してください。';
+    + '依頼:\nメインキーワードを軸に、検索者が最初に知りたいことへ早く答える形で記事を改善してください。本文・見出し・FAQには参考クエリを自然に反映し、別記事候補や除外クエリはこの記事へ無理に入れないでください。';
 }
+
 
 function sbmBriefHtml_(b) {
   function esc(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-  var request = b['改善依頼文'] || sbmImprovementRequestText_(b['記事タイトル'], b.URL, b['メインクエリ'], b['サブクエリ'], b['FAQ候補'], b['別記事候補'], b['除外クエリ'], b['クエリ分析'], b['カニバリ診断'], b['理由'], b['推奨改善']);
-  return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:18px;color:#202124">'
-    + '<h2 style="margin-top:0">改善ブリーフ</h2>'
-    + '<div style="background:#e8f0fe;padding:12px;border-radius:8px;margin-bottom:14px"><b>' + esc(b['記事タイトル']) + '</b><br><a href="' + esc(b.URL) + '" target="_blank">記事を開く</a></div>'
-    + '<p><b>メインクエリ:</b> ' + esc(b['メインクエリ']) + '</p>'
-    + '<p><b>現在値:</b> CTR ' + esc(b.CTR) + ' / 順位 ' + esc(b.Position) + ' / クリック ' + esc(b.Clicks) + ' / 表示回数 ' + esc(b.Impressions) + '</p>'
-    + '<h3>改善理由</h3><p>' + esc(b['理由']) + '</p>'
-    + '<h3>推奨改善</h3><p>' + esc(b['推奨改善']) + '</p>'
-    + '<h3>Search Consoleクエリ分析</h3><p>' + esc(b['クエリ分析']) + '</p>'
-    + '<h3>本文・見出しに使うサブクエリ</h3><p>' + esc(b['サブクエリ']) + '</p>'
+  var request = b['Claude改善依頼文'] || b['改善依頼文'] || sbmImprovementRequestText_(b['記事タイトル'], b.URL, b['メインキーワード'] || b['メインクエリ'], b['サブクエリ'], b['FAQ候補'], b['別記事候補'], b['除外クエリ'], b['クエリ分析'], b['改善理由'] || b['理由'], b['改善内容'] || b['推奨改善'], b['具体的な修正方法'], b['修正例']);
+  return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:20px;color:#202124">'
+    + '<h2 style="margin-top:0">改善依頼（詳細）</h2>'
+    + '<div style="background:#e8f0fe;padding:14px;border-radius:10px;margin-bottom:14px"><b>' + esc(b['記事タイトル']) + '</b><br><a href="' + esc(b.URL) + '" target="_blank">記事を開く</a></div>'
+    + '<table style="border-collapse:collapse;width:100%;margin-bottom:16px"><tr>'
+    + '<th style="border:1px solid #ddd;padding:8px;background:#f8fafd">改善内容</th><th style="border:1px solid #ddd;padding:8px;background:#f8fafd">予想時間</th><th style="border:1px solid #ddd;padding:8px;background:#f8fafd">期待効果</th><th style="border:1px solid #ddd;padding:8px;background:#f8fafd">メインキーワード</th></tr>'
+    + '<tr><td style="border:1px solid #ddd;padding:8px">' + esc(b['改善内容'] || b['推奨改善']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(b['予想時間'] || b['推定時間']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(b['期待効果']) + '</td><td style="border:1px solid #ddd;padding:8px">' + esc(b['メインキーワード'] || b['メインクエリ']) + '</td></tr></table>'
+    + '<h3>なぜ改善するのか</h3><p>' + esc(b['改善理由'] || b['理由']) + '</p>'
+    + '<h3>具体的な修正方法</h3><p>' + esc(b['具体的な修正方法']) + '</p>'
+    + '<h3>修正例</h3><p>' + esc(b['修正例']) + '</p>'
+    + '<h3>参考クエリ</h3><p>' + esc(b['サブクエリ']) + '</p>'
     + '<h3>FAQ候補</h3><p>' + esc(b['FAQ候補']) + '</p>'
-    + '<h3>別記事候補</h3><p>' + esc(b['別記事候補']) + '</p>'
-    + '<h3>改善に使わない除外クエリ</h3><p>' + esc(b['除外クエリ']) + '</p>'
-    + '<h3>カニバリ診断</h3><p>' + esc(b['カニバリ診断']) + '</p>'
     + '<h3>Claude / ChatGPT に貼り付ける改善依頼</h3>'
-    + '<textarea style="width:100%;height:230px;font-family:monospace;font-size:12px;white-space:pre-wrap">' + String(request || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>'
-    + '<hr><p>推定時間: ' + esc(b['推定時間']) + '分 / Score: ' + esc(b.Score) + '</p>'
+    + '<textarea style="width:100%;height:240px;font-family:monospace;font-size:12px;white-space:pre-wrap">' + String(request || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>'
+    + '<h3>データ</h3><p>CTR ' + esc(b.CTR) + ' / 平均順位 ' + esc(b['平均順位'] || b.Position) + ' / クリック ' + esc(b['クリック数'] || b.Clicks) + ' / 表示回数 ' + esc(b['表示回数'] || b.Impressions) + '</p>'
     + '</div>';
 }
 
@@ -1703,17 +1759,39 @@ function sbmStyleBriefSheet_(sh) {
   sbmStyleDataSheet_(sh);
   try {
     sh.setFrozenRows(1);
-    sh.setColumnWidth(1,120);
-    sh.setColumnWidth(2,1); sh.hideColumns(2);
-    sh.setColumnWidth(3,320);
-    sh.setColumnWidth(4,220);
-    sh.setColumnWidth(5,420);
-    sh.setColumnWidth(6,420);
-    sh.setColumnWidth(11,220);
-    sh.setColumnWidth(12,240);
-    sh.setColumnWidth(13,360);
-    if (sh.getLastRow() > 1) sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 56);
+    var widths = [80,340,170,240,90,150,130];
+    widths.forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
+    if (sh.getLastColumn() >= 8) { sh.setColumnWidths(8, sh.getLastColumn()-7, 1); sh.hideColumns(8, sh.getLastColumn()-7); }
+    if (sh.getLastRow() > 1) {
+      sh.getRange(2,7,sh.getLastRow()-1,1).insertCheckboxes();
+      sh.setRowHeights(2, Math.max(1, sh.getLastRow()-1), 58);
+    }
+    sh.getRange(1,1,1,Math.max(sh.getLastColumn(),1)).setBackground('#1f4e79').setFontColor('#ffffff').setFontWeight('bold');
+    sh.getRange(1,1,Math.max(1, sh.getLastRow()),Math.min(7, sh.getLastColumn())).setWrap(true).setVerticalAlignment('top');
   } catch(e) {}
+}
+
+function sbmInProgressStatus_(elapsed, currentStatus) {
+  var st = String(currentStatus || '');
+  if (st === '再修正') return '再測定中';
+  if (elapsed === '' || elapsed === null) return '測定準備';
+  if (elapsed >= SBM_DEFAULTS.MEASUREMENT_DAYS) return '測定完了確認';
+  return '測定中';
+}
+
+function sbmInProgressEval_(effectEval, elapsed) {
+  if (effectEval) return effectEval;
+  if (elapsed === '' || elapsed === null) return 'データ待ち';
+  if (elapsed < 7) return '測定前（7日未満）';
+  if (elapsed >= SBM_DEFAULTS.MEASUREMENT_DAYS) return '2か月経過・最終確認';
+  return '測定中（週1回確認）';
+}
+
+function sbmInProgressNextAction_(effectAction, elapsed) {
+  if (effectAction) return effectAction;
+  if (elapsed === '' || elapsed === null) return '改善実施日を確認してください';
+  if (elapsed >= SBM_DEFAULTS.MEASUREMENT_DAYS) return '改善ログへ保存して測定終了を確認';
+  return '次回測定日にSearch Consoleデータを確認';
 }
 function sbmStyleUserSheet_(sh, color) { var lc=Math.max(sh.getLastColumn(),2); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setFontSize(15).setBackground(color).setFontColor('#ffffff'); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); sh.getRange(1,1,lr,lc).setBorder(true,true,true,true,true,true); }
 function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); sbmVisibleUserSheets_().forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
