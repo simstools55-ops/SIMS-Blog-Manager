@@ -1,23 +1,32 @@
-# SIMS-Blog-Manager Product 5.0 RC9
+# SIMS-Blog-Manager Product 5.0 Official
 
-Search Consoleデータを使って、日々のブログ改善を管理するGoogleスプレッドシートシステムです。
+SIMS-Blog-Manager は、Google Search Consoleのデータをもとに、ブログ記事の改善候補を抽出し、今日やる改善を管理するGoogleスプレッドシート向けApps Script製品です。
 
-## RC9の主な修正
+## Product 5.0 Official
 
-- 改善候補分析の列数不一致エラーを修正
-- 上位ページ診断の記事タイトル表示と列マッピングを修正
-- 上位ページ診断の状態名を利用者向けに改善
-- 処理ログに開始時刻・終了時刻・利用者待ち時間を記録
-- 既存シートのヘッダー更新を安定化
+RC9をSingle Source of Truthとして、正式版に向けたReset Baseを実施しています。
+この版の目的は新機能追加ではなく、コード整理、UI整理、処理速度改善、安定性向上、マニュアル整備です。
 
-## 更新手順
+## 毎日の運用
 
-1. GitHubへZIPの中身を上書きアップロード
-2. Apps Scriptの `apps-script/Code.js` を貼り替え
-3. 保存
-4. スプレッドシートで「SIMS-Blog-Manager → 管理 → シートを作成・修復」を実行
-5. STEP A / STEP B / STEP Cを順番に確認
+1. Homeを見る
+2. その日最初の起動時にSearch Consoleデータ取得と改善候補抽出が自動実行される
+3. 今日の改善に表示された上位5件を改善する
+4. 改善完了後、改善中へ移動する
+5. 週1回、最大2か月の効果測定を行う
 
-## deploy.yml
+## 主な仕様
 
-更新不要です。
+- セットアップ仕様はRC9を維持
+- 管理メニューは基本的に現状維持
+- 改善候補は最大30件
+- 今日の改善は上位5件
+- 改善中、測定中、良好、改善不要は候補から除外
+- 処理ログに開始時刻、終了時刻、利用者待ち時間、件数を記録
+
+## ファイル構成
+
+- `apps-script/Code.js`：Google Apps Script本体
+- `docs/`：マニュアルサイト
+- `product/`：製品仕様・リリースノート
+- `spreadsheet/`：スプレッドシート仕様・テンプレート

@@ -1,11 +1,12 @@
 # Changelog
 
-## Product 5.0 RC9
+## Product 5.0 Official
 
-- Fixed analysis range mismatch error caused by row/header width differences.
-- Added row width normalization before sheet writes.
-- Fixed top page diagnosis article title mapping.
-- Improved top page diagnosis status labels for end users.
-- Added start/end timestamps to process log.
-- Clarified elapsed time as user-facing waiting time.
-- Stabilized header repair for existing sheets.
+- RC9をSingle Source of TruthとしてProduct 5.0 Reset Baseを実施。
+- Apps Scriptのバージョン表記を正式版へ更新。
+- Home画面を正式仕様に合わせて3領域へ整理。
+- 日次起動時の自動取得・自動分析フローを正式仕様へ整理。
+- 改善候補30件、今日の改善5件、候補除外条件を整理。
+- 効果測定を週1回・最大2か月へ更新。
+- 処理ログの記録項目を開始時刻、終了時刻、利用者待ち時間、件数へ整理。
+- docs/とproduct/文書をProduct 5.0 Official仕様へ更新。
