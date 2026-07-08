@@ -601,7 +601,7 @@ function sbmBuildDiagnosis_() {
 
   var cardRows = [];
   var diagnosisRows = [];
-  var topicRows = [];
+  // Product 5.0: 記事ネタ候補は未実装。分析中にもシートを作成しない。
   var analyzed = 0;
   urls.forEach(function(url){
     var rows = byUrl[url].sort(function(a,b){return sbmQueryScore_(b)-sbmQueryScore_(a);});
@@ -627,14 +627,10 @@ function sbmBuildDiagnosis_() {
     var noise = classified.noise.join('\n');
     var qSummary = classified.summary;
     diagnosisRows.push([url, title, main.Query, important, faq, separate, noise, qSummary, totalClicks, totalImpressions, ctr, weightedPosition, diag.code, diag.diagnosis, diag.recommendation, diag.minutes, score, diag.reason, sbmNowText_()]);
-    classified.separate.forEach(function(q){
-      topicRows.push([sbmDateText_(new Date()), q, title, url, '元記事のメインクエリと検索意図が異なるため、別記事候補として保存', sbmStars_(Math.min(100, score + 10)), '次のキーワードで新記事の構成案を作ってください。\nキーワード: ' + q + '\n元記事: ' + title + '\n元記事URL: ' + url, '未着手']);
-    });
   });
   sbmRewriteSheet_(SBM_SHEETS.CARDS, SBM_HEADERS.CARDS, cardRows);
   sbmRewriteSheet_(SBM_SHEETS.DIAGNOSIS, SBM_HEADERS.DIAGNOSIS, diagnosisRows.sort(function(a,b){return b[16]-a[16];}));
-  sbmRewriteSheet_(SBM_SHEETS.TOPICS, SBM_HEADERS.TOPICS, sbmUniqueTopicRows_(topicRows));
-  sbmStyleTopicSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.TOPICS));
+  // Product 5.0: 記事ネタ候補シートは作成しない。
   return {totalCount: articleStats.length, managedCount: managedCount, targetCount: targetStats.length, analyzedCount: analyzed, diagnosisCount: diagnosisRows.length};
 }
 
@@ -653,7 +649,7 @@ function sbmBuildTodayQueue_() {
     var d = diag[i];
     var url = sbmNormalizeUrl_(String(d.URL || ''));
     var m = sbmNumber_(d.EstimatedMinutes) || 10;
-    var title = sbmResolveArticleTitle_(url, d.Title || '');
+    var title = sbmCleanDisplayTitle_(sbmResolveArticleTitle_(url, d.Title || '', false), url);
     var score = sbmNumber_(d.OpportunityScore);
     var priority = sbmStars_(score);
     var titleFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","' + String(title).replace(/"/g,'""') + '")';
@@ -1000,7 +996,7 @@ function sbmOpenInProgress() { sbmBuildInProgressSheet_(); sbmOpenSheet_(SBM_SHE
 function sbmOpenProcessLog() { sbmOpenSheet_(SBM_SHEETS.PROCESS_LOG); }
 function sbmOpenMeasureHistory() { sbmOpenSheet_(SBM_SHEETS.MEASURE_HISTORY); }
 function sbmOpenCannibal() { sbmOpenSheet_(SBM_SHEETS.CANNIBAL); }
-function sbmOpenTopics() { sbmOpenSheet_(SBM_SHEETS.TOPICS); }
+function sbmOpenTopics() { sbmDeleteDeprecatedSheets_(false); sbmAlert_('未実装です', '記事ネタ候補はProduct 5.0の現段階では未実装です。'); }
 function sbmOpenSystemLog() { sbmOpenSheet_(SBM_SHEETS.SYSTEM_LOG); }
 function sbmOpenBrief() { sbmOpenSheet_(SBM_SHEETS.BRIEF); }
 
@@ -2009,4 +2005,20 @@ function sbmRecordTodayMeasurement() {
 function sbmShowSelectedCannibalDetail() {
   sbmDeleteDeprecatedSheets_(false);
   sbmAlert_('未実装です', 'カニバリ診断はProduct 5.0の現段階では未実装です。');
+}
+
+
+/** Product 5.0 Topic Guard Final */
+
+function sbmUniqueTopicRows_(rows) {
+  // Product 5.0: 記事ネタ候補は未実装。シート生成につながる処理を行わない。
+  return [];
+}
+function sbmStyleTopicSheet_(sh) {
+  // Product 5.0: 記事ネタ候補は未実装。
+  return;
+}
+function sbmOpenTopics() {
+  sbmDeleteDeprecatedSheets_(false);
+  sbmAlert_('未実装です', '記事ネタ候補はProduct 5.0の現段階では未実装です。');
 }
