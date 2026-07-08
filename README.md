@@ -1,46 +1,27 @@
-# SIMS-Blog-Manager Product 5.0 Official Lean Base
+# SIMS-Blog-Manager Product 5.0 Official
 
-SIMS-Blog-Manager は、Google Search Console のデータをもとに、ブログ記事の改善候補を抽出し、今日やる改善を管理する Google スプレッドシート向け製品です。
+Product 5.0 Official は、RC9をベースに、不要なものをそぎ落として必要なものだけに絞る正式版です。
 
-## Product 5.0 Official の方針
+## 配布方針
 
-Product 5.0 Official は、RC9 を Single Source of Truth として引き継ぎます。
-ただし、RC版で増えた不要なものをそぎ落とし、正式版に必要なものだけに絞ります。
+- Googleスプレッドシートは、マニュアルサイトからコピーして使う方式を標準とします。
+- 利用者向けApps Scriptは `apps-script/コード.gs` へ一本化します。
+- コピーURLが未設定の間は、ZIP内のExcelテンプレートを確認用に使います。
+- 仮のGoogleスプレッドシートURLは、利用者向けページへ出しません。
 
-- 新機能追加を目的にしない
-- 画面・メニュー・処理を必要最小限にする
-- Apps Script は利用者向けに `apps-script/コード.gs` へ一本化する
-- スプレッドシートは Home / 今日の改善 / 改善中 / ブログ診断 / 処理ログを中心にする
-- docs/ は正式仕様に合わせて更新する
+## 主な構成
 
-## 配布物
+```text
+spreadsheet/   Googleスプレッドシート確認用テンプレート
+apps-script/   利用者向けコード.gs
+現docs/         マニュアルサイト
+product/       仕様書
+```
 
-- Googleスプレッドシートテンプレート
-  - マニュアルサイトからコピーして使用する標準配布物
-- `spreadsheet/SIMS-Blog-Manager-template-Product5.0-Official-Lean.xlsx`
-  - コピーURLが未公開の場合の予備テンプレート
-- `apps-script/コード.gs`
-  - 利用者が Apps Script の「コード.gs」へ貼り付ける一本化コード
-- `docs/`
-  - マニュアルサイト用ドキュメント
-- `product/`
-  - 製品仕様・リリースノート
+## 公開前に行うこと
 
-## 利用者の基本手順
-
-Product 5.0 Official では、マニュアルサイトから Googleスプレッドシートのテンプレートをコピーして使う方式を標準にします。
-
-1. マニュアルサイトの「テンプレートをコピー」から自分のGoogleドライブへコピーする
-2. Apps Script を開き、`apps-script/コード.gs` の内容を貼り付ける
-3. 初回セットアップを実行する
-4. Home から毎日の改善作業を開始する
-
-GoogleスプレッドシートのコピーURLがまだ使えない場合は、ZIP内のExcelテンプレートをGoogle Driveへアップロードして使用します。
-
-## 毎日の運用
-
-1. Homeを見る
-2. その日最初の起動時のみ、Search Consoleデータ取得と改善候補抽出を行う
-3. 今日の改善に表示された上位5件を改善する
-4. 改善完了後、改善中へ移動する
-5. 週1回、最大2か月の効果測定を行う
+1. 完成版GoogleスプレッドシートをGoogle Driveへ作成
+2. 共有設定を「リンクを知っている全員が閲覧可」に変更
+3. コピーURLを作成
+4. `docs/download.md` のボタンを有効化
+5. GitHub Pagesへ反映

@@ -1,18 +1,24 @@
 # ダウンロード
 
-Product 5.0 Official は、マニュアルサイトから **Googleスプレッドシートのテンプレートをコピーして使う方式** を標準にします。
+Product 5.0 Official は、マニュアルサイトから **Googleスプレッドシートをコピーして使う方式** を標準にします。
 
 Product 5.0 の方針は、RC9 を踏襲しながら、不要なものをそぎ落として必要なものだけに絞ることです。
 
-## 一番かんたんな始め方
+## 利用者の始め方
 
 ### 1. Googleスプレッドシートをコピーする
 
 下のボタンから、SIMS-Blog-Manager のテンプレートを自分の Google ドライブへコピーします。
 
-[SIMS-Blog-Manager テンプレートをコピー](https://docs.google.com/spreadsheets/d/YOUR_TEMPLATE_SPREADSHEET_ID/copy)
+> 正式公開時に、ここへ実在する GoogleスプレッドシートのコピーURLを入れます。
+> 仮URLは利用者向けページには出しません。
 
-> 公開前に `YOUR_TEMPLATE_SPREADSHEET_ID` を正式なテンプレートのスプレッドシートIDへ置き換えてください。
+<!--
+正式公開時だけ有効化：
+[SIMS-Blog-Manager テンプレートをコピー](https://docs.google.com/spreadsheets/d/正式なスプレッドシートID/copy)
+-->
+
+現在は確認用として、ZIP内のExcelテンプレートを使います。
 
 ### 2. Apps Script を貼り付ける
 
@@ -58,9 +64,8 @@ GoogleスプレッドシートのコピーURLがまだ使えない場合は、ZI
 4. `apps-script/コード.gs` を貼り付ける
 5. 初回セットアップを実行する
 
-## Product 5.0 の配布方針
+## 管理者向け
 
-- 通常利用者は、GoogleスプレッドシートのコピーURLから始める
-- ZIPは、GitHub Releases で正式配布する
-- Apps Scriptは、利用者向けには `コード.gs` へ一本化する
-- 過去RC由来の不要なファイルや分割ソースは、通常利用者向けには出さない
+GoogleスプレッドシートのコピーURLを公開する手順は、次のページで管理します。
+
+- [テンプレートコピーURLの設定](admin/template-url-setup.md)
