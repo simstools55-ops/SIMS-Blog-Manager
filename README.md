@@ -2,11 +2,13 @@
 
 ## 製品本体
 
-- spreadsheet/SIMS-Blog-Manager.xlsx
-- apps-script/Code.gs
+- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
+- Apps Script: `apps-script/Code.gs`
+- Apps Script manifest: `apps-script/appsscript.json`
 
-## 今回の重点
+## 今回の注意
 
-Search Consoleデータ取得を軽量化しました。日次処理ではデータ取得だけを行い、シート修復・全体初期化・列幅自動調整などの重い処理は実行しません。
+Search Consoleデータ取得で `UrlFetchApp.fetch` 権限エラーが出る場合は、`Code.gs` だけでなく `appsscript.json` もApps Scriptへ反映してください。
 
-処理ログには、API取得・シート書込・設定更新の時間内訳が残ります。
+Apps Script画面で `appsscript.json` を表示し、ZIP内の `apps-script/appsscript.json` の内容に差し替えたうえで、スクリプトを再読み込みして再承認してください。
+

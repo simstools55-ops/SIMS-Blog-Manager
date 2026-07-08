@@ -1,8 +1,7 @@
-# Product Body
+# 製品本体の場所
 
-製品本体は以下です。
+- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
+- 利用者向けApps Script: `apps-script/Code.gs`
+- 権限設定: `apps-script/appsscript.json`
 
-- spreadsheet/SIMS-Blog-Manager.xlsx
-- apps-script/Code.gs
-
-今回の修正は Apps Script 中心です。既存シートでテストする場合は、Code.gsのみ入れ替えて確認できます。
+`Code.gs`だけを差し替えても `UrlFetchApp.fetch` 権限エラーが出る場合は、`appsscript.json`も差し替えて再承認してください。
