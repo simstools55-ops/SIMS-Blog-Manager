@@ -1,14 +1,12 @@
-# SIMS-Blog-Manager Product 5.0 Official
+# SIMS-Blog-Manager Product 5.0.0
 
-このZIPがProduct 5.0 Officialの製品本体です。
+Product 5.0 Official は、RC9をベースに不要なものをそぎ落とし、必要な機能だけに絞った正式版です。
 
 ## 製品本体
 
-- スプレッドシート：`spreadsheet/SIMS-Blog-Manager.xlsx`
-- Apps Script：`apps-script/Code.gs`
+- `spreadsheet/SIMS-Blog-Manager.xlsx`
+- `apps-script/Code.gs`
 
-## 重要
+## 今回の版
 
-ZIP内の日本語ファイル名はWindows環境で文字化けする場合があるため、Apps Scriptファイル名は `Code.gs` に統一しています。
-
-Apps Scriptは1ファイル構成です。中身をGoogle Apps Scriptへ貼り付けて利用します。
+データ一覧の表示内容と更新タイミングを修正しました。

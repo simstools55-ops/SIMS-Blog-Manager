@@ -1,7 +1,8 @@
 # CHANGELOG
 
-## Product 5.0.0 - Progress Message and Data List Refresh
+## Product 5.0.0 Data List Status Fix
 
-- 処理開始時の表示文言を「処理中」ではなく「開始」へ統一。
-- Search Consoleデータ取得後に、データ一覧へ取得結果を反映。
-- 改善候補の分析・抽出後に、データ一覧へ記事ステータスと分析結果を反映。
+- データ一覧のステータスを「良好」「様子見」に分離
+- H1タイトルとtitleタグの取得仕様を明確化
+- データ一覧のソート順を「良好 → 改善中 → 改善候補 → 様子見 → 管理対象外」に変更
+- Search Console取得直後のデータ一覧更新を削除

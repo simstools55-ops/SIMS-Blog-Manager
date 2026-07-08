@@ -471,10 +471,6 @@ function sbmFetchOnlyManual(silent) {
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
     sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, '利用者待ち時間を含む取得処理全体。次はSTEP B改善候補分析。', startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
-    try {
-      sbmProgress_('データ一覧更新開始', '取得したSearch Consoleデータをデータ一覧へ反映します。');
-      sbmRefreshDataList_();
-    } catch(ignoreDataList) {}
     sbmRefreshHome_();
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
   } catch (e) {
@@ -1925,7 +1921,7 @@ function sbmBuildDataListRows_() {
   queryRows.forEach(function(r){
     var rawUrl = r.URL || r['URL'] || '';
     var u = sbmNormalizeUrl_(rawUrl);
-    if (!u || String(rawUrl).indexOf('#') !== -1) return;
+    if (!u) return;
     var q = String(r.Query || r['クエリ'] || r['Query'] || '').trim();
     if (!agg[u]) agg[u] = {url: rawUrl || u, clicks:0, impressions:0, posWeight:0, queries:{}};
     var clicks = sbmNumber_(r.Clicks || r['クリック'] || r['クリック数']);
@@ -1946,13 +1942,14 @@ function sbmBuildDataListRows_() {
     var c = cardByUrl[u] || {};
     var mainQ = c.MainQuery || c['メインクエリ'] || sbmTopQuery_(a.queries);
     var title = c.Title || c['Title'] || c['記事タイトル'] || '';
-    var status = sbmResolveArticleStatus_(u, c, queueSet, progressSet);
+    var status = sbmResolveArticleStatus_(u, c, queueSet, progressSet, a);
+    var meta = sbmResolveArticleMetaForDataList_(a.url || u, c, title);
     var ctr = a.impressions ? a.clicks / a.impressions : '';
     var pos = a.impressions ? a.posWeight / a.impressions : '';
-    return [status, a.url || u, c.H1 || c['H1'] || title, c.TitleTag || c['titleタグ'] || title, mainQ, a.clicks, a.impressions, ctr, pos];
+    return [status, a.url || u, meta.h1, meta.titleTag, mainQ, a.clicks, a.impressions, ctr, pos];
   });
   out.sort(function(a,b){
-    var order = {'改善中':1,'改善候補':2,'良好':3,'改善不要':4};
+    var order = {'良好':1,'改善中':2,'改善候補':3,'様子見':4,'管理対象外':5};
     var ao = order[a[0]] || 9, bo = order[b[0]] || 9;
     if (ao !== bo) return ao - bo;
     return sbmNumber_(b[5]) - sbmNumber_(a[5]);
@@ -1971,12 +1968,73 @@ function sbmTopQuery_(queryMap) {
   return best;
 }
 
-function sbmResolveArticleStatus_(url, card, queueSet, progressSet) {
-  if (progressSet[url]) return '改善中';
-  if (queueSet[url]) return '改善候補';
+function sbmResolveArticleStatus_(url, card, queueSet, progressSet, agg) {
+  var normalized = sbmNormalizeUrl_(url);
+  if (!normalized || String(url || '').indexOf('#') !== -1) return '管理対象外';
+  if (progressSet[normalized]) return '改善中';
+  if (queueSet[normalized]) return '改善候補';
   var st = String(card.ArticleStatus || card['記事ステータス'] || card['状態'] || '').trim();
-  if (st) return st;
+  st = st.replace('良好/様子見', '').replace('良好・様子見', '').trim();
+  if (st === '改善不要') return '良好';
+  if (st === '良好' || st === '改善中' || st === '改善候補' || st === '様子見' || st === '管理対象外') return st;
+  var impressions = agg ? sbmNumber_(agg.impressions) : 0;
+  var clicks = agg ? sbmNumber_(agg.clicks) : 0;
+  var pos = agg && agg.impressions ? (sbmNumber_(agg.posWeight) / Math.max(1, sbmNumber_(agg.impressions))) : 0;
+  if (impressions < 30 && clicks < 3) return '様子見';
   return '良好';
+}
+
+function sbmResolveArticleMetaForDataList_(url, card, fallbackTitle) {
+  var h1 = String(card.H1 || card['H1'] || card['記事タイトル'] || fallbackTitle || '').trim();
+  var titleTag = String(card.TitleTag || card['titleタグ'] || card['Title'] || fallbackTitle || '').trim();
+  if (String(url || '').indexOf('#') !== -1) {
+    return {h1: h1 || sbmTitleFromPath_(url), titleTag: titleTag || h1 || sbmTitleFromPath_(url)};
+  }
+  var fetched = sbmFetchArticleMeta_(url);
+  if (fetched.h1) h1 = fetched.h1;
+  if (fetched.titleTag) titleTag = fetched.titleTag;
+  if (!h1) h1 = sbmTitleFromPath_(url);
+  if (!titleTag) titleTag = h1;
+  return {h1:h1, titleTag:titleTag};
+}
+
+function sbmFetchArticleMeta_(url) {
+  url = sbmNormalizeUrl_(url);
+  var empty = {h1:'', titleTag:''};
+  if (!url || /^sc-domain:/i.test(url)) return empty;
+  var cache = CacheService.getScriptCache();
+  var key = 'meta:' + Utilities.base64EncodeWebSafe(url).slice(0,180);
+  var cached = cache.get(key);
+  if (cached) {
+    try { return JSON.parse(cached); } catch(e) {}
+  }
+  var meta = {h1:'', titleTag:''};
+  try {
+    var res = UrlFetchApp.fetch(url, {muteHttpExceptions:true, followRedirects:true, headers:{'User-Agent':'SIMS-Blog-Manager'}});
+    var html = res.getContentText() || '';
+    var titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    var h1Match = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match && h1Match[1]) meta.h1 = sbmCleanHtmlText_(h1Match[1]);
+    if (titleMatch && titleMatch[1]) meta.titleTag = sbmCleanHtmlText_(titleMatch[1]);
+  } catch(e) {}
+  try { cache.put(key, JSON.stringify(meta), 21600); } catch(e2) {}
+  return meta;
+}
+
+function sbmCleanHtmlText_(text) {
+  return String(text || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#124;/g, '|')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function sbmStyleDataListSheet_(sh) {
