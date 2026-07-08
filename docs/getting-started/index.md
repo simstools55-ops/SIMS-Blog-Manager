@@ -1,37 +1,29 @@
-# SIMS-Blog-Manager Product 5.0 Official
+# はじめに
 
-SIMS-Blog-Manager は、Search Consoleのデータをもとに、今日改善すべき記事を選ぶためのブログ改善管理ツールです。
+SIMS-Blog-Managerは、ブログ運営者が「今日はどの記事を直せばよいか」で迷わないための改善管理システムです。
 
-Product 5.0 Officialでは、毎日の運用を次の流れに整理しています。
+## できること
 
-1. Homeでブログ全体の状況を見る
-2. 今日の改善で上位5件を確認する
-3. 記事を改善する
-4. 完了したら改善中へ移動する
-5. 週1回、最大2か月の効果測定を行う
+- Search Consoleからクエリ・URL・クリック・表示回数・CTR・順位を取得します。
+- 上位記事を中心に改善候補を抽出します。
+- 今日の改善候補を最大5件表示します。
+- 詳細を見ると、ClaudeやChatGPTへ貼れる改善ブリーフを確認できます。
+- 改善後はログに記録し、14日・30日後に効果測定します。
 
-## 毎日見る画面
+## 必要なもの
 
-毎日最初に見る画面は「Home」です。
-Homeには次の3点だけを表示します。
+- Googleアカウント
+- Google Search Consoleに登録済みのブログ
+- Googleスプレッドシート
+- Apps Scriptの初回承認
+- Search Console APIの有効化
 
-- ブログ全体の状況
-- 改善作業の状況
-- 今日やること
+## 最初の流れ
 
-## 正式仕様の主なポイント
-
-- その日最初の起動時のみ、Search Consoleデータ取得と改善候補抽出を自動実行します。
-- 改善候補は最大30件まで作成します。
-- 今日の改善には上位5件を表示します。
-- 改善中、測定中、良好、改善不要の記事は改善候補から除外します。
-- 改善後は週1回、最大2か月測定します。
-- 処理ログには開始時刻、終了時刻、利用者待ち時間、件数を記録します。
-
-## 最初に読むページ
-
-- [セットアップガイド](setup-guide.md)
-- [毎日の使い方](daily-workflow.md)
-- [今日の改善](user-guide/todays-improvement.md)
-- [効果測定](user-guide/effectiveness.md)
-- [トラブルシューティング](troubleshooting.md)
+1. スプレッドシートをコピーまたはテンプレートから作成します。
+2. Apps Scriptに `Code.js` を貼り付けます。
+3. 初回認証を行います。
+4. STEP1でブログ名・ブログURL・Search Console Propertyを入力します。
+5. STEP2でGoogle CloudとSearch Console APIを確認します。
+6. STEP3で接続テストを行います。
+7. STEP4で初回データ取得を行います。
