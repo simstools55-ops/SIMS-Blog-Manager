@@ -1,7 +1,7 @@
 # Changelog
 
-## Product 5.0.0 - DataList Display Format Fix
+## Product 5.0.0 URL Fragment Meta Title Fix
 
-- データ一覧のH1/title/meta descriptionに数値・URL・日付が誤表示される問題を修正
-- 取得できないタイトル系情報は空欄表示に統一
-- クリック数・表示回数・CTR・平均順位の表示形式を利用者向けに整備
+- Search Consoleに含まれる `#見出し` 付きURLを、記事本体URLへ統合するよう修正。
+- はてなブログ・WordPressの両方を想定し、記事タイトル取得を `og:title`、`entry-title`、`article h1`、titleタグ補正の順で判定。
+- データ一覧の列名を利用者向けに整理し、記事タイトル・SEOタイトル・メタディスクリプションを共通マスターとして扱う方針に更新。
