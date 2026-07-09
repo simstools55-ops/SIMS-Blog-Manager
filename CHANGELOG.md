@@ -1,7 +1,7 @@
 # Changelog
 
-## Product 5.0.0 URL Fragment Meta Title Fix
+## Product 5.0.0 DataList Compact Meta100
 
-- Search Consoleに含まれる `#見出し` 付きURLを、記事本体URLへ統合するよう修正。
-- はてなブログ・WordPressの両方を想定し、記事タイトル取得を `og:title`、`entry-title`、`article h1`、titleタグ補正の順で判定。
-- データ一覧の列名を利用者向けに整理し、記事タイトル・SEOタイトル・メタディスクリプションを共通マスターとして扱う方針に更新。
+- データ一覧を横長表示から重要項目中心のコンパクト表示へ変更。
+- SEOタイトルとメタディスクリプションは詳細ポップアップ表示へ移動。
+- STEP Aの記事メタ情報補完上限を最大100URLへ変更。
