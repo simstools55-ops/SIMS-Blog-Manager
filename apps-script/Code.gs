@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-legacy-feature-clean';
+const SBM_VERSION = '5.0.0-stepb-profile-dev';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -19,6 +19,7 @@ const SBM_SHEETS = Object.freeze({
   BRIEF: '改善ブリーフ',
   MEASURE_HISTORY: '測定履歴',
   PROCESS_LOG: '処理ログ',
+  PROFILE_LOG: '処理プロファイル',
   IN_PROGRESS: '改善中'
 });
 
@@ -34,6 +35,7 @@ const SBM_HEADERS = Object.freeze({
   BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記事タイトル','改善日','記録日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ','URL'],
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
+  PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容']
 });
 
@@ -91,7 +93,8 @@ function onOpen() {
     .addSubMenu(ui.createMenu('管理')
       .addItem('シートを作成・修復', 'sbmInitializeSheets')
       .addItem('システムシートを非表示', 'sbmHideSystemSheets')
-      .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
+      .addItem('エラー・ログを開く', 'sbmOpenSystemLog')
+      .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
     .addToUi();
 }
 
@@ -426,6 +429,8 @@ function sbmFetchOnlyManual(silent) {
     var fetchStarted = new Date();
     var rows = sbmFetchSearchConsoleQueries_();
     var apiSec = sbmSecondsSince_(fetchStarted);
+    var fetchLimit = sbmGetDailyFetchLimit_();
+    var hitLimit = rows.length >= fetchLimit;
     var writeStarted = new Date();
     sbmWriteRawQueryDataLight_(rows);
     var writeSec = sbmSecondsSince_(writeStarted);
@@ -436,9 +441,10 @@ function sbmFetchOnlyManual(silent) {
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastFetchDate', sbmDateText_(new Date()), '最終取得日');
     sbmSetSetting_('LastFetchRows', rows.length, '直近のSearch Console取得行数');
+    sbmSetSetting_('LastFetchHitLimit', hitLimit ? 'YES' : 'NO', '取得件数がDailyFetchMaxRowsに到達したか');
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
-    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / 記事情報 ' + metaSec + '秒 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件 / 上限 ' + sbmGetDailyFetchLimit_() + '件', startedText, sbmNowText_());
+    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / 記事情報 ' + metaSec + '秒 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件 / 上限 ' + fetchLimit + '件 / 上限到達 ' + (hitLimit ? 'YES' : 'NO'), startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
     sbmSetHomeProcessing_('完了', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), rows.length + '件取得しました。記事情報 ' + ((metaResult && metaResult.total)||0) + '件 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件', false);
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
@@ -460,120 +466,68 @@ function sbmGetDailyFetchLimit_() {
 function sbmAnalyzeOnlyManual(silent) {
   silent = silent === true;
   sbmEnsureStepBMinimalSheets_();
-  var qRows = sbmGetRawQueryRows_();
-  if (!qRows.length) return sbmAlert_('分析できません', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
   var started = new Date();
   var startedText = sbmNowText_();
+  var profiler = sbmCreateProfiler_('STEP B 改善候補分析');
+  var qRows = sbmGetRawQueryRows_();
+  profiler.lap('取得済みデータ読込', qRows.length, qRows.length, 'SearchConsole_Dataから読み込み');
+  if (!qRows.length) return sbmAlert_('分析できません', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
   try {
     sbmSetHomeProcessing_('● 処理中', 'STEP B 改善候補分析開始', startedText, '', '取得済みデータから改善候補・今日の改善・データ一覧を作成しています。', true);
+    profiler.lap('Home処理状況表示', '', '', '分析開始をHomeへ表示');
     sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', 'STEP B 改善分析', 10);
+    profiler.lap('トースト表示', '', '', 'ユーザー通知');
+
+    var tDiagnosis = new Date();
     var result = sbmBuildDiagnosis_();
+    profiler.lap('改善候補抽出', (result && result.targetCount) || '', (result && result.analyzedCount) || '', '候補 ' + ((result && result.diagnosisCount) || 0) + '件 / ' + sbmSecondsSince_(tDiagnosis) + '秒');
+
     sbmSetHomeProcessing_('● 処理中', 'STEP B 今日の改善作成中', startedText, '', '改善候補から今日の改善と改善ブリーフを作成しています。', true);
+    var tToday = new Date();
     sbmBuildTodayQueue_();
+    profiler.lap('今日の改善・改善ブリーフ作成', '', sbmGetSetting_('DisplayedImprovementCount',''), sbmSecondsSince_(tToday) + '秒');
+
     sbmSetHomeProcessing_('● 処理中', 'STEP B 改善中シート更新中', startedText, '', '改善中の記事を整理しています。', true);
+    var tProgress = new Date();
     sbmBuildInProgressSheet_();
+    profiler.lap('改善中シート更新', '', '', sbmSecondsSince_(tProgress) + '秒');
+
     sbmSetHomeProcessing_('● 処理中', 'STEP B データ一覧更新中', startedText, '', '利用者向けのデータ一覧を作成しています。', true);
+    var tDataList = new Date();
     var dataListCount = sbmBuildDataListFromAnalysis_();
+    profiler.lap('データ一覧更新', '', dataListCount, sbmSecondsSince_(tDataList) + '秒');
+
+    var tCleanup = new Date();
     sbmRemoveRetiredSheets_();
     sbmApplyProductVisibleTabs_();
-    var sec = sbmSecondsSince_(started);
-    sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
-    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, 'データ一覧 ' + dataListCount + '件。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件', startedText, sbmNowText_());
-    sbmLog_('AnalyzeOnly','Done', 'analyzed ' + ((result && result.analyzedCount)||'') + ' / ' + sec + ' sec');
+    profiler.lap('不要シート整理', '', '', sbmSecondsSince_(tCleanup) + '秒');
+
+    var tHome = new Date();
     sbmRefreshHome_();
-    sbmSetHomeProcessing_('完了', 'STEP B 改善候補分析', startedText, sbmNowText_(), '改善候補とデータ一覧を更新しました。', false);
-    sbmOpenToday();
+    profiler.lap('Home集計更新', '', '', sbmSecondsSince_(tHome) + '秒');
+
+    var sec = sbmSecondsSince_(started);
+    sbmSetSetting_('LastAnalysisDate', sbmDateText_(new Date()), '最終分析日');
+    sbmSetSetting_('LastProcessSummary', 'STEP B 改善候補分析 / 完了 / ' + sec + '秒', '直近処理');
+    var managed = (result && result.managedCount) || sbmGetSetting_('ManagedArticleCount','');
     var total = sbmGetSetting_('ImprovementCandidateCount','0');
     var shown = sbmGetSetting_('DisplayedImprovementCount','0');
-    var managed = sbmGetSetting_('ManagedArticleCount','0');
-    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\nデータ一覧: ' + dataListCount + '件\n所要時間: ' + sec + '秒');
-  } catch (e) {
+    var runId = profiler.finish('完了', '総所要 ' + sec + '秒 / 管理対象 ' + managed + '件 / 分析 ' + ((result && result.analyzedCount)||'') + '件 / 改善候補 ' + total + '件 / データ一覧 ' + dataListCount + '件');
+    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, 'データ一覧 ' + dataListCount + '件。改善候補 ' + total + '件 / 表示 ' + shown + '件 / ProfileRunId ' + runId, startedText, sbmNowText_());
+    sbmLog_('AnalyzeOnly','Done','managed=' + managed + ', candidates=' + total + ', shown=' + shown + ', sec=' + sec + ', profile=' + runId);
+    sbmSetHomeProcessing_('完了', 'STEP B 改善候補分析', startedText, sbmNowText_(), '改善候補とデータ一覧を更新しました。', false);
+    sbmRefreshHome_();
+    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\nデータ一覧: ' + dataListCount + '件\n所要時間: ' + sec + '秒\n\n開発用プロファイル: ' + runId);
+  } catch(e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e), startedText, sbmNowText_());
+    var runErr = profiler.finish('エラー', String(e));
+    sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e) + ' / ProfileRunId ' + runErr, startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Error',String(e));
     sbmSetHomeProcessing_('エラー', 'STEP B 改善候補分析', startedText, sbmNowText_(), String(e), false);
     sbmAlert_('改善分析エラー', String(e));
   }
 }
 
-function sbmTestSearchConsoleConnection_() {
-  try {
-    var range = sbmSearchConsoleDateRange_();
-    var property = sbmGetSetting_('SearchConsoleProperty','');
-    var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['page'], rowLimit: 1});
-    return {ok:true, rows:(data.rows||[]).length};
-  } catch(e) {
-    return {ok:false, message:String(e)};
-  }
-}
-
-function sbmFetchSearchConsoleQueries_() {
-  var range = sbmSearchConsoleDateRange_();
-  var property = sbmGetSetting_('SearchConsoleProperty','');
-  var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['query','page'], rowLimit: sbmGetDailyFetchLimit_()});
-  var capturedAt = sbmNowText_();
-  return (data.rows || []).map(function(r){
-    return [range.startDate, range.endDate, r.keys[0], r.keys[1], r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
-  });
-}
-
-function sbmSearchConsoleDateRange_() {
-  var days = Number(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS)) || SBM_DEFAULTS.SEARCH_DAYS;
-  var end = new Date();
-  end.setDate(end.getDate() - SBM_DEFAULTS.GSC_DELAY_DAYS);
-  var start = new Date(end);
-  start.setDate(start.getDate() - days + 1);
-  return {startDate: sbmDateText_(start), endDate: sbmDateText_(end)};
-}
-
-function sbmSearchConsoleApiRequest_(property, body) {
-  var endpoint = 'https://www.googleapis.com/webmasters/v3/sites/' + encodeURIComponent(property) + '/searchAnalytics/query';
-  var response = UrlFetchApp.fetch(endpoint, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(body),
-    headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()},
-    muteHttpExceptions: true
-  });
-  var code = response.getResponseCode();
-  var text = response.getContentText();
-  if (code < 200 || code >= 300) throw new Error('Search Console API error ' + code + ': ' + text);
-  return JSON.parse(text || '{}');
-}
-
-function sbmWriteQueryData_(rows) {
-  sbmWriteRawQueryDataLight_(rows);
-}
-
-function sbmWriteRawQueryDataLight_(rows) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.RAW_DATA) || sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA);
-  sh.clearContents();
-  sbmEnsureHeaders_(sh, SBM_HEADERS.RAW_DATA);
-  if (rows.length) sh.getRange(2,1,rows.length,SBM_HEADERS.RAW_DATA.length).setValues(rows);
-  try { sh.hideSheet(); } catch(e) {}
-}
-
-function sbmGetRawQueryRows_() {
-  var raw = sbmRowsAsObjects_(SBM_SHEETS.RAW_DATA);
-  if (raw.length) return raw;
-  var visible = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
-  if (visible.length && Object.prototype.hasOwnProperty.call(visible[0], 'Query') && Object.prototype.hasOwnProperty.call(visible[0], 'URL')) {
-    return visible;
-  }
-  return [];
-}
-
-function sbmEnsureStepBMinimalSheets_() {
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA), SBM_HEADERS.RAW_DATA);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.QUERY_DATA), SBM_HEADERS.QUERY_DATA);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.DIAGNOSIS), SBM_HEADERS.DIAGNOSIS);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.TODAY), SBM_HEADERS.TODAY);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.BRIEF), SBM_HEADERS.BRIEF);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.IN_PROGRESS), SBM_HEADERS.IN_PROGRESS);
-  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG), SBM_HEADERS.PROCESS_LOG);
-  sbmRemoveRetiredSheets_();
-  sbmApplyProductVisibleTabs_();
-}
 
 function sbmBuildDiagnosis_() {
   var queryRows = sbmGetRawQueryRows_();
@@ -1507,6 +1461,53 @@ function sbmPromptRequired_(title, message, defaultValue) {
   return value;
 }
 
+
+
+function sbmCreateProfiler_(processName) {
+  var runId = Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss') + '-' + Math.floor(Math.random() * 10000);
+  var last = new Date();
+  var entries = [];
+  function nowText_(d){ return Utilities.formatDate(d || new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyy/MM/dd HH:mm:ss'); }
+  return {
+    runId: runId,
+    lap: function(step, targetCount, processedCount, detail) {
+      var now = new Date();
+      var sec = Math.round((now.getTime() - last.getTime()) / 100) / 10;
+      entries.push([nowText_(now), runId, processName || '', step || '', nowText_(last), nowText_(now), sec, targetCount === undefined ? '' : targetCount, processedCount === undefined ? '' : processedCount, detail || '']);
+      last = now;
+    },
+    finish: function(status, detail) {
+      this.lap('終了: ' + (status || ''), '', '', detail || '');
+      sbmAppendProfileRows_(entries);
+      return runId;
+    }
+  };
+}
+
+function sbmAppendProfileRows_(rows) {
+  try {
+    if (!rows || !rows.length) return;
+    var sh = sbmGetOrCreateSheet_(SBM_SHEETS.PROFILE_LOG);
+    sbmEnsureHeaders_(sh, SBM_HEADERS.PROFILE_LOG);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, SBM_HEADERS.PROFILE_LOG.length).setValues(rows);
+    sbmStyleProfileLogSheet_(sh);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function sbmOpenProfileLog() { sbmOpenSheet_(SBM_SHEETS.PROFILE_LOG); }
+
+function sbmStyleProfileLogSheet_(sh) {
+  if (!sh) return;
+  sbmEnsureHeaders_(sh, SBM_HEADERS.PROFILE_LOG);
+  sh.setFrozenRows(1);
+  sh.getRange(1,1,1,SBM_HEADERS.PROFILE_LOG.length).setFontWeight('bold').setBackground('#0b8043').setFontColor('#ffffff');
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2,7,sh.getLastRow()-1,1).setNumberFormat('0.0');
+  }
+  sh.autoResizeColumns(1, Math.min(SBM_HEADERS.PROFILE_LOG.length, sh.getMaxColumns()));
+}
 
 function sbmSecondsSince_(started) {
   return Math.round((new Date().getTime() - started.getTime()) / 1000);
