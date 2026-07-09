@@ -119,6 +119,11 @@ function sbmLightStartup_() {
   }
 }
 
+
+function sbmIsSetupComplete_() {
+  return String(sbmGetSetting_('SetupBlogInfo','NO')) === 'YES';
+}
+
 function sbmInitializeSheets(showAlert) {
   showAlert = showAlert !== false;
   sbmEnsureDataSheets_();
