@@ -1,6 +1,7 @@
 # Changelog
 
-## Product 5.0.0 Data List Master Architecture
-- STEP AでSearch Console取得後にデータ一覧を共通マスターとして更新。
-- H1タイトル、titleタグ、meta descriptionをSTEP Aで補完し、STEP Bでは外部取得しない構成へ整理。
-- 今日の改善・改善ブリーフ・データ一覧のタイトル表示をデータ一覧参照に統一。
+## Product 5.0.0 - DataList Display Format Fix
+
+- データ一覧のH1/title/meta descriptionに数値・URL・日付が誤表示される問題を修正
+- 取得できないタイトル系情報は空欄表示に統一
+- クリック数・表示回数・CTR・平均順位の表示形式を利用者向けに整備

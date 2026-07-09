@@ -6,4 +6,4 @@
 - `apps-script/Code.gs`
 - `apps-script/appsscript.json`
 
-この版では、`データ一覧` を表示用の共通マスターとして扱います。STEP AでSearch Consoleデータと記事メタ情報を保存し、STEP B以降は保存済みデータを参照して各画面を更新します。
+今回の版では、データ一覧の表示品質を修正しています。
