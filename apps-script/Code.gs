@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-data-list-master-architecture';
+const SBM_VERSION = '5.0.0-url-fragment-meta-title-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -29,7 +29,7 @@ const SBM_SHEETS = Object.freeze({
 const SBM_HEADERS = Object.freeze({
   SETTINGS: ['Key', 'Value', 'Description', 'UpdatedAt'],
   SYSTEM_LOG: ['CreatedAt', 'Action', 'Status', 'Detail'],
-  QUERY_DATA: ['記事ステータス','記事URL','H1タイトル','titleタグ','meta description','メインクエリ','クリック数','表示回数','CTR','平均順位','最終取得日時'],
+  QUERY_DATA: ['記事ステータス','記事URL','記事タイトル','SEOタイトル（titleタグ）','メタディスクリプション','メインクエリ','クリック数','表示回数','CTR','平均順位','最終取得日時'],
   RAW_DATA: ['StartDate','EndDate','Query','URL','Clicks','Impressions','CTR','Position','CapturedAt'],
   CARDS: ['ArticleId','URL','Title','MainQuery','Clicks','Impressions','CTR','Position','Managed','ArticleStatus','OpportunityScore','Recommendation','LastImprovedAt','ImproveCount','LastAnalyzedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
@@ -690,8 +690,11 @@ function sbmActiveMeasurementUrlMap_() {
 function sbmNormalizeUrl_(url) {
   url = String(url || '').trim();
   if (!url) return '';
-  if (/^https?:\/\//i.test(url)) return url;
   if (/^sc-domain:/i.test(url)) return url;
+  // Search Consoleには #見出し 付きURLが混ざることがある。
+  // Product 5.0では記事単位で管理するため、#以降は削除して同一記事へ統合する。
+  url = url.split('#')[0];
+  if (/^https?:\/\//i.test(url)) return url;
   return 'https://' + url.replace(/^\/+/, '');
 }
 
@@ -1031,9 +1034,9 @@ function sbmExistingDataListMap_() {
     if (!url) return;
     map[url] = {
       status: r['記事ステータス'] || '',
-      h1: sbmCleanDataListText_(r['H1タイトル'] || '', url),
-      titleTag: sbmCleanDataListText_(r['titleタグ'] || '', url),
-      metaDescription: sbmCleanDataListText_(r['meta description'] || r['メタディスクリプション'] || '', url),
+      h1: sbmCleanDataListText_(r['記事タイトル'] || r['H1タイトル'] || '', url),
+      titleTag: sbmCleanDataListText_(r['SEOタイトル（titleタグ）'] || r['titleタグ'] || '', url),
+      metaDescription: sbmCleanDataListText_(r['メタディスクリプション'] || r['meta description'] || '', url),
       mainQuery: r['メインクエリ'] || '',
       clicks: r['クリック数'] || '',
       impressions: r['表示回数'] || '',
@@ -1054,7 +1057,7 @@ function sbmGetMasterInfoByUrl_(url) {
 function sbmUpdateDataListAfterFetch_(rawRows) {
   var existing = sbmExistingDataListMap_();
   var stats = sbmAggregateRawRowsByUrl_(rawRows || []);
-  var urls = Object.keys(stats).filter(function(u){ return u && u.indexOf('#') === -1; });
+  var urls = Object.keys(stats).filter(function(u){ return !!u; });
   urls.sort(function(a,b){ return sbmNumber_(stats[b].impressions) - sbmNumber_(stats[a].impressions); });
   var maxMeta = sbmNumber_(sbmGetSetting_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS)) || SBM_DEFAULTS.META_FETCH_MAX_ROWS;
   var fetched = 0;
@@ -1096,7 +1099,7 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
       pos = r.Position || r['Position'] || r['平均順位'] || 0;
     }
     url = sbmNormalizeUrl_(url || '');
-    if (!url || url.indexOf('#') !== -1) return;
+    if (!url) return;
     if (!map[url]) map[url] = {url:url, mainQuery:'', clicks:0, impressions:0, weightedPositionSum:0, position:0, ctr:0, bestScore:-1};
     var m = map[url];
     clicks = sbmNumber_(clicks); imps = sbmNumber_(imps); pos = sbmNumber_(pos);
@@ -1116,21 +1119,27 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
 
 function sbmFetchArticleMetaInfo_(url) {
   try {
+    url = sbmNormalizeUrl_(url);
+    if (!/^https?:\/\//i.test(url)) return {h1:'', titleTag:'', metaDescription:''};
     var key = 'meta:' + Utilities.base64EncodeWebSafe(url).slice(0, 180);
     var cache = CacheService.getDocumentCache();
     var cached = cache.get(key);
     if (cached) return JSON.parse(cached);
-    var res = UrlFetchApp.fetch(url, {muteHttpExceptions:true, followRedirects:true});
+    var res = UrlFetchApp.fetch(url, {
+      muteHttpExceptions:true,
+      followRedirects:true,
+      headers:{'User-Agent':'Mozilla/5.0 SIMS-Blog-Manager'}
+    });
     var code = res.getResponseCode();
     if (code < 200 || code >= 400) return {h1:'', titleTag:'', metaDescription:''};
     var html = res.getContentText() || '';
-    var h = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    var t = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    var md = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([\s\S]*?)["'][^>]*>/i) || html.match(/<meta[^>]+content=["']([\s\S]*?)["'][^>]+name=["']description["'][^>]*>/i);
+    var titleTag = sbmExtractTitleTag_(html);
+    var articleTitle = sbmPickArticleTitle_(html, titleTag, url);
+    var metaDescription = sbmExtractDescription_(html);
     var obj = {
-      h1: h && h[1] ? sbmCleanHtmlText_(h[1]) : '',
-      titleTag: t && t[1] ? sbmCleanHtmlText_(t[1]) : '',
-      metaDescription: md && md[1] ? sbmCleanHtmlText_(md[1]) : ''
+      h1: sbmCleanDataListText_(articleTitle || '', url),
+      titleTag: sbmCleanDataListText_(titleTag || '', url),
+      metaDescription: sbmCleanDataListText_(metaDescription || '', url)
     };
     try { cache.put(key, JSON.stringify(obj), 21600); } catch(e) {}
     return obj;
@@ -1138,6 +1147,104 @@ function sbmFetchArticleMetaInfo_(url) {
     return {h1:'', titleTag:'', metaDescription:''};
   }
 }
+
+function sbmExtractTitleTag_(html) {
+  var t = String(html || '').match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return t && t[1] ? sbmCleanHtmlText_(t[1]) : '';
+}
+
+function sbmExtractDescription_(html) {
+  html = String(html || '');
+  var md = sbmExtractMetaContent_(html, 'name', 'description')
+    || sbmExtractMetaContent_(html, 'property', 'og:description')
+    || sbmExtractMetaContent_(html, 'name', 'twitter:description');
+  return md ? sbmCleanHtmlText_(md) : '';
+}
+
+function sbmPickArticleTitle_(html, titleTag, url) {
+  html = String(html || '');
+  titleTag = sbmCleanHtmlText_(titleTag || '');
+  var candidates = [];
+  candidates.push(sbmExtractMetaContent_(html, 'property', 'og:title'));
+  candidates.push(sbmExtractMetaContent_(html, 'name', 'twitter:title'));
+  candidates.push(sbmExtractTitleByClass_(html, 'entry-title'));
+  candidates.push(sbmExtractTitleByClass_(html, 'post-title'));
+  candidates.push(sbmExtractTitleByClass_(html, 'article-title'));
+  candidates.push(sbmExtractArticleH1_(html));
+  candidates.push(sbmStripSiteNameFromTitle_(titleTag, url));
+  candidates.push(sbmExtractFirstH1_(html));
+  for (var i=0; i<candidates.length; i++) {
+    var c = sbmCleanDataListText_(sbmCleanHtmlText_(candidates[i] || ''), url);
+    if (c && !sbmLooksLikeSiteName_(c, titleTag, url)) return c;
+  }
+  return '';
+}
+
+function sbmExtractMetaContent_(html, attrName, attrValue) {
+  html = String(html || '');
+  var q = "[\\\"']";
+  var val = sbmRegexEscape_(attrValue);
+  var re1 = new RegExp("<meta[^>]+(?:" + attrName + ")=" + q + val + q + "[^>]+content=" + q + "([\\s\\S]*?)" + q + "[^>]*>", "i");
+  var re2 = new RegExp("<meta[^>]+content=" + q + "([\\s\\S]*?)" + q + "[^>]+(?:" + attrName + ")=" + q + val + q + "[^>]*>", "i");
+  var m = html.match(re1) || html.match(re2);
+  return m && m[1] ? m[1] : '';
+}
+
+
+function sbmExtractTitleByClass_(html, className) {
+  var cls = sbmRegexEscape_(className);
+  var q = "[\\\"']";
+  var re = new RegExp("<(?:h1|h2|a|span|div)[^>]+class=" + q + "[^>]*" + cls + "[^>]*" + q + "[^>]*>([\\s\\S]*?)<\\/(?:h1|h2|a|span|div)>", "i");
+  var m = String(html || '').match(re);
+  return m && m[1] ? m[1] : '';
+}
+
+
+function sbmExtractArticleH1_(html) {
+  var m = String(html || '').match(/<article[\s\S]*?<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  return m && m[1] ? m[1] : '';
+}
+
+function sbmExtractFirstH1_(html) {
+  var m = String(html || '').match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  return m && m[1] ? m[1] : '';
+}
+
+function sbmStripSiteNameFromTitle_(title, url) {
+  title = sbmCleanHtmlText_(title || '');
+  if (!title) return '';
+  var seps = ['｜','|',' - ',' – ',' — ', ' :: ', ' » ', ' « '];
+  for (var i=0; i<seps.length; i++) {
+    var sep = seps[i];
+    if (title.indexOf(sep) !== -1) {
+      var parts = title.split(sep).map(function(x){ return String(x || '').trim(); }).filter(Boolean);
+      if (parts.length >= 2) {
+        // 多くのCMSは「記事タイトル - サイト名」。逆順テーマにも少し対応する。
+        var first = parts[0], last = parts[parts.length - 1];
+        if (first.length >= 8) return first;
+        if (last.length >= 8) return last;
+      }
+    }
+  }
+  return title;
+}
+
+function sbmLooksLikeSiteName_(candidate, titleTag, url) {
+  candidate = String(candidate || '').trim();
+  titleTag = String(titleTag || '').trim();
+  if (!candidate) return true;
+  if (candidate.length <= 3) return true;
+  var stripped = sbmStripSiteNameFromTitle_(titleTag, url);
+  // はてなブログ等では最初のh1がサイト名になることがある。
+  // SEOタイトル（titleタグ）から抽出した記事タイトルと違い、かつ短い場合はサイト名候補として扱う。
+  if (stripped && candidate !== stripped && titleTag.indexOf(candidate) !== -1 && candidate.length <= 20) return true;
+  return false;
+}
+
+function sbmRegexEscape_(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 
 function sbmDataListStatus_(card, diag) {
   if (String(card.Managed || '') === '×') return '管理対象外';
@@ -1158,9 +1265,9 @@ function sbmStyleDataListSheet_(sh) {
   sh.setFrozenRows(1);
   sh.setColumnWidth(1, 120);   // 記事ステータス
   sh.setColumnWidth(2, 300);   // 記事URL
-  sh.setColumnWidth(3, 320);   // H1タイトル
-  sh.setColumnWidth(4, 360);   // titleタグ
-  sh.setColumnWidth(5, 360);   // meta description
+  sh.setColumnWidth(3, 320);   // 記事タイトル
+  sh.setColumnWidth(4, 360);   // SEOタイトル（titleタグ）
+  sh.setColumnWidth(5, 360);   // メタディスクリプション
   sh.setColumnWidth(6, 190);   // メインクエリ
   sh.setColumnWidth(7, 90);    // クリック数
   sh.setColumnWidth(8, 100);   // 表示回数
