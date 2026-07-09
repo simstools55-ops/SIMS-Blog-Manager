@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepb-topic-cannibal-clean-fix';
+const SBM_VERSION = '5.0.0-stepb-status-title-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -61,7 +61,7 @@ const SBM_DEFAULTS = Object.freeze({
   MEASUREMENT_MODE: 'TEST_DAILY_7D',
   ANALYSIS_CANDIDATE_LIMIT: 30,
   ANALYSIS_ARTICLE_LIMIT: 120,
-  TITLE_FETCH_DEFAULT: 'OFF',
+  TITLE_FETCH_DEFAULT: 'ON',
   TOP_PAGE_LIMIT: 20,
   TIMEZONE: 'Asia/Tokyo'
 });
@@ -216,7 +216,8 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('LastFetchDate', '', '最終取得日');
   sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数');
   sbmSetSettingIfEmpty_('AnalysisArticleLimit', SBM_DEFAULTS.ANALYSIS_ARTICLE_LIMIT, 'STEP Bで実際に重い分析を行う最大記事数。タイムアウト対策用');
-  sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。高速化のため通常OFF');
+  sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。データ一覧のH1/titleタグ表示に使用');
+  sbmSetSettingIfEmpty_('DataListTitleFetch', 'ON', 'データ一覧・今日の改善にH1/titleタグを取得する');
   sbmSetSettingIfEmpty_('LastFetchRows', '0', '直近のSearch Console取得行数');
   sbmSetSettingIfEmpty_('DailyFetchMaxRows', SBM_DEFAULTS.DAILY_FETCH_MAX_ROWS, 'STEP Aの日次取得上限。高速化のため通常1500件');
   sbmSetSettingIfEmpty_('ManagedArticleCount', '0', '直近の管理対象記事数');
@@ -465,27 +466,30 @@ function sbmAnalyzeOnlyManual(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   try {
+    sbmSetHomeProcessing_('● 処理中', 'STEP B 改善候補分析開始', startedText, '', '取得済みデータから改善候補・今日の改善・データ一覧を作成しています。', true);
     sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', 'STEP B 改善分析', 10);
     var result = sbmBuildDiagnosis_();
     sbmBuildTodayQueue_();
     sbmBuildInProgressSheet_();
-    sbmBuildDataListFromAnalysis_();
+    var dataListCount = sbmBuildDataListFromAnalysis_();
     sbmRemoveRetiredSheets_();
     sbmApplyProductVisibleTabs_();
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
-    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件', startedText, sbmNowText_());
+    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, 'データ一覧 ' + dataListCount + '件。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件', startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Done', 'analyzed ' + ((result && result.analyzedCount)||'') + ' / ' + sec + ' sec');
     sbmRefreshHome_();
+    sbmSetHomeProcessing_('完了', 'STEP B 改善候補分析', startedText, sbmNowText_(), '改善候補とデータ一覧を更新しました。', false);
     sbmOpenToday();
     var total = sbmGetSetting_('ImprovementCandidateCount','0');
     var shown = sbmGetSetting_('DisplayedImprovementCount','0');
     var managed = sbmGetSetting_('ManagedArticleCount','0');
-    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\n所要時間: ' + sec + '秒');
+    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\nデータ一覧: ' + dataListCount + '件\n所要時間: ' + sec + '秒');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('STEP B 改善候補分析', 'エラー', qRows.length, '途中', secErr, String(e), startedText, sbmNowText_());
     sbmLog_('AnalyzeOnly','Error',String(e));
+    sbmSetHomeProcessing_('エラー', 'STEP B 改善候補分析', startedText, sbmNowText_(), String(e), false);
     sbmAlert_('改善分析エラー', String(e));
   }
 }
@@ -611,7 +615,8 @@ function sbmBuildDiagnosis_() {
     var targeted = !!targetMap[url];
     var diag = sbmDiagnose_(totalClicks,totalImpressions,ctr,weightedPosition,rows);
     var score = managed ? sbmOpportunityScore_(totalImpressions, ctr, weightedPosition, diag.minutes) : 0;
-    var title = sbmResolveArticleTitle_(url, '', false);
+    var titleInfo = sbmResolveArticleTitleInfo_(url, '', true);
+    var title = titleInfo.h1 || titleInfo.titleTag || sbmTitleFromPath_(url);
     cardRows.push([sbmId_('ART'), url, title, main.Query, totalClicks, totalImpressions, ctr, weightedPosition, managed ? '○' : '×', managed ? (targeted ? diag.status : '管理対象・未分析') : '管理対象外', score, diag.recommendation, '', 0, sbmNowText_()]);
     if (!targeted) return;
     analyzed++;
@@ -644,7 +649,8 @@ function sbmBuildTodayQueue_() {
     var d = diag[i];
     var url = sbmNormalizeUrl_(String(d.URL || ''));
     var m = sbmNumber_(d.EstimatedMinutes) || 10;
-    var title = sbmResolveArticleTitle_(url, d.Title || '');
+    var todayTitleInfo = sbmResolveArticleTitleInfo_(url, d.Title || '', true);
+    var title = todayTitleInfo.h1 || todayTitleInfo.titleTag || sbmCleanDisplayTitle_(d.Title || '', url);
     var score = sbmNumber_(d.OpportunityScore);
     var openFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","記事を開く")';
     var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, '', d.Reason, d.Recommendation);
@@ -703,26 +709,53 @@ function sbmResolveArticleTitle_(url, fallback, allowFetch) {
   fallback = String(fallback || '').trim();
   if (fallback && fallback !== url && fallback.indexOf('http') !== 0) return fallback;
   url = sbmNormalizeUrl_(url);
-  allowFetch = allowFetch === true && String(sbmGetSetting_('FetchArticleTitles','OFF')).toUpperCase() === 'ON';
+  allowFetch = allowFetch === true && String(sbmGetSetting_('FetchArticleTitles','ON')).toUpperCase() === 'ON';
   if (!allowFetch) return sbmTitleFromPath_(url);
+  var info = sbmResolveArticleTitleInfo_(url, fallback, true);
+  return info.h1 || info.titleTag || sbmTitleFromPath_(url);
+}
+
+function sbmResolveArticleTitleInfo_(url, fallback, allowFetch) {
+  url = sbmNormalizeUrl_(url);
+  fallback = sbmCleanDisplayTitle_(fallback || '', url);
+  var base = {h1: fallback || sbmTitleFromPath_(url), titleTag: fallback || sbmTitleFromPath_(url)};
+  var enabled = String(sbmGetSetting_('DataListTitleFetch','ON')).toUpperCase() !== 'OFF';
+  allowFetch = allowFetch === true && enabled;
+  if (!allowFetch || !/^https?:\/\//i.test(url)) return base;
   var cache = CacheService.getScriptCache();
-  var key = 'title:' + Utilities.base64EncodeWebSafe(url).slice(0,180);
+  var key = 'titleinfo:' + Utilities.base64EncodeWebSafe(url).slice(0,170);
   var cached = cache.get(key);
-  if (cached) return cached;
-  var title = '';
+  if (cached) {
+    try {
+      var obj = JSON.parse(cached);
+      obj.h1 = sbmCleanDisplayTitle_(obj.h1 || base.h1, url);
+      obj.titleTag = sbmCleanHtmlText_(obj.titleTag || base.titleTag);
+      return obj;
+    } catch(e) {}
+  }
+  var info = {h1: base.h1, titleTag: base.titleTag};
   try {
     var res = UrlFetchApp.fetch(url, {muteHttpExceptions:true, followRedirects:true, headers:{'User-Agent':'SIMS-Blog-Manager'}});
     var html = res.getContentText() || '';
-    var m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-    if (m && m[1]) {
-      title = m[1].replace(/\s+/g,' ').replace(/&amp;/g,'&').replace(/&#124;/g,'|').trim();
-      title = title.split(' - ')[0].split(' | ')[0].trim();
-    }
+    var t = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    var h = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (t && t[1]) info.titleTag = sbmCleanHtmlText_(t[1]);
+    if (h && h[1]) info.h1 = sbmCleanDisplayTitle_(sbmCleanHtmlText_(h[1]), url);
+    if (!info.h1) info.h1 = info.titleTag || base.h1;
+    if (!info.titleTag) info.titleTag = info.h1 || base.titleTag;
   } catch(e) {}
-  if (!title) title = sbmTitleFromPath_(url);
-  if (title.length > 80) title = title.substring(0,80) + '…';
-  cache.put(key, title, 21600);
-  return title;
+  if (String(info.h1 || '').length > 120) info.h1 = String(info.h1).substring(0,120) + '…';
+  if (String(info.titleTag || '').length > 160) info.titleTag = String(info.titleTag).substring(0,160) + '…';
+  try { cache.put(key, JSON.stringify(info), 21600); } catch(e) {}
+  return info;
+}
+
+function sbmCleanHtmlText_(s) {
+  s = String(s || '').replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'').replace(/<[^>]+>/g,' ');
+  s = s.replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&#124;/g,'|');
+  s = s.replace(/&#(\d+);/g, function(_, n){ try { return String.fromCharCode(Number(n)); } catch(e) { return _; } });
+  s = s.replace(/&#x([0-9a-fA-F]+);/g, function(_, n){ try { return String.fromCharCode(parseInt(n,16)); } catch(e) { return _; } });
+  return s.replace(/\s+/g,' ').trim();
 }
 
 function sbmBuildBriefText_(d) {
@@ -928,8 +961,9 @@ function sbmBuildDataListFromAnalysis_() {
     if (!url) return;
     var d = diagByUrl[url] || {};
     var status = inProgMap[url] ? '改善中' : sbmDataListStatus_(c, d);
-    var h1 = sbmCleanDisplayTitle_(c.Title || d.Title || '', url);
-    var titleTag = h1;
+    var titleInfo = sbmResolveArticleTitleInfo_(url, c.Title || d.Title || '', true);
+    var h1 = titleInfo.h1 || sbmCleanDisplayTitle_(c.Title || d.Title || '', url);
+    var titleTag = titleInfo.titleTag || h1;
     var main = c.MainQuery || d.MainQuery || '';
     var clicks = sbmNumber_(c.Clicks || d.Clicks);
     var imps = sbmNumber_(c.Impressions || d.Impressions);
