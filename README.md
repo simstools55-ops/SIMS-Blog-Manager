@@ -18,3 +18,9 @@ Product 5.0 Officialは、不要なものをそぎ落として必要なものだ
 `apps-script/Code.gs` をApps Scriptの `Code.gs` に貼り付けてください。
 
 必要に応じて `apps-script/appsscript.json` も反映してください。
+
+### 開発用: STEP B処理プロファイル
+
+STEP B改善候補分析を実行すると、`処理プロファイル` シートに工程別の所要時間が記録されます。ボトルネック分析用です。
+
+STEP Aの取得結果には、取得件数が `DailyFetchMaxRows` に到達したかどうかも処理ログへ出力します。
