@@ -1,8 +1,7 @@
-# CHANGELOG
+# Changelog
 
-## Product 5.0.0 - STEP B Topic/Cannibal Clean Fix
+## Product 5.0.0 - STEP B Status Title Fix
 
-- STEP B改善候補分析から記事ネタ候補処理を完全に削除
-- カニバリ診断関連のシート生成処理を未実装ガードへ変更
-- 改善ブリーフからカニバリ診断の表示・依頼文を削除
-- STEP B完了後に不要シート削除と表示タブ整理を再実行
+- STEP B 改善候補分析の処理状況を Home に表示するよう修正。
+- データ一覧の H1タイトル と titleタグ を実ページから取得し、見出しとデータの対応を修正。
+- 今日の改善・改善ブリーフで使う記事タイトルも H1タイトル優先に統一。
