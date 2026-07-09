@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-datalist-compact-meta100';
+const SBM_VERSION = '5.0.0-stepb-50-fast';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -59,7 +59,7 @@ const SBM_DEFAULTS = Object.freeze({
   MEASURE_DAYS: '14,30',
   TEST_DAILY_DAYS: 7,
   MEASUREMENT_MODE: 'TEST_DAILY_7D',
-  ANALYSIS_CANDIDATE_LIMIT: 30,
+  ANALYSIS_CANDIDATE_LIMIT: 50,
   ANALYSIS_ARTICLE_LIMIT: 120,
   TITLE_FETCH_DEFAULT: 'ON',
   META_FETCH_MAX_ROWS: 100,
@@ -216,7 +216,8 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS, 'Search Console取得日数');
   sbmSetSettingIfEmpty_('OncePerDay', 'ON', '1日1回取得制限');
   sbmSetSettingIfEmpty_('LastFetchDate', '', '最終取得日');
-  sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数');
+  sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数。Product 5.0では50件で打ち切り');
+  if ((sbmNumber_(sbmGetSetting_('AnalysisCandidateLimit','0')) || 0) < 50) sbmSetSetting_('AnalysisCandidateLimit', 50, 'Product 5.0: STEP Bは改善候補50件で打ち切り');
   sbmSetSettingIfEmpty_('AnalysisArticleLimit', SBM_DEFAULTS.ANALYSIS_ARTICLE_LIMIT, 'STEP Bで実際に重い分析を行う最大記事数。タイムアウト対策用');
   sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。データ一覧のH1/titleタグ表示に使用');
   sbmSetSettingIfEmpty_('DataListTitleFetch', 'OFF', 'STEP Bでは外部取得しない。タイトル補完はSTEP Aで行う');
@@ -610,9 +611,12 @@ function sbmBuildDiagnosis_() {
   sbmSetSetting_('ManagedArticleCount', managedCount, '直近の管理対象記事数');
   sbmSetSetting_('AnalyzedArticleCount', targetStats.length, '直近で実際に分析した記事数');
 
+  var candidateLimit = sbmNumber_(sbmGetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT)) || SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT;
+  candidateLimit = Math.max(1, Math.min(200, candidateLimit));
   var cardRows = [];
   var diagnosisRows = [];
   var analyzed = 0;
+  var foundCandidates = 0;
   urls.forEach(function(url){
     var rows = byUrl[url].sort(function(a,b){return sbmQueryScore_(b)-sbmQueryScore_(a);});
     var main = rows[0];
@@ -623,14 +627,16 @@ function sbmBuildDiagnosis_() {
     var ctr = totalImpressions ? totalClicks / totalImpressions : 0;
     var managed = !!managedMap[url];
     var targeted = !!targetMap[url];
+    var shouldAnalyze = targeted && foundCandidates < candidateLimit;
     var diag = sbmDiagnose_(totalClicks,totalImpressions,ctr,weightedPosition,rows);
     var score = managed ? sbmOpportunityScore_(totalImpressions, ctr, weightedPosition, diag.minutes) : 0;
     var masterInfo = sbmGetMasterInfoByUrl_(url);
     var title = sbmCleanDisplayTitle_(masterInfo.h1 || masterInfo.titleTag || '', url) || String(main.Query || '') || sbmTitleFromPath_(url);
-    cardRows.push([sbmId_('ART'), url, title, main.Query, totalClicks, totalImpressions, ctr, weightedPosition, managed ? '○' : '×', managed ? (targeted ? diag.status : '管理対象・未分析') : '管理対象外', score, diag.recommendation, '', 0, sbmNowText_()]);
-    if (!targeted) return;
+    cardRows.push([sbmId_('ART'), url, title, main.Query, totalClicks, totalImpressions, ctr, weightedPosition, managed ? '○' : '×', managed ? (shouldAnalyze ? diag.status : '管理対象・未分析') : '管理対象外', score, shouldAnalyze ? diag.recommendation : '', '', 0, sbmNowText_()]);
+    if (!shouldAnalyze) return;
     analyzed++;
     if (totalImpressions < sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS))) return;
+    if (diag.status !== '改善候補') return;
     var classified = sbmClassifyQueries_(main.Query, rows.slice(1, Number(sbmGetSetting_('RelatedQueries', SBM_DEFAULTS.RELATED_QUERIES)) + 1));
     var important = classified.support.join('\n');
     var faq = classified.faq.join('\n');
@@ -638,9 +644,13 @@ function sbmBuildDiagnosis_() {
     var noise = classified.noise.join('\n');
     var qSummary = classified.summary;
     diagnosisRows.push([url, title, main.Query, important, faq, separate, noise, qSummary, totalClicks, totalImpressions, ctr, weightedPosition, diag.code, diag.diagnosis, diag.recommendation, diag.minutes, score, diag.reason, sbmNowText_()]);
+    foundCandidates++;
   });
   sbmRewriteSheet_(SBM_SHEETS.CARDS, SBM_HEADERS.CARDS, cardRows);
-  sbmRewriteSheet_(SBM_SHEETS.DIAGNOSIS, SBM_HEADERS.DIAGNOSIS, diagnosisRows.sort(function(a,b){return b[16]-a[16];}));
+  diagnosisRows = diagnosisRows.sort(function(a,b){return b[16]-a[16];}).slice(0, candidateLimit);
+  sbmRewriteSheet_(SBM_SHEETS.DIAGNOSIS, SBM_HEADERS.DIAGNOSIS, diagnosisRows);
+  sbmSetSetting_('AnalysisCandidateLimit', candidateLimit, 'STEP Bは改善候補がこの件数に達したら終了');
+  sbmSetSetting_('ImprovementCandidateCount', diagnosisRows.length, '直近の改善候補数');
   return {totalCount: articleStats.length, managedCount: managedCount, targetCount: targetStats.length, analyzedCount: analyzed, diagnosisCount: diagnosisRows.length};
 }
 
