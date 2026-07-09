@@ -1,7 +1,6 @@
 # Changelog
 
-## Product 5.0.0 - STEP B Fast DataList Title Fix
-
-- STEP B中のH1/title外部取得を停止し、起動時間超過を回避。
-- データ一覧のH1タイトル/titleタグに数値・日付など誤った値が入る問題を修正。
-- STEP Bの処理状況をHomeへ段階表示。
+## Product 5.0.0 Data List Master Architecture
+- STEP AでSearch Console取得後にデータ一覧を共通マスターとして更新。
+- H1タイトル、titleタグ、meta descriptionをSTEP Aで補完し、STEP Bでは外部取得しない構成へ整理。
+- 今日の改善・改善ブリーフ・データ一覧のタイトル表示をデータ一覧参照に統一。
