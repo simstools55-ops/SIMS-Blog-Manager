@@ -1,11 +1,20 @@
 # SIMS-Blog-Manager Product 5.0.0
 
-製品本体は `spreadsheet/SIMS-Blog-Manager.xlsx` と `apps-script/Code.gs` です。
+Product 5.0 Officialは、不要なものをそぎ落として必要なものだけに絞る方針で開発しています。
 
-今回の版では、データ一覧を利用者が見やすいコンパクト表示に変更し、詳細情報は詳細クリックで確認できるようにしました。STEP Aでは最大100URLまで記事タイトル・SEOタイトル・メタディスクリプションを補完します。
-\n## Product 5.0 STEP B 50 Candidate Fast\n- STEP Bは上位候補の分析中に改善候補が50件集まった時点で終了します。\n- 400ページ規模でも全件分析せず、データ一覧は既存情報を維持しながら分析済み候補を更新します。\n
+## 今回の版
 
-## Product 5.0 STEP B 50 Candidate Fast
-- STEP Bは上位候補から分析し、改善候補が50件集まった時点で終了します。
-- 400ページ規模でも全件分析せず、タイムアウト回避を優先します。
-- STEP Aの最大100URL補完とデータ一覧コンパクト表示は維持します。
+`Legacy Feature Removal`
+
+旧SIMS由来の以下4機能を現行実装から除去しました。
+
+- 記事カルテ
+- カニバリ診断
+- 記事ネタ候補
+- 上位ページ診断
+
+## 利用者向けApps Script
+
+`apps-script/Code.gs` をApps Scriptの `Code.gs` に貼り付けてください。
+
+必要に応じて `apps-script/appsscript.json` も反映してください。

@@ -1,12 +1,20 @@
-# 製品本体
+# Product Body
 
-- スプレッドシート: `spreadsheet/SIMS-Blog-Manager.xlsx`
-- Apps Script: `apps-script/Code.gs`
+このZIPの製品本体は以下です。
 
-利用者向けApps Scriptは `Code.gs` 1ファイルです。
-\n## Product 5.0 STEP B 50 Candidate Fast\n- STEP Bは上位候補の分析中に改善候補が50件集まった時点で終了します。\n- 400ページ規模でも全件分析せず、データ一覧は既存情報を維持しながら分析済み候補を更新します。\n
+- `spreadsheet/SIMS-Blog-Manager.xlsx` または同梱テンプレート
+- `apps-script/Code.gs`
+- `apps-script/appsscript.json`
 
-## Product 5.0 STEP B 50 Candidate Fast
-- STEP Bは上位候補から分析し、改善候補が50件集まった時点で終了します。
-- 400ページ規模でも全件分析せず、タイムアウト回避を優先します。
-- STEP Aの最大100URL補完とデータ一覧コンパクト表示は維持します。
+## 今回の重要事項
+
+Product 5.0 Officialでは、次の旧機能は完全削除対象です。
+
+- 記事カルテ
+- カニバリ診断
+- 記事ネタ候補
+- 上位ページ診断
+
+STEP Bの改善候補分析中に、これらのシートを作成・更新しない構成へ整理しました。
+
+効果測定・測定履歴は次フェーズで実装するため、現時点では保留です。
