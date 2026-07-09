@@ -716,6 +716,20 @@ function sbmSafeArticleTitleCell_(value, url) {
   return value;
 }
 
+
+function sbmCleanDataListText_(value, url) {
+  // データ一覧用: 取得できなかったタイトル・descriptionにURL/数値/日付などを入れない。
+  value = String(value || '').trim();
+  url = sbmNormalizeUrl_(url || '');
+  if (!value) return '';
+  if (url && value === url) return '';
+  if (/^https?:\/\//i.test(value)) return '';
+  if (/^\d+(\.\d+)?$/.test(value)) return '';
+  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(value)) return '';
+  if (/^1900[-\/]0?1[-\/]0?\d/.test(value)) return '';
+  return value;
+}
+
 function sbmCleanDisplayTitle_(title, url) {
   title = String(title || '').trim();
   url = sbmNormalizeUrl_(url || '');
@@ -983,9 +997,9 @@ function sbmBuildDataListFromAnalysis_() {
     var d = diagByUrl[url] || {};
     var m = master[url] || {};
     var status = inProgMap[url] ? '改善中' : sbmDataListStatus_(c, d);
-    var h1 = sbmCleanDisplayTitle_(m.h1 || c.Title || d.Title || '', url);
-    var titleTag = sbmCleanDisplayTitle_(m.titleTag || '', url);
-    var metaDesc = m.metaDescription || '';
+    var h1 = sbmCleanDataListText_(m.h1 || '', url);
+    var titleTag = sbmCleanDataListText_(m.titleTag || '', url);
+    var metaDesc = sbmCleanDataListText_(m.metaDescription || '', url);
     var main = c.MainQuery || d.MainQuery || m.mainQuery || '';
     var clicks = sbmNumber_(c.Clicks || d.Clicks || m.clicks);
     var imps = sbmNumber_(c.Impressions || d.Impressions || m.impressions);
@@ -1017,9 +1031,9 @@ function sbmExistingDataListMap_() {
     if (!url) return;
     map[url] = {
       status: r['記事ステータス'] || '',
-      h1: r['H1タイトル'] || '',
-      titleTag: r['titleタグ'] || '',
-      metaDescription: r['meta description'] || r['メタディスクリプション'] || '',
+      h1: sbmCleanDataListText_(r['H1タイトル'] || '', url),
+      titleTag: sbmCleanDataListText_(r['titleタグ'] || '', url),
+      metaDescription: sbmCleanDataListText_(r['meta description'] || r['メタディスクリプション'] || '', url),
       mainQuery: r['メインクエリ'] || '',
       clicks: r['クリック数'] || '',
       impressions: r['表示回数'] || '',
@@ -1049,15 +1063,15 @@ function sbmUpdateDataListAfterFetch_(rawRows) {
   urls.forEach(function(url){
     var st = stats[url];
     var old = existing[url] || {};
-    var h1 = sbmCleanDisplayTitle_(old.h1 || '', url);
-    var titleTag = sbmCleanDisplayTitle_(old.titleTag || '', url);
-    var metaDesc = old.metaDescription || '';
+    var h1 = sbmCleanDataListText_(old.h1 || '', url);
+    var titleTag = sbmCleanDataListText_(old.titleTag || '', url);
+    var metaDesc = sbmCleanDataListText_(old.metaDescription || '', url);
     if (fetched < maxMeta && (!h1 || !titleTag || !metaDesc)) {
       var meta = sbmFetchArticleMetaInfo_(url);
       if (meta && (meta.h1 || meta.titleTag || meta.metaDescription)) {
-        h1 = sbmCleanDisplayTitle_(meta.h1 || h1, url);
-        titleTag = sbmCleanDisplayTitle_(meta.titleTag || titleTag, url);
-        metaDesc = meta.metaDescription || metaDesc;
+        h1 = sbmCleanDataListText_(meta.h1 || h1, url);
+        titleTag = sbmCleanDataListText_(meta.titleTag || titleTag, url);
+        metaDesc = sbmCleanDataListText_(meta.metaDescription || metaDesc, url);
         fetched++;
       }
     }
@@ -1142,17 +1156,27 @@ function sbmStyleDataListSheet_(sh) {
   if (!sh) return;
   sbmEnsureHeaders_(sh, SBM_HEADERS.QUERY_DATA);
   sh.setFrozenRows(1);
-  sh.setColumnWidth(1, 120);
-  sh.setColumnWidth(2, 280);
-  sh.setColumnWidth(3, 320);
-  sh.setColumnWidth(4, 320);
-  sh.setColumnWidth(5, 220);
-  sh.setColumnWidth(6, 90);
-  sh.setColumnWidth(7, 90);
-  sh.setColumnWidth(8, 80);
-  sh.setColumnWidth(9, 90);
+  sh.setColumnWidth(1, 120);   // 記事ステータス
+  sh.setColumnWidth(2, 300);   // 記事URL
+  sh.setColumnWidth(3, 320);   // H1タイトル
+  sh.setColumnWidth(4, 360);   // titleタグ
+  sh.setColumnWidth(5, 360);   // meta description
+  sh.setColumnWidth(6, 190);   // メインクエリ
+  sh.setColumnWidth(7, 90);    // クリック数
+  sh.setColumnWidth(8, 100);   // 表示回数
+  sh.setColumnWidth(9, 80);    // CTR
+  sh.setColumnWidth(10, 90);   // 平均順位
+  sh.setColumnWidth(11, 150);  // 最終取得日時
   sh.getRange(1,1,1,SBM_HEADERS.QUERY_DATA.length).setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold');
+  var lr = Math.max(2, sh.getLastRow());
   sh.getDataRange().setWrap(true).setVerticalAlignment('middle');
+  if (lr > 1) {
+    sh.getRange(2,7,lr-1,1).setNumberFormat('#,##0');     // クリック数
+    sh.getRange(2,8,lr-1,1).setNumberFormat('#,##0');     // 表示回数
+    sh.getRange(2,9,lr-1,1).setNumberFormat('0.0%');      // CTR
+    sh.getRange(2,10,lr-1,1).setNumberFormat('0.0');      // 平均順位
+    sh.getRange(2,11,lr-1,1).setNumberFormat('yyyy-mm-dd hh:mm');
+  }
 }
 
 function sbmOpenDataListSafe_() { sbmOpenSheetByName_(SBM_SHEETS.QUERY_DATA); }
