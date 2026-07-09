@@ -30,3 +30,9 @@ https://simstools55-ops.github.io/SIMS-Blog-Manager/
 ## Actionsが失敗した場合
 
 `Actions` → 失敗した実行 → `build` → `Build site` の赤いエラーを確認してください。
+
+
+## Product 5.0 Home UI Syntax Fix
+- Code.gs の構文エラー（Unexpected token）を修正。
+- 高速化済みSearch Console取得処理とHome UI復元内容は維持。
+- 利用者向けApps Scriptは Code.gs のみ。
