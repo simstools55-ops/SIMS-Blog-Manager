@@ -1,47 +1,16 @@
-# SIMS-Blog-Manager Product 5.0.0 Home UI Restore Fast
+# SIMS-Blog-Manager Product 5.0.0
 
-製品本体は以下です。
+## 製品本体
 
-- `apps-script/Code.gs`
-- `apps-script/appsscript.json`
+- Apps Script: `apps-script/Code.gs`
+- Manifest: `apps-script/appsscript.json`
 
-Search Console取得が高速化したRC8.1系の取得処理を維持し、Home画面の処理中表示と不要タブ整理だけを戻した確認版です。
+## 今回の修正
 
-# SIMS-Blog-Manager Product 5.0 RC9
+STEP B改善候補分析で、Product 5.0では不要な以下の処理が動かないようにしました。
 
-Search Consoleデータを使って、日々のブログ改善を管理するGoogleスプレッドシートシステムです。
+- 記事ネタ候補
+- カニバリ診断
+- 上位ページ診断などの保留機能シート
 
-## RC9の主な修正
-
-- 改善候補分析の列数不一致エラーを修正
-- 上位ページ診断の記事タイトル表示と列マッピングを修正
-- 上位ページ診断の状態名を利用者向けに改善
-- 処理ログに開始時刻・終了時刻・利用者待ち時間を記録
-- 既存シートのヘッダー更新を安定化
-
-## 更新手順
-
-1. GitHubへZIPの中身を上書きアップロード
-2. Apps Scriptの `apps-script/Code.js` を貼り替え
-3. 保存
-4. スプレッドシートで「SIMS-Blog-Manager → 管理 → シートを作成・修復」を実行
-5. STEP A / STEP B / STEP Cを順番に確認
-
-## deploy.yml
-
-更新不要です。
-
-
-## Product 5.0 RC8.1 Fast Path
-
-- Search Console取得エンジンはRC8.1ベースを維持。
-- onOpenはメニュー作成だけに限定。
-- STEP AはSearch Consoleデータ取得のみ。
-- 日次取得上限 DailyFetchMaxRows の標準値を1500件に設定。
-- Homeの処理状況表示を維持しつつ、処理中の注意文を明確化。
-
-
-## Product 5.0 Home UI Syntax Fix
-- Code.gs の構文エラー（Unexpected token）を修正。
-- 高速化済みSearch Console取得処理とHome UI復元内容は維持。
-- 利用者向けApps Scriptは Code.gs のみ。
+Search Console取得の高速処理は維持しています。
