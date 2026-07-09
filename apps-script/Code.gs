@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepb-slim-datalist-fix';
+const SBM_VERSION = '5.0.0-stepb-topic-cannibal-clean-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -36,7 +36,7 @@ const SBM_HEADERS = Object.freeze({
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
   LOG: ['改善日','記事タイトル','URL','メインクエリ','改善内容','修正内容','所要時間','メモ','初回測定日','7日測定完了日','状態','改善前CTR','改善前順位','改善前クリック','改善前表示回数'],
   EFFECT: ['記事タイトル','改善日','改善内容','判定','SIMS評価','次のアクション','詳細','URL','修正内容','経過日数','改善前順位','現在順位','順位変化','改善前CTR','現在CTR','CTR変化','改善前クリック','現在クリック','クリック変化','次の確認','コメント'],
-  BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','カニバリ診断','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
+  BRIEF: ['BriefId','URL','記事タイトル','メインクエリ','サブクエリ','FAQ候補','別記事候補','除外クエリ','クエリ分析','診断','推奨改善','理由','推定時間','Score','CTR','Position','Clicks','Impressions','改善依頼文','作成日時'],
   MEASURE_HISTORY: ['記事タイトル','改善日','記録日','経過日数','現在順位','現在CTR','現在クリック','現在表示回数','判定メモ','URL'],
   CANNIBAL: ['判定','共通クエリ','記事Aタイトル','記事Bタイトル','推奨対応','詳細','記事A URL','記事Aクリック','記事A順位','記事B URL','記事Bクリック','記事B順位','理由','確認日'],
   TOPICS: ['候補日','候補クエリ','元記事タイトル','元記事URL','理由','優先度','Claude用メモ','状態'],
@@ -313,7 +313,7 @@ function sbmBuildBriefSheetView_() { sbmStyleBriefSheet_(sbmGetOrCreateSheet_(SB
 function sbmBuildLogSheetView_() { sbmStyleLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.LOG)); }
 function sbmBuildEffectSheetView_() { sbmStyleEffectSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT)); }
 function sbmBuildInProgressSheetView_() { sbmBuildInProgressSheet_(); }
-function sbmBuildCannibalSheetView_() { sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL)); }
+function sbmBuildCannibalSheetView_() { sbmRemoveRetiredSheets_(); }
 
 function sbmSetupStep1BlogInfo() {
   sbmInitializeSheets(false);
@@ -470,6 +470,8 @@ function sbmAnalyzeOnlyManual(silent) {
     sbmBuildTodayQueue_();
     sbmBuildInProgressSheet_();
     sbmBuildDataListFromAnalysis_();
+    sbmRemoveRetiredSheets_();
+    sbmApplyProductVisibleTabs_();
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastAnalyzeSeconds', sec, '直近の改善分析秒数');
     sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '利用者待ち時間を含む分析処理全体。改善候補 ' + sbmGetSetting_('ImprovementCandidateCount','0') + '件 / 表示 ' + sbmGetSetting_('DisplayedImprovementCount','0') + '件', startedText, sbmNowText_());
@@ -621,9 +623,6 @@ function sbmBuildDiagnosis_() {
     var noise = classified.noise.join('\n');
     var qSummary = classified.summary;
     diagnosisRows.push([url, title, main.Query, important, faq, separate, noise, qSummary, totalClicks, totalImpressions, ctr, weightedPosition, diag.code, diag.diagnosis, diag.recommendation, diag.minutes, score, diag.reason, sbmNowText_()]);
-    classified.separate.forEach(function(q){
-      topicRows.push([sbmDateText_(new Date()), q, title, url, '元記事のメインクエリと検索意図が異なるため、別記事候補として保存', sbmStars_(Math.min(100, score + 10)), '次のキーワードで新記事の構成案を作ってください。\nキーワード: ' + q + '\n元記事: ' + title + '\n元記事URL: ' + url, '未着手']);
-    });
   });
   sbmRewriteSheet_(SBM_SHEETS.CARDS, SBM_HEADERS.CARDS, cardRows);
   sbmRewriteSheet_(SBM_SHEETS.DIAGNOSIS, SBM_HEADERS.DIAGNOSIS, diagnosisRows.sort(function(a,b){return b[16]-a[16];}));
@@ -648,10 +647,9 @@ function sbmBuildTodayQueue_() {
     var title = sbmResolveArticleTitle_(url, d.Title || '');
     var score = sbmNumber_(d.OpportunityScore);
     var openFormula = '=HYPERLINK("' + String(url).replace(/"/g,'""') + '","記事を開く")';
-    var cannibal = sbmCannibalAdviceForUrl_(url, d.MainQuery);
-    var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, cannibal, d.Reason, d.Recommendation);
+    var requestText = sbmImprovementRequestText_(title, url, d.MainQuery, d.SubQueries, d.FAQQueries, d.SeparateArticleQueries, d.NoiseQueries, d.QuerySummary, '', d.Reason, d.Recommendation);
     out.push([sbmStars_(score), m + '分', title, d.MainQuery, d.Recommendation, openFormula, false, false, false, false, false, false, false, false, false, false, false, '', score, url, '未着手', '']);
-    briefRows.push([sbmId_('BRF'), url, title, d.MainQuery, d.SubQueries || '', d.FAQQueries || '', d.SeparateArticleQueries || '', d.NoiseQueries || '', d.QuerySummary || '', cannibal || '', d.Diagnosis || '', d.Recommendation || '', d.Reason || '', m, score, d.CTR || '', d.Position || '', d.Clicks || '', d.Impressions || '', requestText, sbmNowText_()]);
+    briefRows.push([sbmId_('BRF'), url, title, d.MainQuery, d.SubQueries || '', d.FAQQueries || '', d.SeparateArticleQueries || '', d.NoiseQueries || '', d.QuerySummary || '', d.Diagnosis || '', d.Recommendation || '', d.Reason || '', m, score, d.CTR || '', d.Position || '', d.Clicks || '', d.Impressions || '', requestText, sbmNowText_()]);
   }
   sbmSetSetting_('DisplayedImprovementCount', out.length, '今日の改善に表示している件数');
   sbmRewriteSheet_(SBM_SHEETS.TODAY, SBM_HEADERS.TODAY, out);
@@ -843,60 +841,17 @@ function sbmIntentLabel_(q, mainQuery) {
 function sbmUniqueLimit_(arr, n) { var seen={}, out=[]; arr.forEach(function(x){ var k=String(x); if(!seen[k] && out.length<n){ seen[k]=true; out.push(x);} }); return out; }
 
 function sbmBuildCannibalDiagnosis_() {
-  var rows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
-  var byQuery = {};
-  rows.forEach(function(r){
-    var q = String(r.Query || '').trim();
-    var url = sbmNormalizeUrl_(r.URL || '');
-    if (!q || !url) return;
-    var key = sbmNormalizeQueryText_(q);
-    if (!byQuery[key]) byQuery[key] = [];
-    byQuery[key].push({query:q, url:url, clicks:sbmNumber_(r.Clicks), impressions:sbmNumber_(r.Impressions), position:sbmNumber_(r.Position)});
-  });
-  var out=[];
-  Object.keys(byQuery).forEach(function(k){
-    var list = byQuery[k].sort(function(a,b){ return b.clicks - a.clicks || a.position - b.position; });
-    var unique = [];
-    var seen = {};
-    list.forEach(function(x){ if(!seen[x.url]){ seen[x.url]=true; unique.push(x);} });
-    if (unique.length < 2) return;
-    var a=unique[0], b=unique[1];
-    var total = a.clicks + b.clicks;
-    if (total < 2 && (a.impressions + b.impressions) < 100) return;
-    var gap = Math.abs(a.position - b.position);
-    var judgment = gap <= 3 ? '🔴 高' : gap <= 8 ? '🟡 中' : '🟢 低';
-    var aTitle = sbmResolveArticleTitle_(a.url, '');
-    var bTitle = sbmResolveArticleTitle_(b.url, '');
-    var advice = '';
-    var reason = '';
-    if (judgment.indexOf('高') !== -1) {
-      advice = (a.clicks >= b.clicks ? '記事Aを主記事候補。記事Bはメインクエリ変更または統合を検討。' : '記事Bを主記事候補。記事Aはメインクエリ変更または統合を検討。');
-      reason = '同じクエリで複数URLが近い順位に出ており、クリックが分散している可能性があります。';
-    } else if (judgment.indexOf('中') !== -1) {
-      advice = '検索意図が近い場合は統合、違う場合はメインクエリを分けて維持。';
-      reason = '同一クエリで複数URLが表示されています。順位差があるため、強い記事を主軸に整理してください。';
-    } else {
-      advice = '現時点では経過観察。別検索意図の記事として維持できる可能性があります。';
-      reason = '同一クエリで複数URLがありますが、順位差があるため緊急度は低めです。';
-    }
-    out.push([judgment, a.query, aTitle, a.url, a.clicks, a.position, bTitle, b.url, b.clicks, b.position, advice, reason, sbmNowText_()]);
-  });
-  out.sort(function(x,y){ return String(x[0]).localeCompare(String(y[0])); });
-  sbmRewriteSheet_(SBM_SHEETS.CANNIBAL, SBM_HEADERS.CANNIBAL, out.slice(0,200));
-  sbmStyleCannibalSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL));
+  // Product 5.0: カニバリ診断は未実装。シート生成もしない。
+  sbmRemoveRetiredSheets_();
+  return [];
 }
 
+
 function sbmCannibalAdviceForUrl_(url, mainQuery) {
-  var rows = sbmRowsAsObjects_(SBM_SHEETS.CANNIBAL);
-  url = sbmNormalizeUrl_(url || '');
-  var hits = [];
-  rows.forEach(function(r){
-    if (String(r['記事A URL']) === url || String(r['記事B URL']) === url || sbmNormalizeQueryText_(r['共通クエリ']) === sbmNormalizeQueryText_(mainQuery)) {
-      hits.push(String(r['判定'] || '') + ' ' + String(r['共通クエリ'] || '') + ': ' + String(r['推奨対応'] || ''));
-    }
-  });
-  return hits.length ? hits.slice(0,3).join('\n') : '現時点で強いカニバリ候補は見つかっていません。';
+  // Product 5.0: カニバリ診断は未実装。改善ブリーフには出さない。
+  return '';
 }
+
 
 function sbmDiagnose_(clicks, impressions, ctr, position, rows) {
   var ctrPct = ctr * 100;
@@ -1062,9 +1017,9 @@ function sbmOpenEffect() { sbmOpenSheet_(SBM_SHEETS.EFFECT); }
 function sbmOpenInProgress() { sbmBuildInProgressSheet_(); sbmOpenSheet_(SBM_SHEETS.IN_PROGRESS); }
 function sbmOpenProcessLog() { sbmOpenSheet_(SBM_SHEETS.PROCESS_LOG); }
 function sbmOpenMeasureHistory() { sbmOpenSheet_(SBM_SHEETS.MEASURE_HISTORY); }
-function sbmOpenCannibal() { sbmOpenSheet_(SBM_SHEETS.CANNIBAL); }
-function sbmOpenTopics() { sbmOpenSheet_(SBM_SHEETS.TOPICS); }
-function sbmOpenTopPages() { sbmOpenSheet_(SBM_SHEETS.TOP_PAGES); }
+function sbmOpenCannibal() { sbmAlert_('未実装', 'カニバリ診断はProduct 5.0では未実装です。'); }
+function sbmOpenTopics() { sbmAlert_('未実装', '記事ネタ候補はProduct 5.0では未実装です。'); }
+function sbmOpenTopPages() { sbmAlert_('未実装', '上位ページ診断はProduct 5.0では未実装です。'); }
 function sbmOpenSystemLog() { sbmOpenSheet_(SBM_SHEETS.SYSTEM_LOG); }
 function sbmOpenBrief() { sbmOpenSheet_(SBM_SHEETS.BRIEF); }
 
@@ -1305,13 +1260,12 @@ function sbmImprovementRequestText_(title, url, mainQuery, subQueries, faqQuerie
     + 'FAQ候補:\n' + (faqQueries || '-') + '\n\n'
     + '別記事候補クエリ（この記事には無理に入れない）:\n' + (separateQueries || '-') + '\n\n'
     + '改善に使わない除外クエリ:\n' + (noiseQueries || '-') + '\n\n'
-    + 'カニバリ診断:\n' + (cannibalAdvice || '-') + '\n\n'
-    + '依頼:\nメインクエリを軸に、サブクエリだけを本文・見出し・FAQへ自然に反映して改善してください。別記事候補や除外クエリはこの記事に無理に入れないでください。必要なら最後に「別記事として作るべきテーマ」を提案してください。カニバリ候補がある場合は、どちらを主記事にするか、統合するか、メインクエリを分けるかの方針も提案してください。';
+    + '依頼:\nメインクエリを軸に、サブクエリだけを本文・見出し・FAQへ自然に反映して改善してください。別記事候補や除外クエリはこの記事に無理に入れないでください。必要なら最後に「別記事として作るべきテーマ」を提案してください。';
 }
 
 function sbmBriefHtml_(b) {
   function esc(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-  var request = b['改善依頼文'] || sbmImprovementRequestText_(b['記事タイトル'], b.URL, b['メインクエリ'], b['サブクエリ'], b['FAQ候補'], b['別記事候補'], b['除外クエリ'], b['クエリ分析'], b['カニバリ診断'], b['理由'], b['推奨改善']);
+  var request = b['改善依頼文'] || sbmImprovementRequestText_(b['記事タイトル'], b.URL, b['メインクエリ'], b['サブクエリ'], b['FAQ候補'], b['別記事候補'], b['除外クエリ'], b['クエリ分析'], '', b['理由'], b['推奨改善']);
   return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:18px;color:#202124">'
     + '<h2 style="margin-top:0">改善ブリーフ</h2>'
     + '<div style="background:#e8f0fe;padding:12px;border-radius:8px;margin-bottom:14px"><b>' + esc(b['記事タイトル']) + '</b><br><a href="' + esc(b.URL) + '" target="_blank">記事を開く</a></div>'
@@ -1324,7 +1278,6 @@ function sbmBriefHtml_(b) {
     + '<h3>FAQ候補</h3><p>' + esc(b['FAQ候補']) + '</p>'
     + '<h3>別記事候補</h3><p>' + esc(b['別記事候補']) + '</p>'
     + '<h3>改善に使わない除外クエリ</h3><p>' + esc(b['除外クエリ']) + '</p>'
-    + '<h3>カニバリ診断</h3><p>' + esc(b['カニバリ診断']) + '</p>'
     + '<h3>Claude / ChatGPT に貼り付ける改善依頼</h3>'
     + '<textarea style="width:100%;height:230px;font-family:monospace;font-size:12px;white-space:pre-wrap">' + String(request || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</textarea>'
     + '<hr><p>推定時間: ' + esc(b['推定時間']) + '分 / Score: ' + esc(b.Score) + '</p>'
@@ -1389,33 +1342,19 @@ function sbmInProgressDetailHtml_(o) {
 }
 
 function sbmShowSelectedCannibalDetail() {
-  var sh = SpreadsheetApp.getActiveSheet();
-  if (!sh || sh.getName() !== SBM_SHEETS.CANNIBAL) { sbmAlert_('カニバリ診断を開いてください','カニバリ診断シートで対象行を選択してから実行してください。'); return; }
-  var row = sh.getActiveRange().getRow();
-  if (row <= 1) return;
-  sbmShowCannibalDetailForRow_(row);
+  sbmAlert_('未実装', 'カニバリ診断はProduct 5.0では未実装です。');
 }
+
 
 function sbmShowCannibalDetailForRow_(row) {
-  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.CANNIBAL);
-  var heads = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
-  var vals = sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0];
-  var o = {}; heads.forEach(function(h,i){ o[h]=vals[i]; });
-  var html = HtmlService.createHtmlOutput(sbmCannibalDetailHtml_(o)).setWidth(820).setHeight(680);
-  SpreadsheetApp.getUi().showModalDialog(html, 'カニバリ診断の詳細');
+  sbmAlert_('未実装', 'カニバリ診断はProduct 5.0では未実装です。');
 }
 
+
 function sbmCannibalDetailHtml_(o) {
-  function esc(v){ return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
-  return '<div style="font-family:Arial,sans-serif;line-height:1.65;padding:18px;color:#202124">'
-    + '<h2 style="margin-top:0">カニバリ診断の詳細</h2>'
-    + '<p><b>判定:</b> ' + esc(o['判定']) + '　<b>共通クエリ:</b> ' + esc(o['共通クエリ']) + '</p>'
-    + '<h3>対象記事</h3><ul><li><a href="' + esc(o['記事A URL']) + '" target="_blank">' + esc(o['記事Aタイトル']) + '</a>（クリック ' + esc(o['記事Aクリック']) + ' / 順位 ' + esc(o['記事A順位']) + '）</li>'
-    + '<li><a href="' + esc(o['記事B URL']) + '" target="_blank">' + esc(o['記事Bタイトル']) + '</a>（クリック ' + esc(o['記事Bクリック']) + ' / 順位 ' + esc(o['記事B順位']) + '）</li></ul>'
-    + '<h3>推奨対応</h3><p>' + esc(o['推奨対応']) + '</p>'
-    + '<h3>診断理由</h3><p>' + esc(o['理由']) + '</p>'
-    + '<p style="color:#5f6368">確認日: ' + esc(o['確認日']) + '</p></div>';
+  return '<div>Product 5.0では未実装です。</div>';
 }
+
 
 function sbmUpdateEffectiveness() {
   sbmUpdateEffectivenessCore_(true);
@@ -1501,7 +1440,7 @@ function sbmSuggestNextAction_(outcome, improvement, actions, posDelta, ctrDelta
   if (outcome === '要再改善' || outcome === '要確認') {
     if (text.indexOf('タイトル') === -1 && text.indexOf('Title') === -1) return 'タイトル・ディスクリプション・導入文を再確認してください。';
     if (text.indexOf('FAQ') === -1) return 'FAQ追加、本文補強、検索意図に合うH2追加を検討してください。';
-    return '改善内容を見直し、別記事候補・カニバリ候補も確認してください。';
+    return '改善内容を見直し、検索意図に合う修正方針を確認してください。';
   }
   if (outcome === '横ばい') return '測定継続。動きが弱い場合はFAQ追加または内部リンク追加を検討してください。';
   return 'まだ判断しません。RCテストでは毎日測定し、7日分の推移を確認してください。';
