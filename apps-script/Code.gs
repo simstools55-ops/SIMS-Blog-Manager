@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepb-profile-dev';
+const SBM_VERSION = '5.0.0-pagefirst-profiler-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -50,6 +50,8 @@ const SBM_DEFAULTS = Object.freeze({
   GSC_DELAY_DAYS: 3,
   MAX_QUERY_ROWS: 5000,
   DAILY_FETCH_MAX_ROWS: 1500,
+  PAGE_FETCH_MAX_ROWS: 5000,
+  QUERY_FETCH_PAGE_LIMIT: 50,
   MEASURE_DAYS: '14,30',
   TEST_DAILY_DAYS: 7,
   MEASUREMENT_MODE: 'TEST_DAILY_7D',
@@ -77,7 +79,8 @@ function onOpen() {
       .addItem('STEP B 改善候補を分析', 'sbmAnalyzeOnlyManual')
       .addItem('データ一覧を開く', 'sbmOpenDataListSafe_')
       .addItem('選択行の詳細を表示', 'sbmShowSelectedDataListDetail')
-      .addItem('処理ログを開く', 'sbmOpenProcessLog'))
+      .addItem('処理ログを開く', 'sbmOpenProcessLog')
+      .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
     .addSubMenu(ui.createMenu('今日の改善')
       .addItem('今日の改善を開く', 'sbmOpenToday')
       .addItem('選択行の改善ブリーフを開く', 'sbmShowSelectedBrief')
@@ -93,8 +96,7 @@ function onOpen() {
     .addSubMenu(ui.createMenu('管理')
       .addItem('シートを作成・修復', 'sbmInitializeSheets')
       .addItem('システムシートを非表示', 'sbmHideSystemSheets')
-      .addItem('エラー・ログを開く', 'sbmOpenSystemLog')
-      .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
+      .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
     .addToUi();
 }
 
@@ -172,7 +174,7 @@ function sbmMigrateVisibleSheetNames_() {
 function sbmRemoveRetiredSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var keep = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.BRIEF, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG, SBM_SHEETS.RAW_DATA].forEach(function(n){ keep[n] = true; });
+  [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.BRIEF, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG, SBM_SHEETS.RAW_DATA].forEach(function(n){ keep[n] = true; });
   var retired = ['上位ページ診断','カニバリ診断','記事ネタ候補','記事カルテ','ホーム','クエリデータ','記事診断'];
   retired.forEach(function(n){
     var sh = ss.getSheetByName(n);
@@ -217,7 +219,10 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('DataListTitleFetch', 'OFF', 'STEP Bでは外部取得しない。タイトル補完はSTEP Aで行う');
   sbmSetSettingIfEmpty_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS, 'STEP Aで記事タイトル/SEOタイトル/meta descriptionを補完する最大URL数。標準100URL');
   sbmSetSettingIfEmpty_('LastFetchRows', '0', '直近のSearch Console取得行数');
-  sbmSetSettingIfEmpty_('DailyFetchMaxRows', SBM_DEFAULTS.DAILY_FETCH_MAX_ROWS, 'STEP Aの日次取得上限。高速化のため通常1500件');
+  sbmSetSettingIfEmpty_('DailyFetchMaxRows', SBM_DEFAULTS.DAILY_FETCH_MAX_ROWS, '従来方式のSTEP A取得上限。通常1500件');
+  sbmSetSettingIfEmpty_('FetchMode', 'PAGE_FIRST', 'Search Console取得方式。PAGE_FIRST=ページ一覧優先、QUERY_PAGE=従来方式');
+  sbmSetSettingIfEmpty_('PageFetchMaxRows', SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS, 'STEP Aでページ一覧を取得する最大行数。大規模サイト向け');
+  sbmSetSettingIfEmpty_('QueryFetchPageLimit', SBM_DEFAULTS.QUERY_FETCH_PAGE_LIMIT, 'クエリ詳細を取得するページ数。標準50記事');
   sbmSetSettingIfEmpty_('ManagedArticleCount', '0', '直近の管理対象記事数');
   sbmSetSettingIfEmpty_('ImprovementCandidateCount', '0', '直近の改善候補数');
   sbmSetSettingIfEmpty_('DisplayedImprovementCount', '0', '今日の改善に表示している件数');
@@ -429,8 +434,6 @@ function sbmFetchOnlyManual(silent) {
     var fetchStarted = new Date();
     var rows = sbmFetchSearchConsoleQueries_();
     var apiSec = sbmSecondsSince_(fetchStarted);
-    var fetchLimit = sbmGetDailyFetchLimit_();
-    var hitLimit = rows.length >= fetchLimit;
     var writeStarted = new Date();
     sbmWriteRawQueryDataLight_(rows);
     var writeSec = sbmSecondsSince_(writeStarted);
@@ -441,10 +444,9 @@ function sbmFetchOnlyManual(silent) {
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastFetchDate', sbmDateText_(new Date()), '最終取得日');
     sbmSetSetting_('LastFetchRows', rows.length, '直近のSearch Console取得行数');
-    sbmSetSetting_('LastFetchHitLimit', hitLimit ? 'YES' : 'NO', '取得件数がDailyFetchMaxRowsに到達したか');
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
-    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / 記事情報 ' + metaSec + '秒 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件 / 上限 ' + fetchLimit + '件 / 上限到達 ' + (hitLimit ? 'YES' : 'NO'), startedText, sbmNowText_());
+    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / 記事情報 ' + metaSec + '秒 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件 / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''), startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
     sbmSetHomeProcessing_('完了', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), rows.length + '件取得しました。記事情報 ' + ((metaResult && metaResult.total)||0) + '件 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件', false);
     if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
@@ -475,8 +477,6 @@ function sbmAnalyzeOnlyManual(silent) {
   try {
     sbmSetHomeProcessing_('● 処理中', 'STEP B 改善候補分析開始', startedText, '', '取得済みデータから改善候補・今日の改善・データ一覧を作成しています。', true);
     profiler.lap('Home処理状況表示', '', '', '分析開始をHomeへ表示');
-    sbmToast_('改善候補を分析中です。対象記事を絞って処理します。', 'STEP B 改善分析', 10);
-    profiler.lap('トースト表示', '', '', 'ユーザー通知');
 
     var tDiagnosis = new Date();
     var result = sbmBuildDiagnosis_();
@@ -528,6 +528,166 @@ function sbmAnalyzeOnlyManual(silent) {
   }
 }
 
+function sbmTestSearchConsoleConnection_() {
+  try {
+    var range = sbmSearchConsoleDateRange_();
+    var property = sbmGetSetting_('SearchConsoleProperty','');
+    var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['page'], rowLimit: 1});
+    return {ok:true, rows:(data.rows||[]).length};
+  } catch(e) {
+    return {ok:false, message:String(e)};
+  }
+}
+
+function sbmFetchSearchConsoleQueries_() {
+  var mode = String(sbmGetSetting_('FetchMode', 'PAGE_FIRST')).toUpperCase();
+  if (mode === 'PAGE_FIRST') return sbmFetchSearchConsolePageFirst_();
+  return sbmFetchSearchConsoleQueryPage_();
+}
+
+function sbmFetchSearchConsoleQueryPage_() {
+  var range = sbmSearchConsoleDateRange_();
+  var property = sbmGetSetting_('SearchConsoleProperty','');
+  var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['query','page'], rowLimit: sbmGetDailyFetchLimit_()});
+  var capturedAt = sbmNowText_();
+  var rows = (data.rows || []).map(function(r){
+    return [range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(r.keys[1]), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
+  }).filter(function(r){ return !!r[3]; });
+  sbmSetSetting_('LastFetchMode', 'QUERY_PAGE', '直近のSearch Console取得方式');
+  sbmSetSetting_('LastFetchPageCount', sbmUniqueCount_(rows.map(function(r){return r[3];})), '直近取得URL数');
+  sbmSetSetting_('LastFetchQueryDetailPages', '', '直近でクエリ詳細を取得したページ数');
+  sbmSetSetting_('LastFetchHitLimit', rows.length >= sbmGetDailyFetchLimit_() ? 'YES' : 'NO', '取得件数がDailyFetchMaxRowsに到達したか');
+  return rows;
+}
+
+function sbmFetchSearchConsolePageFirst_() {
+  var range = sbmSearchConsoleDateRange_();
+  var property = sbmGetSetting_('SearchConsoleProperty','');
+  var capturedAt = sbmNowText_();
+  var pageLimit = sbmNumber_(sbmGetSetting_('PageFetchMaxRows', SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS)) || SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS;
+  pageLimit = Math.max(100, Math.min(25000, pageLimit));
+  var queryPageLimit = sbmNumber_(sbmGetSetting_('QueryFetchPageLimit', SBM_DEFAULTS.QUERY_FETCH_PAGE_LIMIT)) || SBM_DEFAULTS.QUERY_FETCH_PAGE_LIMIT;
+  queryPageLimit = Math.max(0, Math.min(200, queryPageLimit));
+
+  var pageData = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['page'], rowLimit: pageLimit});
+  var pageRows = (pageData.rows || []).map(function(r){
+    var url = sbmNormalizeUrl_(r.keys && r.keys[0]);
+    return {url:url, clicks:r.clicks || 0, impressions:r.impressions || 0, ctr:r.ctr || 0, position:r.position || 0};
+  }).filter(function(r){ return !!r.url; });
+
+  var selected = pageRows.slice().sort(function(a,b){ return sbmPagePriorityScore_(b) - sbmPagePriorityScore_(a); }).slice(0, queryPageLimit);
+  var selectedMap = {};
+  selected.forEach(function(p){ selectedMap[p.url] = true; });
+
+  var rows = [];
+  var detailPages = 0;
+  selected.forEach(function(p){
+    try {
+      var qdata = sbmSearchConsoleApiRequest_(property, {
+        startDate: range.startDate,
+        endDate: range.endDate,
+        dimensions: ['query','page'],
+        rowLimit: Math.max(10, Math.min(100, Number(sbmGetSetting_('RelatedQueries', SBM_DEFAULTS.RELATED_QUERIES)) || 50)),
+        dimensionFilterGroups: [{filters:[{dimension:'page', operator:'equals', expression:p.url}]}]
+      });
+      var qrows = qdata.rows || [];
+      if (qrows.length) {
+        qrows.forEach(function(r){ rows.push([range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(r.keys[1] || p.url), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt]); });
+        detailPages++;
+      } else {
+        rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]);
+      }
+    } catch(e) {
+      rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]);
+    }
+  });
+  pageRows.forEach(function(p){ if (!selectedMap[p.url]) rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]); });
+
+  sbmSetSetting_('LastFetchMode', 'PAGE_FIRST', '直近のSearch Console取得方式');
+  sbmSetSetting_('LastFetchPageCount', pageRows.length, '直近取得URL数');
+  sbmSetSetting_('LastFetchQueryDetailPages', detailPages, '直近でクエリ詳細を取得したページ数');
+  sbmSetSetting_('LastFetchHitLimit', pageRows.length >= pageLimit ? 'YES' : 'NO', 'ページ取得件数がPageFetchMaxRowsに到達したか');
+  return rows;
+}
+
+function sbmPagePriorityScore_(p) {
+  var impressions = sbmNumber_(p.impressions);
+  var clicks = sbmNumber_(p.clicks);
+  var ctr = sbmNumber_(p.ctr);
+  var pos = sbmNumber_(p.position);
+  var posBonus = 0;
+  if (pos >= 4 && pos <= 10) posBonus = 120;
+  else if (pos > 10 && pos <= 20) posBonus = 90;
+  else if (pos > 20 && pos <= 30) posBonus = 60;
+  else if (pos > 30 && pos <= 50) posBonus = 20;
+  var lowCtrBonus = ctr < 0.03 ? 80 : (ctr < 0.06 ? 40 : 0);
+  return Math.log(impressions + 1) * 30 + posBonus + lowCtrBonus + Math.log(clicks + 1) * 5;
+}
+
+function sbmUniqueCount_(arr) {
+  var m = {};
+  (arr || []).forEach(function(v){ if (v) m[v] = true; });
+  return Object.keys(m).length;
+}
+
+function sbmSearchConsoleDateRange_() {
+  var days = Number(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS)) || SBM_DEFAULTS.SEARCH_DAYS;
+  var end = new Date();
+  end.setDate(end.getDate() - SBM_DEFAULTS.GSC_DELAY_DAYS);
+  var start = new Date(end);
+  start.setDate(start.getDate() - days + 1);
+  return {startDate: sbmDateText_(start), endDate: sbmDateText_(end)};
+}
+
+function sbmSearchConsoleApiRequest_(property, body) {
+  var endpoint = 'https://www.googleapis.com/webmasters/v3/sites/' + encodeURIComponent(property) + '/searchAnalytics/query';
+  var response = UrlFetchApp.fetch(endpoint, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(body),
+    headers: {Authorization: 'Bearer ' + ScriptApp.getOAuthToken()},
+    muteHttpExceptions: true
+  });
+  var code = response.getResponseCode();
+  var text = response.getContentText();
+  if (code < 200 || code >= 300) throw new Error('Search Console API error ' + code + ': ' + text);
+  return JSON.parse(text || '{}');
+}
+
+function sbmWriteQueryData_(rows) {
+  sbmWriteRawQueryDataLight_(rows);
+}
+
+function sbmWriteRawQueryDataLight_(rows) {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.RAW_DATA) || sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA);
+  sh.clearContents();
+  sbmEnsureHeaders_(sh, SBM_HEADERS.RAW_DATA);
+  if (rows.length) sh.getRange(2,1,rows.length,SBM_HEADERS.RAW_DATA.length).setValues(rows);
+  try { sh.hideSheet(); } catch(e) {}
+}
+
+function sbmGetRawQueryRows_() {
+  var raw = sbmRowsAsObjects_(SBM_SHEETS.RAW_DATA);
+  if (raw.length) return raw;
+  var visible = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
+  if (visible.length && Object.prototype.hasOwnProperty.call(visible[0], 'Query') && Object.prototype.hasOwnProperty.call(visible[0], 'URL')) {
+    return visible;
+  }
+  return [];
+}
+
+function sbmEnsureStepBMinimalSheets_() {
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA), SBM_HEADERS.RAW_DATA);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.QUERY_DATA), SBM_HEADERS.QUERY_DATA);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.DIAGNOSIS), SBM_HEADERS.DIAGNOSIS);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.TODAY), SBM_HEADERS.TODAY);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.BRIEF), SBM_HEADERS.BRIEF);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.IN_PROGRESS), SBM_HEADERS.IN_PROGRESS);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG), SBM_HEADERS.PROCESS_LOG);
+  sbmEnsureHeaders_(sbmGetOrCreateSheet_(SBM_SHEETS.PROFILE_LOG), SBM_HEADERS.PROFILE_LOG);
+  sbmRemoveRetiredSheets_();
+  sbmApplyProductVisibleTabs_();
+}
 
 function sbmBuildDiagnosis_() {
   var queryRows = sbmGetRawQueryRows_();
@@ -1462,12 +1622,11 @@ function sbmPromptRequired_(title, message, defaultValue) {
 }
 
 
-
 function sbmCreateProfiler_(processName) {
-  var runId = Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss') + '-' + Math.floor(Math.random() * 10000);
-  var last = new Date();
+  var runId = 'PRF-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss') + '-' + Math.floor(Math.random()*10000);
   var entries = [];
-  function nowText_(d){ return Utilities.formatDate(d || new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyy/MM/dd HH:mm:ss'); }
+  var last = new Date();
+  function nowText_(d){ return Utilities.formatDate(d || new Date(), Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'); }
   return {
     runId: runId,
     lap: function(step, targetCount, processedCount, detail) {
@@ -1491,9 +1650,7 @@ function sbmAppendProfileRows_(rows) {
     sbmEnsureHeaders_(sh, SBM_HEADERS.PROFILE_LOG);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, SBM_HEADERS.PROFILE_LOG.length).setValues(rows);
     sbmStyleProfileLogSheet_(sh);
-  } catch(e) {
-    console.error(e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 function sbmOpenProfileLog() { sbmOpenSheet_(SBM_SHEETS.PROFILE_LOG); }
@@ -1503,10 +1660,8 @@ function sbmStyleProfileLogSheet_(sh) {
   sbmEnsureHeaders_(sh, SBM_HEADERS.PROFILE_LOG);
   sh.setFrozenRows(1);
   sh.getRange(1,1,1,SBM_HEADERS.PROFILE_LOG.length).setFontWeight('bold').setBackground('#0b8043').setFontColor('#ffffff');
-  if (sh.getLastRow() > 1) {
-    sh.getRange(2,7,sh.getLastRow()-1,1).setNumberFormat('0.0');
-  }
-  sh.autoResizeColumns(1, Math.min(SBM_HEADERS.PROFILE_LOG.length, sh.getMaxColumns()));
+  if (sh.getLastRow() > 1) sh.getRange(2,7,sh.getLastRow()-1,1).setNumberFormat('0.0');
+  try { sh.autoResizeColumns(1, Math.min(SBM_HEADERS.PROFILE_LOG.length, sh.getMaxColumns())); } catch(e) {}
 }
 
 function sbmSecondsSince_(started) {
