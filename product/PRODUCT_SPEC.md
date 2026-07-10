@@ -1,5 +1,15 @@
-# Product 5.0 STEP A Flow Profiler Dev
+# Product 5.0 Data Flow
 
-STEP Aの処理フローを可視化し、タイムアウト原因を工程別に特定するための開発用版。
+## STEP A
+Search Consoleからページ一覧を取得し、記事URLとして有効なURLだけを残す。
 
-STEP A自体の処理内容は増やさず、処理プロファイルへ工程別所要時間を記録する。
+- `#` 以降は削除
+- `?` 以降は削除
+- はてなブログは `/entry/` 配下のみを記事URLとして扱う
+- category / tag / feed / archive / media 等は除外
+
+## STEP A-2
+記事タイトル・SEOタイトル・メタディスクリプションを分割補完する。
+
+## STEP B
+保存済みのデータ一覧を参照して改善候補を分析する。

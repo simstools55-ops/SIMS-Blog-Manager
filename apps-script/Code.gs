@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepa-flow-profiler-dev';
+const SBM_VERSION = '5.0.0-url-filter-step-split-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -439,9 +439,9 @@ function sbmFetchOnlyManual(silent) {
     profiler.lap('Home処理状況表示', '', '', '開始表示をHomeへ反映');
 
     var fetchStarted = new Date();
-    var rows = sbmFetchSearchConsoleQueries_();
+    var rows = sbmFetchSearchConsoleQueriesProfiled_(profiler);
     var apiSec = sbmSecondsSince_(fetchStarted);
-    profiler.lap('Search Console API取得', '', rows.length, 'API取得 ' + apiSec + '秒 / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''));
+    profiler.lap('Search Console取得合計', '', rows.length, '取得合計 ' + apiSec + '秒 / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''));
 
     var writeStarted = new Date();
     sbmWriteRawQueryDataLight_(rows);
@@ -571,6 +571,123 @@ function sbmFetchSearchConsoleQueries_() {
   return sbmFetchSearchConsoleQueryPage_();
 }
 
+function sbmFetchSearchConsoleQueriesProfiled_(profiler) {
+  var mode = String(sbmGetSetting_('FetchMode', 'PAGE_FIRST')).toUpperCase();
+  if (profiler) profiler.lap('取得方式判定', '', '', 'FetchMode=' + mode);
+  if (mode === 'PAGE_FIRST') return sbmFetchSearchConsolePageFirstProfiled_(profiler);
+  return sbmFetchSearchConsoleQueryPageProfiled_(profiler);
+}
+
+function sbmFetchSearchConsoleQueryPageProfiled_(profiler) {
+  var tRange = new Date();
+  var range = sbmSearchConsoleDateRange_();
+  var property = sbmGetSetting_('SearchConsoleProperty','');
+  if (profiler) profiler.lap('取得条件準備', '', '', '期間 ' + range.startDate + '〜' + range.endDate + ' / ' + sbmSecondsSince_(tRange) + '秒');
+
+  var limit = sbmGetDailyFetchLimit_();
+  var tApi = new Date();
+  var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['query','page'], rowLimit: limit});
+  var rawCount = (data.rows || []).length;
+  if (profiler) profiler.lap('API取得 query×page', limit, rawCount, 'rowLimit=' + limit + ' / ' + sbmSecondsSince_(tApi) + '秒');
+
+  var capturedAt = sbmNowText_();
+  var tNormalize = new Date();
+  var fragmentCount = 0;
+  var rows = (data.rows || []).map(function(r){
+    var originalUrl = r.keys && r.keys[1] ? String(r.keys[1]) : '';
+    if (originalUrl.indexOf('#') >= 0) fragmentCount++;
+    return [range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(originalUrl), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
+  }).filter(function(r){ return !!r[3] && sbmIsValidArticleUrl_(r[3]); });
+  if (profiler) profiler.lap('URL正規化・記事URL抽出', rawCount, rows.length, '#付きURL ' + fragmentCount + '件 / 除外 ' + (rawCount - rows.length) + '件 / ' + sbmSecondsSince_(tNormalize) + '秒');
+
+  var tSettings = new Date();
+  sbmSetSetting_('LastFetchMode', 'QUERY_PAGE', '直近のSearch Console取得方式');
+  sbmSetSetting_('LastFetchPageCount', sbmUniqueCount_(rows.map(function(r){return r[3];})), '直近取得記事URL数');
+  sbmSetSetting_('LastFetchQueryDetailPages', '', '直近でクエリ詳細を取得したページ数');
+  sbmSetSetting_('LastFetchHitLimit', rows.length >= limit ? 'YES' : 'NO', '取得件数がDailyFetchMaxRowsに到達したか');
+  if (profiler) profiler.lap('取得結果設定保存', '', '', sbmSecondsSince_(tSettings) + '秒');
+  return rows;
+}
+
+function sbmFetchSearchConsolePageFirstProfiled_(profiler) {
+  var tRange = new Date();
+  var range = sbmSearchConsoleDateRange_();
+  var property = sbmGetSetting_('SearchConsoleProperty','');
+  var capturedAt = sbmNowText_();
+  var pageLimit = sbmNumber_(sbmGetSetting_('PageFetchMaxRows', SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS)) || SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS;
+  pageLimit = Math.max(100, Math.min(25000, pageLimit));
+  var queryPageLimit = sbmNumber_(sbmGetSetting_('QueryFetchPageLimit', SBM_DEFAULTS.QUERY_FETCH_PAGE_LIMIT)) || SBM_DEFAULTS.QUERY_FETCH_PAGE_LIMIT;
+  queryPageLimit = Math.max(0, Math.min(200, queryPageLimit));
+  if (profiler) profiler.lap('取得条件準備', '', '', '期間 ' + range.startDate + '〜' + range.endDate + ' / pageLimit=' + pageLimit + ' / queryPageLimit=' + queryPageLimit + ' / ' + sbmSecondsSince_(tRange) + '秒');
+
+  var tPageApi = new Date();
+  var pageData = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['page'], rowLimit: pageLimit});
+  var rawPageRows = pageData.rows || [];
+  if (profiler) profiler.lap('API取得 page一覧', pageLimit, rawPageRows.length, 'page rowLimit=' + pageLimit + ' / ' + sbmSecondsSince_(tPageApi) + '秒');
+
+  var tNormalize = new Date();
+  var fragmentCount = 0;
+  var pageRows = rawPageRows.map(function(r){
+    var originalUrl = r.keys && r.keys[0] ? String(r.keys[0]) : '';
+    if (originalUrl.indexOf('#') >= 0) fragmentCount++;
+    var url = sbmNormalizeUrl_(originalUrl);
+    return {url:url, clicks:r.clicks || 0, impressions:r.impressions || 0, ctr:r.ctr || 0, position:r.position || 0};
+  }).filter(function(r){ return !!r.url && sbmIsValidArticleUrl_(r.url); });
+  if (profiler) profiler.lap('URL正規化・記事URL抽出', rawPageRows.length, pageRows.length, '#付きURL ' + fragmentCount + '件 / 除外 ' + (rawPageRows.length - pageRows.length) + '件 / ' + sbmSecondsSince_(tNormalize) + '秒');
+
+  var tSelect = new Date();
+  var selected = pageRows.slice().sort(function(a,b){ return sbmPagePriorityScore_(b) - sbmPagePriorityScore_(a); }).slice(0, queryPageLimit);
+  var selectedMap = {};
+  selected.forEach(function(p){ selectedMap[p.url] = true; });
+  if (profiler) profiler.lap('クエリ詳細対象選定', pageRows.length, selected.length, '優先度上位ページを選定 / ' + sbmSecondsSince_(tSelect) + '秒');
+
+  var rows = [];
+  var detailPages = 0;
+  var detailRows = 0;
+  var detailErrors = 0;
+  var tDetailAll = new Date();
+  selected.forEach(function(p, idx){
+    var tOne = new Date();
+    try {
+      var qdata = sbmSearchConsoleApiRequest_(property, {
+        startDate: range.startDate,
+        endDate: range.endDate,
+        dimensions: ['query','page'],
+        rowLimit: Math.max(10, Math.min(100, Number(sbmGetSetting_('RelatedQueries', SBM_DEFAULTS.RELATED_QUERIES)) || 50)),
+        dimensionFilterGroups: [{filters:[{dimension:'page', operator:'equals', expression:p.url}]}]
+      });
+      var qrows = qdata.rows || [];
+      if (qrows.length) {
+        qrows.forEach(function(r){ rows.push([range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(r.keys[1] || p.url), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt]); });
+        detailPages++;
+        detailRows += qrows.length;
+      } else {
+        rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]);
+      }
+    } catch(e) {
+      detailErrors++;
+      rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]);
+    }
+    if (profiler && ((idx + 1) % 10 === 0 || idx + 1 === selected.length)) {
+      profiler.lap('クエリ詳細取得進捗', selected.length, idx + 1, '詳細取得済み ' + (idx + 1) + '/' + selected.length + ' / 累計クエリ行 ' + detailRows + ' / エラー ' + detailErrors + '件 / 直近 ' + sbmSecondsSince_(tOne) + '秒');
+    }
+  });
+  if (profiler) profiler.lap('API取得 query詳細合計', selected.length, detailRows, '詳細取得ページ ' + detailPages + '件 / エラー ' + detailErrors + '件 / ' + sbmSecondsSince_(tDetailAll) + '秒');
+
+  var tAppend = new Date();
+  var appended = 0;
+  pageRows.forEach(function(p){ if (!selectedMap[p.url]) { rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]); appended++; } });
+  if (profiler) profiler.lap('page一覧行の追加', pageRows.length, appended, 'クエリ詳細対象外をpage行として追加 / ' + sbmSecondsSince_(tAppend) + '秒');
+
+  var tSettings = new Date();
+  sbmSetSetting_('LastFetchMode', 'PAGE_FIRST', '直近のSearch Console取得方式');
+  sbmSetSetting_('LastFetchPageCount', pageRows.length, '直近取得記事URL数');
+  sbmSetSetting_('LastFetchQueryDetailPages', detailPages, '直近でクエリ詳細を取得したページ数');
+  sbmSetSetting_('LastFetchHitLimit', pageRows.length >= pageLimit ? 'YES' : 'NO', 'ページ取得件数がPageFetchMaxRowsに到達したか');
+  if (profiler) profiler.lap('取得結果設定保存', '', '', sbmSecondsSince_(tSettings) + '秒');
+  return rows;
+}
+
 function sbmFetchSearchConsoleQueryPage_() {
   var range = sbmSearchConsoleDateRange_();
   var property = sbmGetSetting_('SearchConsoleProperty','');
@@ -580,7 +697,7 @@ function sbmFetchSearchConsoleQueryPage_() {
     return [range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(r.keys[1]), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
   }).filter(function(r){ return !!r[3] && sbmIsValidArticleUrl_(r[3]); });
   sbmSetSetting_('LastFetchMode', 'QUERY_PAGE', '直近のSearch Console取得方式');
-  sbmSetSetting_('LastFetchPageCount', sbmUniqueCount_(rows.map(function(r){return r[3];})), '直近取得URL数');
+  sbmSetSetting_('LastFetchPageCount', sbmUniqueCount_(rows.map(function(r){return r[3];})), '直近取得記事URL数');
   sbmSetSetting_('LastFetchQueryDetailPages', '', '直近でクエリ詳細を取得したページ数');
   sbmSetSetting_('LastFetchHitLimit', rows.length >= sbmGetDailyFetchLimit_() ? 'YES' : 'NO', '取得件数がDailyFetchMaxRowsに到達したか');
   return rows;
@@ -630,7 +747,7 @@ function sbmFetchSearchConsolePageFirst_() {
   pageRows.forEach(function(p){ if (!selectedMap[p.url]) rows.push([range.startDate, range.endDate, '', p.url, p.clicks, p.impressions, p.ctr, p.position, capturedAt]); });
 
   sbmSetSetting_('LastFetchMode', 'PAGE_FIRST', '直近のSearch Console取得方式');
-  sbmSetSetting_('LastFetchPageCount', pageRows.length, '直近取得URL数');
+  sbmSetSetting_('LastFetchPageCount', pageRows.length, '直近取得記事URL数');
   sbmSetSetting_('LastFetchQueryDetailPages', detailPages, '直近でクエリ詳細を取得したページ数');
   sbmSetSetting_('LastFetchHitLimit', pageRows.length >= pageLimit ? 'YES' : 'NO', 'ページ取得件数がPageFetchMaxRowsに到達したか');
   return rows;
@@ -840,11 +957,23 @@ function sbmNormalizeUrl_(url) {
 function sbmIsValidArticleUrl_(url) {
   url = sbmNormalizeUrl_(url || '');
   if (!/^https?:\/\//i.test(url)) return false;
-  var m = url.match(/^https?:\/\/[^\/]+(\/.*)?$/i);
-  var path = (m && m[1]) ? m[1] : '/';
+  var m = url.match(/^https?:\/\/([^\/]+)(\/.*)?$/i);
+  var host = (m && m[1]) ? String(m[1]).toLowerCase() : '';
+  var path = (m && m[2]) ? m[2] : '/';
   if (!path || path === '/' || path.length < 3) return false;
-  if (/\/(archive|about|search|category|categories|tag|tags|feed|rss|sitemap)(\/|$)/i.test(path)) return false;
-  if (/\.(jpg|jpeg|png|gif|webp|svg|css|js|pdf|zip|mp4|mp3)(\?|$)/i.test(path)) return false;
+
+  // 共通除外：管理・一覧・検索・カテゴリ・メディア・フィードは改善対象外。
+  if (/\/(archive|archives|about|search|category|categories|tag|tags|feed|feeds|rss|sitemap|privacy|contact|profile)(\/|$)/i.test(path)) return false;
+  if (/\/(author|wp-admin|wp-json|wp-content|wp-includes)(\/|$)/i.test(path)) return false;
+  if (/\/(page|pages)\/\d+(\/|$)/i.test(path)) return false;
+  if (/\.(jpg|jpeg|png|gif|webp|svg|css|js|pdf|zip|mp4|mp3|ico)(\?|$)/i.test(path)) return false;
+
+  // はてなブログは記事URLが /entry/ 配下に出るため、ここを厳格に残す。
+  if (/hatenablog\.com$/i.test(host) || /hatenadiary\.com$/i.test(host)) {
+    return /^\/entry\//i.test(path);
+  }
+
+  // WordPress等は固定ページもあり得るため広めに残すが、明らかな一覧系は除外済み。
   return true;
 }
 
@@ -1144,7 +1273,7 @@ function sbmBuildDataListFromAnalysis_() {
     var imps = sbmNumber_(d.Impressions || a.impressions || m.impressions);
     var ctr = d.CTR !== '' && d.CTR !== undefined ? d.CTR : (a.ctr !== undefined ? a.ctr : m.ctr);
     var pos = d.Position !== '' && d.Position !== undefined ? d.Position : (a.position !== undefined ? a.position : m.position);
-    out.push([sbmStatusLabel_(status), displayTitle, main, clicks, imps, ctr, pos, '記事詳細', m.fetchedAt || sbmNowText_(), url, titleTag, sbmCleanDataListText_(m.metaDescription || '', url)]);
+    out.push([sbmStatusLabel_(status), displayTitle, main, clicks, imps, ctr, pos, '▶ 記事詳細', m.fetchedAt || sbmNowText_(), url, titleTag, sbmCleanDataListText_(m.metaDescription || '', url)]);
   });
   sbmSortAndWriteDataList_(out);
   return out.length;
@@ -1239,7 +1368,7 @@ function sbmUpdateDataListAfterFetch_(rawRows, fetchMeta) {
       }
     }
     var displayTitle = h1 || sbmStripSiteNameFromTitle_(titleTag, url) || sbmTitleFromPath_(url);
-    out.push([sbmStatusLabel_(old.status || '未分析'), displayTitle, st.mainQuery, st.clicks, st.impressions, st.ctr, st.position, '記事詳細', now, url, titleTag, metaDesc]);
+    out.push([sbmStatusLabel_(old.status || '未分析'), displayTitle, st.mainQuery, st.clicks, st.impressions, st.ctr, st.position, '▶ 記事詳細', now, url, titleTag, metaDesc]);
   });
   sbmSortAndWriteDataList_(out);
   return {total: out.length, fetched: fetched};
@@ -1570,11 +1699,13 @@ function sbmRefreshHome_() {
   var today = sbmRowsAsObjects_(SBM_SHEETS.TODAY);
   var inProg = sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS);
   var analyzedTotal = Number(sbmGetSetting_('ManagedArticleCount','0')) || sbmUniqueUrlCount_(rows) || rows.length;
-  var blogTotal = Number(sbmGetSetting_('BlogTotalArticleCount','0')) || Number(sbmGetSetting_('LastFetchPageCount','0')) || Number(sbmGetSetting_('TotalArticleCount','0')) || analyzedTotal;
+  var detectedTotal = Number(sbmGetSetting_('TotalArticleCount','0')) || Number(sbmGetSetting_('LastFetchPageCount','0')) || sbmUniqueUrlCount_(rows) || rows.length;
+  var manualTotal = Number(sbmGetSetting_('BlogTotalArticleCount','0')) || 0;
+  var blogTotal = manualTotal || detectedTotal || analyzedTotal;
   var good = Number(sbmGetSetting_('GoodArticleCount','0')) || 0;
   var candidates = Number(sbmGetSetting_('ImprovementCandidateCount','0')) || today.length || 0;
   var pct = blogTotal ? Math.round(good / blogTotal * 100) : 0;
-  sh.getRange('B5').setValue(blogTotal + '件');
+  sh.getRange('B5').setValue(blogTotal + '件' + (analyzedTotal && analyzedTotal !== blogTotal ? '（分析対象 ' + analyzedTotal + '件）' : ''));
   sh.getRange('B6').setValue(good + '件 / ' + blogTotal + '件（' + pct + '%）');
   sh.getRange('B7').setValue(candidates + '件');
   sh.getRange('D5').setValue(today.length + '件');
