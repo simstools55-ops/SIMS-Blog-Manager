@@ -1,15 +1,12 @@
-# SIMS-Blog-Manager Product 5.0.0 Article DB Status Classify
+# SIMS-Blog-Manager Product 5.0.0 ArticleDB Status Sort Meta
 
-この版では、新メニュー「ページデータ収集（記事DB）」で記事DBへ記事ステータスを追加します。
+Product 5.0の積み上げ方式に対応した記事DB更新版です。
 
 ## 製品本体
 
 - `apps-script/Code.gs`
 - `apps-script/appsscript.json`
 
-## 変更点
+## 今回の変更
 
-- 記事DBの先頭列に「記事ステータス」を追加
-- ページデータ収集ではタイトル取得・改善分析を行わない
-- Search Consoleのページ指標のみでステータス分類
-- 数値列の表示形式を維持
+記事DBを記事ステータス順に整理し、良好・改善候補の記事だけタイトル情報を補完します。
