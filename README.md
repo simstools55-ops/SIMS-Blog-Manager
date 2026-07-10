@@ -1,23 +1,12 @@
-# SIMS-Blog-Manager Product 5.0.0 STEP A / STEP B Detailed Profiler Dev
+# SIMS-Blog-Manager Product 5.0.0
 
-この版は、STEP AとSTEP Bのタイムアウト原因を特定するための開発用計測版です。
+このパッケージは、STEP A / STEP A-2 / STEP B の処理分離を前提にした開発確認版です。
 
 ## 製品本体
-
 - `apps-script/Code.gs`
 - `apps-script/appsscript.json`
-- `spreadsheet/SIMS-Blog-Manager.xlsx`（同梱されている場合）
 
-## 確認方法
-
-1. `Code.gs` をApps Scriptへ貼り替える
-2. 必要に応じて `appsscript.json` を確認する
-3. スプレッドシートを再読み込みする
-4. 管理メニューから「シートを作成・修復」を実行する
-5. STEP Aを実行する
-6. 「処理プロファイル」シートで工程別の所要時間を確認する
-7. STEP Bを実行し、同じく「処理プロファイル」を確認する
-
-## 注意
-
-この版は開発用です。処理プロファイルは正式版では非表示または開発者向け扱いにします。
+## 今回の主な修正
+- Search Consoleから取得したURLのうち、記事URLだけを残す正規化を強化しました。
+- はてなブログでは `/entry/` を含むURLを記事URLとして扱い、`#見出し`、カテゴリ、タグ、フィードなどを除外します。
+- Homeの総記事数には、分析対象数と混同しにくい表示を追加しました。

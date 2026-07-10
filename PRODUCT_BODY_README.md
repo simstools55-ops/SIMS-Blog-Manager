@@ -1,9 +1,9 @@
-# Product Body README
+# 製品本体の場所
 
-今回更新すべき製品本体は以下です。
+利用者が更新するファイルは以下です。
 
-- Apps Script: `apps-script/Code.gs`
-- Manifest: `apps-script/appsscript.json`（既に同内容なら更新不要）
+- `apps-script/Code.gs`
 
-既存スプレッドシートは継続使用できます。
-ただし、処理プロファイル列を確実に整えるため、更新後に「管理 → シートを作成・修復」を1回実行してください。
+`appsscript.json` は権限エラーが出る場合のみ更新してください。
+
+スプレッドシート本体は継続使用できます。
