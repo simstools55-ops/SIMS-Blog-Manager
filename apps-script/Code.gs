@@ -641,6 +641,33 @@ function sbmWriteArticleDbObjects_(map) {
   sbmUpdateHomeArticleDbCounts_(rows);
 }
 
+/**
+ * 記事DBの件数をHome用設定へ反映します。
+ * rowsは配列行／オブジェクト行のどちらでも受け付けます。
+ */
+function sbmUpdateHomeArticleDbCounts_(rows) {
+  rows = rows || [];
+  var total = rows.length;
+  var good = 0, candidate = 0, watch = 0, inProgress = 0;
+  rows.forEach(function(r){
+    var status = '';
+    if (Array.isArray(r)) status = String(r[0] || '');
+    else if (r && typeof r === 'object') status = String(r['記事ステータス'] || '');
+    status = status.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    if (status.indexOf('良好') >= 0) good++;
+    else if (status.indexOf('改善候補') >= 0) candidate++;
+    else if (status.indexOf('改善中') >= 0) inProgress++;
+    else if (status.indexOf('様子見') >= 0) watch++;
+  });
+  sbmSetSetting_('TotalArticleCount', total, '記事DBの総記事数');
+  sbmSetSetting_('GoodArticleCount', good, '記事DBの良好記事数');
+  sbmSetSetting_('ImprovementCandidateCount', candidate, '記事DBの改善候補数');
+  sbmSetSetting_('WatchArticleCount', watch, '記事DBの様子見記事数');
+  sbmSetSetting_('InProgressArticleCount', inProgress, '記事DBの改善中記事数');
+  sbmSetSetting_('LastArticleDbRows', total, '記事DBの直近行数');
+  sbmRefreshHome_();
+}
+
 function sbmArticleDbInfoCompletionCounts_() {
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
@@ -2249,6 +2276,7 @@ function sbmEscapeHtml_(v) {
   return String(v || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+function sbmOpenSheetByName_(name) { return sbmOpenSheet_(name); }
 function sbmOpenDataListSafe_() { sbmOpenSheetByName_(SBM_SHEETS.QUERY_DATA); }
 function sbmOpenDashboardSafe_() { sbmOpenSheetByName_(SBM_SHEETS.DIAGNOSIS); }
 function sbmRefreshHome_() {
@@ -2277,6 +2305,7 @@ function sbmRefreshHome_() {
   var urlBuildStatus = String(sbmGetSetting_('ArticleDbUrlBuildStatus','未開始'));
   var infoBuildStatus = String(sbmGetSetting_('ArticleInfoBuildStatus','未開始'));
   var completedInfo = sbmArticleDbInfoCompletionCounts_();
+  var articleDbTotal = completedInfo.total || Number(sbmGetSetting_('LastArticleDbRows','0')) || 0;
   sh.getRange('B22').setValue(urlBuildStatus);
   sh.getRange('D22').setValue(articleDbTotal + '件');
   sh.getRange('B23').setValue(infoBuildStatus);
