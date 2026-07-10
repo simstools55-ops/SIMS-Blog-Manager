@@ -1,5 +1,6 @@
-# 製品本体
+# 製品本体の場所
 
-更新対象は apps-script/Code.gs です。
-既存スプレッドシートは継続使用できます。
-今回、シート構成の追加はないため、管理メニュー「シートの作成・修復」は不要です。
+- Apps Script: `apps-script/Code.gs`
+- Manifest: `apps-script/appsscript.json`
+
+スプレッドシートは既存のものを継続使用できます。
