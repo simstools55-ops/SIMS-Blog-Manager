@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-pagefirst-profiler-fix';
+const SBM_VERSION = '5.0.0-data-quality-home-detail-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -197,6 +197,7 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('Version', SBM_VERSION, 'システムバージョン');
   sbmSetSettingIfEmpty_('BlogName', '', '管理するブログ名');
   sbmSetSettingIfEmpty_('BlogUrl', '', 'ブログのトップページURL');
+  sbmSetSettingIfEmpty_('BlogTotalArticleCount', '', 'ブログ総記事数。Search Consoleでは取得できない記事を含めたい場合は手入力');
   sbmSetSettingIfEmpty_('SearchConsoleProperty', '', 'URLプレフィックス例: https://example.com/ または sc-domain:example.com');
   sbmSetSettingIfEmpty_('SetupBlogInfo', 'NO', 'STEP1完了状態');
   sbmSetSettingIfEmpty_('SetupApiGuide', 'NO', 'STEP2完了状態');
@@ -552,7 +553,7 @@ function sbmFetchSearchConsoleQueryPage_() {
   var capturedAt = sbmNowText_();
   var rows = (data.rows || []).map(function(r){
     return [range.startDate, range.endDate, r.keys[0], sbmNormalizeUrl_(r.keys[1]), r.clicks || 0, r.impressions || 0, r.ctr || 0, r.position || 0, capturedAt];
-  }).filter(function(r){ return !!r[3]; });
+  }).filter(function(r){ return !!r[3] && sbmIsValidArticleUrl_(r[3]); });
   sbmSetSetting_('LastFetchMode', 'QUERY_PAGE', '直近のSearch Console取得方式');
   sbmSetSetting_('LastFetchPageCount', sbmUniqueCount_(rows.map(function(r){return r[3];})), '直近取得URL数');
   sbmSetSetting_('LastFetchQueryDetailPages', '', '直近でクエリ詳細を取得したページ数');
@@ -573,7 +574,7 @@ function sbmFetchSearchConsolePageFirst_() {
   var pageRows = (pageData.rows || []).map(function(r){
     var url = sbmNormalizeUrl_(r.keys && r.keys[0]);
     return {url:url, clicks:r.clicks || 0, impressions:r.impressions || 0, ctr:r.ctr || 0, position:r.position || 0};
-  }).filter(function(r){ return !!r.url; });
+  }).filter(function(r){ return !!r.url && sbmIsValidArticleUrl_(r.url); });
 
   var selected = pageRows.slice().sort(function(a,b){ return sbmPagePriorityScore_(b) - sbmPagePriorityScore_(a); }).slice(0, queryPageLimit);
   var selectedMap = {};
@@ -694,7 +695,7 @@ function sbmBuildDiagnosis_() {
   var byUrl = {};
   queryRows.forEach(function(q){
     var url = sbmNormalizeUrl_(String(q.URL || ''));
-    if (!url) return;
+    if (!url || !sbmIsValidArticleUrl_(url)) return;
     if (!byUrl[url]) byUrl[url] = [];
     byUrl[url].push(q);
   });
@@ -804,11 +805,22 @@ function sbmNormalizeUrl_(url) {
   url = String(url || '').trim();
   if (!url) return '';
   if (/^sc-domain:/i.test(url)) return url;
-  // Search Consoleには #見出し 付きURLが混ざることがある。
-  // Product 5.0では記事単位で管理するため、#以降は削除して同一記事へ統合する。
-  url = url.split('#')[0];
-  if (/^https?:\/\//i.test(url)) return url;
+  // Search Consoleには #見出し 付きURLやクエリ付きURLが混ざることがある。
+  // Product 5.0では記事単位で管理するため、#以降と通常の?以降は削除して同一記事へ統合する。
+  url = url.split('#')[0].split('?')[0];
+  if (/^https?:\/\//i.test(url)) return url.replace(/\/+$/, function(m){ return url.match(/^https?:\/\/[^\/]+\/?$/i) ? '/' : ''; });
   return 'https://' + url.replace(/^\/+/, '');
+}
+
+function sbmIsValidArticleUrl_(url) {
+  url = sbmNormalizeUrl_(url || '');
+  if (!/^https?:\/\//i.test(url)) return false;
+  var m = url.match(/^https?:\/\/[^\/]+(\/.*)?$/i);
+  var path = (m && m[1]) ? m[1] : '/';
+  if (!path || path === '/' || path.length < 3) return false;
+  if (/\/(archive|about|search|category|categories|tag|tags|feed|rss|sitemap)(\/|$)/i.test(path)) return false;
+  if (/\.(jpg|jpeg|png|gif|webp|svg|css|js|pdf|zip|mp4|mp3)(\?|$)/i.test(path)) return false;
+  return true;
 }
 
 function sbmTitleFromPath_(url) {
@@ -838,6 +850,8 @@ function sbmCleanDataListText_(value, url) {
   value = String(value || '').trim();
   url = sbmNormalizeUrl_(url || '');
   if (!value) return '';
+  var blogName = String(sbmGetSetting_('BlogName','') || '').trim();
+  if (blogName && value === blogName) return '';
   if (url && value === url) return '';
   if (/^https?:\/\//i.test(value)) return '';
   if (/^\d+(\.\d+)?$/.test(value)) return '';
@@ -1105,7 +1119,7 @@ function sbmBuildDataListFromAnalysis_() {
     var imps = sbmNumber_(d.Impressions || a.impressions || m.impressions);
     var ctr = d.CTR !== '' && d.CTR !== undefined ? d.CTR : (a.ctr !== undefined ? a.ctr : m.ctr);
     var pos = d.Position !== '' && d.Position !== undefined ? d.Position : (a.position !== undefined ? a.position : m.position);
-    out.push([sbmStatusLabel_(status), displayTitle, main, clicks, imps, ctr, pos, false, m.fetchedAt || sbmNowText_(), url, titleTag, sbmCleanDataListText_(m.metaDescription || '', url)]);
+    out.push([sbmStatusLabel_(status), displayTitle, main, clicks, imps, ctr, pos, '記事詳細', m.fetchedAt || sbmNowText_(), url, titleTag, sbmCleanDataListText_(m.metaDescription || '', url)]);
   });
   sbmSortAndWriteDataList_(out);
   return out.length;
@@ -1178,7 +1192,7 @@ function sbmUpdateDataListAfterFetch_(rawRows) {
       }
     }
     var displayTitle = h1 || sbmStripSiteNameFromTitle_(titleTag, url) || sbmTitleFromPath_(url);
-    out.push([sbmStatusLabel_(old.status || '未分析'), displayTitle, st.mainQuery, st.clicks, st.impressions, st.ctr, st.position, false, now, url, titleTag, metaDesc]);
+    out.push([sbmStatusLabel_(old.status || '未分析'), displayTitle, st.mainQuery, st.clicks, st.impressions, st.ctr, st.position, '記事詳細', now, url, titleTag, metaDesc]);
   });
   sbmSortAndWriteDataList_(out);
   return {total: out.length, fetched: fetched};
@@ -1199,7 +1213,7 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
       pos = r.Position || r['Position'] || r['平均順位'] || 0;
     }
     url = sbmNormalizeUrl_(url || '');
-    if (!url) return;
+    if (!url || !sbmIsValidArticleUrl_(url)) return;
     if (!map[url]) map[url] = {url:url, mainQuery:'', clicks:0, impressions:0, weightedPositionSum:0, position:0, ctr:0, bestScore:-1};
     var m = map[url];
     clicks = sbmNumber_(clicks); imps = sbmNumber_(imps); pos = sbmNumber_(pos);
@@ -1265,6 +1279,9 @@ function sbmPickArticleTitle_(html, titleTag, url) {
   html = String(html || '');
   titleTag = sbmCleanHtmlText_(titleTag || '');
   var candidates = [];
+  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'entry-title'));
+  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'post-title'));
+  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'article-title'));
   candidates.push(sbmExtractMetaContent_(html, 'property', 'og:title'));
   candidates.push(sbmExtractMetaContent_(html, 'name', 'twitter:title'));
   candidates.push(sbmExtractTitleByClass_(html, 'entry-title'));
@@ -1290,6 +1307,16 @@ function sbmExtractMetaContent_(html, attrName, attrValue) {
   return m && m[1] ? m[1] : '';
 }
 
+
+
+function sbmExtractTitleBySelector_(html, tagName, className) {
+  var tag = sbmRegexEscape_(tagName || 'h1');
+  var cls = sbmRegexEscape_(className || '');
+  var q = "[\"']";
+  var re = new RegExp("<" + tag + "[^>]+class=" + q + "[^>]*" + cls + "[^>]*" + q + "[^>]*>([\s\S]*?)<\/" + tag + ">", "i");
+  var m = String(html || '').match(re);
+  return m && m[1] ? m[1] : '';
+}
 
 function sbmExtractTitleByClass_(html, className) {
   var cls = sbmRegexEscape_(className);
@@ -1422,9 +1449,10 @@ function sbmStyleDataListSheet_(sh) {
     sh.getRange(2,6,lr-1,1).setNumberFormat('0.0%');      // CTR
     sh.getRange(2,7,lr-1,1).setNumberFormat('0.0');       // 平均順位
     sh.getRange(2,9,lr-1,1).setNumberFormat('yyyy-mm-dd hh:mm');
-    sh.getRange(2,8,lr-1,1).insertCheckboxes();
-    sh.getRange(2,8,lr-1,1).setHorizontalAlignment('center').setBackground('#d9eaf7').setFontColor('#1155cc').setFontWeight('bold');
-    sh.getRange(1,8).setValue('詳細表示').setBackground('#1155cc').setFontColor('#ffffff').setFontWeight('bold');
+    var detailRange = sh.getRange(2,8,lr-1,1);
+    detailRange.setValue('記事詳細');
+    detailRange.setHorizontalAlignment('center').setBackground('#1155cc').setFontColor('#ffffff').setFontWeight('bold').setFontLine('underline');
+    sh.getRange(1,8).setValue('詳細').setBackground('#1155cc').setFontColor('#ffffff').setFontWeight('bold');
     // ステータスは先頭マークと背景色で一目で判断できるようにする。
     var statuses = sh.getRange(2,1,lr-1,1).getValues();
     for (var i = 0; i < statuses.length; i++) {
@@ -1494,12 +1522,13 @@ function sbmRefreshHome_() {
   var rows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
   var today = sbmRowsAsObjects_(SBM_SHEETS.TODAY);
   var inProg = sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS);
-  var total = Number(sbmGetSetting_('ManagedArticleCount','0')) || sbmUniqueUrlCount_(rows) || rows.length;
+  var analyzedTotal = Number(sbmGetSetting_('ManagedArticleCount','0')) || sbmUniqueUrlCount_(rows) || rows.length;
+  var blogTotal = Number(sbmGetSetting_('BlogTotalArticleCount','0')) || Number(sbmGetSetting_('LastFetchPageCount','0')) || Number(sbmGetSetting_('TotalArticleCount','0')) || analyzedTotal;
   var good = Number(sbmGetSetting_('GoodArticleCount','0')) || 0;
   var candidates = Number(sbmGetSetting_('ImprovementCandidateCount','0')) || today.length || 0;
-  var pct = total ? Math.round(good / total * 100) : 0;
-  sh.getRange('B5').setValue(total + '件');
-  sh.getRange('B6').setValue(good + '件 / ' + total + '件（' + pct + '%）');
+  var pct = blogTotal ? Math.round(good / blogTotal * 100) : 0;
+  sh.getRange('B5').setValue(blogTotal + '件');
+  sh.getRange('B6').setValue(good + '件 / ' + blogTotal + '件（' + pct + '%）');
   sh.getRange('B7').setValue(candidates + '件');
   sh.getRange('D5').setValue(today.length + '件');
   sh.getRange('D6').setValue(inProg.length + '件');
