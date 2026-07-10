@@ -1,12 +1,14 @@
 # Product Body README
 
-## Update target
+## 更新対象
 
-- Replace Apps Script with `apps-script/Code.gs`.
-- Existing spreadsheet can continue to be used.
-- Running sheet creation/repair is not required for this patch.
-- deploy.yml update is not required.
+- `apps-script/Code.gs`
 
-## Fix
+## 実行手順
 
-All `sbmSheetObjects_` references were removed and replaced with the current row-reader helper.
+1. Apps Scriptの `Code.gs` を更新します。
+2. スプレッドシートを再読み込みします。
+3. 必要に応じて「管理 → シートを作成・修復」を実行します。
+4. 「ページデータ収集（記事DB）」を実行します。
+5. Homeに総記事数・良好記事数・改善候補数・様子見記事数が表示されることを確認します。
+6. 必要に応じて「良好記事だけタイトル情報を補完」を実行します。

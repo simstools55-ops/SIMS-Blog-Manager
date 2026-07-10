@@ -1,7 +1,9 @@
 # Changelog
 
-## Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
+## Product 5.0.0 ArticleDB Home Good Meta
 
-- Fixed `sbmSheetObjects_ is not defined` recurrence in ArticleDB meta/query supplementation.
-- Removed all remaining `sbmSheetObjects_` references from Code.gs.
-- Kept ArticleDB meta/query budget behavior and 300-second safety stop.
+- Homeに記事DBベースの総記事数・良好記事数・改善候補数・様子見記事数を表示。
+- ページデータ収集後に記事DBのステータス件数を設定へ保存し、Homeへ反映。
+- 新メニュー「良好記事だけタイトル情報を補完」を追加。
+- 良好記事のみを対象に、記事タイトル・メタディスクリプション・メインクエリを補完。
+- 300秒安全終了を維持。
