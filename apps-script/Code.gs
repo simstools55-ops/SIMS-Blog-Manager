@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepa-split-meta-fix';
+const SBM_VERSION = '5.0.0-stepa-flow-profiler-dev';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -431,33 +431,56 @@ function sbmFetchOnlyManual(silent) {
   }
   var started = new Date();
   var startedText = sbmNowText_();
+  var profiler = sbmCreateProfiler_('STEP A Search Consoleデータ取得');
   try {
+    profiler.lap('開始前チェック', '', '', 'セットアップ完了・接続OKを確認');
+
     sbmSetHomeProcessing_('● 処理中', 'Search Consoleデータ取得開始', startedText, '', 'Search Console APIから最新データを取得しています。', true);
+    profiler.lap('Home処理状況表示', '', '', '開始表示をHomeへ反映');
+
     var fetchStarted = new Date();
     var rows = sbmFetchSearchConsoleQueries_();
     var apiSec = sbmSecondsSince_(fetchStarted);
+    profiler.lap('Search Console API取得', '', rows.length, 'API取得 ' + apiSec + '秒 / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''));
+
     var writeStarted = new Date();
     sbmWriteRawQueryDataLight_(rows);
     var writeSec = sbmSecondsSince_(writeStarted);
+    profiler.lap('SearchConsole_Data書込', rows.length, rows.length, 'シート書込 ' + writeSec + '秒');
+
     sbmSetHomeProcessing_('● 処理中', 'STEP A データ一覧更新中', startedText, '', 'Search Consoleのページデータをデータ一覧に反映しています。記事情報補完はSTEP A-2で行います。', true);
+    profiler.lap('Home処理状況更新', '', '', 'データ一覧更新中表示をHomeへ反映');
+
     var metaStarted = new Date();
     var metaResult = sbmUpdateDataListAfterFetch_(rows, false);
     var metaSec = sbmSecondsSince_(metaStarted);
+    profiler.lap('データ一覧反映', rows.length, (metaResult && metaResult.total) || 0, 'データ一覧反映 ' + metaSec + '秒 / 記事情報補完 0件（STEP A-2へ分離）');
+
+    var settingsStarted = new Date();
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastFetchDate', sbmDateText_(new Date()), '最終取得日');
     sbmSetSetting_('LastFetchRows', rows.length, '直近のSearch Console取得行数');
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
+    profiler.lap('設定保存', '', '', 'LastFetch系設定を保存 / ' + sbmSecondsSince_(settingsStarted) + '秒');
+
     sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / データ一覧反映 ' + metaSec + '秒 / 記事情報補完 0件（STEP A-2へ分離） / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''), startedText, sbmNowText_());
+    profiler.lap('処理ログ記録', rows.length, rows.length, '処理ログへ完了記録');
+
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
     sbmSetHomeProcessing_('完了', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), rows.length + '件取得しました。記事情報補完はSTEP A-2で実行してください。データ一覧 ' + ((metaResult && metaResult.total)||0) + '件', false);
-    if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n必要に応じて「STEP A-2 記事情報を補完」を実行してから、STEP Bへ進んでください。');
+    profiler.lap('Home完了表示', '', '', '完了表示をHomeへ反映');
+    var runId = profiler.finish('完了', '総所要 ' + sec + '秒 / 取得 ' + rows.length + '行 / データ一覧 ' + ((metaResult && metaResult.total)||0) + '件');
+
+    if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n処理プロファイル: ' + runId + '\n\n必要に応じて「STEP A-2 記事情報を補完」を実行してから、STEP Bへ進んでください。');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
-    sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
+    profiler.lap('エラー発生', '', '', String(e));
+    var runErr = profiler.finish('エラー', String(e));
+    sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e) + ' / 処理プロファイル ' + runErr, startedText, sbmNowText_());
     sbmLog_('FetchOnly','Error',String(e));
     sbmSetHomeProcessing_('エラー', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), String(e), false);
-    sbmAlert_('データ取得エラー', sbmFriendlyGscError_(String(e)));
+    sbmAlert_('データ取得エラー', sbmFriendlyGscError_(String(e)) + '\n\n処理プロファイル: ' + runErr);
   }
 }
 
