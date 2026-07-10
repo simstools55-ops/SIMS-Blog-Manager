@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-articledb-foundation-setup';
+const SBM_VERSION = '5.0.0-articledb-foundation-onepass';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -76,7 +76,7 @@ function onOpen() {
       .addItem('STEP2 Google Cloud APIガイドを開く', 'sbmSetupStep2ApiGuide')
       .addItem('STEP3 Search Console接続テスト', 'sbmSetupStep3ConnectionTest')
       .addSeparator()
-      .addItem('STEP4 記事DB初期構築を開始／続きから再開', 'sbmSetupArticleDbContinueManual')
+      .addItem('STEP4 記事DBを一括作成（初回）', 'sbmSetupArticleDbContinueManual')
       .addItem('STEP5 記事情報補完を50件進める', 'sbmSetupArticleInfoContinueManual')
       .addItem('セットアップ進捗を確認', 'sbmShowArticleDbSetupStatus')
       .addItem('セットアップシートを開く', 'sbmOpenSetup'))
@@ -325,7 +325,7 @@ function sbmBuildSetupSheet_() {
     ['STEP1', 'ブログ名・ブログURL・Search Consoleプロパティをポップアップで登録します。'],
     ['STEP2', 'Google CloudでSearch Console APIを有効化します。ガイド画面のリンクをクリックします。'],
     ['STEP3', 'Search Console接続テストを行います。成功すると日次取得が有効になります。'],
-    ['STEP4', '記事DB初期構築を100件ずつ実行します。最後のページまで取得すると自動で完了判定します。'],
+    ['STEP4', 'Search Consoleからページ単位で最大25,000件を一括取得し、URL正規化後に記事DBを作成します。'],
     ['STEP5', '記事情報補完を50件ずつ実行します。H1・SEOタイトル・メタディスクリプション・メインクエリを取得し、未補完記事がなくなると完了します。'],
     ['', ''],
     ['初回認証', 'Googleの承認画面が表示されたら許可してください。承認後、同じSTEPをもう一度実行します。'],
@@ -458,86 +458,121 @@ function sbmSetupArticleDbContinueManual() {
   if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') {
     return sbmAlert_('記事DB初期構築はまだできません', 'STEP1〜STEP3を完了してください。');
   }
-  if (String(sbmGetSetting_('ArticleDbUrlBuildComplete','NO')) === 'YES') {
-    sbmAlert_('記事URL収集は完了しています', '次は「STEP5 記事情報補完を50件進める」を実行してください。');
-    return;
-  }
   var ui = SpreadsheetApp.getUi();
-  var startRow = sbmNumber_(sbmGetSetting_('ArticleDbBuildStartRow','0')) || 0;
-  var batch = sbmNumber_(sbmGetSetting_('ArticleDbBuildBatch', SBM_DEFAULTS.ARTICLE_DB_BUILD_BATCH)) || SBM_DEFAULTS.ARTICLE_DB_BUILD_BATCH;
-  batch = Math.max(30, Math.min(200, batch));
-  var res = ui.alert('記事DB初期構築', (startRow ? (startRow + 1) + '件目以降' : '最初') + 'から最大' + batch + '件を取得します。\n取得後に自動保存し、残りがあれば次回は続きから再開します。', ui.ButtonSet.OK_CANCEL);
+  var res = ui.alert(
+    '記事DBを一括作成',
+    'Search Consoleからページ単位のデータを最大25,000件取得し、URL正規化・ノイズ除外後に記事DBを作成します。\n\n既存の記事タイトル等は同じURLなら保持します。',
+    ui.ButtonSet.OK_CANCEL
+  );
   if (res !== ui.Button.OK) return;
-  sbmBuildArticleDbUrlChunk_(startRow, batch, false);
+  sbmBuildArticleDbOnePass_(false);
 }
 
-function sbmBuildArticleDbUrlChunk_(startRow, batch, silent) {
+function sbmBuildArticleDbOnePass_(silent) {
   var started = new Date();
   var startedText = sbmNowText_();
   silent = silent === true;
+  var rowLimit = 25000;
   try {
     sbmSetSetting_('ArticleDbUrlBuildStatus','処理中','記事URL収集の状態');
-    sbmSetHomeProcessing_('● 処理中','記事DB初期構築',startedText,'','Search Consoleから記事URLを' + batch + '件ずつ収集しています。',true);
+    sbmSetSetting_('ArticleDbUrlBuildComplete','NO','記事URL収集完了フラグ');
+    sbmSetHomeProcessing_('● 処理中','記事DB一括作成',startedText,'','Search Consoleからページ単位データを取得しています。',true);
+
     var range = sbmSearchConsoleDateRange_();
     var property = sbmGetSetting_('SearchConsoleProperty','');
     var data = sbmSearchConsoleApiRequest_(property, {
       startDate: range.startDate,
       endDate: range.endDate,
       dimensions: ['page'],
-      rowLimit: batch,
-      startRow: startRow
+      rowLimit: rowLimit,
+      startRow: 0
     });
     var raw = data.rows || [];
-    var existing = sbmArticleDbRowsByUrl_();
+    var oldMap = sbmArticleDbRowsByUrl_();
+    var freshMap = {};
+    var nextArticleNo = 1;
+    Object.keys(oldMap || {}).forEach(function(k){
+      var m = String((oldMap[k] || {})['ArticleID'] || '').match(/A(\d+)/i);
+      if (m) nextArticleNo = Math.max(nextArticleNo, Number(m[1]) + 1);
+    });
     var excluded = 0;
+    var fragments = 0;
+    var capturedAt = sbmNowText_();
+
     raw.forEach(function(r){
       var original = r.keys && r.keys[0] ? String(r.keys[0]) : '';
+      if (original.indexOf('#') >= 0) fragments++;
       var url = sbmNormalizeUrl_(original);
       if (!url || !sbmIsValidArticleUrl_(url)) { excluded++; return; }
+
       var clicks = sbmNumber_(r.clicks || 0);
       var imps = sbmNumber_(r.impressions || 0);
       var ctr = imps ? clicks / imps : 0;
       var pos = sbmNumber_(r.position || 0);
-      var old = existing[url];
-      if (old) {
-        var oldClicks = sbmNumber_(old['クリック数'] || 0);
-        var oldImps = sbmNumber_(old['表示回数'] || 0);
-        var oldPos = sbmNumber_(old['掲載順位'] || 0);
-        var totalImps = oldImps + imps;
-        old['クリック数'] = oldClicks + clicks;
-        old['表示回数'] = totalImps;
-        old['CTR'] = totalImps ? (oldClicks + clicks) / totalImps : 0;
-        old['掲載順位'] = totalImps ? ((oldPos * oldImps) + (pos * imps)) / totalImps : pos;
-        old['元URL件数'] = sbmNumber_(old['元URL件数'] || 0) + 1;
-        old['最終取得日時'] = sbmNowText_();
-      } else {
-        existing[url] = {
+      var old = oldMap[url] || {};
+      var obj = freshMap[url];
+
+      if (!obj) {
+        obj = {
           '記事ステータス': sbmStatusLabel_(sbmClassifyArticleDbStatus_(url, clicks, imps, ctr, pos, {})),
-          '記事URL': url, 'メインクエリ':'', 'クリック数':clicks, '表示回数':imps, 'CTR':ctr, '掲載順位':pos,
-          '記事タイトル':'', 'SEOタイトル':'', 'メタディスクリプション':'', '最終取得日時':sbmNowText_(),
-          '元URL件数':1, '除外理由':'', '備考':'', 'ArticleID':sbmNextArticleId_(existing),
-          '記事情報補完済み':'×', '補完日時':'', '補完エラー':''
+          '記事URL': url,
+          'メインクエリ': old['メインクエリ'] || '',
+          'クリック数': clicks,
+          '表示回数': imps,
+          'CTR': ctr,
+          '掲載順位': pos,
+          '記事タイトル': old['記事タイトル'] || '',
+          'SEOタイトル': old['SEOタイトル'] || '',
+          'メタディスクリプション': old['メタディスクリプション'] || '',
+          '最終取得日時': capturedAt,
+          '元URL件数': 1,
+          '除外理由': '',
+          '備考': old['備考'] || '',
+          'ArticleID': old['ArticleID'] || ('A' + String(nextArticleNo++).padStart(6,'0')),
+          '記事情報補完済み': old['記事情報補完済み'] || '×',
+          '補完日時': old['補完日時'] || '',
+          '補完エラー': old['補完エラー'] || ''
         };
+        freshMap[url] = obj;
+      } else {
+        var oldClicks = sbmNumber_(obj['クリック数'] || 0);
+        var oldImps = sbmNumber_(obj['表示回数'] || 0);
+        var oldPos = sbmNumber_(obj['掲載順位'] || 0);
+        var totalImps = oldImps + imps;
+        obj['クリック数'] = oldClicks + clicks;
+        obj['表示回数'] = totalImps;
+        obj['CTR'] = totalImps ? (oldClicks + clicks) / totalImps : 0;
+        obj['掲載順位'] = totalImps ? ((oldPos * oldImps) + (pos * imps)) / totalImps : pos;
+        obj['元URL件数'] = sbmNumber_(obj['元URL件数'] || 0) + 1;
       }
     });
-    sbmWriteArticleDbObjects_(existing);
-    var next = startRow + raw.length;
-    var finished = raw.length < batch;
-    sbmSetSetting_('ArticleDbBuildStartRow', finished ? next : next, '初回記事DB構築のSearch Console取得開始位置');
+
+    sbmWriteArticleDbObjects_(freshMap);
+    var total = Object.keys(freshMap).length;
+    var finished = raw.length < rowLimit;
+    sbmSetSetting_('ArticleDbBuildStartRow', String(raw.length), '初回記事DB構築のSearch Console取得位置');
     sbmSetSetting_('ArticleDbUrlBuildComplete', finished ? 'YES' : 'NO', '記事URL収集完了フラグ');
-    sbmSetSetting_('ArticleDbUrlBuildStatus', finished ? '完了' : '続きあり（次回 ' + (next + 1) + '件目から）', '記事URL収集の状態');
+    sbmSetSetting_('ArticleDbUrlBuildStatus', finished ? '完了' : '上限25,000件到達・追加確認が必要', '記事URL収集の状態');
     sbmSetSetting_('ArticleInfoBuildStatus', finished ? '未開始' : sbmGetSetting_('ArticleInfoBuildStatus','未開始'), '記事情報補完の状態');
     sbmRefreshHome_();
-    var total = Object.keys(existing).length;
+
     var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('記事DB初期構築','完了',raw.length,total,sec,'startRow ' + startRow + ' / batch ' + batch + ' / 除外 ' + excluded + ' / 最終判定 ' + (finished ? 'END' : 'CONTINUE'),startedText,sbmNowText_());
-    sbmSetHomeProcessing_('完了','記事DB初期構築',startedText,sbmNowText_(),'今回 ' + raw.length + '件取得、記事DB ' + total + '件。' + (finished ? '記事URL収集完了。' : '残りは次回続きから取得します。'),false);
-    if (!silent) sbmAlert_(finished ? '記事URL収集完了' : '記事URL収集を保存しました','今回取得: ' + raw.length + '件\n記事DB: ' + total + '件\n除外: ' + excluded + '件\n\n' + (finished ? '最後の記事まで取得しました。次はSTEP5を実行してください。' : '同じメニューをもう一度実行すると続きから再開します。'));
+    var detail = 'page行 ' + raw.length + ' / 記事URL ' + total + ' / #付き ' + fragments + ' / 除外 ' + excluded + ' / 上限到達 ' + (finished ? 'NO' : 'YES');
+    sbmProcessLog_('記事DB一括作成','完了',raw.length,total,sec,detail,startedText,sbmNowText_());
+    sbmSetHomeProcessing_('完了','記事DB一括作成',startedText,sbmNowText_(),'記事DB ' + total + '件を作成しました。',false);
+
+    if (!silent) {
+      if (finished) {
+        sbmAlert_('記事DB作成完了','Search Consoleページ行: ' + raw.length + '件\n正規化後の記事DB: ' + total + '件\n除外: ' + excluded + '件\n\n次はSTEP5 記事情報補完を実行してください。');
+      } else {
+        sbmAlert_('25,000件上限に到達しました','Search Consoleページ行が25,000件に達したため、記事DB作成を完了扱いにしていません。大規模サイト向けの追加取得が必要です。');
+      }
+    }
   } catch(e) {
     sbmSetSetting_('ArticleDbUrlBuildStatus','エラー','記事URL収集の状態');
-    sbmSetHomeProcessing_('エラー','記事DB初期構築',startedText,sbmNowText_(),String(e),false);
-    sbmProcessLog_('記事DB初期構築','エラー','','',sbmSecondsSince_(started),String(e),startedText,sbmNowText_());
-    sbmAlert_('記事DB初期構築エラー',String(e));
+    sbmSetHomeProcessing_('エラー','記事DB一括作成',startedText,sbmNowText_(),String(e),false);
+    sbmProcessLog_('記事DB一括作成','エラー','','',sbmSecondsSince_(started),String(e),startedText,sbmNowText_());
+    sbmAlert_('記事DB一括作成エラー',String(e));
   }
 }
 
