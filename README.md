@@ -1,3 +1,8 @@
+## ArticleDB Settings & Continuation
+
+初回セットアップの記事情報補完件数は、利用者向け「設定」シートで30件・50件・70件から選択できます。
+補完後に残件がある場合は、完了ダイアログの「続けてN件処理」からそのまま次の処理へ進めます。
+
 # SIMS-Blog-Manager Product 5.0
 
 ## ArticleDB One-Pass Page Fetch

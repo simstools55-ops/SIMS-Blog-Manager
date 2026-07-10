@@ -1,3 +1,9 @@
+## Product 5.0 ArticleDB Settings Continuation
+
+- 利用者向け「設定」シートを追加し、記事情報補完件数を30/50/70件から選択可能に変更
+- 記事情報補完の完了画面に「続けてN件処理」「ここで終了」を追加
+- 継続処理はメニューへ戻らず、同じダイアログから未補完記事を続けて処理
+
 # CHANGELOG
 
 ## Product 5.0 ArticleDB One-Pass Page Fetch
