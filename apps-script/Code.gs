@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-stepb-lite-timeout-fix';
+const SBM_VERSION = '5.0.0-stepa-split-meta-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -58,7 +58,7 @@ const SBM_DEFAULTS = Object.freeze({
   ANALYSIS_CANDIDATE_LIMIT: 50,
   ANALYSIS_ARTICLE_LIMIT: 120,
   TITLE_FETCH_DEFAULT: 'ON',
-  META_FETCH_MAX_ROWS: 100,
+  META_FETCH_MAX_ROWS: 30,
   TIMEZONE: 'Asia/Tokyo'
 });
 
@@ -76,6 +76,7 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('データ更新')
       .addItem('STEP A Search Consoleデータ取得だけ実行', 'sbmFetchOnlyManual')
+      .addItem('STEP A-2 記事情報を補完', 'sbmSupplementArticleInfoManual')
       .addItem('STEP B 改善候補を分析', 'sbmAnalyzeOnlyManual')
       .addItem('データ一覧を開く', 'sbmOpenDataListSafe_')
       .addItem('選択行の詳細を表示', 'sbmShowSelectedDataListDetail')
@@ -218,7 +219,7 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('AnalysisArticleLimit', SBM_DEFAULTS.ANALYSIS_ARTICLE_LIMIT, 'STEP Bで実際に重い分析を行う最大記事数。タイムアウト対策用');
   sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。データ一覧のH1/titleタグ表示に使用');
   sbmSetSettingIfEmpty_('DataListTitleFetch', 'OFF', 'STEP Bでは外部取得しない。タイトル補完はSTEP Aで行う');
-  sbmSetSettingIfEmpty_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS, 'STEP Aで記事タイトル/SEOタイトル/meta descriptionを補完する最大URL数。標準100URL');
+  sbmSetSettingIfEmpty_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS, 'STEP A-2で記事タイトル/SEOタイトル/meta descriptionを補完する最大URL数。標準30URL');
   sbmSetSettingIfEmpty_('LastFetchRows', '0', '直近のSearch Console取得行数');
   sbmSetSettingIfEmpty_('DailyFetchMaxRows', SBM_DEFAULTS.DAILY_FETCH_MAX_ROWS, '従来方式のSTEP A取得上限。通常1500件');
   sbmSetSettingIfEmpty_('FetchMode', 'PAGE_FIRST', 'Search Console取得方式。PAGE_FIRST=ページ一覧優先、QUERY_PAGE=従来方式');
@@ -438,19 +439,19 @@ function sbmFetchOnlyManual(silent) {
     var writeStarted = new Date();
     sbmWriteRawQueryDataLight_(rows);
     var writeSec = sbmSecondsSince_(writeStarted);
-    sbmSetHomeProcessing_('● 処理中', 'STEP A 記事情報取得中', startedText, '', '取得済みURLからH1/title/meta descriptionを補完しています。', true);
+    sbmSetHomeProcessing_('● 処理中', 'STEP A データ一覧更新中', startedText, '', 'Search Consoleのページデータをデータ一覧に反映しています。記事情報補完はSTEP A-2で行います。', true);
     var metaStarted = new Date();
-    var metaResult = sbmUpdateDataListAfterFetch_(rows);
+    var metaResult = sbmUpdateDataListAfterFetch_(rows, false);
     var metaSec = sbmSecondsSince_(metaStarted);
     var sec = sbmSecondsSince_(started);
     sbmSetSetting_('LastFetchDate', sbmDateText_(new Date()), '最終取得日');
     sbmSetSetting_('LastFetchRows', rows.length, '直近のSearch Console取得行数');
     sbmSetSetting_('LastFetchSeconds', sec, '直近のSearch Console取得秒数');
     sbmSetSetting_('LastFetchAt', sbmNowText_(), '直近のSearch Console取得日時');
-    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / 記事情報 ' + metaSec + '秒 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件 / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''), startedText, sbmNowText_());
+    sbmProcessLog_('STEP A Search Consoleデータ取得', '完了', rows.length, rows.length, sec, 'API取得 ' + apiSec + '秒 / シート書込 ' + writeSec + '秒 / データ一覧反映 ' + metaSec + '秒 / 記事情報補完 0件（STEP A-2へ分離） / 取得方式 ' + sbmGetSetting_('LastFetchMode','') + ' / URL数 ' + sbmGetSetting_('LastFetchPageCount','') + '件 / クエリ詳細 ' + sbmGetSetting_('LastFetchQueryDetailPages','') + '件 / 上限到達 ' + sbmGetSetting_('LastFetchHitLimit',''), startedText, sbmNowText_());
     sbmLog_('FetchOnly','Done', rows.length + ' rows / ' + sec + ' sec');
-    sbmSetHomeProcessing_('完了', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), rows.length + '件取得しました。記事情報 ' + ((metaResult && metaResult.total)||0) + '件 / メタ補完 ' + ((metaResult && metaResult.fetched)||0) + '件', false);
-    if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n次に「STEP B 改善候補を分析」を実行してください。');
+    sbmSetHomeProcessing_('完了', 'STEP A Search Consoleデータ取得', startedText, sbmNowText_(), rows.length + '件取得しました。記事情報補完はSTEP A-2で実行してください。データ一覧 ' + ((metaResult && metaResult.total)||0) + '件', false);
+    if (!silent) sbmAlert_('データ取得完了', 'Search Consoleデータの取得が完了しました。\n取得件数: ' + rows.length + '件\n所要時間: ' + sec + '秒\n\n必要に応じて「STEP A-2 記事情報を補完」を実行してから、STEP Bへ進んでください。');
   } catch (e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('STEP A Search Consoleデータ取得', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
@@ -1168,12 +1169,34 @@ function sbmGetMasterInfoByUrl_(url) {
   return sbmExistingDataListMap_()[url] || {};
 }
 
-function sbmUpdateDataListAfterFetch_(rawRows) {
+
+function sbmSupplementArticleInfoManual(silent) {
+  silent = silent === true;
+  var started = new Date();
+  var startedText = sbmNowText_();
+  try {
+    var rows = sbmGetRawQueryRows_();
+    if (!rows.length) return sbmAlert_('記事情報を補完できません', '先にSTEP AでSearch Consoleデータを取得してください。');
+    sbmSetHomeProcessing_('● 処理中', 'STEP A-2 記事情報補完開始', startedText, '', 'データ一覧の未取得URLから、記事タイトル・SEOタイトル・メタディスクリプションを補完しています。', true);
+    var result = sbmUpdateDataListAfterFetch_(rows, true);
+    var sec = sbmSecondsSince_(started);
+    sbmProcessLog_('STEP A-2 記事情報補完', '完了', result.total || '', result.fetched || 0, sec, '最大補完 ' + sbmGetSetting_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS) + 'URL / 取得済みURLは再利用', startedText, sbmNowText_());
+    sbmSetHomeProcessing_('完了', 'STEP A-2 記事情報補完', startedText, sbmNowText_(), '記事情報を' + (result.fetched || 0) + '件補完しました。', false);
+    if (!silent) sbmAlert_('記事情報補完完了', '記事情報の補完が完了しました。\n対象記事: ' + (result.total || 0) + '件\n補完件数: ' + (result.fetched || 0) + '件\n所要時間: ' + sec + '秒');
+  } catch (e) {
+    var secErr = sbmSecondsSince_(started);
+    sbmProcessLog_('STEP A-2 記事情報補完', 'エラー', '', '', secErr, String(e), startedText, sbmNowText_());
+    sbmSetHomeProcessing_('エラー', 'STEP A-2 記事情報補完', startedText, sbmNowText_(), String(e), false);
+    sbmAlert_('記事情報補完エラー', String(e));
+  }
+}
+
+function sbmUpdateDataListAfterFetch_(rawRows, fetchMeta) {
   var existing = sbmExistingDataListMap_();
   var stats = sbmAggregateRawRowsByUrl_(rawRows || []);
   var urls = Object.keys(stats).filter(function(u){ return !!u; });
   urls.sort(function(a,b){ return sbmNumber_(stats[b].impressions) - sbmNumber_(stats[a].impressions); });
-  var maxMeta = sbmNumber_(sbmGetSetting_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS)) || SBM_DEFAULTS.META_FETCH_MAX_ROWS;
+  var maxMeta = (fetchMeta === false) ? 0 : (sbmNumber_(sbmGetSetting_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS)) || SBM_DEFAULTS.META_FETCH_MAX_ROWS);
   var fetched = 0;
   var now = sbmNowText_();
   var out = [];
