@@ -1,5 +1,5 @@
-# SIMS-Blog-Manager Product 5.0
+# SIMS-Blog-Manager Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
 
-ArticleDB Meta Query Budget 版です。
+This package fixes the recurring `sbmSheetObjects_ is not defined` error.
 
-記事DBの並び順、メインクエリ補完、300秒安全終了を追加しました。
+Use `apps-script/Code.gs` to replace the existing Apps Script code.

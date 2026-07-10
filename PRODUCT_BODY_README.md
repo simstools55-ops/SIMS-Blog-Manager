@@ -1,19 +1,12 @@
 # Product Body README
 
-この版では、記事DBを積み上げ方式の中心データとして扱います。
+## Update target
 
-## 更新内容
+- Replace Apps Script with `apps-script/Code.gs`.
+- Existing spreadsheet can continue to be used.
+- Running sheet creation/repair is not required for this patch.
+- deploy.yml update is not required.
 
-- `Code.gs` を更新してください。
-- `記事DB` の列構成に `メインクエリ` が追加されています。
-- 管理メニューの「シートの作成・修復」を1回実行してください。
+## Fix
 
-## 記事DBタイトル情報補完
-
-対象は次の通りです。
-
-- 改善候補：記事タイトル、SEOタイトル、メタディスクリプション、メインクエリ
-- 良好：記事タイトルのみ
-- 様子見：取得しない
-
-処理は300秒を超える前に安全終了します。
+All `sbmSheetObjects_` references were removed and replaced with the current row-reader helper.

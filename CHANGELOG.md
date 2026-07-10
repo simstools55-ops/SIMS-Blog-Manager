@@ -1,8 +1,7 @@
 # Changelog
 
-## Product 5.0 ArticleDB Meta Query Budget
+## Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
 
-- 記事DBにメインクエリ列を追加。
-- 記事DBタイトル情報補完の並び順を「改善候補 → 良好 → 様子見」へ変更。
-- 補完対象を、改善候補は記事タイトル・SEOタイトル・メタディスクリプション・メインクエリ、良好は記事タイトルのみへ限定。
-- 300秒を超える前に外部取得を停止し、タイムアウトを避けて保存する安全終了を追加。
+- Fixed `sbmSheetObjects_ is not defined` recurrence in ArticleDB meta/query supplementation.
+- Removed all remaining `sbmSheetObjects_` references from Code.gs.
+- Kept ArticleDB meta/query budget behavior and 300-second safety stop.
