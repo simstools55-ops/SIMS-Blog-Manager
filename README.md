@@ -15,3 +15,7 @@ Use `apps-script/Code.gs` to replace the existing Apps Script code.
 5. STEP5 記事情報補完を50件進める
 
 STEP4は1回100件、STEP5は1回50件を処理します。途中位置はSettingsに保存されるため、同じメニューを再実行すると続きから再開します。
+
+### ArticleDB Foundation Setup Error Fix
+
+初回記事DB構築および「シートの作成・修復」で発生していた未定義参照を修正しました。既存のスプレッドシートを継続使用できます。

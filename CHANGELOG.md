@@ -13,3 +13,10 @@
 - URL収集完了後、記事情報を50件ずつ補完するSTEP5を追加しました。
 - 記事DBに ArticleID、補完済み、補完日時、補完エラーを追加しました。
 - Homeに記事URL収集・記事情報補完の進捗を表示します。
+
+## Product 5.0 ArticleDB Foundation Setup Error Fix
+
+- `sbmUpdateHomeArticleDbCounts_` 未定義エラーを修正
+- `articleDbTotal` 未定義エラーを修正
+- 記事DB件数をHomeへ反映する処理を追加
+- 潜在的な `sbmOpenSheetByName_` 未定義参照も修正
