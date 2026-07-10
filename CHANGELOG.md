@@ -1,13 +1,7 @@
-# CHANGELOG
+# Changelog
 
-## Product 5.0.0 URL Filter Step Split Fix
-- STEP AのURL正規化を強化し、はてなブログでは `/entry/` 配下の記事URLのみを対象化。
-- category / tag / feed / archive / media / wp-admin 等の非記事URLを除外。
-- Homeの総記事数表示を、ブログ総記事数と分析対象数が分かる表記へ改善。
+## Product 5.0.0 Article DB Status Classify
 
-
-## Product 5.0.0 Page Data Article DB
-
-- 新メニュー「ページデータ収集（記事DB）」を追加。
-- Search Console pageデータだけを取得し、URL正規化・ノイズ除去後に記事DBへ保存。
-- タイトル取得・改善分析はこの処理では実行しない。
+- 記事DBに「記事ステータス」列を追加しました。
+- ページデータ収集時に、記事タイトル等の外部取得は行わず、URL・クリック数・表示回数・CTR・掲載順位だけで良好／改善候補／改善中／様子見／管理対象外を分類します。
+- 既存のデータ一覧・記事DB・改善中にあるステータスは可能な範囲で引き継ぎます。

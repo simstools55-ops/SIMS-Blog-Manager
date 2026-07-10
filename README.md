@@ -1,17 +1,15 @@
-# SIMS-Blog-Manager Product 5.0.0
+# SIMS-Blog-Manager Product 5.0.0 Article DB Status Classify
 
-このパッケージは、STEP A / STEP A-2 / STEP B の処理分離を前提にした開発確認版です。
+この版では、新メニュー「ページデータ収集（記事DB）」で記事DBへ記事ステータスを追加します。
 
 ## 製品本体
+
 - `apps-script/Code.gs`
 - `apps-script/appsscript.json`
 
-## 今回の主な修正
-- Search Consoleから取得したURLのうち、記事URLだけを残す正規化を強化しました。
-- はてなブログでは `/entry/` を含むURLを記事URLとして扱い、`#見出し`、カテゴリ、タグ、フィードなどを除外します。
-- Homeの総記事数には、分析対象数と混同しにくい表示を追加しました。
+## 変更点
 
-
-## Product 5.0 Page Data Collection
-
-新メニュー「ページデータ収集（記事DB）」を追加しました。Search Consoleからpage単位でURL・クリック数・表示回数・CTR・掲載順位だけを取得し、URL正規化とノイズ除去後に「記事DB」シートへ保存します。タイトル取得・改善分析は行いません。
+- 記事DBの先頭列に「記事ステータス」を追加
+- ページデータ収集ではタイトル取得・改善分析を行わない
+- Search Consoleのページ指標のみでステータス分類
+- 数値列の表示形式を維持
