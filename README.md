@@ -1,13 +1,17 @@
-# SIMS-Blog-Manager Product 5.0.0 ArticleDB Home Good Meta
+# SIMS-Blog-Manager Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
 
-利用者向けApps Scriptは `apps-script/Code.gs` を使用してください。
+This package fixes the recurring `sbmSheetObjects_ is not defined` error.
 
-## 今回の主な変更
+Use `apps-script/Code.gs` to replace the existing Apps Script code.
 
-- Homeのブログ全体状況を記事DBベースで更新します。
-- ページデータ収集後、総記事数・良好記事数・改善候補数・様子見記事数をHomeに表示します。
-- 良好記事だけを対象に、記事タイトル・メタディスクリプション・メインクエリを補完するメニューを追加しました。
+## 初回の記事DBセットアップ
 
-## 今日の改善（Product 5.0）
+セットアップメニューを上から順に実行します。
 
-初期表示は「即効性」1件と「CTR改善」1件の合計2件です。シート下部の「次のおすすめ」をクリックすると2件ずつ追加され、最大6件まで表示されます。詳細はポップアップの改善ブリーフで確認します。
+1. STEP1 ブログ情報を登録
+2. STEP2 Google Cloud APIガイド
+3. STEP3 Search Console接続テスト
+4. STEP4 記事DB初期構築を開始／続きから再開
+5. STEP5 記事情報補完を50件進める
+
+STEP4は1回100件、STEP5は1回50件を処理します。途中位置はSettingsに保存されるため、同じメニューを再実行すると続きから再開します。

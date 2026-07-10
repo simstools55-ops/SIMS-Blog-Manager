@@ -1,16 +1,15 @@
 # Changelog
 
-## Product 5.0 Today Compact Recommendations
+## Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
 
-- 今日の改善を初期2件・最大6件の段階表示へ変更
-- 即効性上位3件とCTR改善上位3件の改善ブリーフを事前作成
-- シート表示を最小限にし、記事詳細はポップアップ表示
-- 改善理由に期待効果を追加
+- Fixed `sbmSheetObjects_ is not defined` recurrence in ArticleDB meta/query supplementation.
+- Removed all remaining `sbmSheetObjects_` references from Code.gs.
+- Kept ArticleDB meta/query budget behavior and 300-second safety stop.
 
-## Product 5.0.0 ArticleDB Home Good Meta
+## Product 5.0 ArticleDB Foundation Setup
 
-- Homeに記事DBベースの総記事数・良好記事数・改善候補数・様子見記事数を表示。
-- ページデータ収集後に記事DBのステータス件数を設定へ保存し、Homeへ反映。
-- 新メニュー「良好記事だけタイトル情報を補完」を追加。
-- 良好記事のみを対象に、記事タイトル・メタディスクリプション・メインクエリを補完。
-- 300秒安全終了を維持。
+- 初回セットアップに「記事DB初期構築（100件ずつ）」を追加しました。
+- Search Console の `startRow` を保存し、最後の取得件数が100件未満になるまで続きから再開できます。
+- URL収集完了後、記事情報を50件ずつ補完するSTEP5を追加しました。
+- 記事DBに ArticleID、補完済み、補完日時、補完エラーを追加しました。
+- Homeに記事URL収集・記事情報補完の進捗を表示します。
