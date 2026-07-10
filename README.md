@@ -1,14 +1,16 @@
 # SIMS-Blog-Manager Product 5.0.0
 
-今回の版は大規模サイト検証用です。
+Product 5.0 Official 開発版です。
 
-- STEP A: ページ一覧を先に取得し、上位50ページだけクエリ詳細を取得
-- STEP B: 工程別の処理時間を `処理プロファイル` に記録
-- 利用者向けApps Scriptは `apps-script/Code.gs` のみ
+## 製品本体
 
+- `apps-script/Code.gs`
+- `apps-script/appsscript.json`
 
-## Product 5.0.0 DataList Detail Status UI Fix
+## 今回の更新
 
-- データ一覧の詳細列を操作しやすいチェック式に変更しました。
-- チェックすると詳細ポップアップが開き、SEOタイトル・メタディスクリプション・URLを確認できます。
-- 記事ステータスは先頭マークと背景色で一目で判断できるようにしました。
+- Homeの総記事数表示を修正
+- データ一覧の詳細表示UIをテキストボタン化
+- URL正規化と誤データ抑制を強化
+
+既存スプレッドシートを継続利用できます。

@@ -1,9 +1,8 @@
-# Product Body README
+# 製品本体
 
-製品本体は次の2点です。
+利用者向けに更新するファイルは以下です。
 
-- `apps-script/Code.gs`
-- `apps-script/appsscript.json`
+1. `apps-script/Code.gs`
+2. `apps-script/appsscript.json`（変更がある場合のみ）
 
-今回は `Code.gs` のみ更新対象です。
-既存のスプレッドシートは継続使用できます。
+今回は `Code.gs` を更新してください。
