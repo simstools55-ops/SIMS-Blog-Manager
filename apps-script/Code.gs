@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-data-quality-home-detail-fix';
+const SBM_VERSION = '5.0.0-stepb-lite-timeout-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -476,7 +476,7 @@ function sbmAnalyzeOnlyManual(silent) {
   profiler.lap('取得済みデータ読込', qRows.length, qRows.length, 'SearchConsole_Dataから読み込み');
   if (!qRows.length) return sbmAlert_('分析できません', '先に「STEP A Search Consoleデータ取得だけ実行」を実行してください。');
   try {
-    sbmSetHomeProcessing_('● 処理中', 'STEP B 改善候補分析開始', startedText, '', '取得済みデータから改善候補・今日の改善・データ一覧を作成しています。', true);
+    sbmSetHomeProcessing_('● 処理中', 'STEP B 改善候補分析開始', startedText, '', '取得済みデータから改善候補・今日の改善を作成しています。データ一覧の補正はSTEP A側で行います。', true);
     profiler.lap('Home処理状況表示', '', '', '分析開始をHomeへ表示');
 
     var tDiagnosis = new Date();
@@ -493,10 +493,11 @@ function sbmAnalyzeOnlyManual(silent) {
     sbmBuildInProgressSheet_();
     profiler.lap('改善中シート更新', '', '', sbmSecondsSince_(tProgress) + '秒');
 
-    sbmSetHomeProcessing_('● 処理中', 'STEP B データ一覧更新中', startedText, '', '利用者向けのデータ一覧を作成しています。', true);
-    var tDataList = new Date();
-    var dataListCount = sbmBuildDataListFromAnalysis_();
-    profiler.lap('データ一覧更新', '', dataListCount, sbmSecondsSince_(tDataList) + '秒');
+    // Product 5.0 timeout fix:
+    // STEP Bではデータ一覧の全再構築・タイトル補正・外部取得を行わない。
+    // データ一覧はSTEP Aで作成済みの共通マスターを参照し、STEP Bは改善候補作成に専念する。
+    var dataListCount = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA).length;
+    profiler.lap('データ一覧更新スキップ', dataListCount, 0, 'STEP B軽量化のため再構築しません。データ一覧更新はSTEP Aまたは専用メニューで実施。');
 
     var tCleanup = new Date();
     sbmRemoveRetiredSheets_();
@@ -513,12 +514,12 @@ function sbmAnalyzeOnlyManual(silent) {
     var managed = (result && result.managedCount) || sbmGetSetting_('ManagedArticleCount','');
     var total = sbmGetSetting_('ImprovementCandidateCount','0');
     var shown = sbmGetSetting_('DisplayedImprovementCount','0');
-    var runId = profiler.finish('完了', '総所要 ' + sec + '秒 / 管理対象 ' + managed + '件 / 分析 ' + ((result && result.analyzedCount)||'') + '件 / 改善候補 ' + total + '件 / データ一覧 ' + dataListCount + '件');
-    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, 'データ一覧 ' + dataListCount + '件。改善候補 ' + total + '件 / 表示 ' + shown + '件 / ProfileRunId ' + runId, startedText, sbmNowText_());
-    sbmLog_('AnalyzeOnly','Done','managed=' + managed + ', candidates=' + total + ', shown=' + shown + ', sec=' + sec + ', profile=' + runId);
-    sbmSetHomeProcessing_('完了', 'STEP B 改善候補分析', startedText, sbmNowText_(), '改善候補とデータ一覧を更新しました。', false);
+    var runId = profiler.finish('完了', '総所要 ' + sec + '秒 / 管理対象 ' + managed + '件 / 分析 ' + ((result && result.analyzedCount)||'') + '件 / 改善候補 ' + total + '件 / データ一覧再構築なし');
+    sbmProcessLog_('STEP B 改善候補分析', '完了', (result && result.targetCount) || '', (result && result.analyzedCount) || '', sec, '改善候補 ' + total + '件 / 表示 ' + shown + '件 / データ一覧再構築なし / ProfileRunId ' + runId, startedText, sbmNowText_());
+    sbmLog_('AnalyzeOnly','Done','managed=' + managed + ', candidates=' + total + ', shown=' + shown + ', sec=' + sec + ', profile=' + runId + ', datalist=skip');
+    sbmSetHomeProcessing_('完了', 'STEP B 改善候補分析', startedText, sbmNowText_(), '改善候補と今日の改善を更新しました。データ一覧はSTEP Aの結果を参照しています。', false);
     sbmRefreshHome_();
-    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\nデータ一覧: ' + dataListCount + '件\n所要時間: ' + sec + '秒\n\n開発用プロファイル: ' + runId);
+    if (!silent) sbmAlert_('改善分析完了', '改善候補を作成しました。\n管理対象記事: ' + managed + '件\n分析記事: ' + ((result && result.analyzedCount)||'') + '件\n改善候補: ' + total + '件\n表示中: ' + shown + '件\nデータ一覧: STEP Aの結果を使用\n所要時間: ' + sec + '秒\n\n開発用プロファイル: ' + runId);
   } catch(e) {
     var secErr = sbmSecondsSince_(started);
     var runErr = profiler.finish('エラー', String(e));
