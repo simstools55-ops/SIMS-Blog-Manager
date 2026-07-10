@@ -1,21 +1,13 @@
-# SIMS-Blog-Manager Product 5.0.0 ArticleDB Meta Query Budget SheetObjects Fix
+# SIMS-Blog-Manager Product 5.0
 
-This package fixes the recurring `sbmSheetObjects_ is not defined` error.
+## ArticleDB One-Pass Page Fetch
 
-Use `apps-script/Code.gs` to replace the existing Apps Script code.
+STEP4はSearch Consoleからページ単位データを1回で取得し、記事URLを正規化して記事DBを作成します。
 
-## 初回の記事DBセットアップ
+### 実行順
+1. Code.gsを更新
+2. スプレッドシートを再読み込み
+3. セットアップ → STEP4 記事DBを一括作成（初回）
+4. 完了後、STEP5 記事情報補完を実行
 
-セットアップメニューを上から順に実行します。
-
-1. STEP1 ブログ情報を登録
-2. STEP2 Google Cloud APIガイド
-3. STEP3 Search Console接続テスト
-4. STEP4 記事DB初期構築を開始／続きから再開
-5. STEP5 記事情報補完を50件進める
-
-STEP4は1回100件、STEP5は1回50件を処理します。途中位置はSettingsに保存されるため、同じメニューを再実行すると続きから再開します。
-
-### ArticleDB Foundation Setup Error Fix
-
-初回記事DB構築および「シートの作成・修復」で発生していた未定義参照を修正しました。既存のスプレッドシートを継続使用できます。
+通常規模のブログでは1回で完了します。Search Consoleのページ行が25,000件に達した場合のみ追加対応が必要です。
