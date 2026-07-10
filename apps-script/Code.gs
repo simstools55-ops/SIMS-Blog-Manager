@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-articledb-meta-query-budget';
+const SBM_VERSION = '5.0.0-articledb-meta-query-budget-sheetobjects-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -534,7 +534,7 @@ function sbmBuildArticleStatusReferenceMap_() {
   // 既存のデータ一覧・記事DB・改善中にある状態を引き継ぐ。
   // ここでは外部取得やタイトル取得は行わない。
   try {
-    var dataRows = sbmSheetObjects_(SBM_SHEETS.QUERY_DATA);
+    var dataRows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
     dataRows.forEach(function(r){
       var url = sbmNormalizeUrl_(r['記事URL'] || r.URL || '');
       if (!url) return;
@@ -543,7 +543,7 @@ function sbmBuildArticleStatusReferenceMap_() {
     });
   } catch(e) {}
   try {
-    var articleRows = sbmSheetObjects_(SBM_SHEETS.ARTICLE_DB);
+    var articleRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
     articleRows.forEach(function(r){
       var url = sbmNormalizeUrl_(r['記事URL'] || r.URL || '');
       if (!url) return;
@@ -552,7 +552,7 @@ function sbmBuildArticleStatusReferenceMap_() {
     });
   } catch(e) {}
   try {
-    var inRows = sbmSheetObjects_(SBM_SHEETS.IN_PROGRESS);
+    var inRows = sbmRowsAsObjects_(SBM_SHEETS.IN_PROGRESS);
     inRows.forEach(function(r){
       var url = sbmNormalizeUrl_(r['URL'] || r['記事URL'] || '');
       if (url) map[url] = '改善中';
@@ -637,7 +637,7 @@ function sbmSupplementArticleDbMetaManual(silent) {
   try {
     var sh = sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB);
     sbmEnsureHeaders_(sh, SBM_HEADERS.ARTICLE_DB);
-    var rows = sbmSheetObjects_(SBM_SHEETS.ARTICLE_DB);
+    var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
     if (!rows.length) return sbmAlert_('記事DBのタイトル情報を補完できません', '先に「ページデータ収集（記事DB）」を実行してください。');
     var maxMeta = sbmNumber_(sbmGetSetting_('MetaFetchMaxRows', SBM_DEFAULTS.META_FETCH_MAX_ROWS)) || SBM_DEFAULTS.META_FETCH_MAX_ROWS;
     maxMeta = Math.max(1, Math.min(100, maxMeta));
