@@ -1,38 +1,7 @@
-# GitHub Pages公開手順
+# HOW TO PUBLISH
 
-## 重要
-
-GitHubのWebアップロードでは、`.github` のようなドットから始まる隠しフォルダが一括アップロードされない場合があります。
-
-その場合は、次のファイルだけ手動で作成してください。
-
-```text
-.github/workflows/deploy.yml
-```
-
-## 手順
-
-1. ZIPを展開します。
-2. 通常のファイルをGitHubへアップロードします。
-3. GitHub上で `Add file` → `Create new file` を選びます。
-4. ファイル名に `.github/workflows/deploy.yml` と入力します。
-5. ZIP内の `.github/workflows/deploy.yml` の内容を貼り付けます。
-6. Commitします。
-7. `Settings` → `Pages` → `Source` を `GitHub Actions` にします。
-8. `Actions` が成功したら公開完了です。
-
-公開URLの例：
-
-```text
-https://simstools55-ops.github.io/SIMS-Blog-Manager/
-```
-
-## Actionsが失敗した場合
-
-`Actions` → 失敗した実行 → `build` → `Build site` の赤いエラーを確認してください。
-
-
-## Product 5.0 Home UI Syntax Fix
-- Code.gs の構文エラー（Unexpected token）を修正。
-- 高速化済みSearch Console取得処理とHome UI復元内容は維持。
-- 利用者向けApps Scriptは Code.gs のみ。
+1. `apps-script/Code.gs` をApps Scriptへ貼り替える。
+2. `appsscript.json` のOAuthスコープが不足していないか確認する。
+3. スプレッドシートを再読み込みする。
+4. 「管理 → シートを作成・修復」を実行する。
+5. STEP A、STEP Bを実行し、「処理プロファイル」を確認する。
