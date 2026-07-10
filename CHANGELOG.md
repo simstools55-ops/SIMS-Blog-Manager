@@ -1,5 +1,12 @@
 # Changelog
 
+## Product 5.0 Today Compact Recommendations
+
+- 今日の改善を初期2件・最大6件の段階表示へ変更
+- 即効性上位3件とCTR改善上位3件の改善ブリーフを事前作成
+- シート表示を最小限にし、記事詳細はポップアップ表示
+- 改善理由に期待効果を追加
+
 ## Product 5.0.0 ArticleDB Home Good Meta
 
 - Homeに記事DBベースの総記事数・良好記事数・改善候補数・様子見記事数を表示。
