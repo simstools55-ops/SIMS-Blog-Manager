@@ -31,8 +31,7 @@ nav:
   - 毎日の使い方: daily-workflow/index.md
   - ユーザーガイド:
       - 今日の改善: user-guide/todays-improvement.md
-      - 改善ナビ: user-guide/improvement-brief.md
-      - Claude連携用出力指示: claude/sims-feedback-v1-prompt.md
+      - 改善ブリーフ: user-guide/improvement-brief.md
       - 改善ログ: user-guide/improvement-log.md
       - 効果測定: user-guide/effectiveness.md
   - 改善ガイド: improvement-guide/index.md
