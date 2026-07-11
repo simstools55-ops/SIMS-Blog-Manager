@@ -88,12 +88,13 @@ function onOpen() {
     .addSubMenu(ui.createMenu('データ更新')
       .addItem('記事DBを更新（日次）', 'sbmCollectPageDataToArticleDbManual')
       .addItem('記事ランクを再判定', 'sbmUpdateArticleRankManual')
-      .addItem('記事DBを開く', 'sbmOpenArticleDb')
-      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
       .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
       .addSeparator()
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
+    .addSubMenu(ui.createMenu('記事DB')
+      .addItem('記事DBを開く', 'sbmOpenArticleDb')
+      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail'))
     .addSubMenu(ui.createMenu('改善機能')
       .addItem('記事DB直結版の準備状況', 'sbmShowImprovementRefactorStatus_')
       .addItem('改善中を開く', 'sbmOpenInProgress'))
@@ -1238,18 +1239,14 @@ function sbmStyleArticleDbSheet_(sh) {
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        var detailRule = SpreadsheetApp.newDataValidation()
-          .requireValueInList(['記事DB詳細を開く'], true)
-          .setAllowInvalid(false)
-          .build();
-        dr.setDataValidation(detailRule);
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['▼ 記事DB詳細']; }));
-        dr.setBackground('#d9eaf7')
-          .setFontColor('#1155cc')
+        dr.clearDataValidations();
+        dr.setValues(Array.from({length:lr-1}, function(){ return ['行を選択→メニュー']; }));
+        dr.setBackground('#e8f0fe')
+          .setFontColor('#174ea6')
           .setFontWeight('bold')
           .setHorizontalAlignment('center')
           .setVerticalAlignment('middle')
-          .setNote('セル右側の▼を押し、「記事DB詳細を開く」を選択してください。Googleスプレッドシートでは単純クリックだけでダイアログを確実に開けないため、編集イベントを使う方式です。');
+          .setNote('この行の任意のセルを選択し、上部メニュー「SIMS-Blog-Manager」→「記事DB」→「選択記事の詳細を開く」を実行してください。');
       }
     }
   } catch(e) {}
@@ -1342,7 +1339,10 @@ function sbmSupplementArticleDbMetaManual(silent) {
   }
 }
 
-function sbmOpenArticleDb() { return sbmOpenSheet_(SBM_SHEETS.ARTICLE_DB); }
+function sbmOpenArticleDb() {
+  sbmOpenSheet_(SBM_SHEETS.ARTICLE_DB);
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('見たい記事の行を選択し、SIMS-Blog-Manager → 記事DB → 選択記事の詳細を開く を実行してください。', '記事DBの操作', 8); } catch(e) {}
+}
 
 function sbmFetchOnlyManual(silent) {
   silent = silent === true;
@@ -2690,11 +2690,11 @@ function sbmOpenSelectedArticleDbDetail() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getActiveSheet();
   if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) {
-    return sbmAlert_('記事詳細', '「記事DB」シートで対象記事の行を選択してください。');
+    return sbmAlert_('記事DB詳細', '「記事DB」シートで対象記事の行を選択してください。');
   }
   var range = sh.getActiveRange();
   var row = range ? range.getRow() : 0;
-  if (row <= 1) return sbmAlert_('記事詳細', '見出し以外の記事行を選択してください。');
+  if (row <= 1) return sbmAlert_('記事DB詳細', '見出し以外の記事行を選択してください。');
   sbmShowArticleDbDetailForRow_(row);
 }
 
@@ -2721,6 +2721,25 @@ function sbmWorkStateComment_(state) {
   return map[String(state || '').trim()] || '作業状態はまだ設定されていません。';
 }
 
+
+function sbmRankWorkRecommendation_(rank, state) {
+  rank = String(rank || '').trim();
+  state = String(state || '').trim() || '未着手';
+  if (state === '🔥 今日の改善') return '本日の改善対象です。記事ランクにかかわらず、改善ブリーフに沿って着手してください。';
+  if (state === '✏️ 改善中') return '現在修正中です。作業を完了したらモニター中へ移し、数値変化を確認してください。';
+  if (state === '👀 モニター中') return '改善後の経過観察中です。追加修正は急がず、CTR・順位・クリック数の推移を確認してください。';
+  if (state === '✔️ 完了') return '改善と確認は完了しています。大きな変化がない限り、通常運用で問題ありません。';
+  if (state === '🗑️ 削除候補') return '削除・統合・管理対象外の判断が必要です。Search Console未取得だけで自動削除はしないでください。';
+  var map = {
+    '🏆 エース':'未着手のままで問題ありません。主力記事なので大幅な変更は避け、順位やCTRの低下時だけ点検してください。',
+    '✅ 安定':'未着手で問題ありません。現状維持を基本とし、成長記事や低迷記事を先に改善してください。',
+    '📈 成長':'優先的に着手する価値があります。タイトル・検索意図・導入文の改善で成果が伸びる可能性があります。',
+    '🌱 育成':'現時点では未着手で構いません。データが増えるまで様子を見て、表示回数が伸びたら改善候補にします。',
+    '⚠️ 低迷':'需要と表示回数を確認してください。表示機会があるなら改善、ほとんどないなら優先度を下げて構いません。'
+  };
+  return map[rank] || '現在は未着手です。記事ランクと検索データを確認して、着手の優先度を判断してください。';
+}
+
 function sbmShowArticleDbDetailForRow_(row) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
   if (!sh || row <= 1) return;
@@ -2739,7 +2758,7 @@ function sbmShowArticleDbDetailForRow_(row) {
     + '<tr><td style="padding:8px;border:1px solid #ddd"><b>CTR</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['CTR']) + '</td><td style="padding:8px;border:1px solid #ddd"><b>掲載順位</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['掲載順位']) + '</td></tr>'
     + '</table>'
     + '<div style="background:#f0f7f3;border-left:5px solid #0b8043;padding:12px 14px;margin:14px 0"><b>記事ランク：' + e(rank) + '</b><br>' + e(sbmArticleRankComment_(rank)) + '</div>'
-    + '<div style="background:#f5f7fb;border-left:5px solid #1a73e8;padding:12px 14px;margin:14px 0"><b>作業状態：' + e(work) + '</b><br>' + e(sbmWorkStateComment_(work)) + '</div>'
+    + '<div style="background:#f5f7fb;border-left:5px solid #1a73e8;padding:12px 14px;margin:14px 0"><b>作業状態：' + e(work) + '</b><br>' + e(sbmWorkStateComment_(work)) + '<br><b>着手判断：</b>' + e(sbmRankWorkRecommendation_(rank, work)) + '</div>'
     + '<p><b>メインクエリ</b><br>' + e(obj['メインクエリ']) + '</p>'
     + '<p><b>SEOタイトル</b><br>' + e(obj['SEOタイトル']) + '</p>'
     + '<p><b>メタディスクリプション</b><br>' + e(obj['メタディスクリプション']) + '</p>'
@@ -2919,13 +2938,6 @@ function onSelectionChange(e) {
     if (!e || !e.range) return;
     var sh = e.range.getSheet();
     if (!sh || e.range.getRow() <= 1) return;
-    if (sh.getName() === SBM_SHEETS.ARTICLE_DB) {
-      var hm = sbmHeaderMap_(sh);
-      if (hm['詳細'] && e.range.getColumn() === hm['詳細']) {
-        sbmShowArticleDbDetailForRow_(e.range.getRow());
-      }
-      return;
-    }
     if (sh.getName() === SBM_SHEETS.QUERY_DATA && e.range.getColumn() === 8) sbmShowSelectedDataListDetail();
   } catch (err) {
     // 詳細表示は補助機能。処理全体は止めない。
@@ -2970,12 +2982,6 @@ function onEdit(e) {
     }
     if (row <= 1) return;
     var map = sbmHeaderMap_(sh);
-    if (sheetName === SBM_SHEETS.ARTICLE_DB && map['詳細'] && col === map['詳細'] && String(e.value || '') === '記事DB詳細を開く') {
-      sh.getRange(row, col).setValue('▼ 記事DB詳細');
-      sh.setActiveRange(sh.getRange(row, 1));
-      sbmShowArticleDbDetailForRow_(row);
-      return;
-    }
     if (sheetName === SBM_SHEETS.EFFECT && map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
       sh.getRange(row, col).setValue(false);
       sh.setActiveRange(sh.getRange(row, 1));
