@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc11';
+const SBM_VERSION = '5.0.0-rc11-repair-navigator';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -228,8 +228,76 @@ function sbmInitializeSheets(showAlert) {
   // 修復後も作業状態を優先した正式順で記事DBを並べ替えます。
   try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('InitializeSheetsSort','Warning',String(e)); }
   sbmRefreshHome_();
-  sbmLog_('InitializeSheets','Done','Product 5.0 RC11 startup prompt and flat menus initialized');
-  if (showAlert) sbmAlert_('初期化完了', '現行シートの作成・修復が完了しました。旧改善シートは作成していません。記事DBとHomeを確認してください。');
+  sbmLog_('InitializeSheets','Done','Product 5.0 RC11 repair navigator initialized');
+  if (showAlert) sbmShowRepairCompletionNavigator_();
+}
+
+
+/** シート作成・修復後の案内画面。実施内容と次の操作を一画面で案内します。 */
+function sbmShowRepairCompletionNavigator_() {
+  var counts = {total:0, monitored:0, today:0};
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
+    if (sh && sh.getLastRow() > 1) {
+      var hm = sbmHeaderMap_(sh);
+      var rows = sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getDisplayValues();
+      counts.total = rows.length;
+      if (hm['作業状態']) {
+        var idx = hm['作業状態'] - 1;
+        rows.forEach(function(r){
+          var v = String(r[idx] || '');
+          if (v.indexOf('モニター中') !== -1) counts.monitored++;
+          if (v.indexOf('今日の改善') !== -1) counts.today++;
+        });
+      }
+    }
+  } catch(e) {}
+  var last = String(sbmGetSetting_('LastFetchDateTime', sbmGetSetting_('LastFetchDate','未実行')) || '未実行');
+  var html = '<!doctype html><html><head><base target="_top"><style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124;line-height:1.55}'
+    + 'h2{margin:0 0 12px;color:#0b8043;font-size:21px}.box{background:#f6f8fa;border:1px solid #dadce0;border-radius:10px;padding:13px 15px;margin:12px 0}'
+    + '.done{margin:4px 0}.status{display:grid;grid-template-columns:1fr 1fr;gap:7px;font-size:13px}.actions{display:grid;gap:9px;margin-top:16px}'
+    + 'button{border:0;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer}.setup{background:#1a73e8;color:white}.update{background:#0b8043;color:white}.home{background:#e8eaed;color:#202124}'
+    + '#msg{font-size:12px;color:#5f6368;margin-top:10px}</style></head><body>'
+    + '<h2>シートの作成・修復が完了しました</h2>'
+    + '<div class="box"><div class="done">✓ 必要なシートと見出しを確認・修復</div>'
+    + '<div class="done">✓ 廃止済みシートを整理</div>'
+    + '<div class="done">✓ 記事DBの表示形式と並び順を調整</div>'
+    + '<div class="done">✓ 設定・処理ログを通常時は非表示に設定</div></div>'
+    + '<div class="box status"><div>記事DB：<b>' + counts.total + '件</b></div><div>モニター中：<b>' + counts.monitored + '件</b></div>'
+    + '<div>今日の改善：<b>' + counts.today + '件</b></div><div>最終更新：<b>' + sbmEscapeHtml_(last) + '</b></div></div>'
+    + '<div class="actions">'
+    + '<button class="setup" onclick="go(\'setup\')">📦 ブログのセットアップ</button>'
+    + '<button class="update" onclick="go(\'update\')">🔄 記事DBを更新</button>'
+    + '<button class="home" onclick="go(\'home\')">🏠 そのまま使う（HOMEへ）</button>'
+    + '</div><div id="msg"></div><script>'
+    + 'function go(a){document.getElementById("msg").textContent="画面を切り替えています…";google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)||String(e);}).withSuccessHandler(function(){google.script.host.close();}).sbmHandleRepairNextAction_(a);}'
+    + '</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(470).setHeight(570), 'シートの作成・修復');
+}
+
+/** 修復完了画面で選ばれた次の操作を実行します。 */
+function sbmHandleRepairNextAction_(action) {
+  action = String(action || 'home');
+  if (action === 'setup') {
+    sbmOpenSetup();
+    return true;
+  }
+  if (action === 'update') {
+    sbmCollectPageDataToArticleDbManual();
+    return true;
+  }
+  sbmOpenHome();
+  return true;
+}
+
+/** 日常画面へ移動した際、必要時だけ開く管理シートを再び隠します。 */
+function sbmHideOptionalAdminSheets_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  [SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.PROCESS_LOG].forEach(function(name){
+    var sh = ss.getSheetByName(name);
+    if (sh && ss.getActiveSheet().getName() !== name) { try { sh.hideSheet(); } catch(e) {} }
+  });
 }
 
 function sbmEnsureDataSheets_() {
@@ -380,7 +448,8 @@ function sbmEnsureUserSheets_() {
 function sbmApplyProductVisibleTabs_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var visible = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.TODAY, SBM_SHEETS.PROCESS_LOG].forEach(function(n){ visible[n] = true; });
+  // 日常利用のシートだけを表示。設定・処理ログはメニューから開いた時だけ表示します。
+  [SBM_SHEETS.HOME, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.TODAY].forEach(function(n){ visible[n] = true; });
   ss.getSheets().forEach(function(sh){
     try { if (visible[sh.getName()]) sh.showSheet(); else sh.hideSheet(); } catch(e) {}
   });
@@ -1290,7 +1359,7 @@ function sbmStyleArticleDbSheet_(sh) {
       // 長文列だけ折り返し、数値・URL列は一行表示を維持する。
       if (hm['記事タイトル']) sh.getRange(2,hm['記事タイトル'],lr-1,1).setWrap(true).setVerticalAlignment('top');
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true).setVerticalAlignment('top');
-      if (hm['記事URL']) sh.getRange(2,hm['記事URL'],lr-1,1).setWrap(false);
+      if (hm['記事URL']) sh.getRange(2,hm['記事URL'],lr-1,1).setWrap(true).setVerticalAlignment('top');
       ['クリック数','表示回数','CTR','掲載順位'].forEach(function(h){ if (hm[h]) sh.getRange(2,hm[h],lr-1,1).setWrap(false); });
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
@@ -1389,6 +1458,7 @@ function sbmSupplementArticleDbMetaManual(silent) {
 }
 
 function sbmOpenArticleDb() {
+  sbmHideOptionalAdminSheets_();
   sbmOpenSheet_(SBM_SHEETS.ARTICLE_DB);
   try { SpreadsheetApp.getActiveSpreadsheet().toast('記事行を選択し、右側の「記事DBツールバー」または上部メニューから操作してください。', '記事DBの操作', 8); } catch(e) {}
 }
@@ -3527,6 +3597,7 @@ function sbmUpdateArticleRankManual() {
  * メニューと現行機能の呼び出し先を一元化し、リファクタリング途中の未定義参照を防ぎます。
  */
 function sbmOpenHome() {
+  sbmHideOptionalAdminSheets_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
   if (!sh) {
@@ -3600,6 +3671,7 @@ function sbmBuildTodayImprovementSheet_() {
 }
 
 function sbmOpenTodayImprovement() {
+  sbmHideOptionalAdminSheets_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) { sbmBuildTodayImprovementSheet_(); sh = ss.getSheetByName(SBM_SHEETS.TODAY); }
