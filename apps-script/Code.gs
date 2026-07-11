@@ -94,7 +94,10 @@ function onOpen() {
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
     .addSubMenu(ui.createMenu('記事DB')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
-      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail'))
+      .addItem('記事DBツールバーを開く', 'sbmOpenArticleDbToolbar')
+      .addSeparator()
+      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
+      .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl'))
     .addSubMenu(ui.createMenu('改善機能')
       .addItem('記事DB直結版の準備状況', 'sbmShowImprovementRefactorStatus_')
       .addItem('改善中を開く', 'sbmOpenInProgress'))
@@ -1341,7 +1344,62 @@ function sbmSupplementArticleDbMetaManual(silent) {
 
 function sbmOpenArticleDb() {
   sbmOpenSheet_(SBM_SHEETS.ARTICLE_DB);
-  try { SpreadsheetApp.getActiveSpreadsheet().toast('見たい記事の行を選択し、SIMS-Blog-Manager → 記事DB → 選択記事の詳細を開く を実行してください。', '記事DBの操作', 8); } catch(e) {}
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('記事行を選択し、右側の「記事DBツールバー」または上部メニューから操作してください。', '記事DBの操作', 8); } catch(e) {}
+}
+
+/**
+ * 記事DBの共通操作をまとめた常設サイドバーです。
+ * セルクリックの選択イベントに依存せず、選択中の行に対して確実に操作します。
+ */
+function sbmOpenArticleDbToolbar() {
+  var html = '<!DOCTYPE html><html><head><base target="_top"><style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:16px;color:#202124;background:#fff}'
+    + 'h2{font-size:18px;color:#0b8043;margin:0 0 8px}.help{font-size:12px;color:#5f6368;line-height:1.6;margin-bottom:14px}'
+    + '.card{background:#f6f9f7;border:1px solid #d7e7dc;border-radius:8px;padding:11px;margin-bottom:12px;line-height:1.55}'
+    + '.title{font-weight:700}.meta{font-size:12px;color:#5f6368;margin-top:5px}.grid{display:grid;gap:9px}'
+    + 'button{width:100%;border:0;border-radius:7px;padding:11px 10px;font-weight:700;cursor:pointer;text-align:left}'
+    + '.primary{background:#0b8043;color:white}.secondary{background:#e8f0fe;color:#174ea6}.plain{background:#f1f3f4;color:#3c4043}'
+    + '.disabled{background:#f8f9fa;color:#9aa0a6;cursor:not-allowed}.msg{font-size:12px;color:#5f6368;margin-top:12px;min-height:18px}'
+    + '</style></head><body>'
+    + '<h2>記事DBツールバー</h2><div class="help">記事DBで対象記事の行を選択してから操作してください。選択を変えた場合は「選択記事を更新」を押します。</div>'
+    + '<div id="card" class="card">選択記事を確認しています…</div>'
+    + '<div class="grid">'
+    + '<button class="plain" onclick="refreshSelection()">↻ 選択記事を更新</button>'
+    + '<button class="primary" onclick="openDetail()">🔍 記事詳細</button>'
+    + '<button class="secondary" onclick="openArticle()">🌐 記事を開く</button>'
+    + '<button class="disabled" disabled>✏️ 改善ブリーフ（準備中）</button>'
+    + '<button class="disabled" disabled>📈 効果測定（準備中）</button>'
+    + '<button class="disabled" disabled>✅ 改善完了（準備中）</button>'
+    + '</div><div id="msg" class="msg"></div>'
+    + '<script>'
+    + 'var selected=null;function setMsg(t){document.getElementById("msg").textContent=t||"";}'
+    + 'function render(d){selected=d||null;var c=document.getElementById("card");if(!d||!d.ok){c.innerHTML="<b>記事が選択されていません。</b><br><span class=meta>記事DBの見出し以外の行を選択してください。</span>";return;}c.innerHTML="<div class=title>"+esc(d.title||"（タイトル未取得）")+"</div><div class=meta>"+esc((d.rank||"")+" / "+(d.work||""))+"</div>";}'
+    + 'function esc(v){return String(v||"").replace(/[&<>\"]/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[ch];});}'
+    + 'function refreshSelection(){setMsg("選択記事を確認しています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(d){render(d);setMsg("");}).sbmGetSelectedArticleDbSummary();}'
+    + 'function openDetail(){setMsg("記事詳細を開いています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(){setMsg("");refreshSelection();}).sbmOpenSelectedArticleDbDetail();}'
+    + 'function openArticle(){setMsg("記事URLを確認しています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(d){if(d&&d.url){window.open(d.url,"_blank");setMsg("");}else{setMsg("記事URLを取得できませんでした。");}}).sbmGetSelectedArticleDbSummary();}'
+    + 'refreshSelection();</script></body></html>';
+  SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput(html).setTitle('記事DBツールバー'));
+}
+
+function sbmGetSelectedArticleDbSummary() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) return {ok:false};
+  var range = sh.getActiveRange();
+  var row = range ? range.getRow() : 0;
+  if (row <= 1) return {ok:false};
+  var hm = sbmHeaderMap_(sh);
+  function val(name){ return hm[name] ? sh.getRange(row, hm[name]).getDisplayValue() : ''; }
+  return {ok:true,row:row,title:val('記事タイトル'),url:val('記事URL'),rank:val('記事ランク'),work:val('作業状態')};
+}
+
+function sbmOpenSelectedArticleUrl() {
+  var d = sbmGetSelectedArticleDbSummary();
+  if (!d || !d.ok || !d.url) return sbmAlert_('記事を開けません', '記事DBで対象記事の行を選択してください。');
+  var e = sbmEscapeHtml_;
+  var html = '<div style="font-family:Arial,sans-serif;padding:20px;line-height:1.7"><h2 style="color:#0b8043;margin-top:0">記事を開く</h2><p><b>' + e(d.title || '選択記事') + '</b></p><p><a href="' + e(d.url) + '" target="_blank" style="display:inline-block;background:#1a73e8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:700">ブラウザで記事を開く</a></p></div>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(460).setHeight(240), '記事を開く');
 }
 
 function sbmFetchOnlyManual(silent) {
