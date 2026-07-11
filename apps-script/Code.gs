@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-settings-numeric-controls';
+const SBM_VERSION = '5.0.0-article-db-daily-diff-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -86,16 +86,11 @@ function onOpen() {
       .addItem('セットアップシートを開く', 'sbmOpenSetup'))
     .addSeparator()
     .addSubMenu(ui.createMenu('データ更新')
-      .addItem('ページデータ収集（記事DB）', 'sbmCollectPageDataToArticleDbManual')
+      .addItem('記事DBを更新（日次）', 'sbmCollectPageDataToArticleDbManual')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
       .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
       .addItem('記事ランクを試算（開発確認）', 'sbmUpdateArticleRankManual')
       .addSeparator()
-      .addItem('STEP A Search Consoleデータ取得だけ実行', 'sbmFetchOnlyManual')
-      .addItem('STEP A-2 記事情報を補完', 'sbmSupplementArticleInfoManual')
-      .addItem('STEP B 改善候補を分析', 'sbmAnalyzeOnlyManual')
-      .addItem('データ一覧を開く', 'sbmOpenDataListSafe_')
-      .addItem('選択行の詳細を表示', 'sbmShowSelectedDataListDetail')
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
     .addSubMenu(ui.createMenu('今日の改善')
@@ -162,8 +157,6 @@ function sbmEnsureDataSheets_() {
   var dataMap = {
     SETTINGS: SBM_SHEETS.SETTINGS,
     SYSTEM_LOG: SBM_SHEETS.SYSTEM_LOG,
-    RAW_DATA: SBM_SHEETS.RAW_DATA,
-    QUERY_DATA: SBM_SHEETS.QUERY_DATA,
     ARTICLE_DB: SBM_SHEETS.ARTICLE_DB,
     BRIEF: SBM_SHEETS.BRIEF,
     TODAY: SBM_SHEETS.TODAY,
@@ -193,8 +186,8 @@ function sbmMigrateVisibleSheetNames_() {
 function sbmRemoveRetiredSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var keep = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.BRIEF, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG, SBM_SHEETS.RAW_DATA].forEach(function(n){ keep[n] = true; });
-  var retired = ['上位ページ診断','カニバリ診断','記事ネタ候補','記事カルテ','ホーム','クエリデータ','記事診断'];
+  [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.BRIEF, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG].forEach(function(n){ keep[n] = true; });
+  var retired = ['上位ページ診断','カニバリ診断','記事ネタ候補','記事カルテ','ホーム','クエリデータ','記事診断','データ一覧','SearchConsole_Data'];
   retired.forEach(function(n){
     var sh = ss.getSheetByName(n);
     if (sh && !keep[n] && ss.getSheets().length > 1) { try { ss.deleteSheet(sh); } catch(e) {} }
@@ -266,7 +259,6 @@ function sbmEnsureUserSheets_() {
   sbmBuildBriefSheetView_();
   sbmBuildInProgressSheet_();
   sbmStyleProcessLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG));
-  sbmStyleDataSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.QUERY_DATA));
   sbmStyleDataSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.DIAGNOSIS));
   sbmApplyProductVisibleTabs_();
 }
@@ -274,7 +266,7 @@ function sbmEnsureUserSheets_() {
 function sbmApplyProductVisibleTabs_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var visible = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.BRIEF, SBM_SHEETS.TODAY, SBM_SHEETS.QUERY_DATA, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG].forEach(function(n){ visible[n] = true; });
+  [SBM_SHEETS.HOME, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.BRIEF, SBM_SHEETS.TODAY, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG].forEach(function(n){ visible[n] = true; });
   ss.getSheets().forEach(function(sh){
     try { if (visible[sh.getName()]) sh.showSheet(); else sh.hideSheet(); } catch(e) {}
   });
@@ -548,7 +540,7 @@ function sbmSetupStep4InitialFetch() {
 }
 
 function sbmDailyUpdateManual() {
-  sbmAlert_('取得と分析は分けて実行します', 'タイムアウト防止のため、Product 5.0 RC7では処理を分割しました。\n\n1. STEP A Search Consoleデータ取得だけ実行\n2. STEP B 改善候補を分析\n\nこの順番で実行してください。');
+  return sbmCollectPageDataToArticleDbManual(false);
 }
 
 
@@ -903,20 +895,20 @@ function sbmCollectPageDataToArticleDbManual(silent) {
 
     sbmSetHomeProcessing_('● 処理中', '記事DB更新中', startedText, '', 'URLを正規化し、ノイズを除外した記事データを保存しています。', true);
     var tWrite = new Date();
-    sbmWriteArticleDb_(result.rows);
+    var mergeResult = sbmMergeArticleDbDaily_(result.rows);
     var writeSec = sbmSecondsSince_(tWrite);
 
     sbmSetSetting_('LastArticleDbFetchAt', sbmNowText_(), '記事DBの最終取得日時');
-    sbmSetSetting_('LastArticleDbRows', result.rows.length, '記事DBの直近行数');
+    sbmSetSetting_('LastArticleDbRows', mergeResult.total, '記事DBの直近行数');
     sbmSetSetting_('LastArticleDbExcluded', result.excluded, 'ページデータ収集で除外したURL数');
     sbmSetSetting_('LastArticleDbRawRows', result.rawRows, 'ページデータ収集のSearch Console元行数');
 
     var sec = sbmSecondsSince_(started);
     sbmProcessLog_('ページデータ収集（記事DB）', '完了', result.rawRows, result.rows.length, sec,
-      'API取得 ' + apiSec + '秒 / 記事DB書込 ' + writeSec + '秒 / 正規記事URL ' + result.rows.length + '件 / 除外 ' + result.excluded + '件 / ステータス分類あり / ProfileRunId ' + runId,
+      'API取得 ' + apiSec + '秒 / 差分更新 ' + writeSec + '秒 / 既存更新 ' + mergeResult.updated + '件 / 新規追加 ' + mergeResult.added + '件 / 記事DB合計 ' + mergeResult.total + '件 / 除外 ' + result.excluded + '件 / 固定情報保護 / ProfileRunId ' + runId,
       startedText, sbmNowText_());
-    sbmSetHomeProcessing_('完了', 'ページデータ収集（記事DB）', startedText, sbmNowText_(), '記事DBを' + result.rows.length + '件更新しました。除外 ' + result.excluded + '件。', false);
-    if (!silent) sbmAlert_('ページデータ収集完了', '記事DBを更新しました。\n\nSearch Console取得行: ' + result.rawRows + '件\n記事DB: ' + result.rows.length + '件\n除外: ' + result.excluded + '件\n所要時間: ' + sec + '秒\n\n処理プロファイル: ' + runId);
+    sbmSetHomeProcessing_('完了', '記事DBを更新（日次）', startedText, sbmNowText_(), '既存 ' + mergeResult.updated + '件更新、新規 ' + mergeResult.added + '件追加。記事DB合計 ' + mergeResult.total + '件。', false);
+    if (!silent) sbmAlert_('記事DBの日次更新完了', '固定情報を保持したまま数値データを更新しました。\n\nSearch Console取得行: ' + result.rawRows + '件\n既存記事更新: ' + mergeResult.updated + '件\n新規記事追加: ' + mergeResult.added + '件\n記事DB合計: ' + mergeResult.total + '件\n除外: ' + result.excluded + '件\n所要時間: ' + sec + '秒\n\n処理プロファイル: ' + runId);
   } catch(e) {
     var secErr = sbmSecondsSince_(started);
     sbmProcessLog_('ページデータ収集（記事DB）', 'エラー', '', '', secErr, String(e) + ' / ProfileRunId ' + runId, startedText, sbmNowText_());
@@ -982,15 +974,6 @@ function sbmBuildArticleStatusReferenceMap_() {
   // 既存のデータ一覧・記事DB・改善中にある状態を引き継ぐ。
   // ここでは外部取得やタイトル取得は行わない。
   try {
-    var dataRows = sbmRowsAsObjects_(SBM_SHEETS.QUERY_DATA);
-    dataRows.forEach(function(r){
-      var url = sbmNormalizeUrl_(r['記事URL'] || r.URL || '');
-      if (!url) return;
-      var st = sbmNormalizeStatus_(r['記事ステータス'] || r['状態'] || '');
-      if (st && st !== '未分析') map[url] = st;
-    });
-  } catch(e) {}
-  try {
     var articleRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
     articleRows.forEach(function(r){
       var url = sbmNormalizeUrl_(r['記事URL'] || r.URL || '');
@@ -1044,6 +1027,69 @@ function sbmSortArticleDbRows_(rows) {
     return sbmNumber_(b[4]) - sbmNumber_(a[4]);
   });
   return rows;
+}
+
+
+/**
+ * Product 5.0 日次更新。
+ * 正規化URLをキーに既存記事DBへ差分マージし、固定情報を保護します。
+ * 更新する列: 記事ステータス、クリック数、表示回数、CTR、掲載順位、最終取得日時、元URL件数。
+ * 新規URLだけ新しいArticleIDで追加し、記事情報は未補完として保持します。
+ */
+function sbmMergeArticleDbDaily_(freshRows) {
+  var existingRows = [];
+  try { existingRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
+  var map = {};
+  var nextNo = 1;
+  existingRows.forEach(function(r){
+    var url = sbmNormalizeUrl_(r['記事URL'] || '');
+    if (!url) return;
+    map[url] = r;
+    var m = String(r['ArticleID'] || '').match(/A(\d+)/i);
+    if (m) nextNo = Math.max(nextNo, Number(m[1]) + 1);
+  });
+
+  var updated = 0;
+  var added = 0;
+  (freshRows || []).forEach(function(row){
+    var f = {};
+    for (var i = 0; i < SBM_HEADERS.ARTICLE_DB.length; i++) f[SBM_HEADERS.ARTICLE_DB[i]] = row[i] !== undefined ? row[i] : '';
+    var url = sbmNormalizeUrl_(f['記事URL'] || '');
+    if (!url) return;
+    var old = map[url];
+    if (old) {
+      // 作業状態として維持すべき値は分類処理側ですでに保持されます。
+      old['記事ステータス'] = f['記事ステータス'] || old['記事ステータス'] || '';
+      old['クリック数'] = f['クリック数'];
+      old['表示回数'] = f['表示回数'];
+      old['CTR'] = f['CTR'];
+      old['掲載順位'] = f['掲載順位'];
+      old['最終取得日時'] = f['最終取得日時'];
+      old['元URL件数'] = f['元URL件数'];
+      old['除外理由'] = f['除外理由'] || old['除外理由'] || '';
+      // メインクエリ・タイトル・SEOタイトル・description・ArticleID・補完情報・ランク等は変更しません。
+      updated++;
+    } else {
+      f['記事URL'] = url;
+      f['ArticleID'] = 'A' + String(nextNo++).padStart(6, '0');
+      f['記事情報補完済み'] = '×';
+      f['補完日時'] = '';
+      f['補完エラー'] = '';
+      f['記事ランク'] = '';
+      map[url] = f;
+      added++;
+    }
+  });
+
+  var rows = Object.keys(map).map(function(url){
+    var r = map[url];
+    return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
+  });
+  sbmWriteArticleDb_(rows);
+  sbmUpdateHomeArticleDbCounts_(rows);
+  sbmSetSetting_('LastDailyUpdatedCount', updated, '日次更新で数値を更新した既存記事数');
+  sbmSetSetting_('LastDailyAddedCount', added, '日次更新で追加した新規記事数');
+  return {updated:updated, added:added, total:rows.length};
 }
 
 function sbmWriteArticleDb_(rows) {
