@@ -1,3 +1,11 @@
+
+## 5.0.0-operation-refactoring-stage1
+
+- 旧「今日の改善」「改善ブリーフ」「ブログ診断」のメニューと自動生成を停止
+- 旧シート（今日の改善、改善ブリーフ、ブログ診断、データ一覧、SearchConsole_Data）を修復時に削除
+- Homeの旧おすすめ表示を停止し、記事DB直結版の再構築中表示へ変更
+- 記事ランク再判定で不足していた `sbmPercentileRank_` を追加
+- 別ブログの旧データやサンプル情報がHomeに表示される経路を遮断
 # Changelog
 
 ## 5.0.0 Article Rank / Work State

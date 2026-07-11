@@ -1,3 +1,7 @@
+
+## Operation Refactoring Stage 1
+
+旧改善機能の起動経路と旧シートを停止し、記事DBだけを参照する新しい「今日の改善」「改善ブリーフ」を再構築するための整理版です。現段階では旧おすすめ改善は表示しません。
 # 製品本体
 
 - Apps Script: `apps-script/Code.gs`
