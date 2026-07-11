@@ -106,6 +106,7 @@ function onOpen() {
     .addSubMenu(ui.createMenu('管理')
       .addItem('設定を開く', 'sbmOpenUserSettings')
       .addItem('シートを作成・修復', 'sbmInitializeSheets')
+      .addItem('記事DB操作トリガーを設定', 'sbmInstallArticleDbEditTrigger')
       .addItem('システムシートを非表示', 'sbmHideSystemSheets')
       .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
     .addToUi();
@@ -206,6 +207,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRemoveRetiredSheets_();
   sbmApplyProductVisibleTabs_();
   sbmRefreshHome_();
+  try { sbmInstallArticleDbEditTrigger(false); } catch (triggerErr) { console.error(triggerErr); }
   sbmLog_('InitializeSheets','Done','Product 5.0 operation refactoring stage 1 initialized');
   if (showAlert) sbmAlert_('初期化完了', '現行シートの作成・修復が完了しました。旧改善シートは作成していません。記事DBとHomeを確認してください。');
 }
@@ -1242,14 +1244,27 @@ function sbmStyleArticleDbSheet_(sh) {
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        dr.clearDataValidations();
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['行を選択→メニュー']; }));
+        var actionOptions = [
+          '操作を選択',
+          '記事DB詳細を開く',
+          '記事を開く',
+          '改善ブリーフ（準備中）',
+          '効果測定（準備中）',
+          '改善完了（準備中）'
+        ];
+        var validation = SpreadsheetApp.newDataValidation()
+          .requireValueInList(actionOptions, true)
+          .setAllowInvalid(false)
+          .setHelpText('操作を選ぶと、その行の記事に対して処理を実行します。')
+          .build();
+        dr.setDataValidation(validation);
+        dr.setValues(Array.from({length:lr-1}, function(){ return ['操作を選択']; }));
         dr.setBackground('#e8f0fe')
           .setFontColor('#174ea6')
           .setFontWeight('bold')
           .setHorizontalAlignment('center')
           .setVerticalAlignment('middle')
-          .setNote('この行の任意のセルを選択し、上部メニュー「SIMS-Blog-Manager」→「記事DB」→「選択記事の詳細を開く」を実行してください。');
+          .setNote('プルダウンから操作を選択してください。記事DB詳細はすぐに表示され、その他の準備中機能は将来ここから起動します。');
       }
     }
   } catch(e) {}
@@ -3000,6 +3015,130 @@ function onSelectionChange(e) {
   } catch (err) {
     // 詳細表示は補助機能。処理全体は止めない。
   }
+}
+
+
+/**
+ * 記事DBの操作プルダウン専用インストール型編集トリガーを作成します。
+ * HTMLダイアログ表示には承認済みのインストール型トリガーを使用します。
+ */
+function sbmInstallArticleDbEditTrigger(showAlert) {
+  showAlert = showAlert !== false;
+  var handler = 'sbmHandleArticleDbActionEdit_';
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(t) {
+    if (t.getHandlerFunction() === handler) ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger(handler)
+    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
+    .onEdit()
+    .create();
+  sbmSetSetting_('ArticleDbEditTriggerInstalled', 'YES', '記事DB操作プルダウンのインストール型編集トリガー');
+  if (showAlert) sbmAlert_('記事DB操作トリガー設定完了', '記事DBの「詳細」列にあるプルダウンから、記事DB詳細を開けるようになりました。');
+}
+
+/**
+ * インストール型編集トリガーから呼び出される記事DB操作ルーターです。
+ */
+function sbmHandleArticleDbActionEdit_(e) {
+  if (!e || !e.range) return;
+  var sh = e.range.getSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) return;
+  var row = e.range.getRow();
+  if (row <= 1) return;
+  var hm = sbmHeaderMap_(sh);
+  if (!hm['詳細'] || e.range.getColumn() !== hm['詳細']) return;
+
+  var action = String(e.value || '').trim();
+  if (!action || action === '操作を選択') return;
+
+  try {
+    sh.setActiveRange(sh.getRange(row, 1));
+    if (action === '記事DB詳細を開く') {
+      sbmShowArticleDbDetailForRow_(sh, row);
+    } else if (action === '記事を開く') {
+      sbmShowArticleDbOpenLinkForRow_(sh, row);
+    } else if (action === '改善ブリーフ（準備中）') {
+      sbmAlert_('改善ブリーフ', '改善ブリーフは現在準備中です。実装後は、このプルダウンから選択記事の改善ブリーフを開けるようになります。');
+    } else if (action === '効果測定（準備中）') {
+      sbmAlert_('効果測定', '効果測定は現在準備中です。実装後は、このプルダウンから選択記事の測定画面を開けるようになります。');
+    } else if (action === '改善完了（準備中）') {
+      sbmAlert_('改善完了', '改善完了処理は現在準備中です。実装後は、このプルダウンから選択記事の作業状態を更新できるようになります。');
+    }
+  } finally {
+    e.range.setValue('操作を選択');
+  }
+}
+
+function sbmShowArticleDbDetailForRow_(sh, row) {
+  var hm = sbmHeaderMap_(sh);
+  function raw(name) { return hm[name] ? sh.getRange(row, hm[name]).getValue() : ''; }
+  function display(name) { return hm[name] ? sh.getRange(row, hm[name]).getDisplayValue() : ''; }
+  var obj = {};
+  SBM_HEADERS.ARTICLE_DB.forEach(function(h) { obj[h] = raw(h); });
+  obj['クリック数表示'] = display('クリック数');
+  obj['表示回数表示'] = display('表示回数');
+  obj['CTR表示'] = display('CTR');
+  obj['掲載順位表示'] = display('掲載順位');
+  var html = HtmlService.createHtmlOutput(sbmArticleDbDetailHtml_(obj)).setWidth(780).setHeight(680);
+  SpreadsheetApp.getUi().showModalDialog(html, '記事DB詳細');
+}
+
+function sbmShowArticleDbOpenLinkForRow_(sh, row) {
+  var hm = sbmHeaderMap_(sh);
+  var url = hm['記事URL'] ? sh.getRange(row, hm['記事URL']).getDisplayValue() : '';
+  var title = hm['記事タイトル'] ? sh.getRange(row, hm['記事タイトル']).getDisplayValue() : '';
+  if (!url) return sbmAlert_('記事を開けません', '記事URLがありません。');
+  var e = sbmEscapeHtml_;
+  var html = '<div style="font-family:Arial,sans-serif;padding:20px;line-height:1.7"><h2 style="color:#0b8043;margin-top:0">記事を開く</h2><p><b>' + e(title || '選択記事') + '</b></p><p><a href="' + e(url) + '" target="_blank" style="display:inline-block;background:#1a73e8;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:700">ブラウザで記事を開く</a></p></div>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(500).setHeight(250), '記事を開く');
+}
+
+function sbmArticleDbDetailHtml_(o) {
+  var e = sbmEscapeHtml_;
+  function row(label, value) {
+    return '<tr><th style="text-align:left;width:180px;padding:8px;border-bottom:1px solid #e5e7eb;color:#5f6368;vertical-align:top">' + e(label) + '</th><td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap">' + e(value == null ? '' : String(value)) + '</td></tr>';
+  }
+  var rank = String(o['記事ランク'] || '');
+  var work = String(o['作業状態'] || '');
+  var advice = sbmArticleDbWorkAdvice_(rank, work);
+  var url = String(o['記事URL'] || '');
+  return '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif;padding:20px;line-height:1.65;color:#202124">'
+    + '<h2 style="margin:0 0 12px;color:#0b8043">記事DB詳細</h2>'
+    + '<h3 style="margin:0 0 14px">' + e(o['記事タイトル'] || '（記事タイトル未取得）') + '</h3>'
+    + '<div style="background:#f1f8f4;border-left:5px solid #0b8043;padding:12px;margin-bottom:16px"><b>' + e(rank || 'ランク未判定') + ' × ' + e(work || '作業状態未設定') + '</b><br>' + e(advice) + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+    + row('記事ランク', rank)
+    + row('作業状態', work)
+    + row('メインクエリ', o['メインクエリ'])
+    + row('クリック数', o['クリック数表示'] || o['クリック数'])
+    + row('表示回数', o['表示回数表示'] || o['表示回数'])
+    + row('CTR', o['CTR表示'] || o['CTR'])
+    + row('掲載順位', o['掲載順位表示'] || o['掲載順位'])
+    + row('SEOタイトル', o['SEOタイトル'])
+    + row('メタディスクリプション', o['メタディスクリプション'])
+    + row('最終取得日時', o['最終取得日時'])
+    + row('ArticleID', o['ArticleID'])
+    + row('記事情報補完済み', o['記事情報補完済み'])
+    + row('補完日時', o['補完日時'])
+    + row('備考', o['備考'])
+    + '</table>'
+    + (url ? '<p style="margin-top:18px"><a href="' + e(url) + '" target="_blank" style="display:inline-block;background:#1a73e8;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:700">記事を開く</a></p>' : '')
+    + '</div>';
+}
+
+function sbmArticleDbWorkAdvice_(rank, work) {
+  rank = String(rank || '');
+  work = String(work || '未着手');
+  if (work.indexOf('改善中') >= 0) return '現在改善作業中です。変更内容を記録し、完了後はモニターへ移してください。';
+  if (work.indexOf('モニター') >= 0) return '改善後の経過観察中です。クリック数・CTR・順位の変化を確認してください。';
+  if (work.indexOf('今日の改善') >= 0) return '今日の作業対象です。改善ブリーフを確認して着手してください。';
+  if (rank.indexOf('エース') >= 0) return '未着手のままで問題ありません。主力記事なので大幅な変更は避け、順位やCTRの低下時だけ点検してください。';
+  if (rank.indexOf('成長') >= 0) return '優先的に着手する価値があります。検索意図・タイトル・導入文を見直すと伸びる可能性があります。';
+  if (rank.indexOf('安定') >= 0) return '現状維持で問題ありません。ほかの成長記事を先に改善するのがおすすめです。';
+  if (rank.indexOf('育成') >= 0) return 'まだ判断材料が少ない記事です。すぐに大きく直さず、表示回数と順位の推移を見てください。';
+  if (rank.indexOf('低迷') >= 0) return '改善余地はありますが、表示回数が少ない場合は優先度を下げても構いません。検索意図のずれを確認してください。';
+  return '現在の数値と記事ランクを確認し、ほかの記事との優先順位を比較してください。';
 }
 
 function onEdit(e) {
