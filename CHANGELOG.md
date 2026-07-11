@@ -1,3 +1,12 @@
+# Product 5.0 SIMS Feedback Protocol v1
+
+- 改善ナビのClaude依頼文末尾に `SIMS_FEEDBACK_V1` JSON出力ルールを追加
+- 「改善結果を登録」ダイアログを追加
+- JSON解析・記事照合・登録前確認を実装
+- 記事DBの固定情報更新、作業状態のモニター中移行、改善前指標保存を実装
+- 新シート「改善履歴」を追加
+- 7日・14日・30日の効果確認予定日に対応
+
 # Changelog
 
 ## 5.0.0 Today Improvement V1
