@@ -74,48 +74,32 @@ const SBM_DEFAULTS = Object.freeze({
 
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
+
+  // Product 5.0 RC11: サブメニューを使わず、主要操作を1階層で表示します。
   ui.createMenu('SIMS-Blog-Manager')
     .addItem('ホームを開く', 'sbmOpenHome')
+    .addItem('記事DBを開く', 'sbmOpenArticleDb')
+    .addItem('記事DBを更新', 'sbmCollectPageDataToArticleDbManual')
     .addSeparator()
-    .addSubMenu(ui.createMenu('セットアップ')
-      .addItem('STEP1 ブログ情報を登録', 'sbmSetupStep1BlogInfo')
-      .addItem('STEP2 Google Cloud APIガイドを開く', 'sbmSetupStep2ApiGuide')
-      .addItem('STEP3 Search Console接続テスト', 'sbmSetupStep3ConnectionTest')
-      .addSeparator()
-      .addItem('STEP4 記事DBを一括作成（初回）', 'sbmSetupArticleDbContinueManual')
-      .addItem('STEP5 記事情報補完を進める', 'sbmSetupArticleInfoContinueManual')
-      .addItem('セットアップ進捗を確認', 'sbmShowArticleDbSetupStatus')
-      .addItem('セットアップシートを開く', 'sbmOpenSetup'))
+    .addItem('今日の改善を作成', 'sbmBuildTodayRecommendationsManual')
+    .addItem('今日の改善を開く', 'sbmOpenTodayImprovement')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
     .addSeparator()
-    .addSubMenu(ui.createMenu('データ更新')
-      .addItem('記事DBを更新（日次）', 'sbmCollectPageDataToArticleDbManual')
-      .addItem('記事ランクを再判定', 'sbmUpdateArticleRankManual')
-      .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
-      .addSeparator()
-      .addItem('処理ログを開く', 'sbmOpenProcessLog')
-      .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
-    .addSubMenu(ui.createMenu('改善機能')
-      .addItem('今日の改善を作成', 'sbmBuildTodayRecommendationsManual')
-      .addItem('今日の改善を開く', 'sbmOpenTodayImprovement')
-      .addItem('次のおすすめを2件表示', 'sbmShowMoreTodayRecommendations')
-      .addItem('初期2件表示に戻す', 'sbmResetTodayRecommendations')
-      .addSeparator()
-      .addItem('選択記事の改善ナビを開く', 'sbmOpenSelectedImprovementNavi')
-      .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
-      .addItem('改善履歴を開く', 'sbmOpenImprovementHistory'))
+    .addItem('設定を開く', 'sbmOpenUserSettings')
     .addItem('処理ログを開く', 'sbmOpenProcessLog')
+    .addItem('シートを作成・修復', 'sbmInitializeSheets')
     .addSeparator()
-    .addSubMenu(ui.createMenu('管理')
-      .addItem('設定を開く', 'sbmOpenUserSettings')
-      .addItem('シートを作成・修復', 'sbmInitializeSheets')
-      .addItem('システムシートを非表示', 'sbmHideSystemSheets')
-      .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
+    .addItem('STEP1 ブログ情報を登録', 'sbmSetupStep1BlogInfo')
+    .addItem('STEP2 Google Cloud APIガイド', 'sbmSetupStep2ApiGuide')
+    .addItem('STEP3 Search Console接続テスト', 'sbmSetupStep3ConnectionTest')
+    .addItem('STEP4 記事DBを一括作成（初回）', 'sbmSetupArticleDbContinueManual')
+    .addItem('STEP5 記事情報補完を進める', 'sbmSetupArticleInfoContinueManual')
+    .addItem('セットアップ進捗を確認', 'sbmShowArticleDbSetupStatus')
     .addToUi();
 
   ui.createMenu('今日の改善操作')
-    .addItem('今日の改善を開く', 'sbmOpenTodayImprovement')
     .addItem('今日の改善を作成・更新', 'sbmBuildTodayRecommendationsManual')
-    .addSeparator()
+    .addItem('今日の改善を開く', 'sbmOpenTodayImprovement')
     .addItem('選択記事の改善ナビを開く', 'sbmOpenSelectedImprovementNavi')
     .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
     .addItem('次のおすすめを2件表示', 'sbmShowMoreTodayRecommendations')
@@ -124,44 +108,53 @@ function onOpen() {
 
   ui.createMenu('記事DB操作')
     .addItem('記事DBを開く', 'sbmOpenArticleDb')
-    .addSeparator()
+    .addItem('記事DBを更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('記事DBを並べ替える', 'sbmSortArticleDbManual')
     .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
     .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl')
-    .addSeparator()
-    .addItem('改善ナビを開く', 'sbmOpenSelectedImprovementNavi')
-    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addItem('選択記事の改善ナビを開く', 'sbmOpenSelectedImprovementNavi')
     .addItem('選択記事の改善履歴を見る', 'sbmOpenSelectedArticleHistory')
     .addItem('改善履歴シートを開く', 'sbmOpenImprovementHistory')
     .addItem('効果測定（準備中）', 'sbmArticleDbEffectComingSoon')
-    .addItem('改善完了（準備中）', 'sbmArticleDbCompleteComingSoon')
     .addToUi();
 
-  try { sbmMaybePromptDailyUpdate_(); } catch (e) { console.error(e); }
+  // 起動のたびに、最終更新日時を示して記事DB更新の判断を利用者へ委ねます。
+  try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) { console.error(e); }
 }
 
 function sbmShowImprovementRefactorStatus_() {
   sbmAlert_('改善機能の再構築状況', '今日の改善は記事DBだけを参照して作成します。\n改善ナビは選択した記事の保存済みデータから表示します。\n旧改善ブリーフ・旧ブログ診断・別ブログのサンプル情報は参照しません。');
 }
 
-function sbmMaybePromptDailyUpdate_() {
+function sbmPromptArticleDbUpdateOnOpen_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!ss.getSheetByName(SBM_SHEETS.ARTICLE_DB)) return;
   if (!sbmIsSetupComplete_() || String(sbmGetSetting_('ConnectionStatus','')) !== 'OK') return;
-  var key = 'SBM_DAILY_PROMPT_' + sbmDateText_(new Date());
-  var props = PropertiesService.getUserProperties();
-  if (props.getProperty(key)) return;
-  var html = '<!DOCTYPE html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124}h2{color:#0b8043;margin-top:0}.buttons{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}button{border:0;border-radius:6px;padding:10px 16px;font-weight:700;cursor:pointer}.run{background:#0b8043;color:#fff}.skip{background:#f1f3f4;color:#3c4043}.msg{margin-top:12px;color:#5f6368}</style></head><body><h2>本日の日次更新を実行しますか？</h2><p>Search Consoleの最新データを取得し、記事DBの数値・記事ランク・Homeを更新します。</p><div class="buttons"><button class="skip" onclick="skipRun()">今日は実行しない</button><button class="run" onclick="runDaily()">日次更新を実行</button></div><div id="msg" class="msg"></div><script>function lock(t){document.querySelectorAll("button").forEach(function(b){b.disabled=true});document.getElementById("msg").textContent=t}function skipRun(){lock("本日は実行しません。");google.script.run.withSuccessHandler(function(){google.script.host.close()}).sbmSkipDailyUpdateToday()}function runDaily(){lock("日次更新を開始しています。Homeの処理状況欄で進行を確認できます。");google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)?e.message:String(e)}).withSuccessHandler(function(){google.script.host.close()}).sbmRunDailyUpdateFromStartup()}</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(520).setHeight(280), '本日の日次更新');
+
+  var lastUpdated = String(sbmGetSetting_('LastArticleDbFetchAt','未更新')) || '未更新';
+  var safeLast = sbmEscapeHtml_(lastUpdated);
+  var html = '<!DOCTYPE html><html><head><base target="_top"><style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124}'
+    + 'h2{color:#0b8043;margin:0 0 14px}.last{background:#f1f8e9;border-left:5px solid #0b8043;padding:10px 12px;margin:12px 0;font-weight:700}'
+    + '.note{color:#5f6368;font-size:13px;line-height:1.6}.buttons{display:flex;gap:10px;justify-content:flex-end;margin-top:22px}'
+    + 'button{border:0;border-radius:6px;padding:10px 18px;font-weight:700;cursor:pointer}.run{background:#0b8043;color:#fff}.skip{background:#f1f3f4;color:#3c4043}'
+    + '.msg{margin-top:12px;color:#5f6368}</style></head><body>'
+    + '<h2>記事DBを更新しますか？</h2>'
+    + '<div class="last">最後に更新した日時：' + safeLast + '</div>'
+    + '<p>Search Consoleの最新データを取得し、クリック数・表示回数・CTR・掲載順位・記事ランクを更新します。</p>'
+    + '<p class="note">記事タイトル、SEOタイトル、メタディスクリプション、メインクエリ、改善履歴、作業状態は保持されます。今回は更新しなくても、次回起動時に再び確認します。</p>'
+    + '<div class="buttons"><button class="skip" onclick="google.script.host.close()">今回は更新しない</button><button class="run" onclick="runDaily()">更新する</button></div>'
+    + '<div id="msg" class="msg"></div>'
+    + '<script>function runDaily(){document.querySelectorAll("button").forEach(function(b){b.disabled=true});document.getElementById("msg").textContent="記事DBの更新を開始しています。Homeの処理状況欄で進行を確認できます。";google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)?e.message:String(e);document.querySelectorAll("button").forEach(function(b){b.disabled=false})}).withSuccessHandler(function(){google.script.host.close()}).sbmRunArticleDbUpdateFromStartup()}</script>'
+    + '</body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(560).setHeight(350), '記事DB更新の確認');
 }
 
-function sbmSkipDailyUpdateToday() {
-  PropertiesService.getUserProperties().setProperty('SBM_DAILY_PROMPT_' + sbmDateText_(new Date()), 'SKIPPED');
-}
-
-function sbmRunDailyUpdateFromStartup() {
-  PropertiesService.getUserProperties().setProperty('SBM_DAILY_PROMPT_' + sbmDateText_(new Date()), 'RUN');
-  return sbmCollectPageDataToArticleDbManual(true);
-}
+// 旧名称との互換性を維持します。
+function sbmMaybePromptDailyUpdate_() { return sbmPromptArticleDbUpdateOnOpen_(); }
+function sbmSkipDailyUpdateToday() { return true; }
+function sbmRunDailyUpdateFromStartup() { return sbmRunArticleDbUpdateFromStartup(); }
+function sbmRunArticleDbUpdateFromStartup() { return sbmCollectPageDataToArticleDbManual(true); }
 
 function sbmShowNewArticleInfoPrompt_(count) {
   count = Number(count || 0);
@@ -232,8 +225,10 @@ function sbmInitializeSheets(showAlert) {
   sbmApplySheetUx_();
   sbmRemoveRetiredSheets_();
   sbmApplyProductVisibleTabs_();
+  // 修復後も作業状態を優先した正式順で記事DBを並べ替えます。
+  try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('InitializeSheetsSort','Warning',String(e)); }
   sbmRefreshHome_();
-  sbmLog_('InitializeSheets','Done','Product 5.0 operation refactoring stage 1 initialized');
+  sbmLog_('InitializeSheets','Done','Product 5.0 RC11 startup prompt and flat menus initialized');
   if (showAlert) sbmAlert_('初期化完了', '現行シートの作成・修復が完了しました。旧改善シートは作成していません。記事DBとHomeを確認してください。');
 }
 
@@ -999,11 +994,11 @@ function sbmShowArticleDbSetupStatus() {
 function sbmCollectPageDataToArticleDbManual(silent) {
   silent = silent === true;
   if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') {
-    return sbmAlert_('ページデータ収集はまだできません', 'STEP1〜STEP3を完了してから実行してください。');
+    return sbmAlert_('記事DBを更新できません', 'STEP1〜STEP3を完了してから実行してください。');
   }
   var ui = SpreadsheetApp.getUi();
   if (!silent) {
-    var res = ui.alert('ページデータ収集を開始します', 'Search Consoleから最新のページデータを取得し、記事DBのクリック数・表示回数・CTR・掲載順位・記事ランクを更新します。\n\n記事タイトル、SEOタイトル、メタディスクリプション、メインクエリ、作業状態は変更しません。新規記事が見つかった場合だけ、更新後に記事情報補完をご案内します。', ui.ButtonSet.OK_CANCEL);
+    var res = ui.alert('記事DBを更新します', 'Search Consoleから最新のページデータを取得し、記事DBのクリック数・表示回数・CTR・掲載順位・記事ランクを更新します。\n\n記事タイトル、SEOタイトル、メタディスクリプション、メインクエリ、作業状態は変更しません。新規記事が見つかった場合だけ、更新後に記事情報補完をご案内します。', ui.ButtonSet.OK_CANCEL);
     if (res !== ui.Button.OK) return;
   }
   var startedText = sbmNowText_();
@@ -1019,6 +1014,7 @@ function sbmCollectPageDataToArticleDbManual(silent) {
     sbmSetHomeProcessing_('● 処理中', '記事DB更新中', startedText, '', 'URLを正規化し、ノイズを除外した記事データを保存しています。', true);
     var tWrite = new Date();
     var mergeResult = sbmMergeArticleDbDaily_(result.rows);
+    sbmSortArticleDbInternal_();
     var writeSec = sbmSecondsSince_(tWrite);
 
     sbmSetSetting_('LastArticleDbFetchAt', sbmNowText_(), '記事DBの最終取得日時');
@@ -1151,6 +1147,26 @@ function sbmSortArticleDbRows_(rows) {
   });
   return rows;
 }
+
+function sbmSortArticleDbInternal_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if (!sh || sh.getLastRow() <= 1) return 0;
+  var width = SBM_HEADERS.ARTICLE_DB.length;
+  var rows = sh.getRange(2, 1, sh.getLastRow() - 1, width).getValues();
+  rows = sbmSortArticleDbRows_(rows);
+  sh.getRange(2, 1, sh.getLastRow() - 1, width).clearContent();
+  if (rows.length) sh.getRange(2, 1, rows.length, width).setValues(rows);
+  sbmStyleArticleDbSheet_(sh);
+  return rows.length;
+}
+
+function sbmSortArticleDbManual() {
+  var count = sbmSortArticleDbInternal_();
+  sbmRefreshHome_();
+  sbmAlert_('記事DBを並べ替えました', 'モニター中、改善中、今日の改善を優先し、その後は記事ランク順に ' + count + '件を並べ替えました。');
+}
+
 
 
 /**
