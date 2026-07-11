@@ -117,3 +117,10 @@
 - 旧互換呼び出しを現行の記事DB直結処理へ接続
 - 関数監査を追加し、`sbm...` 未定義参照 0件を確認
 - 新機能は追加せず、既存基盤の安定化に限定
+
+## 2026-07-11 - Claude向けSIMS改善結果出力指示
+
+- `docs/claude/sims-feedback-v1-prompt.md` を追加
+- SIMS_FEEDBACK_V1の標準JSON仕様を文書化
+- Claudeへ渡す指示文、出力例、SIMSへ戻す手順を掲載
+- MkDocsナビゲーションへ「Claude連携用出力指示」を追加
