@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-operation-refactoring-stage1';
+const SBM_VERSION = '5.0.0-operation-refactoring-stage2-ui-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -191,6 +191,8 @@ function sbmIsSetupComplete_() {
 
 function sbmInitializeSheets(showAlert) {
   showAlert = showAlert !== false;
+  // 旧シートを先に削除し、修復中に一瞬表示される現象を防ぎます。
+  sbmRemoveRetiredSheets_();
   sbmEnsureDataSheets_();
   sbmMigrateRc3Headers_();
   sbmEnsureDefaultSettings_();
@@ -200,7 +202,7 @@ function sbmInitializeSheets(showAlert) {
   sbmApplyProductVisibleTabs_();
   sbmRefreshHome_();
   sbmLog_('InitializeSheets','Done','Product 5.0 operation refactoring stage 1 initialized');
-  if (showAlert) sbmAlert_('初期化完了', '必要なシートを作成・修復しました。\n次に、メニュー「SIMS-Blog-Manager」→「セットアップ」→「STEP1 ブログ情報を登録」を実行してください。');
+  if (showAlert) sbmAlert_('初期化完了', '現行シートの作成・修復が完了しました。旧改善シートは作成していません。記事DBとHomeを確認してください。');
 }
 
 function sbmEnsureDataSheets_() {
@@ -336,21 +338,20 @@ function sbmEnsureDefaultSettings_() {
 }
 
 function sbmEnsureUserSheets_() {
+  // 記事DB直結版で使用する現行シートだけを作成します。
+  // 旧「今日の改善」「改善ブリーフ」「ブログ診断」は再構築完了まで生成しません。
   sbmBuildHomeSheet_();
   sbmBuildUserSettingsSheet_();
   sbmBuildSetupSheet_();
-  sbmBuildTodaySheetView_();
-  sbmBuildBriefSheetView_();
   sbmBuildInProgressSheet_();
   sbmStyleProcessLogSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.PROCESS_LOG));
-  sbmStyleDataSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.DIAGNOSIS));
   sbmApplyProductVisibleTabs_();
 }
 
 function sbmApplyProductVisibleTabs_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var visible = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.BRIEF, SBM_SHEETS.TODAY, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG].forEach(function(n){ visible[n] = true; });
+  [SBM_SHEETS.HOME, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.PROCESS_LOG].forEach(function(n){ visible[n] = true; });
   ss.getSheets().forEach(function(sh){
     try { if (visible[sh.getName()]) sh.showSheet(); else sh.hideSheet(); } catch(e) {}
   });
@@ -1224,16 +1225,25 @@ function sbmStyleArticleDbSheet_(sh) {
   try { if (hm['CTR']) sh.getRange(2, hm['CTR'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('0.0%'); } catch(e) {}
   try { if (hm['掲載順位']) sh.getRange(2, hm['掲載順位'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('0.0'); } catch(e) {}
   try {
-    var widths = {'記事ランク':115,'作業状態':120,'記事URL':290,'メインクエリ':220,'クリック数':85,'表示回数':90,'CTR':70,'掲載順位':80,'記事タイトル':300,'詳細':90};
+    var widths = {'記事ランク':105,'作業状態':110,'記事URL':255,'メインクエリ':190,'クリック数':78,'表示回数':84,'CTR':65,'掲載順位':72,'記事タイトル':380,'詳細':125};
     Object.keys(widths).forEach(function(h){ if (hm[h]) sh.setColumnWidth(hm[h], widths[h]); });
     ['SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス','最終確認日','連続未取得日数','管理フラグ'].forEach(function(h){ if (hm[h]) sh.hideColumns(hm[h]); });
     var lr = sh.getLastRow();
     if (lr > 1) {
       sh.getRange(2,1,lr-1,2).setHorizontalAlignment('center');
+      sh.setRowHeights(2, lr-1, 42);
+      if (hm['記事タイトル']) sh.getRange(2,hm['記事タイトル'],lr-1,1).setWrap(true);
+      if (hm['記事URL']) sh.getRange(2,hm['記事URL'],lr-1,1).setWrap(false);
+      if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['記事詳細']; }));
-        dr.setBackground('#d9eaf7').setFontColor('#1155cc').setFontWeight('bold').setHorizontalAlignment('center');
+        dr.setValues(Array.from({length:lr-1}, function(){ return ['▼ 記事詳細']; }));
+        var detailRule = SpreadsheetApp.newDataValidation()
+          .requireValueInList(['▼ 記事詳細','記事詳細を開く'], true)
+          .setAllowInvalid(false)
+          .setHelpText('「記事詳細を開く」を選択するとポップアップを表示します。')
+          .build();
+        dr.setDataValidation(detailRule).setBackground('#d9eaf7').setFontColor('#1155cc').setFontWeight('bold').setHorizontalAlignment('center');
       }
     }
   } catch(e) {}
@@ -2861,7 +2871,11 @@ function onSelectionChange(e) {
     if (!sh || e.range.getRow() <= 1) return;
     if (sh.getName() === SBM_SHEETS.ARTICLE_DB) {
       var hm = sbmHeaderMap_(sh);
-      if (hm['詳細'] && e.range.getColumn() === hm['詳細']) sbmShowArticleDbDetailForRow_(e.range.getRow());
+      if (hm['詳細'] && e.range.getColumn() === hm['詳細']) {
+        // 選択トリガーが利用可能な環境ではワンクリック表示。
+        // 表示されない場合も、セルのプルダウンから確実に開けます。
+        sbmShowArticleDbDetailForRow_(e.range.getRow());
+      }
       return;
     }
     if (sh.getName() === SBM_SHEETS.QUERY_DATA && e.range.getColumn() === 8) sbmShowSelectedDataListDetail();
@@ -2877,6 +2891,14 @@ function onEdit(e) {
     var sheetName = sh.getName();
     var row = e.range.getRow();
     var col = e.range.getColumn();
+    if (sheetName === SBM_SHEETS.ARTICLE_DB && row > 1) {
+      var articleHm = sbmHeaderMap_(sh);
+      if (articleHm['詳細'] && col === articleHm['詳細'] && String(e.value || '') === '記事詳細を開く') {
+        sbmShowArticleDbDetailForRow_(row);
+        e.range.setValue('▼ 記事詳細');
+        return;
+      }
+    }
     if (sheetName === SBM_SHEETS.USER_SETTINGS && col === 2 && row >= 2 && row <= 6) {
       var rules = {
         2: {key:'ArticleInfoBatch', min:30, max:100, label:'記事情報補完件数'},
