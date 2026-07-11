@@ -1138,14 +1138,15 @@ function sbmClassifyArticleDbStatus_(url, clicks, impressions, ctr, position, st
 function sbmSortArticleDbRows_(rows) {
   rows = rows || [];
   rows.sort(function(a,b){
-    var rankOrder = {'🏆 エース':1,'✅ 安定':2,'📈 成長':3,'🌱 育成':4,'⚠️ 低迷':5,'—':9,'':9};
+    // 毎日の作業対象を最優先に表示し、その後で記事ランク順に並べる。
     var workOrder = {'👀 モニター中':1,'✏️ 改善中':2,'🔥 今日の改善':3,'未着手':4,'✔️ 完了':5,'':9};
-    var ao = rankOrder[String(a[0] || '').trim()] || 99;
-    var bo = rankOrder[String(b[0] || '').trim()] || 99;
-    if (ao !== bo) return ao - bo;
+    var rankOrder = {'🏆 エース':1,'✅ 安定':2,'📈 成長':3,'🌱 育成':4,'⚠️ 低迷':5,'—':9,'':9};
     var aw = workOrder[String(a[1] || '').trim()] || 99;
     var bw = workOrder[String(b[1] || '').trim()] || 99;
     if (aw !== bw) return aw - bw;
+    var ao = rankOrder[String(a[0] || '').trim()] || 99;
+    var bo = rankOrder[String(b[0] || '').trim()] || 99;
+    if (ao !== bo) return ao - bo;
     return sbmNumber_(b[5]) - sbmNumber_(a[5]);
   });
   return rows;
@@ -1232,7 +1233,10 @@ function sbmMergeArticleDbDaily_(freshRows) {
 
 function sbmWriteArticleDb_(rows) {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB);
-  sh.clear();
+  // 日次更新では書式・列幅を壊さず、値だけを書き換える。
+  var clearRows = Math.max(sh.getLastRow(), 1);
+  var clearCols = Math.max(sh.getLastColumn(), SBM_HEADERS.ARTICLE_DB.length);
+  sh.getRange(1, 1, clearRows, clearCols).clearContent();
   sbmEnsureHeaders_(sh, SBM_HEADERS.ARTICLE_DB);
   var normalized = sbmNormalizeRowsToWidth_(sbmSortArticleDbRows_(rows || []), SBM_HEADERS.ARTICLE_DB.length);
   if (normalized.length) sh.getRange(2, 1, normalized.length, SBM_HEADERS.ARTICLE_DB.length).setValues(normalized);
@@ -1240,23 +1244,38 @@ function sbmWriteArticleDb_(rows) {
 }
 
 function sbmStyleArticleDbSheet_(sh) {
-  sbmStyleDataSheet_(sh);
+  var lc = Math.max(sh.getLastColumn(), SBM_HEADERS.ARTICLE_DB.length);
+  var lr = Math.max(sh.getLastRow(), 1);
+  sh.setFrozenRows(1);
+  sh.getRange(1,1,1,lc)
+    .setFontWeight('bold')
+    .setBackground('#d9e7f7')
+    .setFontColor('#000000')
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrap(false);
+  sh.setRowHeight(1, 34);
+  if (lr > 1) {
+    sh.getRange(2,1,lr-1,lc).setVerticalAlignment('middle');
+  }
   var hm = sbmHeaderMap_(sh);
   try { if (hm['クリック数']) sh.getRange(2, hm['クリック数'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('#,##0'); } catch(e) {}
   try { if (hm['表示回数']) sh.getRange(2, hm['表示回数'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('#,##0'); } catch(e) {}
   try { if (hm['CTR']) sh.getRange(2, hm['CTR'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('0.0%'); } catch(e) {}
   try { if (hm['掲載順位']) sh.getRange(2, hm['掲載順位'], Math.max(1, sh.getMaxRows()-1), 1).setNumberFormat('0.0'); } catch(e) {}
   try {
-    var widths = {'記事ランク':105,'作業状態':110,'記事URL':255,'メインクエリ':190,'クリック数':78,'表示回数':84,'CTR':65,'掲載順位':72,'記事タイトル':380,'詳細':125};
+    var widths = {'記事ランク':110,'作業状態':115,'記事URL':260,'メインクエリ':205,'クリック数':90,'表示回数':95,'CTR':72,'掲載順位':88,'記事タイトル':430,'詳細':125};
     Object.keys(widths).forEach(function(h){ if (hm[h]) sh.setColumnWidth(hm[h], widths[h]); });
     ['SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス','最終確認日','連続未取得日数','管理フラグ'].forEach(function(h){ if (hm[h]) sh.hideColumns(hm[h]); });
     var lr = sh.getLastRow();
     if (lr > 1) {
       sh.getRange(2,1,lr-1,2).setHorizontalAlignment('center');
-      sh.setRowHeights(2, lr-1, 42);
-      if (hm['記事タイトル']) sh.getRange(2,hm['記事タイトル'],lr-1,1).setWrap(true);
+      sh.setRowHeights(2, lr-1, 48);
+      // 長文列だけ折り返し、数値・URL列は一行表示を維持する。
+      if (hm['記事タイトル']) sh.getRange(2,hm['記事タイトル'],lr-1,1).setWrap(true).setVerticalAlignment('top');
+      if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true).setVerticalAlignment('top');
       if (hm['記事URL']) sh.getRange(2,hm['記事URL'],lr-1,1).setWrap(false);
-      if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
+      ['クリック数','表示回数','CTR','掲載順位'].forEach(function(h){ if (hm[h]) sh.getRange(2,hm[h],lr-1,1).setWrap(false); });
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
         dr.clearDataValidations().clearNote().clearContent();
