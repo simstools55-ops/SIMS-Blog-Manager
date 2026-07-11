@@ -3501,6 +3501,64 @@ function sbmUpdateArticleRankManual() {
 }
 
 
+
+/**
+ * Product 5.0 RC10 Reset Base compatibility core.
+ * メニューと現行機能の呼び出し先を一元化し、リファクタリング途中の未定義参照を防ぎます。
+ */
+function sbmOpenHome() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.HOME);
+  if (!sh) {
+    sbmInitializeSheets();
+    sh = ss.getSheetByName(SBM_SHEETS.HOME);
+  }
+  try { sbmRefreshHome_(); } catch (e) { sbmLog_('sbmOpenHome', 'Warning', String(e)); }
+  if (sh) { sh.showSheet(); ss.setActiveSheet(sh); sh.activate(); }
+}
+
+function sbmOpenToday() {
+  return sbmOpenTodayImprovement();
+}
+
+function sbmShowBriefForRow_(row) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
+  if (!sh || row <= 1 || row > sh.getLastRow()) {
+    return sbmAlert_('改善ナビ', '対象記事を確認できませんでした。');
+  }
+  ss.setActiveSheet(sh);
+  sh.setActiveRange(sh.getRange(row, 1));
+  return sbmOpenSelectedImprovementNavi();
+}
+
+function sbmCompleteImprovementRow_(row, fromEdit) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var today = ss.getSheetByName(SBM_SHEETS.TODAY);
+  if (!today || row <= 1 || row > today.getLastRow()) {
+    return sbmAlert_('改善完了', '対象記事を確認できませんでした。');
+  }
+  var rec = sbmRowRecord_(today, row);
+  var url = String(rec['記事URL'] || '').trim();
+  if (!url) return sbmAlert_('改善完了', '記事URLを取得できませんでした。');
+  var db = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if (!db || db.getLastRow() < 2) return sbmAlert_('改善完了', '記事DBがありません。');
+  var headers = db.getRange(1,1,1,db.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();});
+  var urlCol = headers.indexOf('記事URL') + 1;
+  var workCol = headers.indexOf('作業状態') + 1;
+  if (!urlCol || !workCol) return sbmAlert_('改善完了', '記事DBの必要列がありません。');
+  var urls = db.getRange(2,urlCol,db.getLastRow()-1,1).getValues();
+  for (var i=0;i<urls.length;i++) {
+    if (String(urls[i][0]||'').trim() === url) {
+      db.getRange(i+2,workCol).setValue('👀 モニター中');
+      try { sbmRefreshHome_(); } catch(e) {}
+      if (!fromEdit) sbmAlert_('改善完了', '作業状態を「モニター中」に変更しました。');
+      return;
+    }
+  }
+  sbmAlert_('改善完了', '記事DBに対象記事が見つかりませんでした。');
+}
+
 /**
  * Product 5.0: 記事DB直結「今日の改善」Ver.1
  * 即効性3件＋CTR改善3件を準備し、初期2件・最大6件を段階表示します。
