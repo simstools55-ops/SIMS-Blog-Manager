@@ -1238,14 +1238,18 @@ function sbmStyleArticleDbSheet_(sh) {
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        dr.clearDataValidations();
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['🔍 記事詳細']; }));
+        var detailRule = SpreadsheetApp.newDataValidation()
+          .requireValueInList(['記事DB詳細を開く'], true)
+          .setAllowInvalid(false)
+          .build();
+        dr.setDataValidation(detailRule);
+        dr.setValues(Array.from({length:lr-1}, function(){ return ['▼ 記事DB詳細']; }));
         dr.setBackground('#d9eaf7')
           .setFontColor('#1155cc')
           .setFontWeight('bold')
           .setHorizontalAlignment('center')
           .setVerticalAlignment('middle')
-          .setNote('セルを1回クリックすると記事詳細を開きます。開かない場合は、対象行を選択してメニュー「データ更新 → 選択記事の詳細を開く」を実行してください。');
+          .setNote('セル右側の▼を押し、「記事DB詳細を開く」を選択してください。Googleスプレッドシートでは単純クリックだけでダイアログを確実に開けないため、編集イベントを使う方式です。');
       }
     }
   } catch(e) {}
@@ -2694,6 +2698,29 @@ function sbmOpenSelectedArticleDbDetail() {
   sbmShowArticleDbDetailForRow_(row);
 }
 
+function sbmArticleRankComment_(rank) {
+  var map = {
+    '🏆 エース':'ブログを支える主力記事です。大きな変更より、順位低下やCTR悪化がないかを見守ります。',
+    '✅ 安定':'検索流入が安定している記事です。急いで直す必要はなく、現状維持を基本にします。',
+    '📈 成長':'表示や順位に伸びしろがある記事です。タイトルや検索意図の調整で成果が伸びる可能性があります。',
+    '🌱 育成':'まだ評価材料が少ない記事です。データが蓄積するまで様子を見ながら育てます。',
+    '⚠️ 低迷':'検索流入が弱い記事です。需要・検索意図・内容の見直し対象として検討します。'
+  };
+  return map[String(rank || '').trim()] || '記事DBの最新データを基に判定しています。';
+}
+
+function sbmWorkStateComment_(state) {
+  var map = {
+    '未着手':'現在は改善作業を行っていません。',
+    '🔥 今日の改善':'本日の改善対象として選ばれています。',
+    '✏️ 改善中':'現在、記事の修正作業を進めています。',
+    '👀 モニター中':'改善後の順位・CTR・クリック数の変化を観察しています。',
+    '✔️ 完了':'改善と確認が完了しています。',
+    '🗑️ 削除候補':'長期間データがなく、削除・統合・管理対象外を確認する候補です。'
+  };
+  return map[String(state || '').trim()] || '作業状態はまだ設定されていません。';
+}
+
 function sbmShowArticleDbDetailForRow_(row) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
   if (!sh || row <= 1) return;
@@ -2701,10 +2728,19 @@ function sbmShowArticleDbDetailForRow_(row) {
   var obj = {};
   Object.keys(hm).forEach(function(h){ obj[h] = sh.getRange(row, hm[h]).getDisplayValue(); });
   var e = sbmEscapeHtml_;
-  var html = '<div style="font-family:Arial,\'Noto Sans JP\',sans-serif;padding:22px;color:#202124;line-height:1.65">'
-    + '<h2 style="margin-top:0;color:#0b8043">記事詳細</h2>'
+  var rank = obj['記事ランク'] || '';
+  var work = obj['作業状態'] || '';
+  var html = '<div style="font-family:Arial, sans-serif;padding:22px;color:#202124;line-height:1.65">'
+    + '<h2 style="margin-top:0;color:#0b8043">記事DB詳細</h2>'
     + '<p><b>記事タイトル</b><br>' + e(obj['記事タイトル']) + '</p>'
     + '<p><b>記事URL</b><br><a href="' + e(obj['記事URL']) + '" target="_blank">' + e(obj['記事URL']) + '</a></p>'
+    + '<table style="border-collapse:collapse;width:100%;margin:14px 0">'
+    + '<tr><td style="padding:8px;border:1px solid #ddd"><b>クリック数</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['クリック数']) + '</td><td style="padding:8px;border:1px solid #ddd"><b>表示回数</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['表示回数']) + '</td></tr>'
+    + '<tr><td style="padding:8px;border:1px solid #ddd"><b>CTR</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['CTR']) + '</td><td style="padding:8px;border:1px solid #ddd"><b>掲載順位</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['掲載順位']) + '</td></tr>'
+    + '</table>'
+    + '<div style="background:#f0f7f3;border-left:5px solid #0b8043;padding:12px 14px;margin:14px 0"><b>記事ランク：' + e(rank) + '</b><br>' + e(sbmArticleRankComment_(rank)) + '</div>'
+    + '<div style="background:#f5f7fb;border-left:5px solid #1a73e8;padding:12px 14px;margin:14px 0"><b>作業状態：' + e(work) + '</b><br>' + e(sbmWorkStateComment_(work)) + '</div>'
+    + '<p><b>メインクエリ</b><br>' + e(obj['メインクエリ']) + '</p>'
     + '<p><b>SEOタイトル</b><br>' + e(obj['SEOタイトル']) + '</p>'
     + '<p><b>メタディスクリプション</b><br>' + e(obj['メタディスクリプション']) + '</p>'
     + '<hr><table style="border-collapse:collapse;width:100%">'
@@ -2714,7 +2750,7 @@ function sbmShowArticleDbDetailForRow_(row) {
     + '<tr><td><b>補完日時</b></td><td>' + e(obj['補完日時']) + '</td></tr>'
     + '<tr><td><b>備考</b></td><td>' + e(obj['備考']) + '</td></tr>'
     + '</table></div>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(700).setHeight(620), '記事DB 記事詳細');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(760).setHeight(720), '記事DB詳細');
 }
 
 
@@ -2934,6 +2970,12 @@ function onEdit(e) {
     }
     if (row <= 1) return;
     var map = sbmHeaderMap_(sh);
+    if (sheetName === SBM_SHEETS.ARTICLE_DB && map['詳細'] && col === map['詳細'] && String(e.value || '') === '記事DB詳細を開く') {
+      sh.getRange(row, col).setValue('▼ 記事DB詳細');
+      sh.setActiveRange(sh.getRange(row, 1));
+      sbmShowArticleDbDetailForRow_(row);
+      return;
+    }
     if (sheetName === SBM_SHEETS.EFFECT && map['詳細'] && col === map['詳細'] && String(e.value).toUpperCase() === 'TRUE') {
       sh.getRange(row, col).setValue(false);
       sh.setActiveRange(sh.getRange(row, 1));
