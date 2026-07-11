@@ -1,3 +1,9 @@
+
+## 5.0.0 RC11 Today Default Fix
+
+- 今日の改善2件が起動時に表示されない問題を修正
+- シート作成・修復後と記事DB日次更新後にも初期2件を再生成
+- 厳格条件で候補不足の場合の補欠選定を追加
 # Changelog
 
 ## Product 5.0 RC11 Startup Today & Work Colors
