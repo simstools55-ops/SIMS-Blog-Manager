@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc11-today-startup-color';
+const SBM_VERSION = '5.0.0-rc11-today-default-fix';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -119,7 +119,7 @@ function onOpen() {
     .addToUi();
 
   // 起動時に記事DBの保存済み数値だけで「今日の改善」上位2件を自動作成します。
-  try { sbmRefreshTodayRecommendationsOnOpen_(); } catch (e) { console.error(e); }
+  try { sbmEnsureTodayRecommendations_('open'); } catch (e) { console.error(e); }
 
   // 起動のたびに、最終更新日時を示して記事DB更新の判断を利用者へ委ねます。
   try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) { console.error(e); }
@@ -230,6 +230,7 @@ function sbmInitializeSheets(showAlert) {
   sbmApplyProductVisibleTabs_();
   // 修復後も作業状態を優先した正式順で記事DBを並べ替えます。
   try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('InitializeSheetsSort','Warning',String(e)); }
+  try { sbmEnsureTodayRecommendations_('repair'); } catch (e) { sbmLog_('InitializeTodayDefault','Warning',String(e)); }
   sbmRefreshHome_();
   sbmLog_('InitializeSheets','Done','Product 5.0 RC11 repair navigator initialized');
   if (showAlert) sbmShowRepairCompletionNavigator_();
@@ -1090,6 +1091,7 @@ function sbmCollectPageDataToArticleDbManual(silent) {
     var tWrite = new Date();
     var mergeResult = sbmMergeArticleDbDaily_(result.rows);
     sbmSortArticleDbInternal_();
+    try { sbmEnsureTodayRecommendations_('daily'); } catch (eToday) { sbmLog_('DailyTodayDefault','Warning',String(eToday)); }
     var writeSec = sbmSecondsSince_(tWrite);
 
     sbmSetSetting_('LastArticleDbFetchAt', sbmNowText_(), '記事DBの最終取得日時');
@@ -3699,20 +3701,33 @@ function sbmOpenTodayImprovement() {
  * 起動時用の軽量処理。記事DB内の保存済み数値だけを使い、
  * 「今日の改善」に初期2件を表示します。外部取得やダイアログ表示は行いません。
  */
-function sbmRefreshTodayRecommendationsOnOpen_() {
+function sbmEnsureTodayRecommendations_(source) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var db = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
-  if (!db || db.getLastRow() < 2 || !sbmIsSetupComplete_()) return false;
+  if (!db || db.getLastRow() < 2) return false;
+
   var candidates = sbmSelectTodayRecommendations_();
-  if (!candidates.length) return false;
+  if (!candidates.length) {
+    sbmBuildTodayImprovementSheet_();
+    SpreadsheetApp.flush();
+    return false;
+  }
+
+  // 初期表示は常に2件を基本とし、候補が1件だけなら1件表示します。
   var initial = Math.min(2, candidates.length);
-  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '起動時に作成した今日の改善候補6件');
-  sbmSetSetting_('DisplayedImprovementCount', String(initial), '起動時の今日の改善表示件数');
+  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補6件（' + String(source || 'auto') + '）');
+  sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善の初期表示件数');
   sbmWriteTodayRecommendations_(candidates, initial);
   sbmApplyTodayWorkState_(candidates, initial);
-  try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('StartupTodaySort','Warning',String(e)); }
-  try { sbmRefreshHome_(); } catch (e) { sbmLog_('StartupTodayHome','Warning',String(e)); }
+  try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('TodayDefaultSort','Warning',String(e)); }
+  try { sbmRefreshHome_(); } catch (e) { sbmLog_('TodayDefaultHome','Warning',String(e)); }
+  SpreadsheetApp.flush();
   return true;
+}
+
+// 旧呼び出し名との互換性を維持します。
+function sbmRefreshTodayRecommendationsOnOpen_() {
+  return sbmEnsureTodayRecommendations_('open');
 }
 
 function sbmBuildTodayRecommendationsManual() {
@@ -3756,6 +3771,37 @@ function sbmSelectTodayRecommendations_() {
     var ctrScore = expected * 1.8 + impPower * 18 + (gap * 500);
     return {url:url,title:title,query:query,clicks:clicks,impressions:imps,ctr:ctr,position:pos,rank:rank,work:work,targetCtr:target,expectedClicks:expected,instantScore:instantScore,ctrScore:ctrScore};
   }).filter(Boolean);
+
+  // 厳格条件で2件未満の場合も、記事DBに有効な記事があれば候補を補います。
+  // モニター中・改善中は除外し、表示回数と順位を基準に軽量に並べます。
+  if (pool.length < 2) {
+    var existing = {};
+    pool.forEach(function(c){ existing[c.url] = true; });
+    rows.forEach(function(r){
+      var url = String(r['記事URL'] || '').trim();
+      var title = String(r['記事タイトル'] || '').trim();
+      var work = String(r['作業状態'] || '未着手').trim();
+      if (!url || !title || existing[url]) return;
+      if (work.indexOf('改善中') >= 0 || work.indexOf('モニター中') >= 0) return;
+      var clicks = sbmNumber_(r['クリック数']) || 0;
+      var imps = sbmNumber_(r['表示回数']) || 0;
+      var ctr = sbmNormalizeCtrNumber_(r['CTR']);
+      var pos = sbmNumber_(r['掲載順位']) || 0;
+      if (imps <= 0 || pos <= 0) return;
+      var target = sbmExpectedCtrTarget_(pos);
+      var gap = Math.max(0, target - ctr);
+      var expected = Math.max(0, Math.round(imps * gap));
+      var impPower = Math.log10(imps + 10);
+      pool.push({
+        url:url,title:title,query:String(r['メインクエリ'] || '').trim(),clicks:clicks,
+        impressions:imps,ctr:ctr,position:pos,rank:String(r['記事ランク'] || '').trim(),work:work,
+        targetCtr:target,expectedClicks:expected,
+        instantScore:(Math.max(0,31-pos) * 1.2) + impPower * 10 + gap * 250,
+        ctrScore:expected * 1.5 + impPower * 15 + gap * 350
+      });
+      existing[url] = true;
+    });
+  }
   var used = {};
   function take(sorted, kind, max) {
     var out=[];
