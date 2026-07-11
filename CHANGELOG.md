@@ -1,3 +1,12 @@
+# Changelog
+
+## Product 5.0 RC11 Startup Today & Work Colors
+
+- シート作成・修復完了ダイアログの3ボタンが動作しない問題を修正。
+- 起動時に記事DBの保存済み数値から「今日の改善」上位2件を自動作成。
+- 記事DBのモニター中行を淡い青、今日の改善行を淡い黄色で表示。
+- 外部ページ取得を行わず、起動時の処理負荷を抑制。
+
 # Product 5.0 RC11 Startup Prompt / Flat Menu Refactor
 
 - スプレッドシートを開くたびに記事DB更新確認を表示
