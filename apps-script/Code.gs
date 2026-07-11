@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-article-db-daily-diff-fix';
+const SBM_VERSION = '5.0.0-article-rank-work-state';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -30,7 +30,7 @@ const SBM_HEADERS = Object.freeze({
   USER_SETTINGS: ['設定項目','値','説明'],
   SYSTEM_LOG: ['CreatedAt', 'Action', 'Status', 'Detail'],
   QUERY_DATA: ['記事ステータス','記事タイトル','メインクエリ','クリック数','表示回数','CTR','平均順位','詳細','最終取得日時','記事URL','SEOタイトル（titleタグ）','メタディスクリプション'],
-  ARTICLE_DB: ['記事ステータス','記事URL','メインクエリ','クリック数','表示回数','CTR','掲載順位','記事タイトル','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ランク'],
+  ARTICLE_DB: ['記事ランク','作業状態','記事URL','メインクエリ','クリック数','表示回数','CTR','掲載順位','記事タイトル','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス'],
   RAW_DATA: ['StartDate','EndDate','Query','URL','Clicks','Impressions','CTR','Position','CapturedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
@@ -87,9 +87,9 @@ function onOpen() {
     .addSeparator()
     .addSubMenu(ui.createMenu('データ更新')
       .addItem('記事DBを更新（日次）', 'sbmCollectPageDataToArticleDbManual')
+      .addItem('記事ランクを再判定', 'sbmUpdateArticleRankManual')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
       .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
-      .addItem('記事ランクを試算（開発確認）', 'sbmUpdateArticleRankManual')
       .addSeparator()
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
@@ -154,6 +154,7 @@ function sbmInitializeSheets(showAlert) {
 function sbmEnsureDataSheets_() {
   // Product 5.0 Official: 現行運用に必要なシートだけを作成・修復します。
   sbmMigrateVisibleSheetNames_();
+  sbmMigrateArticleDbRankWorkState_();
   var dataMap = {
     SETTINGS: SBM_SHEETS.SETTINGS,
     SYSTEM_LOG: SBM_SHEETS.SYSTEM_LOG,
@@ -171,6 +172,40 @@ function sbmEnsureDataSheets_() {
     sbmStyleDataSheet_(sheet);
   });
   sbmRemoveRetiredSheets_();
+}
+
+
+/**
+ * 旧「記事ステータス」中心の記事DBを、記事ランク＋作業状態へ安全に移行します。
+ * 既存のタイトル・クエリ・補完情報・ArticleIDは保持します。
+ */
+function sbmMigrateArticleDbRankWorkState_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if (!sh || sh.getLastRow() < 1) return;
+  var oldHeaders = sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getValues()[0].map(function(v){return String(v||'').trim();});
+  if (!oldHeaders.length) return;
+  var alreadyNew = oldHeaders[0] === '記事ランク' && oldHeaders[1] === '作業状態';
+  if (alreadyNew) return;
+  var values = sh.getLastRow() > 1 ? sh.getRange(2,1,sh.getLastRow()-1,oldHeaders.length).getValues() : [];
+  var objects = values.map(function(row){
+    var o = {};
+    oldHeaders.forEach(function(h,i){ if (h) o[h] = row[i]; });
+    var legacy = o['記事ステータス'] || o['状態'] || '';
+    if (!o['記事ランク']) o['記事ランク'] = sbmLegacyStatusToRank_(legacy);
+    if (!o['作業状態']) o['作業状態'] = sbmLegacyStatusToWorkState_(legacy);
+    o['記事ステータス'] = legacy;
+    return o;
+  });
+  sh.clear();
+  sh.getRange(1,1,1,SBM_HEADERS.ARTICLE_DB.length).setValues([SBM_HEADERS.ARTICLE_DB]);
+  if (objects.length) {
+    var out = objects.map(function(o){
+      return SBM_HEADERS.ARTICLE_DB.map(function(h){ return o[h] !== undefined ? o[h] : ''; });
+    });
+    sh.getRange(2,1,out.length,SBM_HEADERS.ARTICLE_DB.length).setValues(out);
+  }
+  sbmStyleArticleDbSheet_(sh);
 }
 
 function sbmMigrateVisibleSheetNames_() {
@@ -610,7 +645,9 @@ function sbmBuildArticleDbOnePass_(silent) {
 
       if (!obj) {
         obj = {
-          '記事ステータス': sbmStatusLabel_(sbmClassifyArticleDbStatus_(url, clicks, imps, ctr, pos, {})),
+          '記事ランク': old['記事ランク'] || sbmLegacyStatusToRank_(old['記事ステータス'] || sbmClassifyArticleDbStatus_(url, clicks, imps, ctr, pos, {})),
+          '作業状態': old['作業状態'] || sbmLegacyStatusToWorkState_(old['記事ステータス'] || ''),
+          '記事ステータス': old['記事ステータス'] || sbmClassifyArticleDbStatus_(url, clicks, imps, ctr, pos, {}),
           '記事URL': url,
           'メインクエリ': old['メインクエリ'] || '',
           'クリック数': clicks,
@@ -627,8 +664,7 @@ function sbmBuildArticleDbOnePass_(silent) {
           'ArticleID': old['ArticleID'] || ('A' + String(nextArticleNo++).padStart(6,'0')),
           '記事情報補完済み': old['記事情報補完済み'] || '×',
           '補完日時': old['補完日時'] || '',
-          '補完エラー': old['補完エラー'] || '',
-          '記事ランク': old['記事ランク'] || ''
+          '補完エラー': old['補完エラー'] || ''
         };
         freshMap[url] = obj;
       } else {
@@ -833,22 +869,28 @@ function sbmWriteArticleDbObjects_(map) {
 function sbmUpdateHomeArticleDbCounts_(rows) {
   rows = rows || [];
   var total = rows.length;
-  var good = 0, candidate = 0, watch = 0, inProgress = 0;
+  var counts = {ace:0,growth:0,stable:0,nurture:0,low:0,today:0,inProgress:0,monitoring:0};
   rows.forEach(function(r){
-    var status = '';
-    if (Array.isArray(r)) status = String(r[0] || '');
-    else if (r && typeof r === 'object') status = String(r['記事ステータス'] || '');
-    status = status.replace(/^[^\p{L}\p{N}]+/u, '').trim();
-    if (status.indexOf('良好') >= 0) good++;
-    else if (status.indexOf('改善候補') >= 0) candidate++;
-    else if (status.indexOf('改善中') >= 0) inProgress++;
-    else if (status.indexOf('様子見') >= 0) watch++;
+    var rank = Array.isArray(r) ? String(r[0] || '') : String((r || {})['記事ランク'] || '');
+    var work = Array.isArray(r) ? String(r[1] || '') : String((r || {})['作業状態'] || '');
+    if (rank.indexOf('エース') >= 0) counts.ace++;
+    else if (rank.indexOf('成長') >= 0) counts.growth++;
+    else if (rank.indexOf('安定') >= 0) counts.stable++;
+    else if (rank.indexOf('育成') >= 0) counts.nurture++;
+    else if (rank.indexOf('低迷') >= 0) counts.low++;
+    if (work.indexOf('今日の改善') >= 0) counts.today++;
+    else if (work.indexOf('改善中') >= 0) counts.inProgress++;
+    else if (work.indexOf('モニター中') >= 0) counts.monitoring++;
   });
   sbmSetSetting_('TotalArticleCount', total, '記事DBの総記事数');
-  sbmSetSetting_('GoodArticleCount', good, '記事DBの良好記事数');
-  sbmSetSetting_('ImprovementCandidateCount', candidate, '記事DBの改善候補数');
-  sbmSetSetting_('WatchArticleCount', watch, '記事DBの様子見記事数');
-  sbmSetSetting_('InProgressArticleCount', inProgress, '記事DBの改善中記事数');
+  sbmSetSetting_('AceArticleCount', counts.ace, '記事DBのエース記事数');
+  sbmSetSetting_('GrowthArticleCount', counts.growth, '記事DBの成長記事数');
+  sbmSetSetting_('StableArticleCount', counts.stable, '記事DBの安定記事数');
+  sbmSetSetting_('NurtureArticleCount', counts.nurture, '記事DBの育成記事数');
+  sbmSetSetting_('LowArticleCount', counts.low, '記事DBの低迷記事数');
+  sbmSetSetting_('TodayWorkCount', counts.today, '今日の改善件数');
+  sbmSetSetting_('InProgressArticleCount', counts.inProgress, '改善中記事数');
+  sbmSetSetting_('MonitoringArticleCount', counts.monitoring, 'モニター中記事数');
   sbmSetSetting_('LastArticleDbRows', total, '記事DBの直近行数');
   sbmRefreshHome_();
 }
@@ -961,7 +1003,7 @@ function sbmFetchSearchConsolePageRowsForArticleDb_(profiler) {
     var ctr = m.impressions ? m.clicks / m.impressions : 0;
     var pos = m.impressions ? m.weightedPositionSum / m.impressions : 0;
     var status = sbmClassifyArticleDbStatus_(url, m.clicks, m.impressions, ctr, pos, statusMap);
-    return [sbmStatusLabel_(status), url, '', m.clicks, m.impressions, ctr, pos, '', '', '', m.capturedAt, m.originalCount, '', ''];
+    return [sbmLegacyStatusToRank_(status), sbmLegacyStatusToWorkState_(status), url, '', m.clicks, m.impressions, ctr, pos, '', '', '', m.capturedAt, m.originalCount, '', '', '', '×', '', '', sbmStatusLabel_(status)];
   });
   out = sbmSortArticleDbRows_(out);
   if (profiler) profiler.lap('URL正規化・記事URL抽出', rows.length, out.length, '#付きURL ' + fragmentCount + '件 / 除外 ' + excluded + '件 / サンプル ' + invalidSamples.join(' | ') + ' / ' + sbmSecondsSince_(tNormalize) + '秒');
@@ -1019,12 +1061,15 @@ function sbmClassifyArticleDbStatus_(url, clicks, impressions, ctr, position, st
 function sbmSortArticleDbRows_(rows) {
   rows = rows || [];
   rows.sort(function(a,b){
-    // 記事DBは改善作業の確認しやすさを優先し、改善候補→良好→様子見の順に並べる。
-    var order = {'改善候補':1,'良好':2,'様子見':3,'改善中':4,'管理対象外':5,'未分析':6};
-    var ao = order[sbmNormalizeStatus_(a[0])] || 99;
-    var bo = order[sbmNormalizeStatus_(b[0])] || 99;
+    var rankOrder = {'🏆 エース':1,'📈 成長':2,'✅ 安定':3,'🌱 育成':4,'⚠️ 低迷':5,'—':9,'':9};
+    var workOrder = {'🔥 今日の改善':1,'✏️ 改善中':2,'👀 モニター中':3,'未着手':4,'✔️ 完了':5,'':9};
+    var ao = rankOrder[String(a[0] || '').trim()] || 99;
+    var bo = rankOrder[String(b[0] || '').trim()] || 99;
     if (ao !== bo) return ao - bo;
-    return sbmNumber_(b[4]) - sbmNumber_(a[4]);
+    var aw = workOrder[String(a[1] || '').trim()] || 99;
+    var bw = workOrder[String(b[1] || '').trim()] || 99;
+    if (aw !== bw) return aw - bw;
+    return sbmNumber_(b[5]) - sbmNumber_(a[5]);
   });
   return rows;
 }
@@ -1058,7 +1103,7 @@ function sbmMergeArticleDbDaily_(freshRows) {
     if (!url) return;
     var old = map[url];
     if (old) {
-      // 作業状態として維持すべき値は分類処理側ですでに保持されます。
+      // 日次更新では検索指標と記事ランクを更新し、作業状態は維持します。
       old['記事ステータス'] = f['記事ステータス'] || old['記事ステータス'] || '';
       old['クリック数'] = f['クリック数'];
       old['表示回数'] = f['表示回数'];
@@ -1067,7 +1112,7 @@ function sbmMergeArticleDbDaily_(freshRows) {
       old['最終取得日時'] = f['最終取得日時'];
       old['元URL件数'] = f['元URL件数'];
       old['除外理由'] = f['除外理由'] || old['除外理由'] || '';
-      // メインクエリ・タイトル・SEOタイトル・description・ArticleID・補完情報・ランク等は変更しません。
+      // メインクエリ・タイトル・SEOタイトル・description・ArticleID・補完情報・作業状態は変更しません。
       updated++;
     } else {
       f['記事URL'] = url;
@@ -1076,11 +1121,14 @@ function sbmMergeArticleDbDaily_(freshRows) {
       f['補完日時'] = '';
       f['補完エラー'] = '';
       f['記事ランク'] = '';
+      f['作業状態'] = '未着手';
+      f['記事ステータス'] = f['記事ステータス'] || '様子見';
       map[url] = f;
       added++;
     }
   });
 
+  sbmApplyArticleRanksToObjectMap_(map);
   var rows = Object.keys(map).map(function(url){
     var r = map[url];
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
@@ -1103,27 +1151,27 @@ function sbmWriteArticleDb_(rows) {
 
 function sbmStyleArticleDbSheet_(sh) {
   sbmStyleDataSheet_(sh);
-  try { sh.getRange('D:E').setNumberFormat('#,##0'); } catch(e) {}
-  try { sh.getRange('F:F').setNumberFormat('0.0%'); } catch(e) {}
-  try { sh.getRange('G:G').setNumberFormat('0.0'); } catch(e) {}
+  try { sh.getRange('E:F').setNumberFormat('#,##0'); } catch(e) {}
+  try { sh.getRange('G:G').setNumberFormat('0.0%'); } catch(e) {}
+  try { sh.getRange('H:H').setNumberFormat('0.0'); } catch(e) {}
   try {
-    sh.setColumnWidth(1, 130);  // 記事ステータス
-    sh.setColumnWidth(2, 320);  // 記事URL
-    sh.setColumnWidth(3, 220);  // メインクエリ
-    sh.setColumnWidth(8, 260);  // 記事タイトル
-    sh.setColumnWidth(9, 300);  // SEOタイトル
-    sh.setColumnWidth(10, 360); // メタディスクリプション
-    sh.setColumnWidth(15, 100); // ArticleID
-    sh.setColumnWidth(16, 120); // 補完済み
-    sh.setColumnWidth(17, 160); // 補完日時
-    sh.setColumnWidth(18, 220); // 補完エラー
-    sh.setColumnWidth(19, 120); // 記事ランク
+    sh.setColumnWidth(1, 120);  // 記事ランク
+    sh.setColumnWidth(2, 120);  // 作業状態
+    sh.setColumnWidth(3, 320);  // 記事URL
+    sh.setColumnWidth(4, 220);  // メインクエリ
+    sh.setColumnWidth(9, 260);  // 記事タイトル
+    sh.setColumnWidth(10, 300); // SEOタイトル
+    sh.setColumnWidth(11, 360); // メタディスクリプション
+    sh.setColumnWidth(16, 100); // ArticleID
+    sh.setColumnWidth(17, 120); // 補完済み
+    sh.setColumnWidth(18, 160); // 補完日時
+    sh.setColumnWidth(19, 220); // 補完エラー
+    try { sh.hideColumns(20); } catch(ignore) {} // 旧判定互換用の内部列
   } catch(e) {}
   try {
     var lr = sh.getLastRow();
     if (lr > 1) {
-      var statuses = sh.getRange(2, 1, lr - 1, 1).getValues();
-      for (var i = 0; i < statuses.length; i++) sbmSetStatusStyle_(sh.getRange(i + 2, 1), statuses[i][0]);
+      sh.getRange(2,1,lr-1,2).setHorizontalAlignment('center');
     }
   } catch(e) {}
 }
@@ -3188,98 +3236,76 @@ function sbmFormatInt_(v) {
 }
 
 
-/**
- * 記事DBの検索貢献ランクを、保存済みのSearch Console指標だけで試算します。
- * 外部アクセスは行いません。日次更新への自動組み込み前の開発確認用です。
- */
-function sbmUpdateArticleRankManual() {
-  var ui = SpreadsheetApp.getUi();
-  var res = ui.alert(
-    '記事ランクを試算します',
-    '記事DBに保存済みのクリック数・表示回数・CTR・掲載順位だけを使います。\n外部サイトへのアクセスやタイトル取得は行いません。',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (res !== ui.Button.OK) return;
-
-  var started = new Date();
-  var startedText = sbmNowText_();
-  try {
-    sbmSetHomeProcessing_('● 処理中', '記事ランク試算', startedText, '', '記事DBの数値だけでランクを計算しています。', true);
-    var result = sbmUpdateArticleRanks_();
-    var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('記事ランク試算', '完了', result.total, result.total, sec,
-      'エース ' + result.counts.ace + '件 / 成長 ' + result.counts.growth + '件 / 安定 ' + result.counts.stable + '件 / 育成 ' + result.counts.nurture + '件 / 低迷 ' + result.counts.low + '件',
-      startedText, sbmNowText_());
-    sbmSetHomeProcessing_('完了', '記事ランク試算', startedText, sbmNowText_(), '記事ランクを' + result.total + '件更新しました。', false);
-    sbmAlert_('記事ランク試算完了',
-      '対象: ' + result.total + '件\n\n' +
-      '🏆 エース: ' + result.counts.ace + '件\n' +
-      '📈 成長: ' + result.counts.growth + '件\n' +
-      '✅ 安定: ' + result.counts.stable + '件\n' +
-      '🌱 育成: ' + result.counts.nurture + '件\n' +
-      '⚠️ 低迷: ' + result.counts.low + '件\n\n' +
-      'これは検索データ上の貢献度であり、実収益そのものの判定ではありません。');
-  } catch (e) {
-    sbmSetHomeProcessing_('エラー', '記事ランク試算', startedText, sbmNowText_(), String(e), false);
-    sbmProcessLog_('記事ランク試算', 'エラー', '', '', sbmSecondsSince_(started), String(e), startedText, sbmNowText_());
-    sbmAlert_('記事ランク試算エラー', String(e));
-  }
+/** Product 5.0: 旧ステータスから記事ランクへ移行する互換処理。 */
+function sbmLegacyStatusToRank_(status) {
+  status = sbmNormalizeStatus_(status || '');
+  if (status === '良好') return '✅ 安定';
+  if (status === '改善候補') return '📈 成長';
+  if (status === '様子見') return '🌱 育成';
+  if (status === '管理対象外') return '—';
+  return '';
 }
 
-function sbmUpdateArticleRanks_() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
-  if (!sh || sh.getLastRow() < 2) throw new Error('記事DBにデータがありません。');
-  sbmEnsureHeaders_(sh, SBM_HEADERS.ARTICLE_DB);
-  var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
-  if (!rows.length) throw new Error('記事DBに判定対象がありません。');
+/** Product 5.0: 旧ステータスから作業状態へ移行する互換処理。 */
+function sbmLegacyStatusToWorkState_(status) {
+  status = sbmNormalizeStatus_(status || '');
+  if (status === '改善中') return '✏️ 改善中';
+  return '未着手';
+}
 
-  var eligible = rows.filter(function(r){
-    var st = sbmNormalizeStatus_(r['記事ステータス'] || '');
-    return st !== '管理対象外';
-  });
-  var clickVals = eligible.map(function(r){ return sbmNumber_(r['クリック数'] || 0); }).sort(function(a,b){return a-b;});
-  var impVals = eligible.map(function(r){ return sbmNumber_(r['表示回数'] || 0); }).sort(function(a,b){return a-b;});
+function sbmApplyArticleRanksToObjectMap_(map) {
+  var keys = Object.keys(map || {});
+  var rows = keys.map(function(k){ return map[k]; }).filter(function(r){ return r && r['記事URL']; });
+  var clickVals = rows.map(function(r){ return sbmNumber_(r['クリック数'] || 0); }).sort(function(a,b){return a-b;});
+  var impVals = rows.map(function(r){ return sbmNumber_(r['表示回数'] || 0); }).sort(function(a,b){return a-b;});
   var minImps = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS)) || SBM_DEFAULTS.MIN_IMPRESSIONS;
-  var rankCol = sbmHeaderMap_(sh)['記事ランク'];
-  if (!rankCol) throw new Error('記事ランク列を作成できませんでした。管理メニューの「シートを作成・修復」を実行してください。');
-
-  var values = [];
-  var counts = {ace:0,growth:0,stable:0,nurture:0,low:0,excluded:0};
   rows.forEach(function(r){
-    var status = sbmNormalizeStatus_(r['記事ステータス'] || '');
-    if (status === '管理対象外') {
-      values.push(['—']); counts.excluded++; return;
-    }
+    if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
     var clicks = sbmNumber_(r['クリック数'] || 0);
     var imps = sbmNumber_(r['表示回数'] || 0);
     var ctr = sbmNumber_(r['CTR'] || 0);
     var pos = sbmNumber_(r['掲載順位'] || 0);
-    if (imps < minImps) {
-      values.push(['🌱 育成']); counts.nurture++; return;
-    }
+    if (imps < minImps) { r['記事ランク'] = '🌱 育成'; return; }
     var clickPct = sbmPercentileRank_(clickVals, clicks);
     var impPct = sbmPercentileRank_(impVals, imps);
     var ctrScore = Math.max(0, Math.min(1, ctr / 0.08));
     var posScore = pos > 0 ? Math.max(0, Math.min(1, (40 - Math.min(pos,40)) / 39)) : 0;
     var score = clickPct * 50 + impPct * 20 + ctrScore * 15 + posScore * 15;
-    var label;
-    if (score >= 82 && clickPct >= 0.85 && pos > 0 && pos <= 10) { label='🏆 エース'; counts.ace++; }
-    else if (score >= 62) { label='📈 成長'; counts.growth++; }
-    else if (score >= 42) { label='✅ 安定'; counts.stable++; }
-    else { label='⚠️ 低迷'; counts.low++; }
-    values.push([label]);
+    if (score >= 82 && clickPct >= 0.85 && pos > 0 && pos <= 10) r['記事ランク'] = '🏆 エース';
+    else if (score >= 62) r['記事ランク'] = '📈 成長';
+    else if (score >= 42) r['記事ランク'] = '✅ 安定';
+    else r['記事ランク'] = '⚠️ 低迷';
   });
-  sh.getRange(2, rankCol, values.length, 1).setValues(values);
-  try { sh.getRange(2, rankCol, values.length, 1).setHorizontalAlignment('center'); } catch(e) {}
-  return {total: rows.length, counts: counts};
 }
 
-function sbmPercentileRank_(sorted, value) {
-  if (!sorted || !sorted.length) return 0;
-  var lo = 0, hi = sorted.length;
-  while (lo < hi) {
-    var mid = Math.floor((lo + hi) / 2);
-    if (sorted[mid] <= value) lo = mid + 1; else hi = mid;
+function sbmUpdateArticleRankManual() {
+  var started = new Date();
+  var startedText = sbmNowText_();
+  try {
+    sbmSetHomeProcessing_('● 処理中', '記事ランク再判定', startedText, '', '記事DBの保存済み数値だけで再判定しています。', true);
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
+    if (!sh || sh.getLastRow() < 2) throw new Error('記事DBにデータがありません。');
+    var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
+    var map = {};
+    rows.forEach(function(r){
+      var url = sbmNormalizeUrl_(r['記事URL'] || '');
+      if (!url) return;
+      if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
+      map[url] = r;
+    });
+    sbmApplyArticleRanksToObjectMap_(map);
+    var out = Object.keys(map).map(function(url){
+      var r = map[url];
+      return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
+    });
+    sbmWriteArticleDb_(out);
+    sbmUpdateHomeArticleDbCounts_(out);
+    var sec = sbmSecondsSince_(started);
+    sbmProcessLog_('記事ランク再判定', '完了', out.length, out.length, sec, '外部アクセスなし。作業状態は維持。', startedText, sbmNowText_());
+    sbmSetHomeProcessing_('完了', '記事ランク再判定', startedText, sbmNowText_(), out.length + '件を更新しました。', false);
+    sbmAlert_('記事ランク再判定完了', out.length + '件の記事ランクを更新しました。\n作業状態は変更していません。');
+  } catch(e) {
+    sbmSetHomeProcessing_('エラー', '記事ランク再判定', startedText, sbmNowText_(), String(e), false);
+    sbmAlert_('記事ランク再判定エラー', String(e));
   }
-  return sorted.length <= 1 ? 1 : Math.max(0, Math.min(1, (lo - 1) / (sorted.length - 1)));
 }
