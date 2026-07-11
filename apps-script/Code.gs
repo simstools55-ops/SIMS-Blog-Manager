@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-home-daily-management-state';
+const SBM_VERSION = '5.0.0-operation-refactoring-stage1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -93,16 +93,9 @@ function onOpen() {
       .addSeparator()
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
-    .addSubMenu(ui.createMenu('今日の改善')
-      .addItem('今日の改善を開く', 'sbmOpenToday')
-      .addItem('選択行の改善ブリーフを開く', 'sbmShowSelectedBrief')
-      .addItem('選択行の記事を開く', 'sbmOpenSelectedArticle')
-      .addItem('選択行を完了にする', 'sbmCompleteSelectedImprovement')
-      .addItem('改善中を開く', 'sbmOpenInProgress')
-      .addSeparator()
-      .addItem('おすすめ5件表示にする', 'sbmSetTodayTop5')
-      .addItem('改善候補をすべて表示する', 'sbmSetTodayAll'))
-    .addItem('ブログ診断を開く', 'sbmOpenDashboardSafe_')
+    .addSubMenu(ui.createMenu('改善機能')
+      .addItem('記事DB直結版の準備状況', 'sbmShowImprovementRefactorStatus_')
+      .addItem('改善中を開く', 'sbmOpenInProgress'))
     .addItem('処理ログを開く', 'sbmOpenProcessLog')
     .addSeparator()
     .addSubMenu(ui.createMenu('管理')
@@ -112,6 +105,10 @@ function onOpen() {
       .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
     .addToUi();
   try { sbmMaybePromptDailyUpdate_(); } catch (e) { console.error(e); }
+}
+
+function sbmShowImprovementRefactorStatus_() {
+  sbmAlert_('改善機能の再構築状況', '旧「今日の改善」「改善ブリーフ」「ブログ診断」は停止・削除しました。\n現在は記事DBだけを唯一の参照元として、今日の改善と改善ブリーフを再構築する準備段階です。\n別ブログの旧データやサンプル情報は表示しません。');
 }
 
 function sbmMaybePromptDailyUpdate_() {
@@ -202,7 +199,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRemoveRetiredSheets_();
   sbmApplyProductVisibleTabs_();
   sbmRefreshHome_();
-  sbmLog_('InitializeSheets','Done','Product 5.0 RC8.1 sheets initialized');
+  sbmLog_('InitializeSheets','Done','Product 5.0 operation refactoring stage 1 initialized');
   if (showAlert) sbmAlert_('初期化完了', '必要なシートを作成・修復しました。\n次に、メニュー「SIMS-Blog-Manager」→「セットアップ」→「STEP1 ブログ情報を登録」を実行してください。');
 }
 
@@ -214,12 +211,9 @@ function sbmEnsureDataSheets_() {
     SETTINGS: SBM_SHEETS.SETTINGS,
     SYSTEM_LOG: SBM_SHEETS.SYSTEM_LOG,
     ARTICLE_DB: SBM_SHEETS.ARTICLE_DB,
-    BRIEF: SBM_SHEETS.BRIEF,
-    TODAY: SBM_SHEETS.TODAY,
     LOG: SBM_SHEETS.LOG,
     PROCESS_LOG: SBM_SHEETS.PROCESS_LOG,
-    IN_PROGRESS: SBM_SHEETS.IN_PROGRESS,
-    DIAGNOSIS: SBM_SHEETS.DIAGNOSIS
+    IN_PROGRESS: SBM_SHEETS.IN_PROGRESS
   };
   Object.keys(dataMap).forEach(function(k){
     var sheet = sbmGetOrCreateSheet_(dataMap[k]);
@@ -276,8 +270,8 @@ function sbmMigrateVisibleSheetNames_() {
 function sbmRemoveRetiredSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var keep = {};
-  [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.BRIEF, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.DIAGNOSIS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.SYSTEM_LOG].forEach(function(n){ keep[n] = true; });
-  var retired = ['上位ページ診断','カニバリ診断','記事ネタ候補','記事カルテ','ホーム','クエリデータ','記事診断','データ一覧','SearchConsole_Data'];
+  [SBM_SHEETS.HOME, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.IN_PROGRESS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.SETTINGS, SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.SYSTEM_LOG].forEach(function(n){ keep[n] = true; });
+  var retired = ['上位ページ診断','カニバリ診断','記事ネタ候補','記事カルテ','ホーム','クエリデータ','記事診断','データ一覧','SearchConsole_Data','今日の改善','改善ブリーフ','ブログ診断'];
   retired.forEach(function(n){
     var sh = ss.getSheetByName(n);
     if (sh && !keep[n] && ss.getSheets().length > 1) { try { ss.deleteSheet(sh); } catch(e) {} }
@@ -476,8 +470,8 @@ function sbmBuildHomeSheet_() {
     ['管理のお知らせ','','',''],
     ['🆕 新規記事','','📄 記事情報未取得',''],
     ['⚠️ 30日以上データ未取得','','',''],
-    ['今日やること','','',''],
-    ['おすすめ改善','今日の改善を上から順番に実施してください。','',''],
+    ['改善機能','','',''],
+    ['現在の状態','記事DB直結版を再構築中です。旧ブログのおすすめ情報は表示しません。','',''],
     ['処理状況','','',''],
     ['現在の状態','待機中','実行中/最後の処理',''],
     ['開始時刻','','完了予定',''],
@@ -3319,7 +3313,7 @@ function sbmStyleBriefSheet_(sh) {
   try { sh.hideSheet(); } catch(e) {}
 }
 function sbmStyleUserSheet_(sh, color) { var lc=Math.max(sh.getLastColumn(),2); var lr=Math.max(sh.getLastRow(),1); sh.setFrozenRows(1); sh.getRange(1,1,1,lc).setFontWeight('bold').setFontSize(15).setBackground(color).setFontColor('#ffffff'); sh.getRange(1,1,lr,lc).setVerticalAlignment('top').setWrap(true); sh.getRange(1,1,lr,lc).setBorder(true,true,true,true,true,true); }
-function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); [SBM_SHEETS.HOME, SBM_SHEETS.TODAY, SBM_SHEETS.LOG, SBM_SHEETS.SETUP, SBM_SHEETS.EFFECT].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
+function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); [SBM_SHEETS.HOME, SBM_SHEETS.ARTICLE_DB, SBM_SHEETS.SETUP, SBM_SHEETS.LOG, SBM_SHEETS.IN_PROGRESS].forEach(function(n){ var s=ss.getSheetByName(n); if(s) s.showSheet(); }); sbmHideSystemSheets(); }
 
 
 function sbmFormatInt_(v) {
@@ -3343,6 +3337,20 @@ function sbmLegacyStatusToWorkState_(status) {
   status = sbmNormalizeStatus_(status || '');
   if (status === '改善中') return '✏️ 改善中';
   return '未着手';
+}
+
+function sbmPercentileRank_(sortedValues, value) {
+  var a = (sortedValues || []).map(function(v){ return sbmNumber_(v); }).filter(function(v){ return isFinite(v); });
+  if (!a.length) return 0;
+  a.sort(function(x,y){ return x-y; });
+  value = sbmNumber_(value);
+  var less = 0, equal = 0;
+  for (var i=0; i<a.length; i++) {
+    if (a[i] < value) less++;
+    else if (a[i] === value) equal++;
+    else break;
+  }
+  return Math.max(0, Math.min(1, (less + equal * 0.5) / a.length));
 }
 
 function sbmApplyArticleRanksToObjectMap_(map) {
