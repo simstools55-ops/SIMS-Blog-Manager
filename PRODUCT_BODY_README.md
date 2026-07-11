@@ -1,3 +1,9 @@
+# 製品本体
+
+製品本体は `apps-script/Code.gs` です。
+
+今回、記事DB直結の「今日の改善」と「改善ナビ」を追加しています。
+
 # Product 5.0 ArticleDB Operation Menu Fix
 
 記事DBの対象行を選択し、Google Sheets上部の独立メニュー「記事DB操作」から操作します。
