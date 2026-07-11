@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-operation-refactoring-stage2-ui-fix';
+const SBM_VERSION = '5.0.0-article-db-menu-only';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -94,10 +94,12 @@ function onOpen() {
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
     .addSubMenu(ui.createMenu('記事DB')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
-      .addItem('記事DBツールバーを開く', 'sbmOpenArticleDbToolbar')
-      .addSeparator()
       .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
-      .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl'))
+      .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl')
+      .addSeparator()
+      .addItem('改善ブリーフ（準備中）', 'sbmArticleDbBriefComingSoon')
+      .addItem('効果測定（準備中）', 'sbmArticleDbEffectComingSoon')
+      .addItem('改善完了（準備中）', 'sbmArticleDbCompleteComingSoon'))
     .addSubMenu(ui.createMenu('改善機能')
       .addItem('記事DB直結版の準備状況', 'sbmShowImprovementRefactorStatus_')
       .addItem('改善中を開く', 'sbmOpenInProgress'))
@@ -106,7 +108,6 @@ function onOpen() {
     .addSubMenu(ui.createMenu('管理')
       .addItem('設定を開く', 'sbmOpenUserSettings')
       .addItem('シートを作成・修復', 'sbmInitializeSheets')
-      .addItem('記事DB操作トリガーを設定', 'sbmInstallArticleDbEditTrigger')
       .addItem('システムシートを非表示', 'sbmHideSystemSheets')
       .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
     .addToUi();
@@ -207,7 +208,6 @@ function sbmInitializeSheets(showAlert) {
   sbmRemoveRetiredSheets_();
   sbmApplyProductVisibleTabs_();
   sbmRefreshHome_();
-  try { sbmInstallArticleDbEditTrigger(false); } catch (triggerErr) { console.error(triggerErr); }
   sbmLog_('InitializeSheets','Done','Product 5.0 operation refactoring stage 1 initialized');
   if (showAlert) sbmAlert_('初期化完了', '現行シートの作成・修復が完了しました。旧改善シートは作成していません。記事DBとHomeを確認してください。');
 }
@@ -1244,27 +1244,8 @@ function sbmStyleArticleDbSheet_(sh) {
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        var actionOptions = [
-          '操作を選択',
-          '記事DB詳細を開く',
-          '記事を開く',
-          '改善ブリーフ（準備中）',
-          '効果測定（準備中）',
-          '改善完了（準備中）'
-        ];
-        var validation = SpreadsheetApp.newDataValidation()
-          .requireValueInList(actionOptions, true)
-          .setAllowInvalid(false)
-          .setHelpText('操作を選ぶと、その行の記事に対して処理を実行します。')
-          .build();
-        dr.setDataValidation(validation);
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['操作を選択']; }));
-        dr.setBackground('#e8f0fe')
-          .setFontColor('#174ea6')
-          .setFontWeight('bold')
-          .setHorizontalAlignment('center')
-          .setVerticalAlignment('middle')
-          .setNote('プルダウンから操作を選択してください。記事DB詳細はすぐに表示され、その他の準備中機能は将来ここから起動します。');
+        dr.clearDataValidations().clearNote().clearContent();
+        sh.hideColumns(hm['詳細']);
       }
     }
   } catch(e) {}
@@ -3018,56 +2999,16 @@ function onSelectionChange(e) {
 }
 
 
-/**
- * 記事DBの操作プルダウン専用インストール型編集トリガーを作成します。
- * HTMLダイアログ表示には承認済みのインストール型トリガーを使用します。
- */
-function sbmInstallArticleDbEditTrigger(showAlert) {
-  showAlert = showAlert !== false;
-  var handler = 'sbmHandleArticleDbActionEdit_';
-  var triggers = ScriptApp.getProjectTriggers();
-  triggers.forEach(function(t) {
-    if (t.getHandlerFunction() === handler) ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger(handler)
-    .forSpreadsheet(SpreadsheetApp.getActiveSpreadsheet())
-    .onEdit()
-    .create();
-  sbmSetSetting_('ArticleDbEditTriggerInstalled', 'YES', '記事DB操作プルダウンのインストール型編集トリガー');
-  if (showAlert) sbmAlert_('記事DB操作トリガー設定完了', '記事DBの「詳細」列にあるプルダウンから、記事DB詳細を開けるようになりました。');
+function sbmArticleDbBriefComingSoon() {
+  sbmAlert_('改善ブリーフ', '改善ブリーフは準備中です。実装後は、記事DBで対象行を選択してこのメニューから開けるようになります。');
 }
 
-/**
- * インストール型編集トリガーから呼び出される記事DB操作ルーターです。
- */
-function sbmHandleArticleDbActionEdit_(e) {
-  if (!e || !e.range) return;
-  var sh = e.range.getSheet();
-  if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) return;
-  var row = e.range.getRow();
-  if (row <= 1) return;
-  var hm = sbmHeaderMap_(sh);
-  if (!hm['詳細'] || e.range.getColumn() !== hm['詳細']) return;
+function sbmArticleDbEffectComingSoon() {
+  sbmAlert_('効果測定', '効果測定は準備中です。実装後は、記事DBで対象行を選択してこのメニューから開けるようになります。');
+}
 
-  var action = String(e.value || '').trim();
-  if (!action || action === '操作を選択') return;
-
-  try {
-    sh.setActiveRange(sh.getRange(row, 1));
-    if (action === '記事DB詳細を開く') {
-      sbmShowArticleDbDetailForRow_(sh, row);
-    } else if (action === '記事を開く') {
-      sbmShowArticleDbOpenLinkForRow_(sh, row);
-    } else if (action === '改善ブリーフ（準備中）') {
-      sbmAlert_('改善ブリーフ', '改善ブリーフは現在準備中です。実装後は、このプルダウンから選択記事の改善ブリーフを開けるようになります。');
-    } else if (action === '効果測定（準備中）') {
-      sbmAlert_('効果測定', '効果測定は現在準備中です。実装後は、このプルダウンから選択記事の測定画面を開けるようになります。');
-    } else if (action === '改善完了（準備中）') {
-      sbmAlert_('改善完了', '改善完了処理は現在準備中です。実装後は、このプルダウンから選択記事の作業状態を更新できるようになります。');
-    }
-  } finally {
-    e.range.setValue('操作を選択');
-  }
+function sbmArticleDbCompleteComingSoon() {
+  sbmAlert_('改善完了', '改善完了処理は準備中です。実装後は、記事DBで対象行を選択してこのメニューから実行できるようになります。');
 }
 
 function sbmShowArticleDbDetailForRow_(sh, row) {
