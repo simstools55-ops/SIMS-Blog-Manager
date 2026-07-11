@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc11-repair-navigator';
+const SBM_VERSION = '5.0.0-rc11-today-startup-color';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -117,6 +117,9 @@ function onOpen() {
     .addItem('改善履歴シートを開く', 'sbmOpenImprovementHistory')
     .addItem('効果測定（準備中）', 'sbmArticleDbEffectComingSoon')
     .addToUi();
+
+  // 起動時に記事DBの保存済み数値だけで「今日の改善」上位2件を自動作成します。
+  try { sbmRefreshTodayRecommendationsOnOpen_(); } catch (e) { console.error(e); }
 
   // 起動のたびに、最終更新日時を示して記事DB更新の判断を利用者へ委ねます。
   try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) { console.error(e); }
@@ -271,13 +274,13 @@ function sbmShowRepairCompletionNavigator_() {
     + '<button class="update" onclick="go(\'update\')">🔄 記事DBを更新</button>'
     + '<button class="home" onclick="go(\'home\')">🏠 そのまま使う（HOMEへ）</button>'
     + '</div><div id="msg"></div><script>'
-    + 'function go(a){document.getElementById("msg").textContent="画面を切り替えています…";google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)||String(e);}).withSuccessHandler(function(){google.script.host.close();}).sbmHandleRepairNextAction_(a);}'
+    + 'function go(a){document.getElementById("msg").textContent="画面を切り替えています…";google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)||String(e);}).withSuccessHandler(function(){google.script.host.close();}).sbmHandleRepairNextAction(a);}'
     + '</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(470).setHeight(570), 'シートの作成・修復');
 }
 
 /** 修復完了画面で選ばれた次の操作を実行します。 */
-function sbmHandleRepairNextAction_(action) {
+function sbmHandleRepairNextAction(action) {
   action = String(action || 'home');
   if (action === 'setup') {
     sbmOpenSetup();
@@ -290,6 +293,9 @@ function sbmHandleRepairNextAction_(action) {
   sbmOpenHome();
   return true;
 }
+
+// 旧呼び出し名との互換性を維持します。
+function sbmHandleRepairNextAction_(action) { return sbmHandleRepairNextAction(action); }
 
 /** 日常画面へ移動した際、必要時だけ開く管理シートを再び隠します。 */
 function sbmHideOptionalAdminSheets_() {
@@ -1365,6 +1371,17 @@ function sbmStyleArticleDbSheet_(sh) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
         dr.clearDataValidations().clearNote().clearContent();
         sh.hideColumns(hm['詳細']);
+      }
+      // 作業対象を一覧で識別しやすくするため、行全体へ淡い背景色を設定します。
+      if (hm['作業状態']) {
+        var workValues = sh.getRange(2,hm['作業状態'],lr-1,1).getDisplayValues();
+        for (var ri=0; ri<workValues.length; ri++) {
+          var state = String(workValues[ri][0] || '');
+          var rowRange = sh.getRange(ri+2,1,1,Math.min(lc,10));
+          if (state.indexOf('モニター中') >= 0) rowRange.setBackground('#e8f0fe');
+          else if (state.indexOf('今日の改善') >= 0) rowRange.setBackground('#fff4cc');
+          else rowRange.setBackground('#ffffff');
+        }
       }
     }
   } catch(e) {}
@@ -3676,6 +3693,26 @@ function sbmOpenTodayImprovement() {
   var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) { sbmBuildTodayImprovementSheet_(); sh = ss.getSheetByName(SBM_SHEETS.TODAY); }
   sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
+}
+
+/**
+ * 起動時用の軽量処理。記事DB内の保存済み数値だけを使い、
+ * 「今日の改善」に初期2件を表示します。外部取得やダイアログ表示は行いません。
+ */
+function sbmRefreshTodayRecommendationsOnOpen_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var db = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if (!db || db.getLastRow() < 2 || !sbmIsSetupComplete_()) return false;
+  var candidates = sbmSelectTodayRecommendations_();
+  if (!candidates.length) return false;
+  var initial = Math.min(2, candidates.length);
+  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '起動時に作成した今日の改善候補6件');
+  sbmSetSetting_('DisplayedImprovementCount', String(initial), '起動時の今日の改善表示件数');
+  sbmWriteTodayRecommendations_(candidates, initial);
+  sbmApplyTodayWorkState_(candidates, initial);
+  try { sbmSortArticleDbInternal_(); } catch (e) { sbmLog_('StartupTodaySort','Warning',String(e)); }
+  try { sbmRefreshHome_(); } catch (e) { sbmLog_('StartupTodayHome','Warning',String(e)); }
+  return true;
 }
 
 function sbmBuildTodayRecommendationsManual() {
