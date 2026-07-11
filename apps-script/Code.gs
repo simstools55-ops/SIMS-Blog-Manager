@@ -89,6 +89,7 @@ function onOpen() {
       .addItem('記事DBを更新（日次）', 'sbmCollectPageDataToArticleDbManual')
       .addItem('記事ランクを再判定', 'sbmUpdateArticleRankManual')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
+      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
       .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
       .addSeparator()
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
@@ -1237,13 +1238,14 @@ function sbmStyleArticleDbSheet_(sh) {
       if (hm['メインクエリ']) sh.getRange(2,hm['メインクエリ'],lr-1,1).setWrap(true);
       if (hm['詳細']) {
         var dr = sh.getRange(2,hm['詳細'],lr-1,1);
-        dr.setValues(Array.from({length:lr-1}, function(){ return ['▼ 記事詳細']; }));
-        var detailRule = SpreadsheetApp.newDataValidation()
-          .requireValueInList(['▼ 記事詳細','記事詳細を開く'], true)
-          .setAllowInvalid(false)
-          .setHelpText('「記事詳細を開く」を選択するとポップアップを表示します。')
-          .build();
-        dr.setDataValidation(detailRule).setBackground('#d9eaf7').setFontColor('#1155cc').setFontWeight('bold').setHorizontalAlignment('center');
+        dr.clearDataValidations();
+        dr.setValues(Array.from({length:lr-1}, function(){ return ['🔍 記事詳細']; }));
+        dr.setBackground('#d9eaf7')
+          .setFontColor('#1155cc')
+          .setFontWeight('bold')
+          .setHorizontalAlignment('center')
+          .setVerticalAlignment('middle')
+          .setNote('セルを1回クリックすると記事詳細を開きます。開かない場合は、対象行を選択してメニュー「データ更新 → 選択記事の詳細を開く」を実行してください。');
       }
     }
   } catch(e) {}
@@ -2680,6 +2682,18 @@ function sbmBlogHealthComment_(counts, total) {
   return '【' + title + '】' + body;
 }
 
+function sbmOpenSelectedArticleDbDetail() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) {
+    return sbmAlert_('記事詳細', '「記事DB」シートで対象記事の行を選択してください。');
+  }
+  var range = sh.getActiveRange();
+  var row = range ? range.getRow() : 0;
+  if (row <= 1) return sbmAlert_('記事詳細', '見出し以外の記事行を選択してください。');
+  sbmShowArticleDbDetailForRow_(row);
+}
+
 function sbmShowArticleDbDetailForRow_(row) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
   if (!sh || row <= 1) return;
@@ -2872,8 +2886,6 @@ function onSelectionChange(e) {
     if (sh.getName() === SBM_SHEETS.ARTICLE_DB) {
       var hm = sbmHeaderMap_(sh);
       if (hm['詳細'] && e.range.getColumn() === hm['詳細']) {
-        // 選択トリガーが利用可能な環境ではワンクリック表示。
-        // 表示されない場合も、セルのプルダウンから確実に開けます。
         sbmShowArticleDbDetailForRow_(e.range.getRow());
       }
       return;
@@ -2891,14 +2903,6 @@ function onEdit(e) {
     var sheetName = sh.getName();
     var row = e.range.getRow();
     var col = e.range.getColumn();
-    if (sheetName === SBM_SHEETS.ARTICLE_DB && row > 1) {
-      var articleHm = sbmHeaderMap_(sh);
-      if (articleHm['詳細'] && col === articleHm['詳細'] && String(e.value || '') === '記事詳細を開く') {
-        sbmShowArticleDbDetailForRow_(row);
-        e.range.setValue('▼ 記事詳細');
-        return;
-      }
-    }
     if (sheetName === SBM_SHEETS.USER_SETTINGS && col === 2 && row >= 2 && row <= 6) {
       var rules = {
         2: {key:'ArticleInfoBatch', min:30, max:100, label:'記事情報補完件数'},
