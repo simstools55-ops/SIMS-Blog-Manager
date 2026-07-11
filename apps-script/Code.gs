@@ -92,14 +92,6 @@ function onOpen() {
       .addSeparator()
       .addItem('処理ログを開く', 'sbmOpenProcessLog')
       .addItem('処理プロファイルを開く（開発用）', 'sbmOpenProfileLog'))
-    .addSubMenu(ui.createMenu('記事DB')
-      .addItem('記事DBを開く', 'sbmOpenArticleDb')
-      .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
-      .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl')
-      .addSeparator()
-      .addItem('改善ブリーフ（準備中）', 'sbmArticleDbBriefComingSoon')
-      .addItem('効果測定（準備中）', 'sbmArticleDbEffectComingSoon')
-      .addItem('改善完了（準備中）', 'sbmArticleDbCompleteComingSoon'))
     .addSubMenu(ui.createMenu('改善機能')
       .addItem('記事DB直結版の準備状況', 'sbmShowImprovementRefactorStatus_')
       .addItem('改善中を開く', 'sbmOpenInProgress'))
@@ -111,6 +103,18 @@ function onOpen() {
       .addItem('システムシートを非表示', 'sbmHideSystemSheets')
       .addItem('エラー・ログを開く', 'sbmOpenSystemLog'))
     .addToUi();
+
+  ui.createMenu('記事DB操作')
+    .addItem('記事DBを開く', 'sbmOpenArticleDb')
+    .addSeparator()
+    .addItem('選択記事の詳細を開く', 'sbmOpenSelectedArticleDbDetail')
+    .addItem('選択記事をブラウザで開く', 'sbmOpenSelectedArticleUrl')
+    .addSeparator()
+    .addItem('改善ブリーフ（準備中）', 'sbmArticleDbBriefComingSoon')
+    .addItem('効果測定（準備中）', 'sbmArticleDbEffectComingSoon')
+    .addItem('改善完了（準備中）', 'sbmArticleDbCompleteComingSoon')
+    .addToUi();
+
   try { sbmMaybePromptDailyUpdate_(); } catch (e) { console.error(e); }
 }
 
@@ -2749,7 +2753,7 @@ function sbmOpenSelectedArticleDbDetail() {
   var range = sh.getActiveRange();
   var row = range ? range.getRow() : 0;
   if (row <= 1) return sbmAlert_('記事DB詳細', '見出し以外の記事行を選択してください。');
-  sbmShowArticleDbDetailForRow_(row);
+  sbmShowArticleDbDetailForRow_(sh, row);
 }
 
 function sbmArticleRankComment_(rank) {
@@ -2793,211 +2797,6 @@ function sbmRankWorkRecommendation_(rank, state) {
   };
   return map[rank] || '現在は未着手です。記事ランクと検索データを確認して、着手の優先度を判断してください。';
 }
-
-function sbmShowArticleDbDetailForRow_(row) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
-  if (!sh || row <= 1) return;
-  var hm = sbmHeaderMap_(sh);
-  var obj = {};
-  Object.keys(hm).forEach(function(h){ obj[h] = sh.getRange(row, hm[h]).getDisplayValue(); });
-  var e = sbmEscapeHtml_;
-  var rank = obj['記事ランク'] || '';
-  var work = obj['作業状態'] || '';
-  var html = '<div style="font-family:Arial, sans-serif;padding:22px;color:#202124;line-height:1.65">'
-    + '<h2 style="margin-top:0;color:#0b8043">記事DB詳細</h2>'
-    + '<p><b>記事タイトル</b><br>' + e(obj['記事タイトル']) + '</p>'
-    + '<p><b>記事URL</b><br><a href="' + e(obj['記事URL']) + '" target="_blank">' + e(obj['記事URL']) + '</a></p>'
-    + '<table style="border-collapse:collapse;width:100%;margin:14px 0">'
-    + '<tr><td style="padding:8px;border:1px solid #ddd"><b>クリック数</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['クリック数']) + '</td><td style="padding:8px;border:1px solid #ddd"><b>表示回数</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['表示回数']) + '</td></tr>'
-    + '<tr><td style="padding:8px;border:1px solid #ddd"><b>CTR</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['CTR']) + '</td><td style="padding:8px;border:1px solid #ddd"><b>掲載順位</b></td><td style="padding:8px;border:1px solid #ddd">' + e(obj['掲載順位']) + '</td></tr>'
-    + '</table>'
-    + '<div style="background:#f0f7f3;border-left:5px solid #0b8043;padding:12px 14px;margin:14px 0"><b>記事ランク：' + e(rank) + '</b><br>' + e(sbmArticleRankComment_(rank)) + '</div>'
-    + '<div style="background:#f5f7fb;border-left:5px solid #1a73e8;padding:12px 14px;margin:14px 0"><b>作業状態：' + e(work) + '</b><br>' + e(sbmWorkStateComment_(work)) + '<br><b>着手判断：</b>' + e(sbmRankWorkRecommendation_(rank, work)) + '</div>'
-    + '<p><b>メインクエリ</b><br>' + e(obj['メインクエリ']) + '</p>'
-    + '<p><b>SEOタイトル</b><br>' + e(obj['SEOタイトル']) + '</p>'
-    + '<p><b>メタディスクリプション</b><br>' + e(obj['メタディスクリプション']) + '</p>'
-    + '<hr><table style="border-collapse:collapse;width:100%">'
-    + '<tr><td><b>ArticleID</b></td><td>' + e(obj['ArticleID']) + '</td></tr>'
-    + '<tr><td><b>最終取得日時</b></td><td>' + e(obj['最終取得日時']) + '</td></tr>'
-    + '<tr><td><b>補完済み</b></td><td>' + e(obj['記事情報補完済み']) + '</td></tr>'
-    + '<tr><td><b>補完日時</b></td><td>' + e(obj['補完日時']) + '</td></tr>'
-    + '<tr><td><b>備考</b></td><td>' + e(obj['備考']) + '</td></tr>'
-    + '</table></div>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(760).setHeight(720), '記事DB詳細');
-}
-
-
-function sbmRefreshHome_() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
-  if (!sh) return;
-  var rows = [];
-  try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
-  var rankCounts = {'🏆 エース':0,'✅ 安定':0,'📈 成長':0,'🌱 育成':0,'⚠️ 低迷':0};
-  var workCounts = {'未着手':0,'🔥 今日の改善':0,'✏️ 改善中':0,'👀 モニター中':0,'✔️ 完了':0};
-  var newCount = 0, infoMissing = 0, stale30 = 0;
-  rows.forEach(function(r){
-    var rank = String(r['記事ランク'] || '').trim();
-    var work = String(r['作業状態'] || '未着手').trim();
-    if (rankCounts.hasOwnProperty(rank)) rankCounts[rank]++;
-    if (workCounts.hasOwnProperty(work)) workCounts[work]++;
-    var flag = String(r['管理フラグ'] || '').trim();
-    if (flag === '新規記事') newCount++;
-    if (String(r['記事情報補完済み'] || '') !== '○') infoMissing++;
-    if (Number(r['連続未取得日数'] || 0) >= 30) stale30++;
-  });
-  var blogName = String(sbmGetSetting_('BlogName','') || '未登録');
-  var blogUrl = String(sbmGetSetting_('BlogUrl','') || '');
-  sh.getRange('B2').setValue(blogName);
-  if (blogUrl) sh.getRange('D2').setFormula('=HYPERLINK("' + blogUrl.replace(/"/g,'""') + '","' + blogUrl.replace(/"/g,'""') + '")'); else sh.getRange('D2').setValue('未登録');
-  sh.getRange('B3').setValue(rows.length + '件');
-  sh.getRange('D3').setValue(sbmGetSetting_('LastArticleDbFetchAt', sbmGetSetting_('LastFetchDate','未取得')));
-  var prevAce = Number(sbmGetSetting_('PrevAceCount', rankCounts['🏆 エース'])) || 0;
-  var prevStable = Number(sbmGetSetting_('PrevStableCount', rankCounts['✅ 安定'])) || 0;
-  var prevGrowth = Number(sbmGetSetting_('PrevGrowthCount', rankCounts['📈 成長'])) || 0;
-  var prevNurture = Number(sbmGetSetting_('PrevNurtureCount', rankCounts['🌱 育成'])) || 0;
-  var prevLow = Number(sbmGetSetting_('PrevLowCount', rankCounts['⚠️ 低迷'])) || 0;
-  sh.getRange('B5').setValue(rankCounts['🏆 エース'] + '件（' + sbmSignedDelta_(rankCounts['🏆 エース']-prevAce) + '）');
-  sh.getRange('B6').setValue(rankCounts['✅ 安定'] + '件（' + sbmSignedDelta_(rankCounts['✅ 安定']-prevStable) + '）');
-  sh.getRange('B7').setValue(rankCounts['📈 成長'] + '件（' + sbmSignedDelta_(rankCounts['📈 成長']-prevGrowth) + '）');
-  sh.getRange('B8').setValue(rankCounts['🌱 育成'] + '件（' + sbmSignedDelta_(rankCounts['🌱 育成']-prevNurture) + '）');
-  sh.getRange('B9').setValue(rankCounts['⚠️ 低迷'] + '件（' + sbmSignedDelta_(rankCounts['⚠️ 低迷']-prevLow) + '）');
-  sh.getRange('D5').setValue(workCounts['未着手'] + '件');
-  sh.getRange('D6').setValue(workCounts['🔥 今日の改善'] + '件');
-  sh.getRange('D7').setValue(workCounts['✏️ 改善中'] + '件');
-  sh.getRange('D8').setValue(workCounts['👀 モニター中'] + '件');
-  sh.getRange('D9').setValue(workCounts['✔️ 完了'] + '件');
-  sh.getRange('B11').setValue(newCount + '件');
-  sh.getRange('D11').setValue(infoMissing + '件');
-  sh.getRange('B12').setValue(stale30 + '件');
-  try { sh.getRange('B14:D14').breakApart(); } catch(ignore) {}
-  sh.getRange('B14:D14').merge();
-  sh.getRange('B14').setValue(sbmBlogHealthComment_(rankCounts, rows.length)).setWrap(true);
-  var urlBuildStatus = String(sbmGetSetting_('ArticleDbUrlBuildStatus','未開始'));
-  var infoBuildStatus = String(sbmGetSetting_('ArticleInfoBuildStatus','未開始'));
-  var completedInfo = sbmArticleDbInfoCompletionCounts_();
-  var articleDbTotal = completedInfo.total || Number(sbmGetSetting_('LastArticleDbRows','0')) || 0;
-  sh.getRange('B22').setValue(urlBuildStatus);
-  sh.getRange('D22').setValue(articleDbTotal + '件');
-  sh.getRange('B23').setValue(infoBuildStatus);
-  sh.getRange('D23').setValue(completedInfo.completed + ' / ' + completedInfo.total + '件');
-  var setupDone = String(sbmGetSetting_('ArticleDbUrlBuildComplete','NO')) === 'YES' && String(sbmGetSetting_('ArticleInfoBuildComplete','NO')) === 'YES';
-  sh.getRange('B24').setValue(setupDone ? '完了' : '未完了');
-  sh.getRange('D24').setValue(Math.max(0, completedInfo.total - completedInfo.completed) + '件');
-}
-
-
-function sbmUniqueUrlCount_(rows) {
-  var seen = {};
-  rows.forEach(function(r){ var u = r.URL || r['記事URL'] || ''; if (u) seen[u] = true; });
-  return Object.keys(seen).length;
-}
-
-function sbmOpenHome() { sbmRefreshHome_(); sbmOpenSheet_(SBM_SHEETS.HOME); }
-function sbmOpenSetup() { sbmOpenSheet_(SBM_SHEETS.SETUP); }
-function sbmOpenToday() { sbmOpenSheet_(SBM_SHEETS.TODAY); }
-function sbmOpenLog() { sbmOpenSheet_(SBM_SHEETS.LOG); }
-function sbmOpenEffect() { sbmOpenSheet_(SBM_SHEETS.EFFECT); }
-function sbmOpenInProgress() { sbmBuildInProgressSheet_(); sbmOpenSheet_(SBM_SHEETS.IN_PROGRESS); }
-function sbmOpenProcessLog() { sbmOpenSheet_(SBM_SHEETS.PROCESS_LOG); }
-function sbmOpenMeasureHistory() { sbmOpenSheet_(SBM_SHEETS.MEASURE_HISTORY); }
-
-
-
-function sbmOpenSystemLog() { sbmOpenSheet_(SBM_SHEETS.SYSTEM_LOG); }
-function sbmOpenBrief() { sbmOpenSheet_(SBM_SHEETS.BRIEF); }
-
-function sbmShowSelectedBrief() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  if (sh.getName() !== SBM_SHEETS.TODAY) return sbmAlert_('改善ブリーフ', '「今日の改善」シートで対象行を選択してから実行してください。');
-  var row = sh.getActiveRange().getRow();
-  if (row <= 1) return sbmAlert_('改善ブリーフ', '改善タスクの行を選択してください。');
-  sbmShowBriefForRow_(row);
-}
-
-function sbmShowBriefForRow_(row) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
-  var map = sbmHeaderMap_(sh);
-  var url = map.URL ? String(sh.getRange(row, map.URL).getValue()) : '';
-  if (!url) return sbmAlert_('改善ブリーフ', 'この行のURLを確認できませんでした。');
-  var brief = sbmFindBriefByUrl_(url);
-  if (!brief) return sbmAlert_('改善ブリーフ', '改善ブリーフが見つかりませんでした。今日のデータを再取得してください。');
-  var html = HtmlService.createHtmlOutput(sbmBriefHtml_(brief)).setWidth(820).setHeight(700);
-  SpreadsheetApp.getUi().showModalDialog(html, '改善ブリーフ');
-}
-
-function sbmOpenSelectedArticle() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  if (sh.getName() !== SBM_SHEETS.TODAY) return sbmAlert_('記事を開く', '「今日の改善」シートで対象行を選択してから実行してください。');
-  var row = sh.getActiveRange().getRow();
-  var map = sbmHeaderMap_(sh);
-  var url = map.URL ? String(sh.getRange(row, map.URL).getValue()) : '';
-  if (!url) return sbmAlert_('記事を開く', 'URLが見つかりません。');
-  var html = HtmlService.createHtmlOutput('<div style="font-family:Arial,sans-serif;padding:20px;line-height:1.7"><h2>記事を開く</h2><p>下のボタンから記事を開いてください。</p><p><a target="_blank" style="display:inline-block;background:#1a73e8;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none" href="'+url+'">記事を開く</a></p></div>').setWidth(420).setHeight(220);
-  SpreadsheetApp.getUi().showModalDialog(html, '記事を開く');
-}
-
-function sbmCompleteSelectedImprovement() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  if (sh.getName() !== SBM_SHEETS.TODAY) return sbmAlert_('完了記録', '「今日の改善」シートで完了する行を選択してください。');
-  var row = sh.getActiveRange().getRow();
-  if (row <= 1) return sbmAlert_('完了記録', '改善タスクの行を選択してください。');
-  sbmCompleteImprovementRow_(row, true);
-}
-
-function sbmCompleteImprovementRow_(row, showAlert) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
-  var map = sbmHeaderMap_(sh);
-  if (!map.URL || !map['記事タイトル']) return;
-  if (String(sh.getRange(row, map['状態']).getValue()) === '完了') return;
-  var obj = {};
-  Object.keys(map).forEach(function(k){ obj[k] = sh.getRange(row, map[k]).getValue(); });
-  var actions = sbmCollectActionLabels_(obj);
-  var brief = sbmFindBriefByUrl_(obj.URL || '');
-  var now = sbmNowText_();
-  if (map['状態']) sh.getRange(row, map['状態']).setValue('完了');
-  if (map['完了日']) sh.getRange(row, map['完了日']).setValue(now);
-  sbmAppendObject_(SBM_SHEETS.LOG, SBM_HEADERS.LOG, {
-    '改善日': now,
-    '記事タイトル': obj['記事タイトル'] || '',
-    'URL': sbmNormalizeUrl_(obj.URL || ''),
-    'メインクエリ': obj['メインクエリ'] || '',
-    '改善内容': obj['改善内容'] || '',
-    '修正内容': actions || '未選択',
-    '所要時間': obj['時間'] || '',
-    'メモ': obj['メモ'] || '',
-    '初回測定日': sbmDateAfterText_(1),
-    '7日測定完了日': sbmDateAfterText_(SBM_DEFAULTS.TEST_DAILY_DAYS),
-    '状態': '測定待ち',
-    '改善前CTR': brief ? brief.CTR : '',
-    '改善前順位': brief ? brief.Position : '',
-    '改善前クリック': brief ? brief.Clicks : '',
-    '改善前表示回数': brief ? brief.Impressions : ''
-  });
-  try { sbmBuildInProgressSheet_(); sbmBuildTodayQueue_(); } catch(e) {}
-  sbmRefreshHome_();
-  if (showAlert) sbmAlert_('完了しました', '改善ログへ記録しました。\nこの改善は「改善中」に移動し、今日の改善には次の候補が補充されます。\n\n修正内容: ' + (actions || '未選択'));
-}
-
-function sbmCollectActionLabels_(obj) {
-  var labels = [];
-  var keys = ['Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他'];
-  keys.forEach(function(k){ if (obj[k] === true || String(obj[k]).toUpperCase() === 'TRUE' || String(obj[k]) === '✓') labels.push(k); });
-  return labels.join('・');
-}
-
-
-
-function onSelectionChange(e) {
-  try {
-    if (!e || !e.range) return;
-    var sh = e.range.getSheet();
-    if (!sh || e.range.getRow() <= 1) return;
-    if (sh.getName() === SBM_SHEETS.QUERY_DATA && e.range.getColumn() === 8) sbmShowSelectedDataListDetail();
-  } catch (err) {
-    // 詳細表示は補助機能。処理全体は止めない。
-  }
-}
-
 
 function sbmArticleDbBriefComingSoon() {
   sbmAlert_('改善ブリーフ', '改善ブリーフは準備中です。実装後は、記事DBで対象行を選択してこのメニューから開けるようになります。');
