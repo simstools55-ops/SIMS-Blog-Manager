@@ -33,3 +33,7 @@ Search Consoleのクリック数・表示回数・CTR・掲載順位だけを使
 3. `管理 → シートを作成・修復` を1回実行
 4. `データ更新 → 記事ランクを再判定` を実行
 5. 記事DBの「記事ランク」「作業状態」を確認
+
+## Latest development update
+
+ArticleDB Compact & Home Insight: 記事DBのコンパクト表示、記事詳細ポップアップ、Homeのブログ現在地コメントを追加しました。
