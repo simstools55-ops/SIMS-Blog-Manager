@@ -30,7 +30,7 @@ const SBM_HEADERS = Object.freeze({
   USER_SETTINGS: ['設定項目','値','説明'],
   SYSTEM_LOG: ['CreatedAt', 'Action', 'Status', 'Detail'],
   QUERY_DATA: ['記事ステータス','記事タイトル','メインクエリ','クリック数','表示回数','CTR','平均順位','詳細','最終取得日時','記事URL','SEOタイトル（titleタグ）','メタディスクリプション'],
-  ARTICLE_DB: ['記事ステータス','記事URL','メインクエリ','クリック数','表示回数','CTR','掲載順位','記事タイトル','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー'],
+  ARTICLE_DB: ['記事ステータス','記事URL','メインクエリ','クリック数','表示回数','CTR','掲載順位','記事タイトル','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ランク'],
   RAW_DATA: ['StartDate','EndDate','Query','URL','Clicks','Impressions','CTR','Position','CapturedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['優先','時間','記事タイトル','メインクエリ','改善内容','記事を開く','詳細','完了','Title','H1','Description','冒頭文','H2/H3','FAQ','内部リンク','本文追記','その他','メモ','Score','URL','状態','完了日'],
@@ -89,6 +89,7 @@ function onOpen() {
       .addItem('ページデータ収集（記事DB）', 'sbmCollectPageDataToArticleDbManual')
       .addItem('記事DBを開く', 'sbmOpenArticleDb')
       .addItem('記事DBのタイトル情報を補完', 'sbmSupplementArticleDbMetaManual')
+      .addItem('記事ランクを試算（開発確認）', 'sbmUpdateArticleRankManual')
       .addSeparator()
       .addItem('STEP A Search Consoleデータ取得だけ実行', 'sbmFetchOnlyManual')
       .addItem('STEP A-2 記事情報を補完', 'sbmSupplementArticleInfoManual')
@@ -634,7 +635,8 @@ function sbmBuildArticleDbOnePass_(silent) {
           'ArticleID': old['ArticleID'] || ('A' + String(nextArticleNo++).padStart(6,'0')),
           '記事情報補完済み': old['記事情報補完済み'] || '×',
           '補完日時': old['補完日時'] || '',
-          '補完エラー': old['補完エラー'] || ''
+          '補完エラー': old['補完エラー'] || '',
+          '記事ランク': old['記事ランク'] || ''
         };
         freshMap[url] = obj;
       } else {
@@ -1069,6 +1071,7 @@ function sbmStyleArticleDbSheet_(sh) {
     sh.setColumnWidth(16, 120); // 補完済み
     sh.setColumnWidth(17, 160); // 補完日時
     sh.setColumnWidth(18, 220); // 補完エラー
+    sh.setColumnWidth(19, 120); // 記事ランク
   } catch(e) {}
   try {
     var lr = sh.getLastRow();
@@ -3136,4 +3139,101 @@ function sbmApplySheetUx_() { var ss=SpreadsheetApp.getActiveSpreadsheet(); [SBM
 function sbmFormatInt_(v) {
   var n = Math.round(sbmNumber_(v));
   return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+
+/**
+ * 記事DBの検索貢献ランクを、保存済みのSearch Console指標だけで試算します。
+ * 外部アクセスは行いません。日次更新への自動組み込み前の開発確認用です。
+ */
+function sbmUpdateArticleRankManual() {
+  var ui = SpreadsheetApp.getUi();
+  var res = ui.alert(
+    '記事ランクを試算します',
+    '記事DBに保存済みのクリック数・表示回数・CTR・掲載順位だけを使います。\n外部サイトへのアクセスやタイトル取得は行いません。',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (res !== ui.Button.OK) return;
+
+  var started = new Date();
+  var startedText = sbmNowText_();
+  try {
+    sbmSetHomeProcessing_('● 処理中', '記事ランク試算', startedText, '', '記事DBの数値だけでランクを計算しています。', true);
+    var result = sbmUpdateArticleRanks_();
+    var sec = sbmSecondsSince_(started);
+    sbmProcessLog_('記事ランク試算', '完了', result.total, result.total, sec,
+      'エース ' + result.counts.ace + '件 / 成長 ' + result.counts.growth + '件 / 安定 ' + result.counts.stable + '件 / 育成 ' + result.counts.nurture + '件 / 低迷 ' + result.counts.low + '件',
+      startedText, sbmNowText_());
+    sbmSetHomeProcessing_('完了', '記事ランク試算', startedText, sbmNowText_(), '記事ランクを' + result.total + '件更新しました。', false);
+    sbmAlert_('記事ランク試算完了',
+      '対象: ' + result.total + '件\n\n' +
+      '🏆 エース: ' + result.counts.ace + '件\n' +
+      '📈 成長: ' + result.counts.growth + '件\n' +
+      '✅ 安定: ' + result.counts.stable + '件\n' +
+      '🌱 育成: ' + result.counts.nurture + '件\n' +
+      '⚠️ 低迷: ' + result.counts.low + '件\n\n' +
+      'これは検索データ上の貢献度であり、実収益そのものの判定ではありません。');
+  } catch (e) {
+    sbmSetHomeProcessing_('エラー', '記事ランク試算', startedText, sbmNowText_(), String(e), false);
+    sbmProcessLog_('記事ランク試算', 'エラー', '', '', sbmSecondsSince_(started), String(e), startedText, sbmNowText_());
+    sbmAlert_('記事ランク試算エラー', String(e));
+  }
+}
+
+function sbmUpdateArticleRanks_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if (!sh || sh.getLastRow() < 2) throw new Error('記事DBにデータがありません。');
+  sbmEnsureHeaders_(sh, SBM_HEADERS.ARTICLE_DB);
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
+  if (!rows.length) throw new Error('記事DBに判定対象がありません。');
+
+  var eligible = rows.filter(function(r){
+    var st = sbmNormalizeStatus_(r['記事ステータス'] || '');
+    return st !== '管理対象外';
+  });
+  var clickVals = eligible.map(function(r){ return sbmNumber_(r['クリック数'] || 0); }).sort(function(a,b){return a-b;});
+  var impVals = eligible.map(function(r){ return sbmNumber_(r['表示回数'] || 0); }).sort(function(a,b){return a-b;});
+  var minImps = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS)) || SBM_DEFAULTS.MIN_IMPRESSIONS;
+  var rankCol = sbmHeaderMap_(sh)['記事ランク'];
+  if (!rankCol) throw new Error('記事ランク列を作成できませんでした。管理メニューの「シートを作成・修復」を実行してください。');
+
+  var values = [];
+  var counts = {ace:0,growth:0,stable:0,nurture:0,low:0,excluded:0};
+  rows.forEach(function(r){
+    var status = sbmNormalizeStatus_(r['記事ステータス'] || '');
+    if (status === '管理対象外') {
+      values.push(['—']); counts.excluded++; return;
+    }
+    var clicks = sbmNumber_(r['クリック数'] || 0);
+    var imps = sbmNumber_(r['表示回数'] || 0);
+    var ctr = sbmNumber_(r['CTR'] || 0);
+    var pos = sbmNumber_(r['掲載順位'] || 0);
+    if (imps < minImps) {
+      values.push(['🌱 育成']); counts.nurture++; return;
+    }
+    var clickPct = sbmPercentileRank_(clickVals, clicks);
+    var impPct = sbmPercentileRank_(impVals, imps);
+    var ctrScore = Math.max(0, Math.min(1, ctr / 0.08));
+    var posScore = pos > 0 ? Math.max(0, Math.min(1, (40 - Math.min(pos,40)) / 39)) : 0;
+    var score = clickPct * 50 + impPct * 20 + ctrScore * 15 + posScore * 15;
+    var label;
+    if (score >= 82 && clickPct >= 0.85 && pos > 0 && pos <= 10) { label='🏆 エース'; counts.ace++; }
+    else if (score >= 62) { label='📈 成長'; counts.growth++; }
+    else if (score >= 42) { label='✅ 安定'; counts.stable++; }
+    else { label='⚠️ 低迷'; counts.low++; }
+    values.push([label]);
+  });
+  sh.getRange(2, rankCol, values.length, 1).setValues(values);
+  try { sh.getRange(2, rankCol, values.length, 1).setHorizontalAlignment('center'); } catch(e) {}
+  return {total: rows.length, counts: counts};
+}
+
+function sbmPercentileRank_(sorted, value) {
+  if (!sorted || !sorted.length) return 0;
+  var lo = 0, hi = sorted.length;
+  while (lo < hi) {
+    var mid = Math.floor((lo + hi) / 2);
+    if (sorted[mid] <= value) lo = mid + 1; else hi = mid;
+  }
+  return sorted.length <= 1 ? 1 : Math.max(0, Math.min(1, (lo - 1) / (sorted.length - 1)));
 }
