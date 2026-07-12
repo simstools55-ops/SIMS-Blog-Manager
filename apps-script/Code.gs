@@ -5023,3 +5023,134 @@ function sbmStyleHistorySheetV2_(){
     sh.autoResizeRows(2,n);
   }
 }
+
+/**
+ * Product 5.0 RC11: Detail popup naming and metric formatting fix
+ * - 効果測定の詳細 -> 改善効果の詳細
+ * - 数値は小数第1位、CTRはパーセント表示
+ * - 記事DB詳細 -> 選択記事の詳細
+ * - 記事詳細から改善ナビへ遷移
+ */
+function sbmDetailDash_(v) {
+  return (v === null || v === undefined || String(v).trim() === '') ? 'ー' : String(v);
+}
+
+function sbmDetailNumber1_(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return 'ー';
+  var n = Number(String(v).replace(/,/g, '').replace('%', '').trim());
+  return isNaN(n) ? 'ー' : n.toLocaleString('ja-JP', {minimumFractionDigits:1, maximumFractionDigits:1});
+}
+
+function sbmDetailCtr1_(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return 'ー';
+  var n = Number(String(v).replace(/,/g, '').replace('%', '').trim());
+  if (isNaN(n)) return 'ー';
+  if (n <= 1) n = n * 100;
+  return n.toFixed(1) + '%';
+}
+
+function sbmEffectDetailHtmlV2_(o) {
+  var e = sbmEscapeHtml_;
+  function cell(v) { return e(sbmDetailDash_(v)); }
+  function num(v) { return e(sbmDetailNumber1_(v)); }
+  function ctr(v) { return e(sbmDetailCtr1_(v)); }
+  function tr(label, before, current, delta, kind) {
+    var f = kind === 'ctr' ? ctr : num;
+    return '<tr>'
+      + '<td style="border:1px solid #ddd;padding:8px;font-weight:700">' + e(label) + '</td>'
+      + '<td style="border:1px solid #ddd;padding:8px;text-align:right">' + f(before) + '</td>'
+      + '<td style="border:1px solid #ddd;padding:8px;text-align:right">' + f(current) + '</td>'
+      + '<td style="border:1px solid #ddd;padding:8px;text-align:right">' + f(delta) + '</td>'
+      + '</tr>';
+  }
+  return '<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px;line-height:1.65;color:#202124">'
+    + '<h2 style="margin-top:0;color:#0b8043">改善効果の詳細</h2>'
+    + '<h3>' + cell(o['記事タイトル']) + '</h3>'
+    + '<p><b>判定：</b>' + cell(o['判定'])
+    + '　<b>経過日数：</b>' + num(o['経過日数']) + '日'
+    + '　<b>測定予定：</b>' + cell(o['測定予定日']) + '</p>'
+    + '<h3>改善内容</h3><p>' + cell(o['改善概要']) + '</p><p><b>変更：</b>' + cell(o['変更箇所']) + '</p>'
+    + '<h3>改善前・現在の比較</h3>'
+    + '<table style="border-collapse:collapse;width:100%">'
+    + '<tr><th style="border:1px solid #ddd;padding:8px">指標</th><th style="border:1px solid #ddd;padding:8px">改善前</th><th style="border:1px solid #ddd;padding:8px">現在</th><th style="border:1px solid #ddd;padding:8px">変化</th></tr>'
+    + tr('クリック数', o['改善前クリック'], o['現在クリック'], o['クリック変化'], 'num')
+    + tr('表示回数', o['改善前表示回数'], o['現在表示回数'], o['表示回数変化'], 'num')
+    + tr('CTR', o['改善前CTR'], o['現在CTR'], o['CTR変化'], 'ctr')
+    + tr('掲載順位', o['改善前順位'], o['現在順位'], o['順位変化'], 'num')
+    + '</table>'
+    + '<h3>SIMS評価</h3><p>' + cell(o['SIMS評価']) + '</p>'
+    + '<h3>次のアクション</h3><p>' + cell(o['次のアクション']) + '</p><p>' + cell(o['測定コメント']) + '</p>'
+    + '</div>';
+}
+
+function sbmShowSelectedEffectDetail() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.EFFECT) return sbmAlert_('改善効果', '改善効果シートで対象行を選択してください。');
+  var row = (typeof sbmGetCheckedRow_ === 'function') ? sbmGetCheckedRow_(sh) : sh.getActiveRange().getRow();
+  if (!row || row <= 1) return;
+  var o = sbmRowRecord_(sh, row);
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(sbmEffectDetailHtmlV2_(o)).setWidth(820).setHeight(700),
+    '改善効果の詳細'
+  );
+}
+
+function sbmOpenImprovementNaviFromArticleDetail(articleUrl) {
+  var url = String(articleUrl || '').trim();
+  if (!url) return sbmAlert_('改善ナビ', '記事URLを取得できません。');
+  var article = sbmFindArticleDbByUrl_(url);
+  if (!article) return sbmAlert_('改善ナビ', '記事管理から対象記事を確認できません。');
+  sbmShowImprovementNaviDialog_(article, '記事管理から選択', '選択記事の改善方針を確認します。');
+}
+
+function sbmShowArticleDbDetailForRow_(sh, row) {
+  var hm = sbmHeaderMap_(sh);
+  function raw(name) { return hm[name] ? sh.getRange(row, hm[name]).getValue() : ''; }
+  function display(name) { return hm[name] ? sh.getRange(row, hm[name]).getDisplayValue() : ''; }
+  var obj = {};
+  SBM_HEADERS.ARTICLE_DB.forEach(function(h) { obj[h] = raw(h); });
+  obj['クリック数表示'] = display('クリック数');
+  obj['表示回数表示'] = display('表示回数');
+  obj['CTR表示'] = display('CTR');
+  obj['掲載順位表示'] = display('掲載順位');
+  var html = HtmlService.createHtmlOutput(sbmArticleDbDetailHtml_(obj)).setWidth(780).setHeight(720);
+  SpreadsheetApp.getUi().showModalDialog(html, '選択記事の詳細');
+}
+
+function sbmArticleDbDetailHtml_(o) {
+  var e = sbmEscapeHtml_;
+  function value(v) { return sbmDetailDash_(v); }
+  function row(label, v) {
+    return '<tr><th style="text-align:left;width:180px;padding:8px;border-bottom:1px solid #e5e7eb;color:#5f6368;vertical-align:top">' + e(label) + '</th>'
+      + '<td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap">' + e(value(v)) + '</td></tr>';
+  }
+  var rank = String(o['記事ランク'] || '');
+  var work = String(o['作業状態'] || '');
+  var advice = sbmArticleDbWorkAdvice_(rank, work);
+  var url = String(o['記事URL'] || '');
+  var safeUrl = e(url);
+  return '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif;padding:20px;line-height:1.65;color:#202124">'
+    + '<h2 style="margin:0 0 12px;color:#0b8043">選択記事の詳細</h2>'
+    + '<h3 style="margin:0 0 14px">' + e(value(o['記事タイトル'])) + '</h3>'
+    + '<div style="background:#f1f8f4;border-left:5px solid #0b8043;padding:12px;margin-bottom:16px"><b>' + e(value(rank)) + ' × ' + e(value(work)) + '</b><br>' + e(value(advice)) + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+    + row('記事ランク', rank)
+    + row('作業状態', work)
+    + row('メインクエリ', o['メインクエリ'])
+    + row('クリック数', o['クリック数表示'] || o['クリック数'])
+    + row('表示回数', o['表示回数表示'] || o['表示回数'])
+    + row('CTR', o['CTR表示'] || o['CTR'])
+    + row('掲載順位', o['掲載順位表示'] || o['掲載順位'])
+    + row('SEOタイトル', o['SEOタイトル'])
+    + row('メタディスクリプション', o['メタディスクリプション'])
+    + row('最終取得日時', o['最終取得日時'])
+    + row('ArticleID', o['ArticleID'])
+    + row('記事情報補完済み', o['記事情報補完済み'])
+    + row('補完日時', o['補完日時'])
+    + row('備考', o['備考'])
+    + '</table>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">'
+    + (url ? '<a href="' + safeUrl + '" target="_blank" style="display:inline-block;background:#1a73e8;color:#fff;padding:9px 16px;border-radius:6px;text-decoration:none;font-weight:700">記事を開く</a>' : '')
+    + (url ? '<button onclick="google.script.host.close();google.script.run.sbmOpenImprovementNaviFromArticleDetail(\'' + safeUrl.replace(/'/g, '&#39;') + '\');" style="border:0;background:#0b8043;color:#fff;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer">改善ナビを開く</button>' : '')
+    + '</div></div>';
+}
