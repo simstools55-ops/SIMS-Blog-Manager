@@ -262,3 +262,9 @@
 - Recreated Improvement Effect selection cells as standard boolean checkboxes.
 - Removed legacy invalid validation and string TRUE/FALSE values.
 - Added an explicit Close button to the repair completion navigator.
+
+
+## RC11 Repair navigator immediate close / Measurement time fix
+- Repair navigator closes immediately after any action button is clicked.
+- Measurement review times are standardized to 09:00 JST.
+- Existing date-only measurement dates are displayed as 09:00 JST to prevent timezone drift.
