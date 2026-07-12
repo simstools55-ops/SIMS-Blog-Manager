@@ -7079,3 +7079,175 @@ function onOpen() {
   try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) {}
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Developer hidden-sheets menu
+ *
+ * Developer版: true
+ * Product版:   false
+ * ========================================================================== */
+var SBM_ENABLE_DEVELOPER_MENU = true;
+
+function sbmDeveloperVisibleSheetNames_() {
+  return [
+    SBM_SHEETS.HOME,
+    SBM_SHEETS.TODAY,
+    SBM_SHEETS.EFFECT,
+    SBM_SHEETS.ARTICLE_DB,
+    SBM_SHEETS.FEEDBACK_HISTORY,
+    SBM_SHEETS.SETUP
+  ];
+}
+
+function sbmDeveloperInternalSheets_() {
+  var visible = {};
+  sbmDeveloperVisibleSheetNames_().forEach(function(name) {
+    visible[String(name)] = true;
+  });
+
+  return SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(function(sh) {
+    return !visible[sh.getName()];
+  });
+}
+
+/**
+ * 開発・不具合調査用に、内部シートをまとめて表示します。
+ */
+function sbmShowDeveloperSheets() {
+  var sheets = sbmDeveloperInternalSheets_();
+  var shown = [];
+
+  sheets.forEach(function(sh) {
+    try {
+      sh.showSheet();
+      shown.push(sh.getName());
+    } catch (e) {}
+  });
+
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert(
+    '開発者用',
+    shown.length
+      ? '内部シートを表示しました。\n\n' + shown.join('\n')
+      : '表示対象の内部シートはありません。',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+/**
+ * 内部シートをまとめて非表示へ戻します。
+ * 内部シートを開いている場合は、先にHomeへ移動します。
+ */
+function sbmHideDeveloperSheets() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var active = ss.getActiveSheet();
+  var visibleNames = sbmDeveloperVisibleSheetNames_();
+
+  if (active && visibleNames.indexOf(active.getName()) < 0) {
+    var home = ss.getSheetByName(SBM_SHEETS.HOME);
+    if (home) {
+      home.showSheet();
+      ss.setActiveSheet(home);
+    }
+  }
+
+  var hidden = [];
+  sbmDeveloperInternalSheets_().forEach(function(sh) {
+    try {
+      sh.hideSheet();
+      hidden.push(sh.getName());
+    } catch (e) {}
+  });
+
+  SpreadsheetApp.flush();
+  SpreadsheetApp.getUi().alert(
+    '開発者用',
+    hidden.length
+      ? '内部シートを非表示に戻しました。\n\n' + hidden.join('\n')
+      : '非表示対象の内部シートはありません。',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+/**
+ * 開発者が内部シート名を確認するための一覧表示。
+ */
+function sbmShowDeveloperSheetList() {
+  var sheets = sbmDeveloperInternalSheets_();
+  var lines = sheets.map(function(sh) {
+    return (sh.isSheetHidden() ? '非表示：' : '表示中：') + sh.getName();
+  });
+
+  SpreadsheetApp.getUi().alert(
+    '内部シート一覧',
+    lines.length ? lines.join('\n') : '内部シートはありません。',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
+/**
+ * 最終メニュー構成。
+ * Product版では SBM_ENABLE_DEVELOPER_MENU を false にするだけで
+ * 「開発者用」メニューが表示されなくなります。
+ */
+function onOpen() {
+  try {
+    sbmMigrateArticleManagementSheet_();
+    sbmMigrateEffectSheetName_();
+  } catch (e) {}
+
+  var ui = SpreadsheetApp.getUi();
+
+  ui.createMenu('SIMS-Blog-Manager')
+    .addItem('Home', 'sbmOpenHome')
+    .addItem('記事を更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addItem('ブログをセットアップ', 'sbmStartSetupWizard')
+    .addItem('シートを作成・修復', 'sbmInitializeSheets')
+    .addItem('設定', 'sbmOpenUserSettings')
+    .addItem('処理ログ', 'sbmOpenProcessLog')
+    .addToUi();
+
+  ui.createMenu('今日の改善操作')
+    .addItem('開く', 'sbmOpenTodayImprovement')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addItem('次の2件を表示', 'sbmShowMoreTodayRecommendations')
+    .addItem('初期2件に戻す', 'sbmResetTodayRecommendations')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addToUi();
+
+  ui.createMenu('改善効果操作')
+    .addItem('開く', 'sbmOpenEffectiveness')
+    .addItem('更新', 'sbmUpdateEffectiveness')
+    .addItem('詳細', 'sbmShowSelectedEffectDetail')
+    .addItem('7日延長', 'sbmContinueSelectedMonitoring')
+    .addItem('測定完了', 'sbmCompleteSelectedMeasurement')
+    .addToUi();
+
+  ui.createMenu('記事操作')
+    .addItem('開く', 'sbmOpenArticleDb')
+    .addItem('更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('詳細', 'sbmOpenSelectedArticleDbDetail')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addToUi();
+
+  ui.createMenu('改善履歴操作')
+    .addItem('開く', 'sbmOpenImprovementHistory')
+    .addItem('詳細', 'sbmOpenSelectedHistoryDetail')
+    .addItem('記事の全履歴', 'sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+  if (SBM_ENABLE_DEVELOPER_MENU) {
+    ui.createMenu('開発者用')
+      .addItem('内部シートを表示', 'sbmShowDeveloperSheets')
+      .addItem('内部シートを非表示', 'sbmHideDeveloperSheets')
+      .addItem('内部シート一覧', 'sbmShowDeveloperSheetList')
+      .addToUi();
+  }
+
+  try { sbmEnsureTodayRecommendations_('open'); } catch (e) {}
+  try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) {}
+}
+
