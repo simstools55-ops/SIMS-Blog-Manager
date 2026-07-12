@@ -6904,3 +6904,178 @@ function sbmFinalizeTodayImprovementSelection_() {
   SpreadsheetApp.flush();
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Setup wizard restore fix
+ * ========================================================================== */
+
+/**
+ * セットアップ画面を開くだけでなく、STEP1〜STEP5を実行できる
+ * セットアップナビゲーターを表示します。
+ */
+function sbmOpenSetup() {
+  sbmStartSetupWizard();
+}
+
+function sbmStartSetupWizard() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var setupSheet = ss.getSheetByName(SBM_SHEETS.SETUP);
+  if (setupSheet) {
+    try { setupSheet.showSheet(); } catch (e) {}
+    ss.setActiveSheet(setupSheet);
+  }
+
+  var statuses = {
+    step1: String(sbmGetSetting_('SetupBlogInfo', 'NO')) === 'YES',
+    step2: String(sbmGetSetting_('SetupApiGuide', 'NO')) === 'YES',
+    step3: String(sbmGetSetting_('ConnectionStatus', '')) === 'OK',
+    step4: String(sbmGetSetting_('ArticleDbUrlBuildComplete', 'NO')) === 'YES',
+    step5: String(sbmGetSetting_('ArticleInfoBuildComplete', 'NO')) === 'YES'
+  };
+
+  function mark(done) {
+    return done ? '<span class="done">完了</span>' : '<span class="todo">未完了</span>';
+  }
+
+  var html = '<!doctype html><html><head><base target="_top"><meta charset="UTF-8">'
+    + '<style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124;line-height:1.55}'
+    + 'h2{margin:0 0 8px;color:#0b8043}.lead{color:#5f6368;margin-bottom:14px}'
+    + '.step{border:1px solid #dadce0;border-radius:10px;padding:12px;margin:9px 0;background:#fff}'
+    + '.row{display:flex;align-items:center;justify-content:space-between;gap:12px}'
+    + '.title{font-weight:700}.desc{font-size:12px;color:#5f6368;margin-top:4px}'
+    + '.done{color:#0b8043;font-weight:700}.todo{color:#b06000;font-weight:700}'
+    + 'button{border:0;border-radius:7px;padding:9px 13px;font-weight:700;cursor:pointer;white-space:nowrap}'
+    + '.run{background:#1a73e8;color:#fff}.close{background:#fff;color:#3c4043;border:1px solid #9aa0a6}'
+    + '.footer{display:flex;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid #e5e7eb}'
+    + '</style></head><body>'
+    + '<h2>ブログのセットアップ</h2>'
+    + '<div class="lead">未完了のSTEPから順番に実行してください。ボタンを押すと、この画面を閉じて各処理を開始します。</div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">STEP1　ブログ情報を登録　' + mark(statuses.step1) + '</div>'
+    + '<div class="desc">ブログ名、ブログURL、Search Consoleプロパティを登録します。</div></div>'
+    + '<button class="run" onclick="runStep(1)">実行</button></div></div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">STEP2　Google Cloud APIガイド　' + mark(statuses.step2) + '</div>'
+    + '<div class="desc">必要なAPI設定と認証手順を確認します。</div></div>'
+    + '<button class="run" onclick="runStep(2)">実行</button></div></div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">STEP3　Search Console接続テスト　' + mark(statuses.step3) + '</div>'
+    + '<div class="desc">登録したプロパティへ接続できるか確認します。</div></div>'
+    + '<button class="run" onclick="runStep(3)">実行</button></div></div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">STEP4　記事管理を初回作成　' + mark(statuses.step4) + '</div>'
+    + '<div class="desc">Search ConsoleからURLと指標を取得し、記事管理を作成します。</div></div>'
+    + '<button class="run" onclick="runStep(4)">実行</button></div></div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">STEP5　記事情報を補完　' + mark(statuses.step5) + '</div>'
+    + '<div class="desc">記事タイトル、SEOタイトル、ディスクリプションなどを補完します。</div></div>'
+    + '<button class="run" onclick="runStep(5)">実行</button></div></div>'
+
+    + '<div class="step"><div class="row"><div><div class="title">セットアップ進捗を確認</div>'
+    + '<div class="desc">取得件数、補完済み件数、残り件数を確認します。</div></div>'
+    + '<button class="run" onclick="runStep(6)">確認</button></div></div>'
+
+    + '<div class="footer"><button class="close" onclick="google.script.host.close()">閉じる</button></div>'
+    + '<script>'
+    + 'function runStep(step){'
+    + 'google.script.run.sbmRunSetupWizardStep(step);'
+    + 'window.setTimeout(function(){google.script.host.close();},50);'
+    + '}'
+    + '</script></body></html>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(620).setHeight(720),
+    'ブログのセットアップ'
+  );
+}
+
+/**
+ * セットアップナビゲーターの各STEPを実行します。
+ */
+function sbmRunSetupWizardStep(step) {
+  step = Number(step || 0);
+  if (step === 1) return sbmSetupStep1BlogInfo();
+  if (step === 2) return sbmSetupStep2ApiGuide();
+  if (step === 3) return sbmSetupStep3ConnectionTest();
+  if (step === 4) return sbmSetupArticleDbContinueManual();
+  if (step === 5) return sbmSetupArticleInfoContinueManual();
+  if (step === 6) return sbmShowArticleDbSetupStatus();
+  return sbmAlert_('セットアップ', '実行するSTEPを選択してください。');
+}
+
+/**
+ * シート作成・修復完了画面の「ブログのセットアップ」も
+ * セットアップナビゲーターへ直接進めます。
+ */
+function sbmHandleRepairNextAction(action) {
+  action = String(action || 'home');
+  if (action === 'setup') {
+    sbmStartSetupWizard();
+    return true;
+  }
+  if (action === 'update') {
+    sbmCollectPageDataToArticleDbManual();
+    return true;
+  }
+  sbmOpenHome();
+  return true;
+}
+
+/**
+ * 上部メニューの最終構成。
+ * 「ブログをセットアップ」はシート表示ではなくナビゲーターを起動します。
+ */
+function onOpen() {
+  try {
+    sbmMigrateArticleManagementSheet_();
+    sbmMigrateEffectSheetName_();
+  } catch (e) {}
+
+  var ui = SpreadsheetApp.getUi();
+
+  ui.createMenu('SIMS-Blog-Manager')
+    .addItem('Home', 'sbmOpenHome')
+    .addItem('記事を更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addItem('ブログをセットアップ', 'sbmStartSetupWizard')
+    .addItem('シートを作成・修復', 'sbmInitializeSheets')
+    .addItem('設定', 'sbmOpenUserSettings')
+    .addItem('処理ログ', 'sbmOpenProcessLog')
+    .addToUi();
+
+  ui.createMenu('今日の改善操作')
+    .addItem('開く', 'sbmOpenTodayImprovement')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addItem('次の2件を表示', 'sbmShowMoreTodayRecommendations')
+    .addItem('初期2件に戻す', 'sbmResetTodayRecommendations')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addToUi();
+
+  ui.createMenu('改善効果操作')
+    .addItem('開く', 'sbmOpenEffectiveness')
+    .addItem('更新', 'sbmUpdateEffectiveness')
+    .addItem('詳細', 'sbmShowSelectedEffectDetail')
+    .addItem('7日延長', 'sbmContinueSelectedMonitoring')
+    .addItem('測定完了', 'sbmCompleteSelectedMeasurement')
+    .addToUi();
+
+  ui.createMenu('記事操作')
+    .addItem('開く', 'sbmOpenArticleDb')
+    .addItem('更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('詳細', 'sbmOpenSelectedArticleDbDetail')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addToUi();
+
+  ui.createMenu('改善履歴操作')
+    .addItem('開く', 'sbmOpenImprovementHistory')
+    .addItem('詳細', 'sbmOpenSelectedHistoryDetail')
+    .addItem('記事の全履歴', 'sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+  try { sbmEnsureTodayRecommendations_('open'); } catch (e) {}
+  try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) {}
+}
+
