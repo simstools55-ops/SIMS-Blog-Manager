@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-official-r1-s5';
+const SBM_VERSION = '5.0.0-official-rc1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -42,7 +42,7 @@ const SBM_HEADERS = Object.freeze({
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
   PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
-  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1回目測定日時','1回目判定','2回目測定日時','2回目判定','3回目測定日時','3回目判定','4回目測定日時','4回目判定','最新判定','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON']
+  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -3819,7 +3819,9 @@ function sbmOpenSystemLog(){ var sh=sbmGetOrCreateSheet_(SBM_SHEETS.SYSTEM_LOG);
 
 const SBM_HISTORY_HEADERS_V2 = [
   '選択','改善日','記事タイトル','改善概要','使用AI',
-  '1回目測定日時','1回目判定','2回目測定日時','2回目判定','3回目測定日時','3回目判定','4回目測定日時','4回目判定','最新判定',
+  '1週','2週','3週','4週','最終判定','状態',
+  '1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評',
+  '最終総括','最終改善提案',
   'ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ',
   '改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）',
   '注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON'
@@ -3873,11 +3875,13 @@ function sbmShowVersionInfo() {
 function sbmEnsureHistoryAndEffectSchemas_() {
   sbmMigrateSheetByHeaderNames_(SBM_SHEETS.FEEDBACK_HISTORY, SBM_HISTORY_HEADERS_V2, {
     '選択':['選択'], '改善日':['改善日','登録日時'], '記事タイトル':['記事タイトル'], '改善概要':['改善概要'], '使用AI':['使用AI'],
-    '1回目測定日時':['1回目測定日時'], '1回目判定':['1回目判定'],
-    '2回目測定日時':['2回目測定日時'], '2回目判定':['2回目判定'],
-    '3回目測定日時':['3回目測定日時'], '3回目判定':['3回目判定'],
-    '4回目測定日時':['4回目測定日時'], '4回目判定':['4回目判定'],
-    '最新判定':['最新判定','効果判定'],
+    '1週':['1週','1回目判定'], '2週':['2週','2回目判定'], '3週':['3週','3回目判定'], '4週':['4週','4回目判定'],
+    '最終判定':['最終判定','最新判定','効果判定'], '状態':['状態'],
+    '1回目測定日時':['1回目測定日時'], '1回目SIMS寸評':['1回目SIMS寸評'],
+    '2回目測定日時':['2回目測定日時'], '2回目SIMS寸評':['2回目SIMS寸評'],
+    '3回目測定日時':['3回目測定日時'], '3回目SIMS寸評':['3回目SIMS寸評'],
+    '4回目測定日時':['4回目測定日時'], '4回目SIMS寸評':['4回目SIMS寸評'],
+    '最終総括':['最終総括'], '最終改善提案':['最終改善提案'],
     'ArticleID':['ArticleID'], '記事URL':['記事URL'], '変更箇所':['変更箇所'],
     '変更後タイトル':['変更後タイトル'], '変更後SEOタイトル':['変更後SEOタイトル'],
     '変更後メタディスクリプション':['変更後メタディスクリプション'], 'メインクエリ':['メインクエリ'],
@@ -3942,14 +3946,18 @@ function sbmAppendImprovementHistory_(data,row,before) {
   var historyId = sbmNextImprovementHistoryId_();
   var articleTitle=String(row[SBM_HEADERS.ARTICLE_DB.indexOf('記事タイトル')]||data.new_values.article_title||before.title);
   var planSnapshot = sbmBuildImprovementPlanSnapshot_(data.article_url, data.article_id);
-  sh.appendRow([
-    false,data.completed_at||sbmNowText_(),articleTitle,data.summary,data.ai_name||'',
-    '','','','','','','','','測定待ち',
-    data.article_id,data.article_url,changed,data.new_values.article_title,data.new_values.seo_title,data.new_values.description,data.new_values.main_query,
-    data.improvement_type,data.confidence,String((data.expected_effect||{}).ctr||''),String((data.expected_effect||{}).clicks||''),data.next_action,
-    (data.kept_sections||[]).join(' / '),data.estimated_minutes,data.warnings.join(' / '),
-    before.clicks,before.impressions,before.ctr,before.position,data.raw_json||'',historyId,JSON.stringify(planSnapshot||{})
-  ]);
+  var record={
+    '選択':false,'改善日':data.completed_at||sbmNowText_(),'記事タイトル':articleTitle,'改善概要':data.summary,'使用AI':data.ai_name||'',
+    '1週':'未測定','2週':'未測定','3週':'未測定','4週':'未測定','最終判定':'測定待ち','状態':'測定待ち',
+    'ArticleID':data.article_id,'記事URL':data.article_url,'変更箇所':changed,'変更後タイトル':data.new_values.article_title,
+    '変更後SEOタイトル':data.new_values.seo_title,'変更後メタディスクリプション':data.new_values.description,'メインクエリ':data.new_values.main_query,
+    '改善規模':data.improvement_type,'確信度':data.confidence,'期待CTR効果':String((data.expected_effect||{}).ctr||''),
+    '期待クリック効果':String((data.expected_effect||{}).clicks||''),'次のアクション':data.next_action,
+    '維持した項目':(data.kept_sections||[]).join(' / '),'作業時間（分）':data.estimated_minutes,'注意事項':data.warnings.join(' / '),
+    '改善前クリック':before.clicks,'改善前表示回数':before.impressions,'改善前CTR':before.ctr,'改善前順位':before.position,
+    'AI改善結果JSON':data.raw_json||'','改善履歴ID':historyId,'改善計画JSON':JSON.stringify(planSnapshot||{})
+  };
+  sh.appendRow(SBM_HISTORY_HEADERS_V2.map(function(h){return record[h]!==undefined?record[h]:'';}));
   sbmStyleHistorySheetV2_();
   try{sbmUpdateEffectivenessCore_(false);}catch(e){}
 }
@@ -3965,7 +3973,7 @@ function sbmHistoryMeasurementState_(h) {
   var count=0, latestDate='', latestJudgment='測定待ち';
   for(var i=1;i<=4;i++){
     var dt=h[i+'回目測定日時'];
-    var judge=String(h[i+'回目判定']||'').trim();
+    var judge=String(h[i+'週']||h[i+'回目判定']||'').trim();
     if(dt!==''&&dt!==null&&dt!==undefined){ count=i; latestDate=dt; latestJudgment=judge||latestJudgment; }
   }
   return {count:count,latestDate:latestDate,latestJudgment:latestJudgment,complete:count>=4};
@@ -3981,7 +3989,32 @@ function sbmNextWeeklyDueDate_(historyRow) {
   return due;
 }
 
-function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt) {
+function sbmBuildWeeklyObservation_(week, ctrDelta, posDelta, clickDelta, impDelta) {
+  var parts=['改善後'+week+'週目の測定です。'];
+  parts.push(ctrDelta>0.001?'CTRは改善前より上昇しています。':ctrDelta<-0.001?'CTRは改善前より低下しています。':'CTRは改善前とほぼ同水準です。');
+  parts.push(posDelta>0.5?'掲載順位は改善前より上昇しています。':posDelta<-0.5?'掲載順位は改善前より低下しています。':'掲載順位に大きな変化はありません。');
+  parts.push(clickDelta>0?'クリック数は改善前より増加しています。':clickDelta<0?'クリック数は改善前より減少しています。':'クリック数は改善前と同水準です。');
+  if(impDelta>0) parts.push('表示回数は改善前より増えています。');
+  return parts.join('');
+}
+
+function sbmBuildFinalAssessment_(judgment, ctrDelta, posDelta, clickDelta) {
+  var summary='4週間の測定が完了しました。';
+  var proposal='';
+  if(judgment==='大きく改善'||judgment==='改善'){
+    summary+='改善前と比べて効果が確認でき、今回の改善は成功または改善傾向と判断します。';
+    proposal='現在の内容を維持し、同じ改善方法を類似記事へ展開できるか検討してください。';
+  }else if(judgment==='悪化'){
+    summary+='改善前より数値が低下しており、今回の改善効果は十分ではありませんでした。';
+    proposal='検索意図、タイトル、導入文、見出し構成を改めて確認し、再改善の対象として検討してください。';
+  }else{
+    summary+='大きな変化は確認できず、改善効果は限定的と判断します。';
+    proposal='表示回数・CTR・順位のうち伸びていない要素を確認し、次回の改善対象を絞り込んでください。';
+  }
+  return {summary:summary,proposal:proposal};
+}
+
+function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt,metrics) {
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), hm=sbmHeaderMap_(sh);
   var historyId=String(historyRow['改善履歴ID']||'').trim(), articleId=String(historyRow['ArticleID']||'').trim();
   var values=sh.getDataRange().getValues(), heads=values.shift().map(String), target=0;
@@ -3994,14 +4027,24 @@ function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt) {
   if(!target)return {recorded:false,count:0};
   var current=sbmRowRecord_(sh,target), state=sbmHistoryMeasurementState_(current);
   if(state.complete)return {recorded:false,count:4,complete:true};
-  var n=state.count+1, dateCol=hm[n+'回目測定日時'], judgeCol=hm[n+'回目判定'];
-  if(!dateCol||!judgeCol)return {recorded:false,count:state.count};
+  var n=state.count+1, dateCol=hm[n+'回目測定日時'], judgeCol=hm[n+'週'], commentCol=hm[n+'回目SIMS寸評'];
+  if(!dateCol||!judgeCol||!commentCol)return {recorded:false,count:state.count};
   var when=new Date(measuredAt.getTime());
+  var observation=sbmBuildWeeklyObservation_(n,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta,metrics.impDelta);
   sh.getRange(target,dateCol).setValue(when).setNumberFormat('yyyy年m月d日 H:mm');
   sh.getRange(target,judgeCol).setValue(judgment);
-  if(hm['最新判定'])sh.getRange(target,hm['最新判定']).setValue(judgment);
+  sh.getRange(target,commentCol).setValue(observation);
+  if(hm['状態'])sh.getRange(target,hm['状態']).setValue(n>=4?'完了':'測定中');
+  if(n>=4){
+    var final=sbmBuildFinalAssessment_(judgment,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta);
+    if(hm['最終判定'])sh.getRange(target,hm['最終判定']).setValue(judgment);
+    if(hm['最終総括'])sh.getRange(target,hm['最終総括']).setValue(final.summary);
+    if(hm['最終改善提案'])sh.getRange(target,hm['最終改善提案']).setValue(final.proposal);
+  }else if(hm['最終判定']){
+    sh.getRange(target,hm['最終判定']).setValue('測定中');
+  }
   SpreadsheetApp.flush();
-  return {recorded:true,count:n,complete:n>=4};
+  return {recorded:true,count:n,complete:n>=4,observation:observation};
 }
 
 
@@ -4015,10 +4058,10 @@ function sbmOpenSelectedArticleHistory(){
   var e=sbmEscapeHtml_,cards=items.slice().reverse().map(function(r){
     var measurements='';
     for(var i=1;i<=4;i++){
-      var dt=r[i+'回目測定日時'], judge=r[i+'回目判定'];
+      var dt=r[i+'回目測定日時'], judge=r[i+'週'];
       if(dt||judge)measurements+='<br>'+i+'回目：'+e(dt||'未測定')+' / '+e(judge||'未判定');
     }
-    return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最新判定']||'測定待ち')+'<br>AI：'+e(r['使用AI']||'未記録')+'<br>変更：'+e(r['変更箇所'])+'<br>概要：'+e(r['改善概要'])+measurements+'</div>';
+    return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最終判定']||r['状態']||'測定待ち')+'<br>AI：'+e(r['使用AI']||'未記録')+'<br>変更：'+e(r['変更箇所'])+'<br>概要：'+e(r['改善概要'])+measurements+'</div>';
   }).join('');
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput('<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px"><h2>記事の改善履歴</h2><h3>'+e(ctx.articleTitle)+'</h3>'+cards+'<div style="text-align:right;margin-top:18px"><button onclick="google.script.host.close()" style="padding:9px 18px">閉じる</button></div></div>').setWidth(720).setHeight(650),'記事の改善履歴');
 }
@@ -4075,8 +4118,8 @@ function sbmOpenSelectedHistoryArticleAll(){
   var rows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY).filter(function(r){return(id&&String(r['ArticleID']||'')===id)||sbmNormalizeUrl_(r['記事URL']||'')===sbmNormalizeUrl_(url);});
   if(!rows.length)return sbmAlert_('改善履歴','履歴がありません。');
   var e=sbmEscapeHtml_,cards=rows.slice().reverse().map(function(r){
-    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=r[i+'回目判定'];if(dt||j)measurements+='<br>'+i+'回目：'+e(dt||'未測定')+' / '+e(j||'未判定');}
-    return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最新判定']||'測定待ち')+'<br>'+e(r['改善概要'])+'<br>変更：'+e(r['変更箇所'])+measurements+'</div>';
+    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=r[i+'週'];if(dt||j)measurements+='<br>'+i+'回目：'+e(dt||'未測定')+' / '+e(j||'未判定');}
+    return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最終判定']||r['状態']||'測定待ち')+'<br>'+e(r['改善概要'])+'<br>変更：'+e(r['変更箇所'])+measurements+'</div>';
   }).join('');
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput('<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px"><h2>記事の全改善履歴</h2><h3>'+e(o['記事タイトル'])+'</h3>'+cards+'<div style="text-align:right;margin-top:18px"><button onclick="google.script.host.close()" style="padding:9px 18px;border:1px solid #9aa0a6;border-radius:6px;background:#fff;font-weight:700;cursor:pointer">閉じる</button></div></div>').setWidth(720).setHeight(650),'記事の全改善履歴');
 }
@@ -4096,13 +4139,13 @@ function sbmUpdateEffectivenessCore_(showAlert){
     var state=sbmHistoryMeasurementState_(h), due=sbmNextWeeklyDueDate_(h), dueReached=!!due&&now>=due;
     var currentJudgment=sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta);
     if(dueReached&&!state.complete){
-      var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now);
-      if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'回目判定']=currentJudgment;h['最新判定']=currentJudgment;}
+      var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now,{ctrDelta:ctrDelta,posDelta:posDelta,clickDelta:clickDelta,impDelta:impDelta});
+      if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'週']=currentJudgment;h[(rec.count)+'回目SIMS寸評']=rec.observation;h['最終判定']=rec.complete?currentJudgment:'測定中';h['状態']=rec.complete?'完了':'測定中';}
       state=sbmHistoryMeasurementState_(h);due=sbmNextWeeklyDueDate_(h);
     }
     var judgment=state.count>0?state.latestJudgment:'測定待ち';
     var rating=sbmEvaluateEffectResult_(judgment==='大きく改善'?'成功':judgment==='改善'?'改善傾向':judgment==='悪化'?'要再改善':judgment,posDelta,ctrDelta,clickDelta);
-    var next=state.complete?'4回の週次測定が完了しました。最終判定を確認してください。':sbmSuggestEffectNextActionV2_(judgment,h,a);
+    var next=state.complete?String(h['最終改善提案']||'4回の週次測定が完了しました。最終判定を確認してください。'):'次回測定日まで経過を観察します。';
     var comment=state.complete?'改善後28日間の測定が完了しました。':(state.count+'回測定済み。次回は改善後'+((state.count+1)*7)+'日目です。');
     rows.push([false,due||'【測定完了】',state.count+'回／4回',h['記事タイトル'],elapsed,beforeCtr,currentCtr,beforePos,currentPos,judgment,h['ArticleID'],h['記事URL'],h['改善日'],h['改善概要'],h['変更箇所'],beforeClicks,currentClicks,clickDelta,beforeImp,currentImp,impDelta,ctrDelta,posDelta,h['期待CTR効果'],h['期待クリック効果'],rating,next,comment,state.latestDate||'',state.complete?'測定完了':'モニター中',h['改善履歴ID']||'']);
     if(state.complete)sbmMarkArticleMeasurementComplete_(h['ArticleID']);
@@ -4208,7 +4251,7 @@ function sbmLegacyHistoryObjects_(){
     out.push({
       '選択':false,'改善日':improveDate,'記事タイトル':o['記事タイトル']||a['記事タイトル']||'',
       '改善概要':o['改善内容']||'','使用AI':'','1回目測定日時':reviewDate,
-      '1回目判定':o['状態']==='完了'?'完了':'','最新判定':o['状態']==='完了'?'完了':'測定待ち','ArticleID':a['ArticleID']||'','記事URL':url,
+      '1週':o['状態']==='完了'?'完了':'未測定','2週':'未測定','3週':'未測定','4週':'未測定','最終判定':o['状態']==='完了'?'完了':'測定待ち','状態':o['状態']==='完了'?'完了':'測定待ち','ArticleID':a['ArticleID']||'','記事URL':url,
       '変更箇所':o['修正内容']||'','変更後タイトル':'','変更後SEOタイトル':'','変更後メタディスクリプション':'',
       'メインクエリ':o['メインクエリ']||a['メインクエリ']||'','改善規模':'','確信度':'','期待CTR効果':'',
       '期待クリック効果':'','次のアクション':'monitor','維持した項目':'','作業時間（分）':o['所要時間']||'',
@@ -4235,9 +4278,14 @@ function sbmRepairImprovementHistoryData_(){
   }
   var legacy=sbmLegacyHistoryObjects_(), merged=[], seen={};
   current.concat(legacy).forEach(function(o){
-    var k=sbmHistoryKey_(o); if(seen[k]) return; seen[k]=true; merged.push(o);
+    var k=sbmHistoryKey_(o); if(seen[k]) return; seen[k]=true;
+    var measured=0; for(var wi=1;wi<=4;wi++){if(o[wi+'回目測定日時'])measured=wi;}
+    if(!o['状態'])o['状態']=measured>=4?'完了':measured>0?'測定中':'測定待ち';
+    if(!o['最終判定'])o['最終判定']=measured>=4?(o['4週']||'完了'):(measured>0?'測定中':'測定待ち');
+    for(var wj=1;wj<=4;wj++){if(!o[wj+'週'])o[wj+'週']='未測定';}
+    merged.push(o);
   });
-  var aliases={'改善日':['改善日','登録日時'],'1回目測定日時':['1回目測定日時'],'最新判定':['最新判定','効果判定'],'記事URL':['記事URL','URL'],'改善概要':['改善概要','改善内容'],'変更箇所':['変更箇所','修正内容']};
+  var aliases={'改善日':['改善日','登録日時'],'1週':['1週','1回目判定'],'2週':['2週','2回目判定'],'3週':['3週','3回目判定'],'4週':['4週','4回目判定'],'1回目測定日時':['1回目測定日時'],'最終判定':['最終判定','最新判定','効果判定'],'記事URL':['記事URL','URL'],'改善概要':['改善概要','改善内容'],'変更箇所':['変更箇所','修正内容']};
   var rows=merged.map(function(o){return headers.map(function(h){var names=aliases[h]||[h];for(var i=0;i<names.length;i++){if(o[names[i]]!==undefined)return o[names[i]];}return h==='選択'?false:'';});});
   sh.clear();
   if(sh.getMaxColumns()<headers.length) sh.insertColumnsAfter(sh.getMaxColumns(),headers.length-sh.getMaxColumns());
@@ -4461,6 +4509,9 @@ function sbmEffectDetailHtmlV2_(o) {
       + '<td style="border:1px solid #ddd;padding:8px;text-align:right">' + f(delta) + '</td>'
       + '</tr>';
   }
+  var historyRows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[];
+  var history=historyRows.filter(function(h){return String(h['改善履歴ID']||'')===String(o['改善履歴ID']||'');})[0]||{};
+  var weeklyHtml=sbmWeeklyHistoryHtml_(history);
   var beforeDate = sbmFormatEffectDateLabel_(o['改善日']);
   var currentDate = sbmFormatEffectDateLabel_(o['最終更新'] || o['更新日時'] || new Date());
   return '<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px;line-height:1.65;color:#202124">'
@@ -4478,6 +4529,7 @@ function sbmEffectDetailHtmlV2_(o) {
     + tr('CTR', o['改善前CTR'], o['現在CTR'], o['CTR変化'], 'ctr')
     + tr('掲載順位', o['改善前順位'], o['現在順位'], o['順位変化'], 'num')
     + '</table>'
+    + '<h3>4週間の測定履歴</h3>' + weeklyHtml
     + '<h3>SIMS評価</h3><p>' + cell(o['SIMS評価']) + '</p>'
     + '<h3>次のアクション</h3><p>' + cell(o['次のアクション']) + '</p><p>' + cell(o['測定コメント']) + '</p>'
     + '</div>';
@@ -4600,6 +4652,21 @@ function sbmUnifiedHistoryMetricCard_(name, before, current, formatter) {
     + '</div>';
 }
 
+function sbmWeeklyHistoryHtml_(o) {
+  var e=sbmEscapeHtml_, html='';
+  for(var i=1;i<=4;i++){
+    var dt=o[i+'回目測定日時'], judge=o[i+'週'], comment=o[i+'回目SIMS寸評'];
+    html+='<div class="box"><b>'+i+'週目</b><br>測定日時：'+e(sbmHistoryDisplayValue_(dt))+'<br>判定：'+e(sbmHistoryDisplayValue_(judge))+'<br>SIMS寸評：'+e(sbmHistoryDisplayValue_(comment))+'</div>';
+  }
+  if(String(o['状態']||'')==='完了'){
+    html+='<div class="box"><b>最終判定：'+e(sbmHistoryDisplayValue_(o['最終判定']))+'</b><br>'+e(sbmHistoryDisplayValue_(o['最終総括']))+'</div>'
+      +'<div class="box"><b>次の改善提案</b><br>'+e(sbmHistoryDisplayValue_(o['最終改善提案']))+'</div>';
+  }else{
+    html+='<div class="empty">4週目の測定完了後に、最終判定と改善提案を表示します。</div>';
+  }
+  return html;
+}
+
 function sbmHistoryDetailHtmlV2_(o) {
   o = o || {};
   var e = sbmEscapeHtml_;
@@ -4652,6 +4719,7 @@ function sbmHistoryDetailHtmlV2_(o) {
     + '<div class="field"><span class="label">メインクエリ</span><div class="box">'+e(mainQuery)+'</div></div>'
     + '<div class="field"><span class="label">注意事項</span><div class="box">'+e(sbmHistoryDisplayValue_(o['注意事項']))+'</div></div>';
 
+  var weeklyHtml=sbmWeeklyHistoryHtml_(o);
   var effectHtml;
   if (effect) {
     effectHtml = '<div class="field"><span class="label">判定：</span>'+e(sbmHistoryDisplayValue_(effect['判定']))
@@ -4666,7 +4734,8 @@ function sbmHistoryDetailHtmlV2_(o) {
       + '</div>'
       + '<div class="field"><span class="label">SIMS評価</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['SIMS評価']))+'</div></div>'
       + '<div class="field"><span class="label">次のアクション</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['次のアクション']))+'</div></div>'
-      + '<div class="field"><span class="label">測定コメント</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['測定コメント']))+'</div></div>';
+      + '<div class="field"><span class="label">測定コメント</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['測定コメント']))+'</div></div>'
+      + '<h3>4週間の測定履歴</h3>'+weeklyHtml;
   } else {
     effectHtml = sbmUnifiedHistorySectionEmpty_('対応する改善効果データはありません。改善履歴IDがない旧履歴、またはまだ効果データが作成されていない改善です。');
   }
@@ -4885,12 +4954,12 @@ function sbmRebuildImprovementHistoryList_() {
       }
 
 
-      if (hm['最新判定'] && hm['改善履歴ID']) {
+      if (hm['最終判定'] && hm['改善履歴ID']) {
         var historyId = String(row[hm['改善履歴ID'] - 1] || '').trim();
         if (historyId && effectByHistoryId[historyId]) {
-          row[hm['最新判定'] - 1] = effectByHistoryId[historyId];
-        } else if (!String(row[hm['最新判定'] - 1] || '').trim()) {
-          row[hm['最新判定'] - 1] = '測定待ち';
+          if (String(row[hm['状態'] - 1] || '') === '完了') row[hm['最終判定'] - 1] = effectByHistoryId[historyId];
+        } else if (!String(row[hm['最終判定'] - 1] || '').trim()) {
+          row[hm['最終判定'] - 1] = '測定待ち';
         }
       }
     });
@@ -4910,7 +4979,7 @@ function sbmRebuildImprovementHistoryList_() {
   }
 
   // 利用者向けの一覧列だけを表示します。
-  var visibleHeaders = ['選択','改善日','記事タイトル','改善概要','使用AI','1回目測定日時','1回目判定','2回目測定日時','2回目判定','3回目測定日時','3回目判定','4回目測定日時','4回目判定','最新判定'];
+  var visibleHeaders = ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態'];
 
   sh.showSheet();
   sh.setFrozenRows(1);
@@ -4938,7 +5007,7 @@ function sbmRebuildImprovementHistoryList_() {
     '記事タイトル': 360,
     '改善概要': 470,
     '使用AI': 100,
-    '1回目測定日時': 150,'1回目判定': 95,'2回目測定日時': 150,'2回目判定': 95,'3回目測定日時': 150,'3回目判定': 95,'4回目測定日時': 150,'4回目判定': 95,'最新判定': 110
+    '1週':80,'2週':80,'3週':80,'4週':80,'最終判定':110,'状態':90
   };
   Object.keys(widths).forEach(function(header) {
     if (hm[header]) sh.setColumnWidth(hm[header], widths[header]);
@@ -5045,7 +5114,7 @@ function sbmApplyHistoryFinalStyle_() {
     sh.setColumnWidth(hm['改善日'], 185);
     if (n) sh.getRange(2, hm['改善日'], n, 1).setWrap(true).setVerticalAlignment('top');
   }
-  for(var mi=1;mi<=4;mi++){var dc=hm[mi+'回目測定日時'];if(dc){sh.setColumnWidth(dc,155);if(n)sh.getRange(2,dc,n,1).setWrap(true).setVerticalAlignment('top');}}
+  for(var mi=1;mi<=4;mi++){var jc=hm[mi+'週'];if(jc){sh.setColumnWidth(jc,80);if(n)sh.getRange(2,jc,n,1).setHorizontalAlignment('center');}}
   if (hm['記事タイトル'] && n) sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
   if (hm['改善概要'] && n) sh.getRange(2, hm['改善概要'], n, 1).setWrap(true);
   if (n) {
