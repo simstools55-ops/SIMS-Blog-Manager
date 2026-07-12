@@ -268,3 +268,14 @@
 - Repair navigator closes immediately after any action button is clicked.
 - Measurement review times are standardized to 09:00 JST.
 - Existing date-only measurement dates are displayed as 09:00 JST to prevent timezone drift.
+
+
+## RC11 Today Improvement checkbox cleanup fix
+- Today Improvement checkboxes are now created only on rows with an article title.
+- Removed lingering checkboxes from blank rows, formatted rows, and rows with hidden internal values only.
+
+
+## RC11 Today Improvement strict rebuild fix
+- Clears all body cells, formats, and validations before rebuilding Today Improvement.
+- Creates checkboxes only for displayed recommendation rows.
+- Removes stale blank-row checkboxes permanently.
