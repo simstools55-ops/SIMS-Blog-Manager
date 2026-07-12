@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 RC11
+ * SIMS-Blog-Manager Product 5.0 Official Release 1 Sprint 5
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-rc11-history-effect-fix';
+const SBM_VERSION = '5.0.0-official-r1-s5';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -42,7 +42,7 @@ const SBM_HEADERS = Object.freeze({
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
   PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
-  FEEDBACK_HISTORY: ['登録日時','ArticleID','記事URL','記事タイトル','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','改善概要','注意事項','1回目測定日時','1回目判定','2回目測定日時','2回目判定','3回目測定日時','3回目判定','4回目測定日時','4回目判定','最新判定','改善前クリック','改善前表示回数','改善前CTR','改善前順位']
+  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1回目測定日時','1回目判定','2回目測定日時','2回目判定','3回目測定日時','3回目判定','4回目測定日時','4回目判定','最新判定','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -58,9 +58,6 @@ const SBM_DEFAULTS = Object.freeze({
   DAILY_FETCH_MAX_ROWS: 1500,
   PAGE_FETCH_MAX_ROWS: 5000,
   QUERY_FETCH_PAGE_LIMIT: 50,
-  MEASURE_DAYS: '14,30',
-  TEST_DAILY_DAYS: 7,
-  MEASUREMENT_MODE: 'TEST_DAILY_7D',
   ANALYSIS_CANDIDATE_LIMIT: 50,
   ANALYSIS_ARTICLE_LIMIT: 120,
   TITLE_FETCH_DEFAULT: 'ON',
@@ -3036,14 +3033,6 @@ function sbmInProgressDetailHtml_(o) {
 }
 
 
-function sbmRecordTodayMeasurement() {
-  // RCテスト用：改善後7日間は、毎日この日の測定値を履歴へ残します。
-  // 同じ日・同じ記事・同じ改善日の重複記録は自動で防止します。
-  sbmUpdateEffectivenessCore_(false);
-  sbmAlert_('本日の測定を記録しました', '測定履歴に本日の値を記録しました。\n\nテスト期間中は、改善後7日間だけ毎日確認できます。\n通常運用では14日・30日評価へ戻す想定です。');
-}
-
-
 function sbmEvaluateEffectResult_(outcome, posDelta, ctrDelta, clickDelta) {
   if (outcome === '成功' || outcome === '改善傾向') {
     if ((posDelta && posDelta >= 3) || ctrDelta >= 0.01 || clickDelta >= 20) return '★★★★★ 改善成功。順位・CTR・クリックのいずれかに明確な改善が見られます。';
@@ -3855,6 +3844,32 @@ function sbmApplyProductVisibleTabs_() {
   if (home) ss.setActiveSheet(home);
 }
 
+/**
+ * Product 5.0 Official の効果測定スキーマを強制適用します。
+ * 古い「測定予定日」列や旧メニューに依存せず、改善履歴を4回測定形式へ移行します。
+ */
+function sbmApplyProduct5OfficialMeasurementSchema_() {
+  sbmEnsureHistoryAndEffectSchemas_();
+  var history = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  var effect = sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
+  try { sbmStyleHistorySheetV2_(); } catch (e) {}
+  try { sbmStyleEffectSheetV2_(); } catch (e) {}
+  SpreadsheetApp.flush();
+  return {
+    version: SBM_VERSION,
+    historyHeaders: history.getRange(1, 1, 1, SBM_HISTORY_HEADERS_V2.length).getDisplayValues()[0],
+    effectHeaders: effect.getRange(1, 1, 1, SBM_EFFECT_HEADERS_V2.length).getDisplayValues()[0]
+  };
+}
+
+function sbmShowVersionInfo() {
+  SpreadsheetApp.getUi().alert(
+    'SIMS-Blog-Manager バージョン',
+    '現在のコード：' + SBM_VERSION + '\n効果測定：7日・14日・21日・28日の4回測定',
+    SpreadsheetApp.getUi().ButtonSet.OK
+  );
+}
+
 function sbmEnsureHistoryAndEffectSchemas_() {
   sbmMigrateSheetByHeaderNames_(SBM_SHEETS.FEEDBACK_HISTORY, SBM_HISTORY_HEADERS_V2, {
     '選択':['選択'], '改善日':['改善日','登録日時'], '記事タイトル':['記事タイトル'], '改善概要':['改善概要'], '使用AI':['使用AI'],
@@ -4222,7 +4237,7 @@ function sbmRepairImprovementHistoryData_(){
   current.concat(legacy).forEach(function(o){
     var k=sbmHistoryKey_(o); if(seen[k]) return; seen[k]=true; merged.push(o);
   });
-  var aliases={'改善日':['改善日','登録日時'],'1回目測定日時':['1回目測定日時','測定予定日','効果測定予定日'],'最新判定':['最新判定','効果判定'],'記事URL':['記事URL','URL'],'改善概要':['改善概要','改善内容'],'変更箇所':['変更箇所','修正内容']};
+  var aliases={'改善日':['改善日','登録日時'],'1回目測定日時':['1回目測定日時'],'最新判定':['最新判定','効果判定'],'記事URL':['記事URL','URL'],'改善概要':['改善概要','改善内容'],'変更箇所':['変更箇所','修正内容']};
   var rows=merged.map(function(o){return headers.map(function(h){var names=aliases[h]||[h];for(var i=0;i<names.length;i++){if(o[names[i]]!==undefined)return o[names[i]];}return h==='選択'?false:'';});});
   sh.clear();
   if(sh.getMaxColumns()<headers.length) sh.insertColumnsAfter(sh.getMaxColumns(),headers.length-sh.getMaxColumns());
@@ -4783,6 +4798,9 @@ function sbmInitializeSheets(showAlert) {
   sbmEnsureUserSheets_();
   sbmApplySheetUx_();
 
+  // Product 5.0 Official: 改善履歴を4回測定形式へ強制移行
+  sbmApplyProduct5OfficialMeasurementSchema_();
+
   // 改善履歴と改善効果を非破壊で再構築・再表示
   try {
     sbmRefreshHistoryAndEffectAfterRepair_();
@@ -4814,7 +4832,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRefreshHome_();
   SpreadsheetApp.flush();
 
-  sbmLog_('InitializeSheets', 'Done', 'RC11 checkbox/header/history refresh fix');
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.0 Official four-week measurement schema applied');
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 
@@ -6099,7 +6117,10 @@ function onOpen() {
   try {
     sbmMigrateArticleManagementSheet_();
     sbmMigrateEffectSheetName_();
-  } catch (e) {}
+    sbmApplyProduct5OfficialMeasurementSchema_();
+  } catch (e) {
+    try { sbmLog_('OnOpenOfficialSchema', 'Warning', String(e)); } catch (ignore) {}
+  }
 
   var ui = SpreadsheetApp.getUi();
 
@@ -6110,6 +6131,8 @@ function onOpen() {
     .addItem('ブログ情報の変更','sbmOpenBlogInfoChange')
     .addSeparator()
     .addItem('シートを作成・修復','sbmInitializeSheets')
+    .addSeparator()
+    .addItem('バージョン情報','sbmShowVersionInfo')
     .addToUi();
 
   ui.createMenu('今日の改善操作')
