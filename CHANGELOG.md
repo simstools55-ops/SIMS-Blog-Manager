@@ -204,3 +204,10 @@
 - 記事管理の詳細ポップアップを「選択記事の詳細」へ改称。
 - 選択記事の詳細から改善ナビを開くボタンを追加。
 - 詳細表示の空欄は「ー」で統一。
+
+
+## RC11 Japanese Date Time / Dialog Close Fix
+- Date objects and long GMT strings are displayed in Japanese user-friendly format.
+- Example: `2026年7月25日（土）朝9:00`.
+- Added a visible `閉じる` button to modal dialogs, while retaining the top-right close icon.
+- Article, history, and effectiveness detail views use the same date formatter.
