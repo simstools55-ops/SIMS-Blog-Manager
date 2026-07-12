@@ -211,3 +211,10 @@
 - Example: `2026年7月25日（土）朝9:00`.
 - Added a visible `閉じる` button to modal dialogs, while retaining the top-right close icon.
 - Article, history, and effectiveness detail views use the same date formatter.
+
+## RC11 Improvement History / Effect Link
+- New improvement registrations receive a unique `改善履歴ID` such as `H000001`.
+- The same ID is written into the corresponding improvement-effect record.
+- Improvement-history detail now includes a button to open the exact linked improvement-effect detail.
+- Old history rows without an ID are not guessed or searched; they show `対応する改善効果データはありません。`.
+- The link is one improvement event to one effect record, enabling future analysis of which changes produced results.
