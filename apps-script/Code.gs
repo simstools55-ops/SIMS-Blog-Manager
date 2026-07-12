@@ -5636,3 +5636,175 @@ function sbmInitializeSheets(showAlert) {
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Improvement History List Rebuild After Repair
+ * ========================================================================== */
+
+/**
+ * 改善履歴一覧を、保存済みデータを維持したまま再構築します。
+ * シート作成・修復後と改善履歴を開いたときに共通利用します。
+ */
+function sbmRebuildImprovementHistoryList_() {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+
+  // 既存データを非破壊で正規化します。
+  try { sbmEnsureHistoryAndEffectSchemas_(); } catch (e) {}
+  try { sbmRepairImprovementHistoryData_(); } catch (e) {
+    sbmLog_('HistoryRebuildRepair', 'Warning', String(e));
+  }
+
+  sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  if (sh.getLastRow() < 1) {
+    sh.getRange(1, 1, 1, SBM_HISTORY_HEADERS_V2.length).setValues([SBM_HISTORY_HEADERS_V2]);
+  }
+
+  var hm = sbmHeaderMap_(sh);
+  var lastRow = sh.getLastRow();
+  var lastCol = Math.max(sh.getLastColumn(), SBM_HISTORY_HEADERS_V2.length);
+
+  // 改善効果の判定を改善履歴IDで反映します。
+  var effectByHistoryId = {};
+  try {
+    var effectRows = sbmRowsAsObjects_(SBM_SHEETS.EFFECT) || [];
+    effectRows.forEach(function(o) {
+      var id = String(o['改善履歴ID'] || '').trim();
+      if (id) effectByHistoryId[id] = String(o['判定'] || o['効果判定'] || '測定待ち');
+    });
+  } catch (e) {}
+
+  if (lastRow > 1) {
+    var values = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    values.forEach(function(row) {
+      if (hm['選択']) row[hm['選択'] - 1] = false;
+
+      if (hm['改善日']) {
+        var v = row[hm['改善日'] - 1];
+        if (v !== '' && v !== null) row[hm['改善日'] - 1] = sbmJapaneseDateTimeText_(v);
+      }
+
+      if (hm['測定予定日']) {
+        var rv = row[hm['測定予定日'] - 1];
+        if (rv !== '' && rv !== null) row[hm['測定予定日'] - 1] = sbmJapaneseDateTimeText_(rv);
+      }
+
+      if (hm['効果判定'] && hm['改善履歴ID']) {
+        var historyId = String(row[hm['改善履歴ID'] - 1] || '').trim();
+        if (historyId && effectByHistoryId[historyId]) {
+          row[hm['効果判定'] - 1] = effectByHistoryId[historyId];
+        } else if (!String(row[hm['効果判定'] - 1] || '').trim()) {
+          row[hm['効果判定'] - 1] = '測定待ち';
+        }
+      }
+    });
+
+    // 改善日の新しい順。解析不能な旧データは末尾へ。
+    var dateIndex = hm['改善日'] ? hm['改善日'] - 1 : -1;
+    values.sort(function(a, b) {
+      if (dateIndex < 0) return 0;
+      var da = new Date(String(a[dateIndex] || '').replace(/年|月/g, '/').replace(/日.*$/, ''));
+      var db = new Date(String(b[dateIndex] || '').replace(/年|月/g, '/').replace(/日.*$/, ''));
+      var ta = isNaN(da.getTime()) ? 0 : da.getTime();
+      var tb = isNaN(db.getTime()) ? 0 : db.getTime();
+      return tb - ta;
+    });
+
+    sh.getRange(2, 1, values.length, lastCol).setValues(values);
+  }
+
+  // 利用者向けの一覧列だけを表示します。
+  var visibleHeaders = ['選択', '改善日', '記事タイトル', '改善概要', '使用AI', '測定予定日', '効果判定'];
+
+  sh.showSheet();
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, lastCol)
+    .setBackground('#0b8043')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrap(false);
+  sh.setRowHeight(1, 34);
+
+  // いったん全列を表示し、内部列だけ隠します。
+  try { sh.showColumns(1, sh.getMaxColumns()); } catch (e) {}
+  for (var col = 1; col <= sh.getLastColumn(); col++) {
+    var header = String(sh.getRange(1, col).getValue() || '').trim();
+    if (visibleHeaders.indexOf(header) < 0) {
+      try { sh.hideColumns(col); } catch (e) {}
+    }
+  }
+
+  var widths = {
+    '選択': 52,
+    '改善日': 170,
+    '記事タイトル': 360,
+    '改善概要': 470,
+    '使用AI': 100,
+    '測定予定日': 170,
+    '効果判定': 110
+  };
+  Object.keys(widths).forEach(function(header) {
+    if (hm[header]) sh.setColumnWidth(hm[header], widths[header]);
+  });
+
+  if (sh.getLastRow() > 1) {
+    var n = sh.getLastRow() - 1;
+    sh.getRange(2, 1, n, lastCol).setVerticalAlignment('top');
+
+    if (hm['記事タイトル']) {
+      sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
+    }
+    if (hm['改善概要']) {
+      sh.getRange(2, hm['改善概要'], n, 1).setWrap(true);
+    }
+    if (hm['改善日']) {
+      sh.getRange(2, hm['改善日'], n, 1).setWrap(false);
+    }
+    if (hm['測定予定日']) {
+      sh.getRange(2, hm['測定予定日'], n, 1).setWrap(false);
+    }
+
+    sh.setRowHeights(2, n, 58);
+    try { sh.autoResizeRows(2, n); } catch (e) {}
+  }
+
+  // 実データ行だけにチェックボックスを設定します。
+  try { sbmApplySelectionUi_(sh); } catch (e) {}
+
+  SpreadsheetApp.flush();
+  return Math.max(0, sh.getLastRow() - 1);
+}
+
+/**
+ * シート作成・修復から呼ばれる最終版。
+ * 改善履歴と改善効果を再生成した後、改善履歴一覧を再描画します。
+ */
+function sbmRefreshHistoryAndEffectAfterRepair_() {
+  try { sbmEnsureHistoryAndEffectSchemas_(); } catch (e) {}
+  try { sbmRepairImprovementHistoryData_(); } catch (e) {
+    sbmLog_('RepairImprovementHistory', 'Warning', String(e));
+  }
+  try { sbmUpdateEffectivenessCore_(false); } catch (e) {
+    sbmLog_('RepairImprovementEffect', 'Warning', String(e));
+  }
+  try { sbmStyleEffectSheetV2_(); } catch (e) {}
+  try { sbmRebuildImprovementHistoryList_(); } catch (e) {
+    sbmLog_('RepairHistoryListRebuild', 'Warning', String(e));
+  }
+  SpreadsheetApp.flush();
+}
+
+/**
+ * 改善履歴を開く操作でも、最新の一覧と表示書式を反映します。
+ */
+function sbmOpenImprovementHistory() {
+  sbmRebuildImprovementHistoryList_();
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);
+  sh.activate();
+}
+
