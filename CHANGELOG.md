@@ -300,3 +300,11 @@
 - Added a dedicated Blog Information Change dialog.
 - Reduced the main user menu to Home, Initial Setup, Blog Information Change, and Repair.
 - Moved Process Log actions into the Developer menu.
+
+## Product 5.0 Official Release 1 Sprint 2 - 2026-07-12
+
+- Apps Scriptの同名関数再定義76件を削除
+- `Code.gs`を7,602行から6,056行へスリム化
+- 固有関数名348件と配布用単一ファイル構成を維持
+- `product/PRODUCT5_SLIM_BASE_AUDIT.md`を追加
+- `product/PRODUCT5_SLIM_AUDIT.json`を追加
