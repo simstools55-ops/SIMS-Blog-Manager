@@ -6342,3 +6342,190 @@ function sbmShowRepairCompletionNavigator_() {
   );
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Improvement Effect checkbox / Repair close button fix
+ * ========================================================================== */
+
+/**
+ * 一覧シートの「選択」列を標準チェックボックスへ統一します。
+ * 文字列 "TRUE" / "FALSE" や旧入力規則を残さず、無効表示を防ぎます。
+ */
+function sbmApplySelectionUi_(sh) {
+  if (!sh || sh.getLastColumn() < 1) return;
+
+  var hm = sbmHeaderMap_(sh);
+  var col = hm['選択'];
+  if (!col) return;
+
+  sh.setColumnWidth(col, 52);
+  sh.getRange(1, col).setHorizontalAlignment('center').setWrap(false);
+
+  var dataLast = sbmSelectionDataLastRow_(sh);
+  var clearLast = Math.max(sh.getLastRow(), dataLast, 2);
+  var fullRange = sh.getRange(2, col, clearLast - 1, 1);
+
+  // 旧入力規則と文字列値を完全に除去
+  fullRange.clearDataValidations();
+  fullRange.clearContent();
+
+  if (dataLast >= 2) {
+    var target = sh.getRange(2, col, dataLast - 1, 1);
+    target.insertCheckboxes();
+    target.setValues(Array.from({length: dataLast - 1}, function(){ return [false]; }));
+    target.setHorizontalAlignment('center');
+  }
+}
+
+/**
+ * 改善効果の書式適用時に、チェックボックスを標準形式で再設定します。
+ */
+function sbmStyleEffectSheetV2_() {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
+  sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh, SBM_EFFECT_HEADERS_V2);
+
+  sh.showSheet();
+  sh.setFrozenRows(1);
+
+  var lc = Math.max(sh.getLastColumn(), SBM_EFFECT_HEADERS_V2.length);
+  sh.getRange(1, 1, 1, lc)
+    .setBackground('#1f4e78')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+    .setWrap(false);
+  sh.setRowHeight(1, 34);
+
+  var hm = sbmHeaderMap_(sh);
+  var widths = {
+    '選択':52,
+    '測定予定日':185,
+    '記事タイトル':360,
+    '経過日数':90,
+    '改善前CTR':100,
+    '現在CTR':100,
+    '改善前順位':100,
+    '現在順位':100,
+    '判定':110
+  };
+  Object.keys(widths).forEach(function(h) {
+    if (hm[h]) sh.setColumnWidth(hm[h], widths[h]);
+  });
+
+  if (sh.getMaxColumns() >= 10) {
+    try { sh.hideColumns(10, sh.getMaxColumns() - 9); } catch (e) {}
+  }
+
+  var n = Math.max(0, sh.getLastRow() - 1);
+  if (n) {
+    sh.getRange(2, 1, n, Math.min(9, sh.getLastColumn())).setVerticalAlignment('top');
+
+    if (hm['測定予定日']) {
+      var range = sh.getRange(2, hm['測定予定日'], n, 1);
+      var vals = range.getValues();
+      for (var i = 0; i < vals.length; i++) {
+        if (vals[i][0] !== '' && vals[i][0] !== null) {
+          vals[i][0] = sbmJapaneseDateTimeText_(vals[i][0]);
+        }
+      }
+      range.setValues(vals).setWrap(true);
+    }
+
+    if (hm['記事タイトル']) sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
+    if (hm['経過日数']) sh.getRange(2, hm['経過日数'], n, 1).setNumberFormat('0');
+    if (hm['改善前CTR']) sh.getRange(2, hm['改善前CTR'], n, 1).setNumberFormat('0.0%');
+    if (hm['現在CTR']) sh.getRange(2, hm['現在CTR'], n, 1).setNumberFormat('0.0%');
+    if (hm['改善前順位']) sh.getRange(2, hm['改善前順位'], n, 1).setNumberFormat('0.0');
+    if (hm['現在順位']) sh.getRange(2, hm['現在順位'], n, 1).setNumberFormat('0.0');
+
+    sh.setRowHeights(2, n, 58);
+    try { sh.autoResizeRows(2, n); } catch (e) {}
+  }
+
+  sbmApplySelectionUi_(sh);
+  SpreadsheetApp.flush();
+}
+
+/**
+ * シート作成・修復完了ナビゲーター。
+ * 3つの遷移ボタンに加えて、明示的な「閉じる」を追加します。
+ */
+function sbmShowRepairCompletionNavigator_() {
+  var counts = {total:0, monitored:0, today:0};
+
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
+    if (sh && sh.getLastRow() > 1) {
+      var hm = sbmHeaderMap_(sh);
+      var rows = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getDisplayValues();
+      counts.total = rows.length;
+      if (hm['作業状態']) {
+        var idx = hm['作業状態'] - 1;
+        rows.forEach(function(r) {
+          var v = String(r[idx] || '');
+          if (v.indexOf('モニター中') >= 0) counts.monitored++;
+          if (v.indexOf('今日の改善') >= 0) counts.today++;
+        });
+      }
+    }
+  } catch (e) {}
+
+  var rawLast = sbmGetSetting_(
+    'LastArticleDbFetchAt',
+    sbmGetSetting_('LastFetchDateTime', sbmGetSetting_('LastFetchDate', ''))
+  );
+  var lastText = rawLast ? sbmJapaneseDateTimeText_(rawLast) : '未実行';
+
+  var html = '<!doctype html><html><head><base target="_top"><meta charset="UTF-8">'
+    + '<style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124;line-height:1.55}'
+    + 'h2{margin:0 0 12px;color:#0b8043;font-size:21px}'
+    + '.box{background:#f6f8fa;border:1px solid #dadce0;border-radius:10px;padding:13px 15px;margin:12px 0}'
+    + '.done{margin:4px 0}.status{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}'
+    + '.actions{display:grid;gap:9px;margin-top:16px}'
+    + '.footer{display:flex;justify-content:flex-end;margin-top:14px;padding-top:12px;border-top:1px solid #e5e7eb}'
+    + 'button{border:0;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer}'
+    + '.setup{background:#1a73e8;color:#fff}.update{background:#0b8043;color:#fff}.home{background:#e8eaed;color:#202124}'
+    + '.close{background:#fff;color:#3c4043;border:1px solid #9aa0a6;min-width:110px}'
+    + '#msg{font-size:12px;color:#5f6368;margin-top:10px}'
+    + '</style></head><body>'
+    + '<h2>シートの作成・修復が完了しました</h2>'
+    + '<div class="box">'
+    + '<div class="done">✓ 必要なシートと見出しを確認・修復</div>'
+    + '<div class="done">✓ 改善履歴を保持して一覧と書式を再構築</div>'
+    + '<div class="done">✓ 改善効果をモニター中の記事から更新</div>'
+    + '<div class="done">✓ 記事管理の表示形式を調整</div>'
+    + '</div>'
+    + '<div class="box status">'
+    + '<div>記事管理：<b>' + counts.total + '件</b></div>'
+    + '<div>モニター中：<b>' + counts.monitored + '件</b></div>'
+    + '<div>今日の改善：<b>' + counts.today + '件</b></div>'
+    + '<div>最終更新日時：<b>' + sbmEscapeHtml_(lastText) + '</b></div>'
+    + '</div>'
+    + '<div class="actions">'
+    + '<button class="setup" onclick="go(\'setup\')">📦 ブログのセットアップ</button>'
+    + '<button class="update" onclick="go(\'update\')">🔄 記事管理を更新</button>'
+    + '<button class="home" onclick="go(\'home\')">🏠 そのまま使う（HOMEへ）</button>'
+    + '</div>'
+    + '<div class="footer"><button class="close" onclick="google.script.host.close()">閉じる</button></div>'
+    + '<div id="msg"></div>'
+    + '<script>'
+    + 'function go(a){'
+    + 'document.querySelectorAll("button").forEach(function(b){b.disabled=true});'
+    + 'document.getElementById("msg").textContent="処理しています…";'
+    + 'google.script.run'
+    + '.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)?e.message:String(e);document.querySelectorAll("button").forEach(function(b){b.disabled=false});})'
+    + '.withSuccessHandler(function(){google.script.host.close();})'
+    + '.sbmHandleRepairNextAction(a);'
+    + '}'
+    + '</script></body></html>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(500).setHeight(660),
+    'シートの作成・修復'
+  );
+}
+
