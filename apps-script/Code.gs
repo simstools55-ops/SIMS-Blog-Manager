@@ -5808,3 +5808,374 @@ function sbmOpenImprovementHistory() {
   sh.activate();
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: UI / Effect / Article navigation reliability fix
+ * ========================================================================== */
+
+/**
+ * 記事管理の作業状態に応じた行背景色。
+ * 参照先が未定義だった不具合を解消します。
+ */
+function sbmApplyArticleDbRowColors_(sh) {
+  if (!sh || sh.getLastRow() < 2) return;
+  var hm = sbmHeaderMap_(sh);
+  var stateCol = hm['作業状態'];
+  if (!stateCol) return;
+
+  var lastRow = sh.getLastRow();
+  var lastCol = sh.getLastColumn();
+  var states = sh.getRange(2, stateCol, lastRow - 1, 1).getDisplayValues();
+
+  for (var i = 0; i < states.length; i++) {
+    var state = String(states[i][0] || '');
+    var bg = '#ffffff';
+    if (state.indexOf('モニター中') >= 0) bg = '#e8f0fe';
+    else if (state.indexOf('今日の改善') >= 0) bg = '#fff2cc';
+    else if (state.indexOf('改善中') >= 0) bg = '#fce8e6';
+    sh.getRange(i + 2, 1, 1, lastCol).setBackground(bg);
+  }
+}
+
+/**
+ * 日本語日時も再解析できる共通日付パーサー。
+ */
+function sbmParseDate_(value) {
+  if (value === null || value === undefined || String(value).trim() === '') return null;
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return isNaN(value.getTime()) ? null : value;
+  }
+
+  var s = String(value).trim();
+  var jp = s.match(/^(\d{4})年(\d{1,2})月(\d{1,2})日(?:（.）)?(?:(朝|午前|午後|夜|深夜)(\d{1,2}):(\d{2}))?/);
+  if (jp) {
+    var y = Number(jp[1]), m = Number(jp[2]) - 1, d = Number(jp[3]);
+    var h = Number(jp[5] || 0), min = Number(jp[6] || 0);
+    if (jp[4] === '午後' && h < 12) h += 12;
+    if (jp[4] === '夜' && h < 12) h += 12;
+    return new Date(y, m, d, h, min, 0);
+  }
+
+  var normalized = s.replace(/\./g, '/').replace(/-/g, '/');
+  var d2 = new Date(normalized);
+  return isNaN(d2.getTime()) ? null : d2;
+}
+
+/**
+ * 改善履歴一覧の最終表示書式。
+ * 改善日・測定予定日は折り返して、日本語表記を見切れなくします。
+ */
+function sbmApplyHistoryFinalStyle_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  if (!sh) return;
+  var hm = sbmHeaderMap_(sh);
+  var n = Math.max(0, sh.getLastRow() - 1);
+
+  if (hm['改善日']) {
+    sh.setColumnWidth(hm['改善日'], 185);
+    if (n) sh.getRange(2, hm['改善日'], n, 1).setWrap(true).setVerticalAlignment('top');
+  }
+  if (hm['測定予定日']) {
+    sh.setColumnWidth(hm['測定予定日'], 185);
+    if (n) sh.getRange(2, hm['測定予定日'], n, 1).setWrap(true).setVerticalAlignment('top');
+  }
+  if (hm['記事タイトル'] && n) sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
+  if (hm['改善概要'] && n) sh.getRange(2, hm['改善概要'], n, 1).setWrap(true);
+  if (n) {
+    sh.setRowHeights(2, n, 64);
+    try { sh.autoResizeRows(2, n); } catch (e) {}
+  }
+}
+
+/**
+ * 改善効果シートの最終表示書式。
+ */
+function sbmStyleEffectSheetV2_() {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
+  sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh, SBM_EFFECT_HEADERS_V2);
+
+  sh.showSheet();
+  sh.setFrozenRows(1);
+
+  var lc = Math.max(sh.getLastColumn(), SBM_EFFECT_HEADERS_V2.length);
+  sh.getRange(1, 1, 1, lc)
+    .setBackground('#1f4e78')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setVerticalAlignment('middle')
+    .setWrap(false);
+  sh.setRowHeight(1, 34);
+
+  var hm = sbmHeaderMap_(sh);
+  var widths = {
+    '選択':52,
+    '測定予定日':185,
+    '記事タイトル':360,
+    '経過日数':90,
+    '改善前CTR':100,
+    '現在CTR':100,
+    '改善前順位':100,
+    '現在順位':100,
+    '判定':110
+  };
+  Object.keys(widths).forEach(function(h) {
+    if (hm[h]) sh.setColumnWidth(hm[h], widths[h]);
+  });
+
+  if (sh.getMaxColumns() >= 10) {
+    try { sh.hideColumns(10, sh.getMaxColumns() - 9); } catch (e) {}
+  }
+
+  var n = Math.max(0, sh.getLastRow() - 1);
+  if (n) {
+    sh.getRange(2, 1, n, Math.min(9, sh.getLastColumn())).setVerticalAlignment('top');
+
+    if (hm['測定予定日']) {
+      var range = sh.getRange(2, hm['測定予定日'], n, 1);
+      var vals = range.getValues();
+      for (var i = 0; i < vals.length; i++) {
+        if (vals[i][0] !== '' && vals[i][0] !== null) {
+          vals[i][0] = sbmJapaneseDateTimeText_(vals[i][0]);
+        }
+      }
+      range.setValues(vals).setWrap(true);
+    }
+    if (hm['記事タイトル']) sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
+    if (hm['経過日数']) sh.getRange(2, hm['経過日数'], n, 1).setNumberFormat('0');
+    if (hm['改善前CTR']) sh.getRange(2, hm['改善前CTR'], n, 1).setNumberFormat('0.0%');
+    if (hm['現在CTR']) sh.getRange(2, hm['現在CTR'], n, 1).setNumberFormat('0.0%');
+    if (hm['改善前順位']) sh.getRange(2, hm['改善前順位'], n, 1).setNumberFormat('0.0');
+    if (hm['現在順位']) sh.getRange(2, hm['現在順位'], n, 1).setNumberFormat('0.0');
+
+    sh.setRowHeights(2, n, 58);
+    try { sh.autoResizeRows(2, n); } catch (e) {}
+  }
+
+  try { sbmApplySelectionUi_(sh); } catch (e) {}
+  SpreadsheetApp.flush();
+}
+
+/**
+ * HOMEの最終更新表示を利用者向けに統一します。
+ */
+function sbmRefreshHome_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.HOME);
+  if (!sh) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+
+  var rows = [];
+  try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
+  var counts = sbmRankCountsFromRows_(rows);
+  var work = {unstarted:0,today:0,progress:0,monitor:0,done:0,newArticles:0,unfilled:0,stale30:0};
+
+  rows.forEach(function(r) {
+    var w = String(r['作業状態'] || '未着手');
+    if (w.indexOf('今日の改善') >= 0) work.today++;
+    else if (w.indexOf('改善中') >= 0) work.progress++;
+    else if (w.indexOf('モニター中') >= 0) work.monitor++;
+    else if (w.indexOf('完了') >= 0) work.done++;
+    else work.unstarted++;
+
+    if (String(r['管理フラグ'] || '').indexOf('新規記事') >= 0) work.newArticles++;
+    if (String(r['記事情報補完済み'] || '') !== '○') work.unfilled++;
+    if ((sbmNumber_(r['連続未取得日数']) || 0) >= 30) work.stale30++;
+  });
+
+  var blogName = String(sbmGetSetting_('BlogName', ''));
+  var blogUrl = String(sbmGetSetting_('BlogUrl', ''));
+  sh.getRange('B2').setValue(blogName);
+  if (blogUrl) {
+    sh.getRange('D2').setFormula('=HYPERLINK("' + blogUrl.replace(/"/g,'""') + '","' + blogUrl.replace(/"/g,'""') + '")');
+  } else {
+    sh.getRange('D2').clearContent();
+  }
+
+  sh.getRange('B3').setValue(rows.length + '件');
+  sh.getRange('C3').setValue('最終更新日時');
+  var lastUpdate = sbmGetSetting_('LastArticleDbFetchAt', '');
+  sh.getRange('D3').setValue(lastUpdate ? sbmJapaneseDateTimeText_(lastUpdate) : 'ー');
+
+  sh.getRange('B5:B9').setValues([
+    [counts['🏆 エース'] + '件'],
+    [counts['✅ 安定'] + '件'],
+    [counts['📈 成長'] + '件'],
+    [counts['🌱 育成'] + '件'],
+    [counts['⚠️ 低迷'] + '件']
+  ]);
+  sh.getRange('D5:D9').setValues([
+    [work.unstarted + '件'],
+    [work.today + '件'],
+    [work.progress + '件'],
+    [work.monitor + '件'],
+    [work.done + '件']
+  ]);
+  sh.getRange('B11').setValue(work.newArticles + '件');
+  sh.getRange('D11').setValue(work.unfilled + '件');
+  sh.getRange('B12').setValue(work.stale30 + '件');
+
+  var health = sbmBlogHealthComment_(counts, rows.length);
+  var m = health.match(/^【([^】]+)】(.*)$/);
+  sh.getRange('B13').setValue(m ? m[1] : '現在地');
+  sh.getRange('B14').setValue(m ? m[2] : health);
+
+  var c = sbmArticleDbInfoCompletionCounts_();
+  sh.getRange('B22').setValue(String(sbmGetSetting_('ArticleDbUrlBuildStatus', '未開始')));
+  sh.getRange('D22').setValue(c.total + '件');
+  sh.getRange('B23').setValue(String(sbmGetSetting_('ArticleInfoBuildStatus', '未開始')));
+  sh.getRange('D23').setValue(c.completed + '件');
+  sh.getRange('B24').setValue(
+    String(sbmGetSetting_('ArticleDbUrlBuildComplete','NO')) === 'YES' &&
+    String(sbmGetSetting_('ArticleInfoBuildComplete','NO')) === 'YES' ? '完了' : '未完了'
+  );
+  sh.getRange('D24').setValue(c.remaining + '件');
+}
+
+/**
+ * 記事詳細から改善ナビを開くボタンのHTML。
+ * サーバー処理成功後に元ダイアログを閉じます。
+ */
+function sbmArticleDetailNaviButtonHtml_(url) {
+  url = String(url || '');
+  if (!url) return '';
+  var arg = JSON.stringify(url);
+  return '<button type="button" onclick="this.disabled=true;google.script.run'
+    + '.withSuccessHandler(function(){google.script.host.close();})'
+    + '.withFailureHandler(function(e){this.disabled=false;alert(e.message||String(e));}.bind(this))'
+    + '.sbmOpenImprovementNaviFromArticleDetail(' + arg + ')"'
+    + ' style="border:0;background:#0b8043;color:#fff;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer">'
+    + '改善詳細（改善ナビ）を開く</button>';
+}
+
+/**
+ * 記事管理詳細の最終版。
+ */
+function sbmArticleDbDetailHtml_(o) {
+  var e = sbmEscapeHtml_;
+  function value(v) { return sbmDetailDash_(v); }
+  function row(label, v) {
+    return '<tr><th style="text-align:left;width:180px;padding:8px;border-bottom:1px solid #e5e7eb;color:#5f6368;vertical-align:top">'
+      + e(label) + '</th><td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap">'
+      + e(value(v)) + '</td></tr>';
+  }
+
+  var rank = String(o['記事ランク'] || '');
+  var work = String(o['作業状態'] || '');
+  var advice = sbmArticleDbWorkAdvice_(rank, work);
+  var url = String(o['記事URL'] || '');
+
+  return '<div style="font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Noto Sans JP,sans-serif;padding:20px;line-height:1.65;color:#202124">'
+    + '<h2 style="margin:0 0 12px;color:#0b8043">選択記事の詳細</h2>'
+    + '<h3 style="margin:0 0 14px">' + e(value(o['記事タイトル'])) + '</h3>'
+    + '<div style="background:#f1f8f4;border-left:5px solid #0b8043;padding:12px;margin-bottom:16px"><b>'
+    + e(value(rank)) + ' × ' + e(value(work)) + '</b><br>' + e(value(advice)) + '</div>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+    + row('記事ランク', rank)
+    + row('作業状態', work)
+    + row('メインクエリ', o['メインクエリ'])
+    + row('クリック数', o['クリック数表示'] || o['クリック数'])
+    + row('表示回数', o['表示回数表示'] || o['表示回数'])
+    + row('CTR', o['CTR表示'] || o['CTR'])
+    + row('掲載順位', o['掲載順位表示'] || o['掲載順位'])
+    + row('SEOタイトル', o['SEOタイトル'])
+    + row('メタディスクリプション', o['メタディスクリプション'])
+    + row('最終取得日時', o['最終取得日時'])
+    + row('ArticleID', o['ArticleID'])
+    + row('記事情報補完済み', o['記事情報補完済み'])
+    + row('補完日時', o['補完日時'])
+    + row('備考', o['備考'])
+    + '</table>'
+    + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">'
+    + sbmArticleDetailNaviButtonHtml_(url)
+    + '<button type="button" onclick="google.script.host.close()" style="border:1px solid #9aa0a6;background:#fff;color:#3c4043;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer">閉じる</button>'
+    + '</div></div>';
+}
+
+/**
+ * シート作成・修復後の最終更新。
+ */
+function sbmRefreshHistoryAndEffectAfterRepair_() {
+  try { sbmEnsureHistoryAndEffectSchemas_(); } catch (e) {}
+  try { sbmRepairImprovementHistoryData_(); } catch (e) {
+    sbmLog_('RepairImprovementHistory', 'Warning', String(e));
+  }
+  try { sbmUpdateEffectivenessCore_(false); } catch (e) {
+    sbmLog_('RepairImprovementEffect', 'Warning', String(e));
+  }
+  try { sbmRebuildImprovementHistoryList_(); } catch (e) {
+    sbmLog_('RepairHistoryListRebuild', 'Warning', String(e));
+  }
+  try { sbmApplyHistoryFinalStyle_(); } catch (e) {}
+  try { sbmStyleEffectSheetV2_(); } catch (e) {}
+  SpreadsheetApp.flush();
+}
+
+/**
+ * 改善履歴を開く際も最終書式を適用します。
+ */
+function sbmOpenImprovementHistory() {
+  sbmRebuildImprovementHistoryList_();
+  sbmApplyHistoryFinalStyle_();
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);
+  sh.activate();
+  SpreadsheetApp.flush();
+}
+
+/**
+ * 利用者向けメニューの最終構成。
+ * 記事操作から「並べ替え」「ブラウザで開く」「全履歴」を削除します。
+ */
+function onOpen() {
+  try {
+    sbmMigrateArticleManagementSheet_();
+    sbmMigrateEffectSheetName_();
+  } catch (e) {}
+
+  var ui = SpreadsheetApp.getUi();
+
+  ui.createMenu('SIMS-Blog-Manager')
+    .addItem('Home', 'sbmOpenHome')
+    .addItem('記事を更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addItem('ブログをセットアップ', 'sbmOpenSetup')
+    .addItem('シートを作成・修復', 'sbmInitializeSheets')
+    .addItem('設定', 'sbmOpenUserSettings')
+    .addItem('処理ログ', 'sbmOpenProcessLog')
+    .addToUi();
+
+  ui.createMenu('今日の改善操作')
+    .addItem('開く', 'sbmOpenTodayImprovement')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addItem('次の2件を表示', 'sbmShowMoreTodayRecommendations')
+    .addItem('初期2件に戻す', 'sbmResetTodayRecommendations')
+    .addItem('改善結果を登録', 'sbmOpenImprovementFeedbackDialog')
+    .addToUi();
+
+  ui.createMenu('改善効果操作')
+    .addItem('開く', 'sbmOpenEffectiveness')
+    .addItem('更新', 'sbmUpdateEffectiveness')
+    .addItem('詳細', 'sbmShowSelectedEffectDetail')
+    .addItem('7日延長', 'sbmContinueSelectedMonitoring')
+    .addItem('測定完了', 'sbmCompleteSelectedMeasurement')
+    .addToUi();
+
+  ui.createMenu('記事操作')
+    .addItem('開く', 'sbmOpenArticleDb')
+    .addItem('更新', 'sbmCollectPageDataToArticleDbManual')
+    .addItem('詳細', 'sbmOpenSelectedArticleDbDetail')
+    .addItem('改善詳細（改善ナビ）', 'sbmOpenSelectedImprovementNavi')
+    .addToUi();
+
+  ui.createMenu('改善履歴操作')
+    .addItem('開く', 'sbmOpenImprovementHistory')
+    .addItem('詳細', 'sbmOpenSelectedHistoryDetail')
+    .addItem('記事の全履歴', 'sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+  try { sbmEnsureTodayRecommendations_('open'); } catch (e) {}
+  try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) {}
+}
+
