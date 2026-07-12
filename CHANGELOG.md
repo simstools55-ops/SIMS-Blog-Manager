@@ -249,3 +249,10 @@
 - Changed Home label to `最終更新日時` and unified Japanese date/time display.
 - Fixed Article Detail to Improvement Navi transition.
 - Removed Article menu items: sort, browser open, and all history.
+
+
+## RC11 Article detail HTML / Repair navigator time fix
+- Rebuilt Article Detail as a complete HTML document.
+- Removed unsafe inline URL embedding that caused malformed HTML errors.
+- Fixed the Article Detail to Improvement Navi action.
+- Repair completion navigator now uses the same Japanese date/time format as Improvement History.
