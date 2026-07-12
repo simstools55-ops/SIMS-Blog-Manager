@@ -4933,3 +4933,93 @@ function onOpen(){
   try{sbmEnsureTodayRecommendations_('open');}catch(e){}
   try{sbmPromptArticleDbUpdateOnOpen_();}catch(e){}
 }
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11 History Detail Readability Fix
+ * - 変更後データをAI改善結果JSONから補完
+ * - 欠損値は「ー」表示
+ * - 改善前指標を項目別カード＋適切な数値書式で表示
+ * - 改善履歴一覧のタイトル・概要を折り返し表示
+ * ========================================================================== */
+function sbmHistoryDisplayValue_(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return 'ー';
+  return String(v);
+}
+function sbmHistoryNumberText_(v) {
+  var n = Number(String(v === null || v === undefined ? '' : v).replace(/,/g,''));
+  if (!isFinite(n)) return 'ー';
+  return Math.round(n).toLocaleString('ja-JP');
+}
+function sbmHistoryDecimalText_(v) {
+  var n = Number(String(v === null || v === undefined ? '' : v).replace(/,/g,''));
+  if (!isFinite(n)) return 'ー';
+  return n.toFixed(1);
+}
+function sbmHistoryPercentText_(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return 'ー';
+  var n;
+  try { n = sbmNormalizeCtrNumber_(v); } catch (e) { n = Number(String(v).replace('%','').replace(/,/g,'')); if (isFinite(n) && n > 1) n /= 100; }
+  if (!isFinite(n)) return 'ー';
+  return (n * 100).toFixed(1) + '%';
+}
+function sbmHistoryJsonNewValues_(o) {
+  var out = {article_title:'', seo_title:'', description:'', main_query:''};
+  var raw = o && o['AI改善結果JSON'];
+  if (!raw) return out;
+  try {
+    var obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    var nv = obj.new_values || obj.new_data || {};
+    out.article_title = nv.article_title || nv.title || '';
+    out.seo_title = nv.seo_title || '';
+    out.description = nv.description || '';
+    out.main_query = nv.main_query || obj.main_query || '';
+  } catch (e) {}
+  return out;
+}
+function sbmHistoryDetailHtmlV2_(o) {
+  o = o || {};
+  var e = sbmEscapeHtml_;
+  var nv = sbmHistoryJsonNewValues_(o);
+  var articleTitle = sbmHistoryDisplayValue_(o['変更後タイトル'] || nv.article_title);
+  var seoTitle = sbmHistoryDisplayValue_(o['変更後SEOタイトル'] || nv.seo_title);
+  var description = sbmHistoryDisplayValue_(o['変更後メタディスクリプション'] || nv.description);
+  var mainQuery = sbmHistoryDisplayValue_(o['メインクエリ'] || nv.main_query);
+  var css = '<style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;line-height:1.65;color:#202124}h2{margin:0 0 8px}h3{margin:22px 0 8px}.meta{background:#f8f9fa;border-radius:8px;padding:12px}.field{margin:8px 0}.label{font-weight:700}.box{border:1px solid #dadce0;border-radius:8px;padding:12px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.metric{border:1px solid #dadce0;border-radius:8px;padding:12px;background:#fff}.metric .name{font-size:12px;color:#5f6368}.metric .value{font-size:20px;font-weight:700;margin-top:4px}@media(max-width:620px){.metrics{grid-template-columns:1fr}}</style>';
+  return '<!doctype html><html><head><base target="_top">'+css+'</head><body>'+
+    '<h2>改善履歴の詳細</h2><h3>'+e(sbmHistoryDisplayValue_(o['記事タイトル']))+'</h3>'+
+    '<div class="meta"><div class="field"><span class="label">改善日：</span>'+e(sbmHistoryDisplayValue_(o['改善日']))+'</div>'+
+    '<div class="field"><span class="label">使用AI：</span>'+e(sbmHistoryDisplayValue_(o['使用AI']))+'</div>'+
+    '<div class="field"><span class="label">効果判定：</span>'+e(sbmHistoryDisplayValue_(o['効果判定']))+'</div></div>'+
+    '<h3>改善概要</h3><div class="box">'+e(sbmHistoryDisplayValue_(o['改善概要']))+'</div>'+
+    '<div class="field"><span class="label">変更箇所：</span>'+e(sbmHistoryDisplayValue_(o['変更箇所']))+'</div>'+
+    '<div class="field"><span class="label">改善規模：</span>'+e(sbmHistoryDisplayValue_(o['改善規模']))+'　<span class="label">確信度：</span>'+e(sbmHistoryDisplayValue_(o['確信度']))+'　<span class="label">作業時間：</span>'+e(sbmHistoryDisplayValue_(o['作業時間（分）']))+(sbmHistoryDisplayValue_(o['作業時間（分）'])==='ー'?'':'分')+'</div>'+
+    '<h3>期待効果</h3><div class="box"><b>CTR：</b>'+e(sbmHistoryDisplayValue_(o['期待CTR効果']))+'<br><b>クリック：</b>'+e(sbmHistoryDisplayValue_(o['期待クリック効果']))+'</div>'+
+    '<div class="field"><span class="label">次のアクション：</span>'+e(sbmHistoryDisplayValue_(o['次のアクション']))+'</div>'+
+    '<div class="field"><span class="label">測定予定日：</span>'+e(sbmHistoryDisplayValue_(o['測定予定日']))+'</div>'+
+    '<h3>変更後のデータ</h3>'+
+    '<div class="field"><span class="label">記事タイトル</span><div class="box">'+e(articleTitle)+'</div></div>'+
+    '<div class="field"><span class="label">SEOタイトル</span><div class="box">'+e(seoTitle)+'</div></div>'+
+    '<div class="field"><span class="label">メタディスクリプション</span><div class="box">'+e(description)+'</div></div>'+
+    '<div class="field"><span class="label">メインクエリ</span><div class="box">'+e(mainQuery)+'</div></div>'+
+    '<h3>改善前の指標</h3><div class="metrics">'+
+      '<div class="metric"><div class="name">クリック数</div><div class="value">'+e(sbmHistoryNumberText_(o['改善前クリック']))+'</div></div>'+
+      '<div class="metric"><div class="name">表示回数</div><div class="value">'+e(sbmHistoryNumberText_(o['改善前表示回数']))+'</div></div>'+
+      '<div class="metric"><div class="name">CTR</div><div class="value">'+e(sbmHistoryPercentText_(o['改善前CTR']))+'</div></div>'+
+      '<div class="metric"><div class="name">掲載順位</div><div class="value">'+e(sbmHistoryDecimalText_(o['改善前順位']))+'</div></div>'+
+    '</div><h3>注意事項</h3><div class="box">'+e(sbmHistoryDisplayValue_(o['注意事項']))+'</div></body></html>';
+}
+function sbmStyleHistorySheetV2_(){
+  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY); sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh,SBM_HISTORY_HEADERS_V2);
+  sh.showSheet(); sh.setFrozenRows(1);
+  sh.getRange(1,1,1,SBM_HISTORY_HEADERS_V2.length).setBackground('#0b8043').setFontColor('#fff').setFontWeight('bold').setWrap(false).setVerticalAlignment('middle');
+  var widths=[60,105,330,430,90,115,100]; widths.forEach(function(w,i){sh.setColumnWidth(i+1,w);});
+  if(sh.getMaxColumns()>=8){try{sh.hideColumns(8,sh.getMaxColumns()-7);}catch(e){}}
+  if(sh.getLastRow()>1){
+    var n=sh.getLastRow()-1;
+    sh.getRange(2,1,n,7).setVerticalAlignment('top');
+    sh.getRange(2,3,n,2).setWrap(true); // 記事タイトル・改善概要
+    sh.getRange(2,1,n,2).setWrap(false);
+    sh.autoResizeRows(2,n);
+  }
+}
