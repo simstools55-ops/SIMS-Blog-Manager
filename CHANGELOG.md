@@ -285,3 +285,9 @@
 - Restored a complete STEP1-STEP5 setup navigator.
 - `ブログをセットアップ` now launches the setup workflow instead of only opening the Setup sheet.
 - Repair completion setup button now opens the same setup navigator.
+
+
+## RC11 Developer hidden-sheets menu
+- Added a Developer menu to show, hide, and list internal sheets.
+- Added one-line switch `SBM_ENABLE_DEVELOPER_MENU`.
+- Set the switch to `false` for the Product distribution build.
