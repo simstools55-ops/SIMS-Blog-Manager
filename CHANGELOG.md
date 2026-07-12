@@ -1,3 +1,9 @@
+## Product 5.0 Release 1 Sprint 3.3
+
+- 測定延長が改善効果更新後に元へ戻る根本原因を修正
+- 推奨確認日数を延長後の日数へ同期
+- 見出し直接上書きによる列ずれリスクを除去
+
 # Product 5.0 RC11 History Detail Readability Fix
 
 - 改善履歴詳細の変更後データをAI改善結果JSONから補完
