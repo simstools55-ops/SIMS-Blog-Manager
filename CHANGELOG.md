@@ -240,3 +240,12 @@
 - Reapplies visible columns, widths, wrapping, row heights, checkboxes, and newest-first order.
 - Refreshes effect judgement by Improvement History ID.
 - Rebuilds the list again whenever the Improvement History sheet is opened.
+
+
+## RC11 UI / Effect / Article navigation reliability fix
+- Added the missing Article Management row-color function.
+- Wrapped Improvement History dates and measurement dates.
+- Restored Improvement Effect header styling and corrected numeric formats.
+- Changed Home label to `最終更新日時` and unified Japanese date/time display.
+- Fixed Article Detail to Improvement Navi transition.
+- Removed Article menu items: sort, browser open, and all history.
