@@ -279,3 +279,9 @@
 - Clears all body cells, formats, and validations before rebuilding Today Improvement.
 - Creates checkboxes only for displayed recommendation rows.
 - Removes stale blank-row checkboxes permanently.
+
+
+## RC11 Setup wizard restore fix
+- Restored a complete STEP1-STEP5 setup navigator.
+- `ブログをセットアップ` now launches the setup workflow instead of only opening the Setup sheet.
+- Repair completion setup button now opens the same setup navigator.
