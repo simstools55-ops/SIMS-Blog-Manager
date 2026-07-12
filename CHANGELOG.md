@@ -291,3 +291,12 @@
 - Added a Developer menu to show, hide, and list internal sheets.
 - Added one-line switch `SBM_ENABLE_DEVELOPER_MENU`.
 - Set the switch to `false` for the Product distribution build.
+
+
+## Product 5.0 Release 1 Sprint 1
+- Replaced the setup list with a sequential STEP1-STEP6 wizard.
+- Added Execute, Skip, and End actions to every setup step.
+- Removed setup-sheet switching from the wizard flow.
+- Added a dedicated Blog Information Change dialog.
+- Reduced the main user menu to Home, Initial Setup, Blog Information Change, and Repair.
+- Moved Process Log actions into the Developer menu.
