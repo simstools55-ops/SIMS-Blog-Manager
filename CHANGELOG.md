@@ -256,3 +256,9 @@
 - Removed unsafe inline URL embedding that caused malformed HTML errors.
 - Fixed the Article Detail to Improvement Navi action.
 - Repair completion navigator now uses the same Japanese date/time format as Improvement History.
+
+
+## RC11 Improvement Effect checkbox / Repair close button fix
+- Recreated Improvement Effect selection cells as standard boolean checkboxes.
+- Removed legacy invalid validation and string TRUE/FALSE values.
+- Added an explicit Close button to the repair completion navigator.
