@@ -233,3 +233,10 @@
 - Article Management header changed to navy background with white text.
 - Repair now explicitly refreshes Improvement History and Improvement Effect.
 - Added SpreadsheetApp.flush() after repair to commit the refreshed display.
+
+
+## RC11 Improvement History List Rebuild After Repair
+- Rebuilds the Improvement History list after sheet repair without deleting saved history.
+- Reapplies visible columns, widths, wrapping, row heights, checkboxes, and newest-first order.
+- Refreshes effect judgement by Improvement History ID.
+- Rebuilds the list again whenever the Improvement History sheet is opened.
