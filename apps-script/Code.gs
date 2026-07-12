@@ -6739,3 +6739,168 @@ function sbmStyleEffectSheetV2_() {
   SpreadsheetApp.flush();
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Today Improvement checkbox cleanup fix
+ * ========================================================================== */
+
+/**
+ * 「今日の改善」では、記事タイトルが入っている行だけにチェックボックスを置きます。
+ * 空行・残存書式行・内部列だけに値がある行には表示しません。
+ */
+function sbmApplySelectionUi_(sh) {
+  if (!sh || sh.getLastColumn() < 1) return;
+
+  var hm = sbmHeaderMap_(sh);
+  var col = hm['選択'];
+  if (!col) return;
+
+  sh.setColumnWidth(col, 52);
+  sh.getRange(1, col).setHorizontalAlignment('center').setWrap(false);
+
+  var clearLast = Math.max(sh.getMaxRows(), sh.getLastRow(), 2);
+  var fullRange = sh.getRange(2, col, clearLast - 1, 1);
+
+  // 既存チェックボックス・入力規則・TRUE/FALSEを完全削除
+  fullRange.clearDataValidations();
+  fullRange.clearContent();
+
+  if (sh.getName() === SBM_SHEETS.TODAY) {
+    var titleCol = hm['記事タイトル'];
+    if (!titleCol || sh.getLastRow() < 2) return;
+
+    var n = sh.getLastRow() - 1;
+    var titles = sh.getRange(2, titleCol, n, 1).getDisplayValues();
+
+    for (var i = 0; i < titles.length; i++) {
+      if (String(titles[i][0] || '').trim() !== '') {
+        sh.getRange(i + 2, col)
+          .insertCheckboxes()
+          .setValue(false)
+          .setHorizontalAlignment('center');
+      }
+    }
+    return;
+  }
+
+  // その他の一覧は従来どおり、実データ最終行まで標準チェックボックス
+  var dataLast = sbmSelectionDataLastRow_(sh);
+  if (dataLast >= 2) {
+    var target = sh.getRange(2, col, dataLast - 1, 1);
+    target.insertCheckboxes();
+    target.setValues(Array.from({length: dataLast - 1}, function(){ return [false]; }));
+    target.setHorizontalAlignment('center');
+  }
+}
+
+/**
+ * 今日の改善を再描画した後、選択列を必ず掃除します。
+ */
+function sbmFinalizeTodayImprovementSelection_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+  if (!sh) return;
+  sbmApplySelectionUi_(sh);
+  SpreadsheetApp.flush();
+}
+
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Today Improvement strict rebuild fix
+ * ========================================================================== */
+
+/**
+ * 「今日の改善」は毎回、見出し以外を完全に消してから再構築します。
+ * これにより空行へ残るチェックボックス・入力規則・旧データを防止します。
+ */
+function sbmWriteTodayRecommendations_(candidates, count) {
+  sbmBuildTodayImprovementSheet_();
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+  if (!sh) return;
+
+  var lastCol = Math.max(sh.getLastColumn(), SBM_HEADERS.TODAY.length);
+  var maxRows = Math.max(sh.getMaxRows(), 2);
+
+  // 見出し以外を完全に初期化
+  var body = sh.getRange(2, 1, maxRows - 1, lastCol);
+  body.clearContent();
+  body.clearDataValidations();
+  body.clearFormat();
+
+  var shown = (candidates || []).slice(0, Math.min(Number(count || 0), (candidates || []).length));
+
+  if (shown.length) {
+    var values = shown.map(function(c) {
+      return [
+        false,
+        c.kind,
+        c.title,
+        c.reason,
+        c.estimate,
+        c.rank,
+        c.query,
+        c.clicks,
+        c.impressions,
+        c.ctr,
+        c.position,
+        c.url,
+        c.candidateId
+      ];
+    });
+
+    sh.getRange(2, 1, values.length, SBM_HEADERS.TODAY.length).setValues(values);
+    sh.getRange(2, 1, values.length, 1).insertCheckboxes().setValue(false).setHorizontalAlignment('center');
+    sh.getRange(2, 8, values.length, 2).setNumberFormat('#,##0');
+    sh.getRange(2, 10, values.length, 1).setNumberFormat('0.0%');
+    sh.getRange(2, 11, values.length, 1).setNumberFormat('0.0');
+    sh.getRange(2, 1, values.length, SBM_HEADERS.TODAY.length)
+      .setBorder(true, true, true, true, true, true)
+      .setVerticalAlignment('middle');
+
+    sh.getRange(2, 2, values.length, 1).setFontWeight('bold').setHorizontalAlignment('center');
+    sh.getRange(2, 3, values.length, 2).setWrap(true);
+    sh.getRange(2, 5, values.length, 1).setHorizontalAlignment('center');
+    sh.getRange(2, 7, values.length, 1).setWrap(true);
+
+    for (var i = 0; i < values.length; i++) {
+      sh.setRowHeight(i + 2, 76);
+    }
+  }
+
+  var guideRow = shown.length + 3;
+  sh.getRange(guideRow, 1).setValue(
+    shown.length < (candidates || []).length
+      ? '上部メニュー「今日の改善操作」→「次の2件を表示」で追加できます。'
+      : '最大6件を表示しています。'
+  ).setFontColor('#5f6368');
+
+  // 念のため選択列を最終正規化
+  sbmApplySelectionUi_(sh);
+
+  sbmSetSetting_(
+    'DisplayedImprovementCount',
+    String(shown.length),
+    '今日の改善に表示している件数'
+  );
+
+  SpreadsheetApp.flush();
+}
+
+/**
+ * 起動・修復・日次更新後に「今日の改善」を再描画する最終処理。
+ */
+function sbmFinalizeTodayImprovementSelection_() {
+  var candidates = sbmGetTodayCandidates_();
+  var shown = parseInt(sbmGetSetting_('DisplayedImprovementCount', '2'), 10) || 2;
+  if (candidates && candidates.length) {
+    sbmWriteTodayRecommendations_(candidates, Math.min(shown, candidates.length));
+  } else {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+    if (sh) sbmApplySelectionUi_(sh);
+  }
+  SpreadsheetApp.flush();
+}
+
