@@ -218,3 +218,11 @@
 - Improvement-history detail now includes a button to open the exact linked improvement-effect detail.
 - Old history rows without an ID are not guessed or searched; they show `対応する改善効果データはありません。`.
 - The link is one improvement event to one effect record, enabling future analysis of which changes produced results.
+
+
+## RC11 Improvement Plan / Result / Effect Unified History
+- Added hidden `改善計画JSON` and kept `改善履歴ID`.
+- New registrations save an Improvement Navi plan snapshot.
+- History detail now combines plan, actual changes, and effect in one dialog.
+- Old data is not guessed; unavailable sections show an explicit message.
+- Renamed menu item to `改善詳細（改善ナビ）`.
