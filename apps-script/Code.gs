@@ -3989,9 +3989,12 @@ function sbmGetCheckedRow_(sh, silent) {
 
 function sbmDateAfterDaysFromHistory_(h) {
   var d=sbmParseDate_(h['改善日'])||new Date();
-  var days=parseInt(h['推奨確認日数'],10); if([7,14,30].indexOf(days)<0)days=14;
+  var days=parseInt(h['推奨確認日数'],10);
+  // 7日延長後は21日・28日・37日などになるため、7/14/30だけに限定しません。
+  if(!isFinite(days)||days<1||days>365)days=14;
   d.setDate(d.getDate()+days);
-  return Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy/MM/dd');
+  d.setHours(9,0,0,0);
+  return d;
 }
 
 
@@ -4022,11 +4025,10 @@ function sbmContinueSelectedMonitoring(){
       throw new Error('対応する改善履歴を特定できませんでした。改善履歴ID・ArticleID・記事URLを確認してください。');
     }
 
-    // 改善履歴の値を壊す再構築は行わず、見出しと表示書式だけを整えます。
+    // 改善履歴は同期関数で正規化済みです。見出しだけの直接上書きは行いません。
     var historySh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
     if(historySh){
       var historyMap=sbmHeaderMap_(historySh);
-      historySh.getRange(1,1,1,SBM_HISTORY_HEADERS_V2.length).setValues([SBM_HISTORY_HEADERS_V2]);
       if(historyMap['測定予定日']&&historySh.getLastRow()>1){
         historySh.getRange(2,historyMap['測定予定日'],historySh.getLastRow()-1,1).setNumberFormat('yyyy年m月d日');
       }
@@ -4037,7 +4039,6 @@ function sbmContinueSelectedMonitoring(){
     sbmUpdateEffectivenessCore_(false);
     var effectSh=ss.getSheetByName(SBM_SHEETS.EFFECT);
     if(effectSh){
-      effectSh.getRange(1,1,1,SBM_EFFECT_HEADERS_V2.length).setValues([SBM_EFFECT_HEADERS_V2]);
       var effectMap=sbmHeaderMap_(effectSh);
       if(effectMap['測定予定日']&&effectSh.getLastRow()>1){
         effectSh.getRange(2,effectMap['測定予定日'],effectSh.getLastRow()-1,1).setNumberFormat('yyyy年m月d日');
@@ -4057,11 +4058,22 @@ function sbmContinueSelectedMonitoring(){
 }
 
 function sbmSyncMonitoringDueDateToHistory_(effectRow,dueDate){
-  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   if(!sh||sh.getLastRow()<2)return{updated:false,rows:[]};
 
+  // 見出しだけを書き換えず、既存値を見出し名で安全に正規化します。
+  sbmMigrateSheetByHeaderNames_(SBM_SHEETS.FEEDBACK_HISTORY, SBM_HISTORY_HEADERS_V2, {
+    '選択':['選択'],'改善日':['改善日','登録日時'],'記事タイトル':['記事タイトル'],
+    '改善概要':['改善概要','改善内容'],'使用AI':['使用AI'],
+    '測定予定日':['測定予定日','効果測定予定日'],'効果判定':['効果判定'],
+    'ArticleID':['ArticleID'],'記事URL':['記事URL','URL'],'変更箇所':['変更箇所','修正内容'],
+    '推奨確認日数':['推奨確認日数'],'改善履歴ID':['改善履歴ID']
+  });
+  sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   var map=sbmHeaderMap_(sh);
-  var dueCol=map['測定予定日']||map['効果測定予定日'];
+  var dueCol=map['測定予定日'];
+  var daysCol=map['推奨確認日数'];
   if(!dueCol)return{updated:false,rows:[]};
 
   var effectHistoryId=String(effectRow['改善履歴ID']||'').trim();
@@ -4101,7 +4113,20 @@ function sbmSyncMonitoringDueDateToHistory_(effectRow,dueDate){
   if(!targets.length)return{updated:false,rows:[]};
 
   targets.forEach(function(r){
-    sh.getRange(r,dueCol).setValue(new Date(dueDate.getTime())).setNumberFormat('yyyy年m月d日');
+    var storedDate=new Date(dueDate.getTime());
+    storedDate.setHours(9,0,0,0);
+    sh.getRange(r,dueCol).setValue(storedDate).setNumberFormat('yyyy年m月d日');
+
+    // 再生成時の計算元も更新し、改善日＋推奨確認日数で元に戻らないようにします。
+    if(daysCol){
+      var improveRaw=map['改善日']?sh.getRange(r,map['改善日']).getValue():effectRow['改善日'];
+      var improveDate=sbmParseDate_(improveRaw);
+      if(improveDate){
+        improveDate.setHours(9,0,0,0);
+        var totalDays=Math.max(1,Math.round((storedDate.getTime()-improveDate.getTime())/86400000));
+        sh.getRange(r,daysCol).setValue(totalDays).setNumberFormat('0');
+      }
+    }
   });
   SpreadsheetApp.flush();
   return{updated:true,rows:targets};
