@@ -226,3 +226,10 @@
 - History detail now combines plan, actual changes, and effect in one dialog.
 - Old data is not guessed; unavailable sections show an explicit message.
 - Renamed menu item to `改善詳細（改善ナビ）`.
+
+
+## RC11 Today checkbox / Article header / History refresh fix
+- Removed checkboxes from blank rows in Today Improvement.
+- Article Management header changed to navy background with white text.
+- Repair now explicitly refreshes Improvement History and Improvement Effect.
+- Added SpreadsheetApp.flush() after repair to commit the refreshed display.
