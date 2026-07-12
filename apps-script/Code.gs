@@ -5469,3 +5469,170 @@ function sbmRefreshHistoryAndEffectAfterRepair_() {
   try { sbmStyleEffectSheetV2_(); } catch(e) {}
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Today checkbox / Article header / History repair refresh
+ * ========================================================================== */
+
+/**
+ * 一覧シートで実データが入っている最終行を返します。
+ * 書式や案内文だけがある行にはチェックボックスを置きません。
+ */
+function sbmSelectionDataLastRow_(sh) {
+  if (!sh || sh.getLastRow() < 2) return 1;
+  var hm = sbmHeaderMap_(sh);
+  var keyHeader = '';
+  if (sh.getName() === SBM_SHEETS.TODAY) keyHeader = hm['記事URL'] ? '記事URL' : '記事タイトル';
+  else if (sh.getName() === SBM_SHEETS.EFFECT) keyHeader = '記事タイトル';
+  else if (sh.getName() === SBM_SHEETS.ARTICLE_DB) keyHeader = '記事URL';
+  else if (sh.getName() === SBM_SHEETS.FEEDBACK_HISTORY) keyHeader = hm['改善日'] ? '改善日' : '記事タイトル';
+
+  var keyCol = hm[keyHeader] || 0;
+  if (!keyCol) return sh.getLastRow();
+
+  var n = sh.getLastRow() - 1;
+  var vals = sh.getRange(2, keyCol, n, 1).getDisplayValues();
+  var last = 1;
+  for (var i = 0; i < vals.length; i++) {
+    if (String(vals[i][0] || '').trim() !== '') last = i + 2;
+  }
+  return last;
+}
+
+/**
+ * 選択チェックボックスは実データ行だけに設定します。
+ * 余った空行に残った古いチェックボックスは削除します。
+ */
+function sbmApplySelectionUi_(sh) {
+  if (!sh || sh.getLastColumn() < 1) return;
+  var hm = sbmHeaderMap_(sh);
+  var col = hm['選択'];
+  if (!col) return;
+
+  sh.setColumnWidth(col, 48);
+  sh.getRange(1, col).setHorizontalAlignment('center').setWrap(false);
+
+  var dataLast = sbmSelectionDataLastRow_(sh);
+  var maxTarget = Math.max(sh.getLastRow(), dataLast);
+
+  if (maxTarget >= 2) {
+    var all = sh.getRange(2, col, maxTarget - 1, 1);
+    all.clearDataValidations();
+    all.clearContent();
+  }
+
+  if (dataLast >= 2) {
+    sh.getRange(2, col, dataLast - 1, 1)
+      .insertCheckboxes()
+      .setHorizontalAlignment('center');
+  }
+}
+
+/**
+ * 記事管理の見出しを紺色背景・白文字に統一します。
+ */
+function sbmStyleArticleDbSheet_(sh) {
+  var lc = Math.max(sh.getLastColumn(), SBM_HEADERS.ARTICLE_DB.length);
+  var lr = Math.max(sh.getLastRow(), 1);
+  var hm = sbmHeaderMap_(sh);
+
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, lc)
+    .setFontWeight('bold')
+    .setBackground('#1f4e78')
+    .setFontColor('#ffffff')
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrap(false);
+  sh.setRowHeight(1, 34);
+
+  var widths = {
+    '選択':48,'記事ランク':110,'作業状態':115,'記事URL':285,'メインクエリ':210,
+    'クリック数':90,'表示回数':95,'CTR':72,'掲載順位':88,'記事タイトル':430
+  };
+  Object.keys(widths).forEach(function(h){
+    if (hm[h]) sh.setColumnWidth(hm[h], widths[h]);
+  });
+
+  [
+    'SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考',
+    'ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス',
+    '最終確認日','連続未取得日数','管理フラグ','詳細'
+  ].forEach(function(h){
+    if (hm[h]) {
+      try { sh.hideColumns(hm[h]); } catch(e) {}
+    }
+  });
+
+  if (lr > 1) {
+    var n = lr - 1;
+    sh.getRange(2, 1, n, lc).setVerticalAlignment('middle');
+    sh.setRowHeights(2, n, 54);
+
+    ['記事タイトル','メインクエリ','記事URL'].forEach(function(h){
+      if (hm[h]) sh.getRange(2, hm[h], n, 1).setWrap(true).setVerticalAlignment('top');
+    });
+
+    if (hm['クリック数']) sh.getRange(2, hm['クリック数'], n, 1).setNumberFormat('#,##0');
+    if (hm['表示回数']) sh.getRange(2, hm['表示回数'], n, 1).setNumberFormat('#,##0');
+    if (hm['CTR']) sh.getRange(2, hm['CTR'], n, 1).setNumberFormat('0.0%');
+    if (hm['掲載順位']) sh.getRange(2, hm['掲載順位'], n, 1).setNumberFormat('0.0');
+
+    sbmApplyArticleDbRowColors_(sh);
+  }
+  sbmApplySelectionUi_(sh);
+}
+
+/**
+ * 最終有効版のシート作成・修復。
+ * 改善履歴・改善効果の再構築関数を明示的に呼び、画面へ反映します。
+ */
+function sbmInitializeSheets(showAlert) {
+  showAlert = showAlert !== false;
+
+  try { sbmMigrateArticleManagementSheet_(); } catch(e) {}
+  try { sbmMigrateEffectSheetName_(); } catch(e) {}
+  sbmRemoveRetiredSheets_();
+  sbmEnsureDataSheets_();
+  sbmMigrateRc3Headers_();
+  sbmEnsureDefaultSettings_();
+  sbmEnsureUserSheets_();
+  sbmApplySheetUx_();
+
+  // 改善履歴と改善効果を非破壊で再構築・再表示
+  try {
+    sbmRefreshHistoryAndEffectAfterRepair_();
+  } catch(e) {
+    sbmLog_('RepairHistoryEffectRefresh', 'Warning', String(e));
+    try { sbmRepairImprovementHistoryData_(); } catch(e2) {}
+    try { sbmUpdateEffectivenessCore_(false); } catch(e3) {}
+  }
+
+  sbmRemoveRetiredSheets_();
+  sbmApplyProductVisibleTabs_();
+
+  try { sbmSortArticleDbInternal_(); } catch(e) {}
+  try { sbmEnsureTodayRecommendations_('repair'); } catch(e) {}
+
+  // 今日の改善を再描画してから、実データ行だけにチェックボックスを設定
+  try {
+    var todayCandidates = sbmGetTodayCandidates_();
+    var shown = parseInt(sbmGetSetting_('DisplayedImprovementCount', '2'), 10) || 2;
+    if (todayCandidates && todayCandidates.length) {
+      sbmWriteTodayRecommendations_(todayCandidates, shown);
+    }
+  } catch(e) {
+    sbmLog_('RepairTodayDisplay', 'Warning', String(e));
+  }
+
+  sbmApplySelectionUiAll_();
+  sbmArrangeUserSheets_();
+  sbmRefreshHome_();
+  SpreadsheetApp.flush();
+
+  sbmLog_('InitializeSheets', 'Done', 'RC11 checkbox/header/history refresh fix');
+  if (showAlert) sbmShowRepairCompletionNavigator_();
+}
+
