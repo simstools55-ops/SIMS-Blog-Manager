@@ -6179,3 +6179,166 @@ function onOpen() {
   try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) {}
 }
 
+
+
+
+/* ========================================================================== *
+ * Product 5.0 RC11: Article detail HTML / Repair navigator time fix
+ * ========================================================================== */
+
+/**
+ * 記事管理詳細のHTMLを、完全なHTML文書として安全に生成します。
+ * URLをonclick属性へ直接埋め込まず、script内の定数として渡すことで
+ * 「形式が正しくないHTMLコンテンツ」エラーを防止します。
+ */
+function sbmArticleDbDetailHtml_(o) {
+  o = o || {};
+  var e = sbmEscapeHtml_;
+  function value(v) { return sbmDetailDash_(v); }
+  function row(label, v) {
+    return '<tr>'
+      + '<th style="text-align:left;width:180px;padding:8px;border-bottom:1px solid #e5e7eb;color:#5f6368;vertical-align:top">'
+      + e(label)
+      + '</th>'
+      + '<td style="padding:8px;border-bottom:1px solid #e5e7eb;white-space:pre-wrap;overflow-wrap:anywhere">'
+      + e(value(v))
+      + '</td></tr>';
+  }
+
+  var rank = String(o['記事ランク'] || '');
+  var workState = String(o['作業状態'] || '');
+  var advice = sbmArticleDbWorkAdvice_(rank, workState);
+  var url = String(o['記事URL'] || '');
+  var safeJsUrl = JSON.stringify(url).replace(/</g, '\\u003c');
+
+  var actionButton = url
+    ? '<button id="naviBtn" type="button" onclick="openNavi()" '
+      + 'style="border:0;background:#0b8043;color:#fff;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer">'
+      + '改善詳細（改善ナビ）を開く</button>'
+    : '';
+
+  return '<!doctype html><html><head><base target="_top">'
+    + '<meta charset="UTF-8">'
+    + '<style>'
+    + 'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;padding:20px;line-height:1.65;color:#202124}'
+    + 'h2{margin:0 0 12px;color:#0b8043}h3{margin:0 0 14px}'
+    + 'table{width:100%;border-collapse:collapse;font-size:14px}'
+    + '.summary{background:#f1f8f4;border-left:5px solid #0b8043;padding:12px;margin-bottom:16px}'
+    + '.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb}'
+    + '.close{border:1px solid #9aa0a6;background:#fff;color:#3c4043;padding:9px 16px;border-radius:6px;font-weight:700;cursor:pointer}'
+    + '#msg{font-size:12px;color:#5f6368;margin-top:8px;text-align:right}'
+    + '</style></head><body>'
+    + '<h2>選択記事の詳細</h2>'
+    + '<h3>' + e(value(o['記事タイトル'])) + '</h3>'
+    + '<div class="summary"><b>' + e(value(rank)) + ' × ' + e(value(workState)) + '</b><br>' + e(value(advice)) + '</div>'
+    + '<table>'
+    + row('記事ランク', rank)
+    + row('作業状態', workState)
+    + row('記事URL', url)
+    + row('メインクエリ', o['メインクエリ'])
+    + row('クリック数', o['クリック数表示'] || o['クリック数'])
+    + row('表示回数', o['表示回数表示'] || o['表示回数'])
+    + row('CTR', o['CTR表示'] || o['CTR'])
+    + row('掲載順位', o['掲載順位表示'] || o['掲載順位'])
+    + row('SEOタイトル', o['SEOタイトル'])
+    + row('メタディスクリプション', o['メタディスクリプション'])
+    + row('最終取得日時', o['最終取得日時'])
+    + row('ArticleID', o['ArticleID'])
+    + row('記事情報補完済み', o['記事情報補完済み'])
+    + row('補完日時', o['補完日時'])
+    + row('備考', o['備考'])
+    + '</table>'
+    + '<div data-sbm-common-close="1" class="actions">'
+    + actionButton
+    + '<button type="button" class="close" onclick="google.script.host.close()">閉じる</button>'
+    + '</div><div id="msg"></div>'
+    + '<script>'
+    + 'var articleUrl=' + safeJsUrl + ';'
+    + 'function openNavi(){'
+    + 'var b=document.getElementById("naviBtn");'
+    + 'if(b)b.disabled=true;'
+    + 'document.getElementById("msg").textContent="改善詳細を開いています…";'
+    + 'google.script.run'
+    + '.withFailureHandler(function(err){if(b)b.disabled=false;document.getElementById("msg").textContent=(err&&err.message)?err.message:String(err);})'
+    + '.withSuccessHandler(function(){google.script.host.close();})'
+    + '.sbmOpenImprovementNaviFromArticleDetail(articleUrl);'
+    + '}'
+    + '</script></body></html>';
+}
+
+/**
+ * シート作成・修復完了ナビゲーターの日時を、
+ * 改善履歴と同じ日本語表記へ統一します。
+ */
+function sbmShowRepairCompletionNavigator_() {
+  var counts = {total:0, monitored:0, today:0};
+
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
+    if (sh && sh.getLastRow() > 1) {
+      var hm = sbmHeaderMap_(sh);
+      var rows = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getDisplayValues();
+      counts.total = rows.length;
+      if (hm['作業状態']) {
+        var idx = hm['作業状態'] - 1;
+        rows.forEach(function(r) {
+          var v = String(r[idx] || '');
+          if (v.indexOf('モニター中') >= 0) counts.monitored++;
+          if (v.indexOf('今日の改善') >= 0) counts.today++;
+        });
+      }
+    }
+  } catch (e) {}
+
+  var rawLast = sbmGetSetting_(
+    'LastArticleDbFetchAt',
+    sbmGetSetting_('LastFetchDateTime', sbmGetSetting_('LastFetchDate', ''))
+  );
+  var lastText = rawLast ? sbmJapaneseDateTimeText_(rawLast) : '未実行';
+
+  var html = '<!doctype html><html><head><base target="_top"><meta charset="UTF-8">'
+    + '<style>'
+    + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124;line-height:1.55}'
+    + 'h2{margin:0 0 12px;color:#0b8043;font-size:21px}'
+    + '.box{background:#f6f8fa;border:1px solid #dadce0;border-radius:10px;padding:13px 15px;margin:12px 0}'
+    + '.done{margin:4px 0}.status{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}'
+    + '.actions{display:grid;gap:9px;margin-top:16px}'
+    + 'button{border:0;border-radius:8px;padding:12px 14px;font-size:14px;font-weight:700;cursor:pointer}'
+    + '.setup{background:#1a73e8;color:#fff}.update{background:#0b8043;color:#fff}.home{background:#e8eaed;color:#202124}'
+    + '#msg{font-size:12px;color:#5f6368;margin-top:10px}'
+    + '</style></head><body>'
+    + '<h2>シートの作成・修復が完了しました</h2>'
+    + '<div class="box">'
+    + '<div class="done">✓ 必要なシートと見出しを確認・修復</div>'
+    + '<div class="done">✓ 改善履歴を保持して一覧と書式を再構築</div>'
+    + '<div class="done">✓ 改善効果をモニター中の記事から更新</div>'
+    + '<div class="done">✓ 記事管理の表示形式を調整</div>'
+    + '</div>'
+    + '<div class="box status">'
+    + '<div>記事管理：<b>' + counts.total + '件</b></div>'
+    + '<div>モニター中：<b>' + counts.monitored + '件</b></div>'
+    + '<div>今日の改善：<b>' + counts.today + '件</b></div>'
+    + '<div>最終更新日時：<b>' + sbmEscapeHtml_(lastText) + '</b></div>'
+    + '</div>'
+    + '<div class="actions">'
+    + '<button class="setup" onclick="go(\'setup\')">📦 ブログのセットアップ</button>'
+    + '<button class="update" onclick="go(\'update\')">🔄 記事管理を更新</button>'
+    + '<button class="home" onclick="go(\'home\')">🏠 そのまま使う（HOMEへ）</button>'
+    + '</div><div id="msg"></div>'
+    + '<script>'
+    + 'function go(a){'
+    + 'document.querySelectorAll("button").forEach(function(b){b.disabled=true});'
+    + 'document.getElementById("msg").textContent="処理しています…";'
+    + 'google.script.run'
+    + '.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)?e.message:String(e);document.querySelectorAll("button").forEach(function(b){b.disabled=false});})'
+    + '.withSuccessHandler(function(){google.script.host.close();})'
+    + '.sbmHandleRepairNextAction(a);'
+    + '}'
+    + '</script></body></html>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(500).setHeight(610),
+    'シートの作成・修復'
+  );
+}
+
