@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-official-rc1';
+const SBM_VERSION = '5.0.0-official-rc2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -4118,7 +4118,7 @@ function sbmOpenSelectedHistoryArticleAll(){
   var rows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY).filter(function(r){return(id&&String(r['ArticleID']||'')===id)||sbmNormalizeUrl_(r['記事URL']||'')===sbmNormalizeUrl_(url);});
   if(!rows.length)return sbmAlert_('改善履歴','履歴がありません。');
   var e=sbmEscapeHtml_,cards=rows.slice().reverse().map(function(r){
-    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=r[i+'週'];if(dt||j)measurements+='<br>'+i+'回目：'+e(dt||'未測定')+' / '+e(j||'未判定');}
+    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=String(r[i+'週']||'').trim(),measured=!!j&&j!=='未測定'&&j!=='未判定',planned=sbmWeeklyPlannedDate_(r,i),plannedText=planned?Utilities.formatDate(planned,SBM_DEFAULTS.TIMEZONE,'yyyy年M月d日 a h:mm'):'日付不明';measurements+='<br>'+i+'週目：'+(measured?e(sbmHistoryDisplayValue_(dt))+' / '+e(j):'未測定（予定：'+e(plannedText)+'）');}
     return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最終判定']||r['状態']||'測定待ち')+'<br>'+e(r['改善概要'])+'<br>変更：'+e(r['変更箇所'])+measurements+'</div>';
   }).join('');
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput('<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px"><h2>記事の全改善履歴</h2><h3>'+e(o['記事タイトル'])+'</h3>'+cards+'<div style="text-align:right;margin-top:18px"><button onclick="google.script.host.close()" style="padding:9px 18px;border:1px solid #9aa0a6;border-radius:6px;background:#fff;font-weight:700;cursor:pointer">閉じる</button></div></div>').setWidth(720).setHeight(650),'記事の全改善履歴');
@@ -4652,19 +4652,47 @@ function sbmUnifiedHistoryMetricCard_(name, before, current, formatter) {
     + '</div>';
 }
 
+function sbmWeeklyPlannedDate_(o, week) {
+  var base = sbmParseDate_(o && o['改善日']);
+  if (!base) return null;
+  var due = new Date(base.getTime());
+  due.setDate(due.getDate() + (Number(week) * 7));
+  return due;
+}
+
 function sbmWeeklyHistoryHtml_(o) {
-  var e=sbmEscapeHtml_, html='';
-  for(var i=1;i<=4;i++){
-    var dt=o[i+'回目測定日時'], judge=o[i+'週'], comment=o[i+'回目SIMS寸評'];
-    html+='<div class="box"><b>'+i+'週目</b><br>測定日時：'+e(sbmHistoryDisplayValue_(dt))+'<br>判定：'+e(sbmHistoryDisplayValue_(judge))+'<br>SIMS寸評：'+e(sbmHistoryDisplayValue_(comment))+'</div>';
-  }
-  if(String(o['状態']||'')==='完了'){
-    html+='<div class="box"><b>最終判定：'+e(sbmHistoryDisplayValue_(o['最終判定']))+'</b><br>'+e(sbmHistoryDisplayValue_(o['最終総括']))+'</div>'
-      +'<div class="box"><b>次の改善提案</b><br>'+e(sbmHistoryDisplayValue_(o['最終改善提案']))+'</div>';
-  }else{
-    html+='<div class="empty">4週目の測定完了後に、最終判定と改善提案を表示します。</div>';
+  o = o || {};
+  var e = sbmEscapeHtml_, html = '';
+  for (var i = 1; i <= 4; i++) {
+    var dt = o[i + '回目測定日時'];
+    var judge = String(o[i + '週'] || '').trim();
+    var comment = String(o[i + '回目SIMS寸評'] || '').trim();
+    var measured = !!judge && judge !== '未測定' && judge !== '未判定';
+    var planned = sbmWeeklyPlannedDate_(o, i);
+    var plannedText = planned ? Utilities.formatDate(planned, SBM_DEFAULTS.TIMEZONE, 'yyyy年M月d日 a h:mm') : '日付不明';
+    var statusHtml;
+    if (measured) {
+      statusHtml = '<div class="field"><span class="label">測定日時：</span>' + e(sbmHistoryDisplayValue_(dt)) + '</div>'
+        + '<div class="field"><span class="label">判定：</span>' + e(judge) + '</div>'
+        + '<div class="field"><span class="label">SIMS寸評</span><div class="box">' + e(comment || '測定結果を記録しました。') + '</div></div>';
+    } else {
+      statusHtml = '<div class="field"><span class="label">状態：</span>未測定</div>'
+        + '<div class="field"><span class="label">測定予定：</span>' + e(plannedText) + '</div>';
+    }
+    html += '<div class="week-card"><div class="week-title">' + i + '週目</div>' + statusHtml + '</div>';
   }
   return html;
+}
+
+function sbmFinalEvaluationHtml_(o) {
+  o = o || {};
+  var e = sbmEscapeHtml_;
+  if (String(o['状態'] || '') === '完了') {
+    return '<div class="box"><b>最終判定：' + e(sbmHistoryDisplayValue_(o['最終判定'])) + '</b><br>'
+      + e(sbmHistoryDisplayValue_(o['最終総括'])) + '</div>'
+      + '<div class="box"><b>次の改善提案</b><br>' + e(sbmHistoryDisplayValue_(o['最終改善提案'])) + '</div>';
+  }
+  return '<div class="empty">4週目の測定完了後に、最終判定・SIMS総括・次の改善提案を表示します。</div>';
 }
 
 function sbmHistoryDetailHtmlV2_(o) {
@@ -4685,6 +4713,8 @@ function sbmHistoryDetailHtmlV2_(o) {
     + '.section{border:1px solid #dadce0;border-radius:10px;padding:16px;margin:16px 0}'
     + '.section h3{margin-top:0;color:#174ea6}.field{margin:8px 0}.label{font-weight:700}'
     + '.box{border:1px solid #dadce0;border-radius:8px;padding:12px;margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere;background:#fff}'
+    + '.subsection{border-top:1px solid #e0e0e0;margin-top:18px;padding-top:6px}.subsection h4{color:#174ea6;font-size:16px;margin:14px 0 8px}'
+    + '.week-card{border:1px solid #dadce0;border-radius:9px;padding:13px;margin:10px 0;background:#fff}.week-title{font-size:16px;font-weight:700;color:#0b8043;margin-bottom:6px}'
     + '.empty{background:#f8f9fa;border:1px dashed #bdc1c6;border-radius:8px;padding:16px;color:#5f6368}'
     + '.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
     + '.metric{border:1px solid #dadce0;border-radius:8px;padding:12px;background:#fff}.metric .name{font-weight:700;margin-bottom:8px}'
@@ -4719,10 +4749,11 @@ function sbmHistoryDetailHtmlV2_(o) {
     + '<div class="field"><span class="label">メインクエリ</span><div class="box">'+e(mainQuery)+'</div></div>'
     + '<div class="field"><span class="label">注意事項</span><div class="box">'+e(sbmHistoryDisplayValue_(o['注意事項']))+'</div></div>';
 
-  var weeklyHtml=sbmWeeklyHistoryHtml_(o);
-  var effectHtml;
+  var weeklyHtml = sbmWeeklyHistoryHtml_(o);
+  var finalHtml = sbmFinalEvaluationHtml_(o);
+  var comparisonHtml;
   if (effect) {
-    effectHtml = '<div class="field"><span class="label">判定：</span>'+e(sbmHistoryDisplayValue_(effect['判定']))
+    comparisonHtml = '<div class="field"><span class="label">現在の判定：</span>'+e(sbmHistoryDisplayValue_(effect['判定']))
       + '　<span class="label">測定回数：</span>'+e(sbmHistoryDisplayValue_(effect['測定回数']))
       + '　<span class="label">次回予定：</span>'+e(sbmHistoryDisplayValue_(effect['次回測定予定日']))
       + '　<span class="label">経過日数：</span>'+e(sbmHistoryDecimalText_(effect['経過日数']))+'日</div>'
@@ -4732,13 +4763,13 @@ function sbmHistoryDetailHtmlV2_(o) {
       + sbmUnifiedHistoryMetricCard_('CTR', effect['改善前CTR'], effect['現在CTR'], sbmHistoryPercentText_)
       + sbmUnifiedHistoryMetricCard_('掲載順位', effect['改善前順位'], effect['現在順位'], sbmHistoryDecimalText_)
       + '</div>'
-      + '<div class="field"><span class="label">SIMS評価</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['SIMS評価']))+'</div></div>'
-      + '<div class="field"><span class="label">次のアクション</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['次のアクション']))+'</div></div>'
-      + '<div class="field"><span class="label">測定コメント</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['測定コメント']))+'</div></div>'
-      + '<h3>4週間の測定履歴</h3>'+weeklyHtml;
+      + '<div class="field"><span class="label">現在までの観察</span><div class="box">'+e(sbmHistoryDisplayValue_(effect['測定コメント'] || effect['SIMS評価']))+'</div></div>';
   } else {
-    effectHtml = sbmUnifiedHistorySectionEmpty_('対応する改善効果データはありません。改善履歴IDがない旧履歴、またはまだ効果データが作成されていない改善です。');
+    comparisonHtml = sbmUnifiedHistorySectionEmpty_('現在の比較データはまだ作成されていません。改善効果の「更新」を実行すると表示されます。');
   }
+  var effectHtml = '<div class="subsection"><h4>3-1. 改善前と現在の比較</h4>'+comparisonHtml+'</div>'
+    + '<div class="subsection"><h4>3-2. 4週間の効果測定</h4>'+weeklyHtml+'</div>'
+    + '<div class="subsection"><h4>3-3. 最終判定</h4>'+finalHtml+'</div>';
 
   return '<!doctype html><html><head><base target="_top">'+css+'</head><body>'
     + '<h2>改善履歴の詳細</h2><h3>'+e(sbmHistoryDisplayValue_(o['記事タイトル']))+'</h3>'
