@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.1';
+const SBM_VERSION = '5.0.2';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -3548,23 +3548,50 @@ function sbmGetTodayCandidates_() {
   try { return JSON.parse(String(sbmGetSetting_('TodayRecommendationJson','[]')) || '[]'); } catch(e) { return []; }
 }
 
+/** 今日の改善シートに実際に表示されている記事行数を返します。 */
+function sbmGetTodayDisplayedRowCount_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var hm = sbmHeaderMap_(sh);
+  var titleCol = hm['記事タイトル'];
+  if (!titleCol) return 0;
+  var values = sh.getRange(2, titleCol, sh.getLastRow() - 1, 1).getDisplayValues();
+  var count = 0;
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0] || '').trim()) count++;
+  }
+  return count;
+}
+
 function sbmShowMoreTodayRecommendations() {
   var candidates = sbmGetTodayCandidates_();
   if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-  var current = sbmNumber_(sbmGetSetting_('DisplayedImprovementCount','2')) || 2;
-  var max = Math.min(6, sbmGetTodayMaxDisplayCount_(), candidates.length);
+
+  // 設定値ではなく、シート上の実表示件数を正本として扱います。
+  var current = sbmGetTodayDisplayedRowCount_();
+  if (current < 0) current = 0;
+  sbmSetSetting_('DisplayedImprovementCount', String(current), '今日の改善の実表示件数と同期');
+
+  var configuredMax = Math.min(6, sbmGetTodayMaxDisplayCount_());
+  var max = Math.min(configuredMax, candidates.length);
   if (current >= max) {
-    sbmAlert_('表示件数の上限です', '今日の改善は最大' + max + '件まで表示できます。\n現在、最大' + max + '件を表示しています。');
+    var limitMessage = candidates.length < configuredMax
+      ? '現在利用できる改善候補は' + max + '件です。\nすべて表示しています。'
+      : '今日の改善は最大' + configuredMax + '件まで表示できます。\n現在、最大' + configuredMax + '件を表示しています。';
+    sbmAlert_('表示件数の上限です', limitMessage);
     return;
   }
-  var next = Math.min(max,current+2);
+
+  var next = Math.min(max, current + 2);
   sbmSetHomeProcessing_('処理中', '今日の改善を追加表示', sbmNowText_(), '', '', true);
   try {
-    sbmWriteTodayRecommendations_(candidates,next);
-    sbmApplyTodayWorkState_(candidates,next);
+    sbmWriteTodayRecommendations_(candidates, next);
+    sbmApplyTodayWorkState_(candidates, next);
     sbmRefreshHome_();
     sbmOpenTodayImprovement();
-    var msg = next >= max ? '最大' + max + '件を表示しています。' : next + '件を表示しています。';
+    var msg = next >= max
+      ? (max >= configuredMax ? '最大' + configuredMax + '件を表示しています。' : '利用可能な' + max + '件をすべて表示しています。')
+      : next + '件を表示しています。';
     sbmSetHomeProcessing_('完了', '今日の改善を追加表示', '', sbmNowText_(), msg, false);
     sbmAlert_('表示を追加しました', msg);
   } catch (e) {
@@ -3576,11 +3603,15 @@ function sbmShowMoreTodayRecommendations() {
 function sbmResetTodayRecommendations() {
   var candidates = sbmGetTodayCandidates_();
   if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-  var n=Math.min(2,candidates.length);
-  sbmWriteTodayRecommendations_(candidates,n);
-  sbmApplyTodayWorkState_(candidates,n);
+  var initial = Math.max(1, Math.min(sbmGetTodayInitialDisplayCount_(), candidates.length));
+
+  // 先に設定値を初期件数へ戻し、再描画後も実表示件数で同期します。
+  sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善を初期表示件数へ戻す');
+  sbmWriteTodayRecommendations_(candidates, initial);
+  sbmApplyTodayWorkState_(candidates, initial);
   sbmRefreshHome_();
   sbmOpenTodayImprovement();
+  sbmAlert_('初期表示に戻しました', '今日の改善を初期' + initial + '件表示に戻しました。');
 }
 
 function sbmApplyTodayWorkState_(candidates, count) {
