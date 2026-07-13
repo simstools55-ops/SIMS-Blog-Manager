@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.0 Official
+ * SIMS-Blog-Manager Product 5.0 Official Release 1 Sprint 5
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0';
+const SBM_VERSION = '5.0.0-official-rc3.1-feedback-menu-fix';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -259,7 +259,7 @@ function sbmRemoveRetiredSheets_() {
 
 
 function sbmMigrateRc3Headers_() {
-  // 既存シートを作り直さずに、測定日カラム名を正式版仕様へ統一します。
+  // 既存シートを作り直さずに、測定日カラム名だけRC3仕様へ寄せます。
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.LOG);
   if (sh && sh.getLastRow() >= 1) {
     var map = sbmHeaderMap_(sh);
@@ -1297,7 +1297,7 @@ function sbmOpenArticleDbToolbar() {
     + '<button class="secondary" onclick="openArticle()">🌐 記事を開く</button>'
     + '<button class="disabled" disabled>✏️ 改善ブリーフ（準備中）</button>'
     + '<button class="disabled" disabled>📈 効果測定（準備中）</button>'
-    + '<button class="disabled" disabled>✅ 改善完了（準備中）</button>'
+    + '<button class="primary" onclick="registerFeedback()">✅ 改善結果を登録（JSON）</button>'
     + '</div><div id="msg" class="msg"></div>'
     + '<script>'
     + 'var selected=null;function setMsg(t){document.getElementById("msg").textContent=t||"";}'
@@ -1306,6 +1306,7 @@ function sbmOpenArticleDbToolbar() {
     + 'function refreshSelection(){setMsg("選択記事を確認しています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(d){render(d);setMsg("");}).sbmGetSelectedArticleDbSummary();}'
     + 'function openDetail(){setMsg("記事詳細を開いています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(){setMsg("");refreshSelection();}).sbmOpenSelectedArticleDbDetail();}'
     + 'function openArticle(){setMsg("記事URLを確認しています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(d){if(d&&d.url){window.open(d.url,"_blank");setMsg("");}else{setMsg("記事URLを取得できませんでした。");}}).sbmGetSelectedArticleDbSummary();}'
+    + 'function registerFeedback(){setMsg("改善結果登録画面を開いています…");google.script.run.withFailureHandler(function(e){setMsg((e&&e.message)||String(e));}).withSuccessHandler(function(){setMsg("");}).sbmOpenImprovementFeedbackDialog();}'
     + 'refreshSelection();</script></body></html>';
   SpreadsheetApp.getUi().showSidebar(HtmlService.createHtmlOutput(html).setTitle('記事DBツールバー'));
 }
@@ -5930,7 +5931,7 @@ function sbmShowDeveloperSheetList() {
  * Clean setup wizard / menu cleanup / developer diagnostics
  * ========================================================================== */
 
-var SBM_RELEASE_NAME = 'Product 5.0 Official';
+var SBM_RELEASE_NAME = 'Product 5.0 Release 1 Sprint 3';
 var SBM_ENABLE_DEVELOPER_MENU = true;
 
 /* ---------- 共通：ウィザード ---------- */
@@ -6243,6 +6244,7 @@ function onOpen() {
   ui.createMenu('今日の改善操作')
     .addItem('開く','sbmOpenTodayImprovement')
     .addItem('改善詳細（改善ナビ）','sbmOpenSelectedImprovementNavi')
+    .addItem('改善結果を登録（JSON）','sbmOpenImprovementFeedbackDialog')
     .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
     .addItem('初期2件に戻す','sbmResetTodayRecommendations')
     .addToUi();
@@ -6258,6 +6260,7 @@ function onOpen() {
     .addItem('更新','sbmCollectPageDataToArticleDbManual')
     .addItem('詳細','sbmOpenSelectedArticleDbDetail')
     .addItem('改善詳細（改善ナビ）','sbmOpenSelectedImprovementNavi')
+    .addItem('改善結果を登録（JSON）','sbmOpenImprovementFeedbackDialog')
     .addToUi();
 
   ui.createMenu('改善履歴操作')
