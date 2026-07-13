@@ -1,4 +1,4 @@
-site_name: SIMS-Blog-Manager Manual
+site_name: SIMS-Blog-Manager Product 5.0 Official
 site_description: Google Search Consoleを使い、今日改善すべき記事を30秒で決めるブログ改善マネージャー
 site_url: https://simstools55-ops.github.io/SIMS-Blog-Manager/
 repo_url: https://github.com/simstools55-ops/SIMS-Blog-Manager
@@ -41,3 +41,7 @@ nav:
       - 403エラー: troubleshooting/error-403.md
       - 今日の改善が空: troubleshooting/empty-queue.md
   - リリースノート: release-notes/index.md
+
+extra:
+  generator: false
+copyright: SIMS-Blog-Manager Product 5.0 Official / Version 5.0.0

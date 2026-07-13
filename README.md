@@ -1,44 +1,46 @@
 # SIMS-Blog-Manager Product 5.0 Official
 
-Google Search Consoleのデータを使い、ブログ記事の改善候補、改善作業、4週間の効果測定をGoogleスプレッドシートで管理する製品です。
+Google Search Consoleのデータを使い、改善すべき記事の選定、改善作業の記録、4週間の効果測定をGoogleスプレッドシートで管理する製品です。
 
-## 現在の版
+## 正式バージョン
 
-`5.0.0-official-r1-s5`
+`5.0.0`
 
-## 配布用Apps Script
+## 利用者向け配布物
 
-利用者へ渡すApps Scriptは次の1ファイルです。
+`distribution/` フォルダに、利用開始に必要なファイルをまとめています。
 
-```text
-apps-script/Code.gs
-```
+- `コード.gs`：Apps Scriptへ貼り付ける単一スクリプト
+- `appsscript.json`：Apps Scriptのマニフェスト
+- `SIMS-Blog-Manager-template-Product5.0-Official.xlsx`：正式版テンプレート
+- `はじめにお読みください.md`：導入手順
 
-Apps Scriptプロジェクトの「コード.gs」へ全内容を貼り付けて使用します。
+## 初回導入
 
-## 更新後の適用手順
+1. 正式版テンプレートをGoogleドライブへアップロードし、Googleスプレッドシートとして開きます。
+2. Apps Scriptを開き、既存の「コード.gs」を配布版の内容で全置換します。
+3. `appsscript.json` を設定します。
+4. スプレッドシートを再読み込みします。
+5. メニューから「ブログをセットアップ」を実行します。
 
-1. `apps-script/Code.gs` を「コード.gs」へ全置換して保存
-2. スプレッドシートを再読み込み
-3. `SIMS-Blog-Manager → バージョン情報` を開く
-4. `5.0.0-official-r1-s5` と表示されることを確認
-5. `SIMS-Blog-Manager → シートを作成・修復` を1回実行
+## 既存RC3 Performanceからの更新
+
+1. `コード.gs` を正式版で全置換して保存します。
+2. スプレッドシートを再読み込みします。
+3. 「バージョン情報」で `5.0.0` を確認します。
+
+RC3 Performanceで実機テスト済みの既存スプレッドシートは、そのまま継続利用できます。正式版への移行だけを目的とする場合、「シートの作成・修復」の実行は不要です。
 
 ## 4週間効果測定
 
-記事改善後、7日・14日・21日・28日の4回測定します。
+記事改善後、7日・14日・21日・28日の4回測定します。4回目の測定後に最終判定と次の改善提案を表示します。
 
-- 改善効果シート：次回予定日、測定回数、最新判定を表示
-- 改善履歴シート：4回分の測定日時と判定を保存
-- 旧「7日間延長」「測定完了」操作：廃止
-- 4回目の記録後：自動的に測定完了
+## リポジトリ構成
 
-## 主なフォルダ
-
-- `apps-script/`：配布用Apps Script
-- `docs/`：GitHub Pages用マニュアル原稿
-- `site/`：今回ビルドしたマニュアル確認用HTML
+- `apps-script/`：開発・管理用Apps Script
+- `distribution/`：利用者向け正式配布物
+- `docs/`：GitHub Pagesマニュアル原稿
 - `.github/workflows/`：GitHub Pages自動デプロイ
-- `product/`：製品仕様・監査資料
-- `spreadsheet/`：スプレッドシート関連資料
-- `tests/`：動作確認手順
+- `product/`：製品仕様・リリース資料
+- `spreadsheet/`：正式版テンプレート
+- `tests/`：動作確認記録
