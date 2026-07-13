@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.0.0-official-rc3.1-feedback-menu-fix';
+const SBM_VERSION = '5.0.1';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -3664,7 +3664,9 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
     '<div class="sec"><b>改善ポイント</b>'+advice.map(function(x){return '<div class="p">'+esc(x)+'</div>';}).join('')+'</div>'+
     '<div class="sec"><b>作業時間の目安</b><p>'+(kind.indexOf('即効性')>=0?'約15～20分':'約20分')+'</p></div>'+
     '<div class="sec"><b>AIでリライトするための依頼文</b><div class="prompt" id="prompt">'+esc(prompt)+'</div><button onclick="copyPrompt()">コピー</button></div>'+
-    '<div class="sec"><a class="btn" href="'+esc(url)+'" target="_blank">記事を開く</a></div><script>function copyPrompt(){var t=document.getElementById("prompt").innerText;navigator.clipboard.writeText(t).then(function(){alert("コピーしました")})}</script></body></html>';
+    '<div class="sec"><a class="btn" href="'+esc(url)+'" target="_blank">記事を開く</a></div>'+
+    '<div class="sec" style="background:#e6f4ea;border:1px solid #b7dfc2;border-radius:8px;padding:14px"><b>記事の修正が完了したら、改善結果を登録してください。</b><p style="margin:6px 0 10px;color:#5f6368">Claudeの回答末尾にあるSIMS向けJSONを貼り付けて登録します。</p><button class="btn" style="border:0;cursor:pointer;background:#0b8043" onclick="registerFeedback()">✅ 改善完了を登録</button></div>'+
+    '<script>function copyPrompt(){var t=document.getElementById("prompt").innerText;navigator.clipboard.writeText(t).then(function(){alert("コピーしました")})}function registerFeedback(){google.script.run.withFailureHandler(function(e){alert((e&&e.message)||String(e));}).withSuccessHandler(function(){google.script.host.close();}).sbmOpenImprovementFeedbackDialog();}</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(780).setHeight(720)),'改善ナビ');
 }
 
@@ -3752,8 +3754,9 @@ function sbmRegisterImprovementFeedback(data) {
     sbmAppendImprovementHistory_(data,row,before);
     sbmAppendLegacyImprovementLog_(data,row,before);
     sbmSetSetting_('LastImprovementRegisteredAt',sbmNowText_(),'最後に改善結果を登録した日時');
+    try { sbmMarkTodayImprovementCompleted_(data.article_id, data.article_url); } catch (e) {}
     try{sbmRefreshHome_();}catch(e){}
-    return {ok:true,message:'改善結果を登録しました。\n・記事管理を更新しました\n・改善履歴を作成しました\n・作業状態を「モニター中」に変更しました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'};
+    return {ok:true,message:'改善結果を登録しました。\n・記事管理を更新しました\n・改善履歴を作成しました\n・今日の改善を完了表示にしました\n・作業状態を「モニター中」に変更しました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'};
   } catch(e) { return {ok:false,message:String(e.message||e)}; }
 }
 
@@ -5536,6 +5539,51 @@ function sbmStyleEffectSheetV2_() {
 }
 
 
+
+/**
+ * 改善結果を登録した記事を「今日の改善」で完了表示にします。
+ * チェックボックスを削除し、行をグレーアウトして再選択を防止します。
+ */
+function sbmMarkTodayImprovementCompleted_(articleId, articleUrl) {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
+  if (!sh || sh.getLastRow() < 2) return false;
+  var hm = sbmHeaderMap_(sh);
+  var urlCol = hm['記事URL'];
+  var selectCol = hm['選択'];
+  var titleCol = hm['記事タイトル'];
+  if (!urlCol || !selectCol) return false;
+  var normalized = sbmNormalizeUrl_(articleUrl || '');
+  var urls = sh.getRange(2, urlCol, sh.getLastRow() - 1, 1).getValues();
+  var matched = false;
+  for (var i = 0; i < urls.length; i++) {
+    if (normalized && sbmNormalizeUrl_(urls[i][0] || '') === normalized) {
+      var row = i + 2;
+      var cell = sh.getRange(row, selectCol);
+      cell.clearDataValidations().setValue('完了').setHorizontalAlignment('center').setFontWeight('bold');
+      sh.getRange(row, 1, 1, Math.max(sh.getLastColumn(), SBM_HEADERS.TODAY.length))
+        .setBackground('#eeeeee').setFontColor('#777777');
+      if (titleCol) sh.getRange(row, titleCol).setFontLine('line-through');
+      matched = true;
+    }
+  }
+  if (matched) SpreadsheetApp.flush();
+  return matched;
+}
+
+/** 記事管理の状態から、今日の改善で完了扱いにするURLを取得します。 */
+function sbmTodayCompletedUrlMap_() {
+  var map = {};
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || [];
+  rows.forEach(function(r) {
+    var state = String(r['作業状態'] || '');
+    if (state.indexOf('モニター中') >= 0 || state.indexOf('完了') >= 0) {
+      var u = sbmNormalizeUrl_(r['記事URL'] || '');
+      if (u) map[u] = true;
+    }
+  });
+  return map;
+}
+
 /* ========================================================================== *
  * Product 5.0 RC11: Today Improvement checkbox cleanup fix
  * ========================================================================== */
@@ -5567,13 +5615,22 @@ function sbmApplySelectionUi_(sh) {
 
     var n = sh.getLastRow() - 1;
     var titles = sh.getRange(2, titleCol, n, 1).getDisplayValues();
+    var urlCol = hm['記事URL'];
+    var urls = urlCol ? sh.getRange(2, urlCol, n, 1).getValues() : [];
+    var completed = sbmTodayCompletedUrlMap_();
 
     for (var i = 0; i < titles.length; i++) {
-      if (String(titles[i][0] || '').trim() !== '') {
-        sh.getRange(i + 2, col)
-          .insertCheckboxes()
-          .setValue(false)
-          .setHorizontalAlignment('center');
+      if (String(titles[i][0] || '').trim() === '') continue;
+      var row = i + 2;
+      var url = urlCol ? sbmNormalizeUrl_(urls[i][0] || '') : '';
+      if (url && completed[url]) {
+        sh.getRange(row, col).clearDataValidations().setValue('完了')
+          .setHorizontalAlignment('center').setFontWeight('bold');
+        sh.getRange(row, 1, 1, Math.max(sh.getLastColumn(), SBM_HEADERS.TODAY.length))
+          .setBackground('#eeeeee').setFontColor('#777777');
+        sh.getRange(row, titleCol).setFontLine('line-through');
+      } else {
+        sh.getRange(row, col).insertCheckboxes().setValue(false).setHorizontalAlignment('center');
       }
     }
     return;
