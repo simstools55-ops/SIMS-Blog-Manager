@@ -30,6 +30,7 @@ nav:
       - Search Console接続テスト: setup/search-console-test.md
   - 毎日の使い方: daily-workflow/index.md
   - ユーザーガイド:
+      - メニューの使い方: user-guide/menu.md
       - 今日の改善: user-guide/todays-improvement.md
       - 改善ブリーフ: user-guide/improvement-brief.md
       - 改善ログ: user-guide/improvement-log.md

@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.0';
+const SBM_VERSION = '5.3.1';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -95,7 +95,7 @@ function sbmPromptArticleDbUpdateOnOpen_() {
     + '<h2>本日の記事管理を更新しますか？</h2>'
     + '<div class="last">最後に更新した日時：' + safeLast + '</div>'
     + '<p>Search Consoleの最新データを取得し、記事DBと今日の改善を更新します。</p>'
-    + '<p class="note">この確認は、その日の最初の起動時だけ表示されます。手動更新は「記事操作 → 更新」からいつでも実行できます。</p>'
+    + '<p class="note">この確認は、その日の最初の起動時だけ表示されます。スキップ後や再取得したい場合は「管理 → 日次処理を実行」からいつでも実行できます。</p>'
     + '<div class="buttons"><button class="skip" onclick="google.script.host.close()">今回は更新しない</button><button class="run" onclick="runDaily()">更新する</button></div>'
     + '<div id="msg" class="msg"></div>'
     + '<script>function runDaily(){document.querySelectorAll("button").forEach(function(b){b.disabled=true});document.getElementById("msg").textContent="更新を開始しています。Homeの処理状況で進行を確認できます。";google.script.run.withFailureHandler(function(e){document.getElementById("msg").textContent=(e&&e.message)?e.message:String(e);document.querySelectorAll("button").forEach(function(b){b.disabled=false})}).withSuccessHandler(function(){google.script.host.close()}).sbmRunArticleDbUpdateFromStartup()}</script>'
@@ -431,67 +431,65 @@ function sbmBuildHomeSheet_() {
   if (sh.getMaxRows() < 24) sh.insertRowsAfter(sh.getMaxRows(), 24 - sh.getMaxRows());
 
   sh.getRange('A1:G1').merge().setValue('SIMS-Blog-Manager  Home');
-  sh.getRange('H1').setValue('v5.3.0');
+  sh.getRange('H1').setValue('v5.3.1');
   sh.getRange('A2').setValue('ブログ名'); sh.getRange('B2:D2').merge();
   sh.getRange('E2').setValue('最終更新'); sh.getRange('F2:H2').merge();
   sh.getRange('A3').setValue('総記事数'); sh.getRange('B3').setValue('0件');
   sh.getRange('C3').setValue('ブログURL'); sh.getRange('D3:H3').merge();
 
   sh.getRange('A5:H5').merge().setValue('記事ランクのまとめ');
-  sh.getRange('A6:B6').merge().setValue('🏆 エース');
-  sh.getRange('C6:D6').merge().setValue('✅ 安定');
-  sh.getRange('E6:F6').merge().setValue('📈 成長');
-  sh.getRange('G6:H6').merge().setValue('🌱 育成');
-  sh.getRange('A7:B7').merge().setValue('0件 →');
-  sh.getRange('C7:D7').merge().setValue('0件 →');
-  sh.getRange('E7:F7').merge().setValue('0件 →');
-  sh.getRange('G7:H7').merge().setValue('0件 →');
-  sh.getRange('A8:B8').merge().setValue('⚠️ 低迷');
-  sh.getRange('C8:H8').merge().setValue('ブログの現在地');
-  sh.getRange('A9:B9').merge().setValue('0件 →');
-  sh.getRange('C9:H9').merge().setValue('記事データを分析しています。');
+  sh.getRange('A6:D6').merge().setValue('🏆 エース');
+  sh.getRange('E6:H6').merge().setValue('✅ 安定');
+  sh.getRange('A7:D7').merge().setValue('0件 →');
+  sh.getRange('E7:H7').merge().setValue('0件 →');
+  sh.getRange('A8:D8').merge().setValue('📈 成長');
+  sh.getRange('E8:H8').merge().setValue('🌱 育成');
+  sh.getRange('A9:D9').merge().setValue('0件 →');
+  sh.getRange('E9:H9').merge().setValue('0件 →');
+  sh.getRange('A10:D10').merge().setValue('⚠️ 低迷');
+  sh.getRange('E10:H10').merge().setValue('❓ 未取得');
+  sh.getRange('A11:D11').merge().setValue('0件 →');
+  sh.getRange('E11:H11').merge().setValue('0件 →');
 
-  sh.getRange('A11:H11').merge().setValue('改善状況');
-  sh.getRange('A12:B12').merge().setValue('今日の改善');
-  sh.getRange('C12:D12').merge().setValue('改善中');
-  sh.getRange('E12:F12').merge().setValue('効果測定中');
-  sh.getRange('G12:H12').merge().setValue('要確認');
-  sh.getRange('A13:B13').merge().setValue('0件');
-  sh.getRange('C13:D13').merge().setValue('0件');
-  sh.getRange('E13:F13').merge().setValue('0件');
-  sh.getRange('G13:H13').merge().setValue('0件');
+  sh.getRange('A13:H13').merge().setValue('改善状況');
+  sh.getRange('A14:B14').merge().setValue('今日の改善');
+  sh.getRange('C14:D14').merge().setValue('改善中');
+  sh.getRange('E14:F14').merge().setValue('効果測定中');
+  sh.getRange('G14:H14').merge().setValue('要確認');
+  sh.getRange('A15:B15').merge().setValue('0件');
+  sh.getRange('C15:D15').merge().setValue('0件');
+  sh.getRange('E15:F15').merge().setValue('0件');
+  sh.getRange('G15:H15').merge().setValue('0件');
 
-  sh.getRange('A15:H15').merge().setValue('今日のメッセージ');
-  sh.getRange('A16:H18').merge().setValue('記事の育ち方と改善状況に合わせて表示します。');
+  sh.getRange('A17:H17').merge().setValue('今日のメッセージ');
+  sh.getRange('A18:H19').merge().setValue('記事の育ち方と改善状況に合わせて表示します。');
 
-  sh.getRange('A20:H20').merge().setValue('処理状況');
-  sh.getRange('A21').setValue('処理名'); sh.getRange('B21:H21').merge();
-  sh.getRange('A22').setValue('開始時刻'); sh.getRange('B22:C22').merge();
-  sh.getRange('D22').setValue('処理結果'); sh.getRange('E22:H22').merge();
-  sh.getRange('A23').setValue('お願い'); sh.getRange('B23:H23').merge();
+  sh.getRange('A21:H21').merge().setValue('処理状況');
+  sh.getRange('A22').setValue('処理名'); sh.getRange('B22:H22').merge();
+  sh.getRange('A23').setValue('開始時刻'); sh.getRange('B23:C23').merge();
+  sh.getRange('D23').setValue('処理結果'); sh.getRange('E23:H23').merge();
+  sh.getRange('A24').setValue('お願い'); sh.getRange('B24:H24').merge();
 
   sh.setFrozenRows(3);
   [120,120,120,120,120,120,120,120].forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
-  sh.setRowHeights(1,23,24);
-  sh.setRowHeights(16,3,26);
-  sh.getRange('A1:H23').setFontFamily('Arial').setVerticalAlignment('middle').setWrap(true);
+  sh.setRowHeights(1,24,24);
+  sh.setRowHeights(18,2,26);
+  sh.getRange('A1:H24').setFontFamily('Arial').setVerticalAlignment('middle').setWrap(true);
   sh.getRange('A1:G1').setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold').setFontSize(16);
   sh.getRange('H1').setBackground('#0b8043').setFontColor('#d9ead3').setHorizontalAlignment('right');
   sh.getRange('A2:H3').setBackground('#f8f9fa').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID);
   sh.getRange('A5:H5').setBackground('#e6f4ea').setFontWeight('bold');
-  sh.getRange('A6:H9').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center');
-  sh.getRange('A6:H6').setBackground('#f1f8f4').setFontWeight('bold');
-  sh.getRange('A7:H7').setFontWeight('bold').setFontSize(15);
-  sh.getRange('A8:B9').setBackground('#fff4e5');
-  sh.getRange('C8:H9').setBackground('#f8fbff').setHorizontalAlignment('left');
-  sh.getRange('C8:H8').setFontWeight('bold');
-  sh.getRange('A11:H11').setBackground('#f1f3f4').setFontWeight('bold');
-  sh.getRange('A12:H13').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center');
-  sh.getRange('A12:H12').setFontWeight('bold'); sh.getRange('A13:H13').setFontWeight('bold').setFontSize(16);
-  sh.getRange('A15:H15').setBackground('#dbeafe').setFontWeight('bold');
-  sh.getRange('A16:H18').setBackground('#f8fbff').setBorder(true,true,true,true,false,false,'#cbdcf0',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12);
-  sh.getRange('A20:H23').setBorder(true,true,true,true,true,true,'#c8d6c4',SpreadsheetApp.BorderStyle.SOLID).setBackground('#d9ead3');
-  sh.getRange('A20:H20').setFontWeight('bold'); sh.getRange('A:A').setFontWeight('bold'); sh.getRange('D:D').setFontWeight('bold');
+  sh.getRange('A6:H11').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center');
+  sh.getRange('A6:H11').setFontWeight('bold');
+  sh.getRange('A10:D11').setBackground('#fff4e5');
+  sh.getRange('E10:H11').setBackground('#fef7e0');
+  sh.getRange('A13:H13').setBackground('#f1f3f4').setFontWeight('bold');
+  sh.getRange('A14:H15').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center');
+  sh.getRange('A14:H14').setFontWeight('bold'); sh.getRange('A15:H15').setFontWeight('bold').setFontSize(16);
+  sh.getRange('A17:H17').setBackground('#dbeafe').setFontWeight('bold');
+  sh.getRange('A18:H19').setBackground('#f8fbff').setBorder(true,true,true,true,false,false,'#cbdcf0',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12);
+  sh.getRange('A21:H24').setBorder(true,true,true,true,true,true,'#c8d6c4',SpreadsheetApp.BorderStyle.SOLID).setBackground('#d9ead3');
+  sh.getRange('A21:H21').setFontWeight('bold'); sh.getRange('A:A').setFontWeight('bold'); sh.getRange('D:D').setFontWeight('bold');
   try { sh.getRange('J:M').clearContent(); sh.showColumns(10,4); } catch(e) {}
 }
 
@@ -985,6 +983,7 @@ function sbmCollectPageDataToArticleDbManual(silent) {
     sbmSortArticleDbInternal_();
     var writeSec = sbmSecondsSince_(tWrite);
 
+    sbmSetSetting_('LastFetchDate', sbmDateText_(new Date()), '最終取得日');
     sbmSetSetting_('LastArticleDbFetchAt', sbmNowText_(), '記事DBの最終取得日時');
     sbmSetSetting_('LastArticleDbRows', mergeResult.total, '記事DBの直近行数');
     sbmSetSetting_('LastArticleDbExcluded', result.excluded, 'ページデータ収集で除外したURL数');
@@ -2189,15 +2188,15 @@ function sbmSetHomeProcessing_(state, processName, startedText, finishedText, re
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
   if (!sh) return;
   try {
-    if (String(sh.getRange('H1').getValue()) !== 'v5.3.0') sbmBuildHomeSheet_();
+    if (String(sh.getRange('H1').getValue()) !== 'v5.3.1') sbmBuildHomeSheet_();
     sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
-    sh.getRange('A20:H23').setBackground(isProcessing ? '#fff2cc' : '#d9ead3');
-    sh.getRange('B21:H21').setValue(processName || state || '待機中');
-    sh.getRange('B22:C22').setValue(startedText || '');
+    sh.getRange('A21:H24').setBackground(isProcessing ? '#fff2cc' : '#d9ead3');
+    sh.getRange('B22:H22').setValue(processName || state || '待機中');
+    sh.getRange('B23:C23').setValue(startedText || '');
     var result = resultText || (isProcessing ? '処理中' : (state || '待機中'));
-    sh.getRange('E22:H22').setValue(result);
-    sh.getRange('B23:H23').setValue(isProcessing ? '処理中は他のメニューを実行せず、完了までお待ちください。' : '');
-    sh.getRange('B21:H21').setFontWeight('bold').setFontColor(isProcessing ? '#990000' : (state === 'エラー' ? '#990000' : '#0b8043'));
+    sh.getRange('E23:H23').setValue(result);
+    sh.getRange('B24:H24').setValue(isProcessing ? '処理中は他のメニューを実行せず、完了までお待ちください。' : '');
+    sh.getRange('B22:H22').setFontWeight('bold').setFontColor(isProcessing ? '#990000' : (state === 'エラー' ? '#990000' : '#0b8043'));
     SpreadsheetApp.flush();
   } catch (e) { console.error(e); }
 }
@@ -3468,7 +3467,7 @@ function sbmBuildTodayRecommendationsManual() {
     sbmRefreshHome_();
     sbmOpenTodayImprovement();
     sbmSetHomeProcessing_('完了', '今日の改善を作成', '', sbmNowText_(), initial + '件を表示', false);
-    sbmAlert_('今日の改善を作成しました', '即効性とCTR改善効果から、最初の' + initial + '記事を表示しました。\n上部の「今日の改善操作」から2件ずつ、最大6件まで追加できます。');
+    sbmAlert_('今日の改善を作成しました', '即効性とCTR改善効果から、最初の' + initial + '記事を表示しました。\n「今日の改善を開始」メニューから2件ずつ、最大6件まで追加できます。');
   } catch (e) {
     sbmSetHomeProcessing_('エラー', '今日の改善を作成', '', sbmNowText_(), String(e), false);
     sbmAlert_('今日の改善作成エラー', String(e));
@@ -5335,7 +5334,7 @@ function sbmApplyHistoryFinalStyle_() {
 function sbmRefreshHome_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.3.0') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.3.1') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -5368,19 +5367,20 @@ function sbmRefreshHome_() {
     if (current < prev) return '↘';
     return '→';
   }
-  sh.getRange('A7:B7').setValue(counts['🏆 エース'] + '件 ' + arrow(counts['🏆 エース'],'PrevAceCount'));
-  sh.getRange('C7:D7').setValue(counts['✅ 安定'] + '件 ' + arrow(counts['✅ 安定'],'PrevStableCount'));
-  sh.getRange('E7:F7').setValue(counts['📈 成長'] + '件 ' + arrow(counts['📈 成長'],'PrevGrowthCount'));
-  sh.getRange('G7:H7').setValue(counts['🌱 育成'] + '件 ' + arrow(counts['🌱 育成'],'PrevNurtureCount'));
-  sh.getRange('A9:B9').setValue(counts['⚠️ 低迷'] + '件 ' + arrow(counts['⚠️ 低迷'],'PrevLowCount'));
+  sh.getRange('A7:D7').setValue(counts['🏆 エース'] + '件 ' + arrow(counts['🏆 エース'],'PrevAceCount'));
+  sh.getRange('E7:H7').setValue(counts['✅ 安定'] + '件 ' + arrow(counts['✅ 安定'],'PrevStableCount'));
+  sh.getRange('A9:D9').setValue(counts['📈 成長'] + '件 ' + arrow(counts['📈 成長'],'PrevGrowthCount'));
+  sh.getRange('E9:H9').setValue(counts['🌱 育成'] + '件 ' + arrow(counts['🌱 育成'],'PrevNurtureCount'));
+  sh.getRange('A11:D11').setValue(counts['⚠️ 低迷'] + '件 ' + arrow(counts['⚠️ 低迷'],'PrevLowCount'));
+  var missingCount = rows.filter(function(r){ var f=String(r['管理フラグ']||''); return f==='データ未取得' || f==='要確認'; }).length;
+  sh.getRange('E11:H11').setValue(missingCount + '件 ' + arrow(missingCount,'PrevMissingCount'));
 
   var snapshot = sbmHomeRankSnapshot_(rows, counts, work);
-  sh.getRange('C9:H9').setValue(sbmHomeLocationText_(snapshot));
-  sh.getRange('A13:B13').setValue(work.today + '件');
-  sh.getRange('C13:D13').setValue(work.progress + '件');
-  sh.getRange('E13:F13').setValue(work.monitor + '件');
-  sh.getRange('G13:H13').setValue(work.needsReview + '件');
-  sh.getRange('A16:H18').setValue(sbmHomeOverallMessage_(blogName, snapshot));
+  sh.getRange('A15:B15').setValue(work.today + '件');
+  sh.getRange('C15:D15').setValue(work.progress + '件');
+  sh.getRange('E15:F15').setValue(work.monitor + '件');
+  sh.getRange('G15:H15').setValue(work.needsReview + '件');
+  sh.getRange('A18:H19').setValue(sbmHomeOverallMessage_(blogName, snapshot));
 }
 
 function sbmHomeRankSnapshot_(rows, counts, work) {
@@ -5957,7 +5957,7 @@ function sbmWriteTodayRecommendations_(candidates, count) {
   var guideRow = shown.length + 3;
   sh.getRange(guideRow, 1).setValue(
     shown.length < (candidates || []).length
-      ? '上部メニュー「今日の改善操作」→「次の2件を表示」で追加できます。'
+      ? '上部メニュー「SIMS-Blog-Manager → 今日の改善を開始 → 次の2件を表示」で追加できます。'
       : '最大6件を表示しています。'
   ).setFontColor('#5f6368');
 
@@ -6519,6 +6519,58 @@ function sbmEnsureOfficialSchemaOnce_() {
   return true;
 }
 
+
+function sbmOpenImprovementStatus() {
+  sbmUpdateEffectivenessSilent_();
+  return sbmOpenEffectiveness();
+}
+
+function sbmRunDailyUpdateManual() {
+  return sbmCollectPageDataToArticleDbManual(false);
+}
+
+function sbmOpenAllBlogArticles() {
+  return sbmOpenArticleDb();
+}
+
+function sbmOpenImprovementTrend() {
+  return sbmOpenImprovementHistory();
+}
+
+function sbmSortArticleDbBy_(key, label) {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB);
+  if (sh.getLastRow() < 3) return sbmAlert_('記事一覧の並び替え', '並び替える記事がありません。');
+  var heads = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  var values = sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
+  var idx = {};
+  heads.forEach(function(h,i){ idx[String(h)] = i; });
+  function num(v){ var n=Number(v); return isFinite(n)?n:0; }
+  function text(v){ return String(v||''); }
+  var rankOrder={'🏆 エース':1,'✅ 安定':2,'📈 成長':3,'🌱 育成':4,'⚠️ 低迷':5,'—':9,'':9};
+  var workOrder={'🔥 今日の改善':1,'✏️ 改善中':2,'👀 モニター中':3,'未着手':4,'✔️ 完了':5,'':9};
+  values.sort(function(a,b){
+    if (key==='rank') return (rankOrder[text(a[idx['記事ランク']])]||99)-(rankOrder[text(b[idx['記事ランク']])]||99);
+    if (key==='work') return (workOrder[text(a[idx['作業状態']])]||99)-(workOrder[text(b[idx['作業状態']])]||99);
+    if (key==='clicks') return num(b[idx['クリック数']])-num(a[idx['クリック数']]);
+    if (key==='impressions') return num(b[idx['表示回数']])-num(a[idx['表示回数']]);
+    if (key==='ctr') return num(b[idx['CTR']])-num(a[idx['CTR']]);
+    if (key==='position') { var av=num(a[idx['掲載順位']])||9999,bv=num(b[idx['掲載順位']])||9999; return av-bv; }
+    if (key==='updated') return text(b[idx['最終取得日時']]).localeCompare(text(a[idx['最終取得日時']]));
+    return 0;
+  });
+  sh.getRange(2,1,values.length,values[0].length).setValues(values);
+  sh.showSheet();
+  SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);
+  sbmAlert_('記事一覧の並び替え', label + 'で並び替えました。');
+}
+function sbmSortArticlesByRank(){ return sbmSortArticleDbBy_('rank','記事ランク順'); }
+function sbmSortArticlesByWork(){ return sbmSortArticleDbBy_('work','改善状態順'); }
+function sbmSortArticlesByClicks(){ return sbmSortArticleDbBy_('clicks','クリック数の多い順'); }
+function sbmSortArticlesByImpressions(){ return sbmSortArticleDbBy_('impressions','表示回数の多い順'); }
+function sbmSortArticlesByCtr(){ return sbmSortArticleDbBy_('ctr','CTRの高い順'); }
+function sbmSortArticlesByPosition(){ return sbmSortArticleDbBy_('position','掲載順位の高い順'); }
+function sbmSortArticlesByUpdated(){ return sbmSortArticleDbBy_('updated','最終取得日時の新しい順'); }
+
 function onOpen() {
   try {
     sbmEnsureOfficialSchemaOnce_();
@@ -6527,44 +6579,44 @@ function onOpen() {
   }
 
   var ui = SpreadsheetApp.getUi();
+  var todayMenu = ui.createMenu('今日の改善を開始')
+    .addItem('今日の改善を開く','sbmOpenTodayImprovement')
+    .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
+    .addItem('初期2件に戻す','sbmResetTodayRecommendations');
+
+  var articleSortMenu = ui.createMenu('全ブログ記事を確認する')
+    .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
+    .addSeparator()
+    .addItem('記事ランク順','sbmSortArticlesByRank')
+    .addItem('改善状態順','sbmSortArticlesByWork')
+    .addItem('クリック数の多い順','sbmSortArticlesByClicks')
+    .addItem('表示回数の多い順','sbmSortArticlesByImpressions')
+    .addItem('CTRの高い順','sbmSortArticlesByCtr')
+    .addItem('掲載順位の高い順','sbmSortArticlesByPosition')
+    .addItem('最終取得日時の新しい順','sbmSortArticlesByUpdated');
 
   ui.createMenu('SIMS-Blog-Manager')
-    .addItem('Home','sbmOpenHome')
+    .addItem('Homeを確認する','sbmOpenHome')
+    .addSubMenu(todayMenu)
+    .addItem('改善結果を登録','sbmOpenImprovementFeedbackDialog')
+    .addItem('改善記事の状況を確認','sbmOpenImprovementStatus')
+    .addSubMenu(articleSortMenu)
+    .addItem('改善推移を確認','sbmOpenImprovementTrend')
+    .addToUi();
+
+  ui.createMenu('管理')
+    .addItem('日次処理を実行','sbmRunDailyUpdateManual')
     .addSeparator()
     .addItem('初回セットアップ','sbmStartInitialSetup')
-    .addItem('ブログ情報の変更','sbmOpenBlogInfoChange')
-    .addSeparator()
-    .addItem('シートを作成・修復','sbmInitializeSheets')
-    .addSeparator()
+    .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
+    .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
+    .addItem('シートの作成・修復','sbmInitializeSheets')
+    .addItem('設定を開く','sbmOpenUserSettings')
+    .addToUi();
+
+  ui.createMenu('ヘルプ')
+    .addItem('セットアップ画面を開く','sbmOpenSetup')
     .addItem('バージョン情報','sbmShowVersionInfo')
-    .addToUi();
-
-  ui.createMenu('今日の改善操作')
-    .addItem('開く','sbmOpenTodayImprovement')
-    .addItem('改善詳細（改善ナビ）','sbmOpenSelectedImprovementNavi')
-    .addItem('改善結果を登録（JSON）','sbmOpenImprovementFeedbackDialog')
-    .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
-    .addItem('初期2件に戻す','sbmResetTodayRecommendations')
-    .addToUi();
-
-  ui.createMenu('改善効果操作')
-    .addItem('開く','sbmOpenEffectiveness')
-    .addItem('更新','sbmUpdateEffectiveness')
-    .addItem('詳細','sbmShowSelectedEffectDetail')
-    .addToUi();
-
-  ui.createMenu('記事操作')
-    .addItem('開く','sbmOpenArticleDb')
-    .addItem('更新','sbmCollectPageDataToArticleDbManual')
-    .addItem('詳細','sbmOpenSelectedArticleDbDetail')
-    .addItem('改善詳細（改善ナビ）','sbmOpenSelectedImprovementNavi')
-    .addItem('改善結果を登録（JSON）','sbmOpenImprovementFeedbackDialog')
-    .addToUi();
-
-  ui.createMenu('改善履歴操作')
-    .addItem('開く','sbmOpenImprovementHistory')
-    .addItem('詳細','sbmOpenSelectedHistoryDetail')
-    .addItem('記事の全履歴','sbmOpenSelectedHistoryArticleAll')
     .addToUi();
 
   if (SBM_ENABLE_DEVELOPER_MENU) {

@@ -1,3 +1,11 @@
+
+## 5.3.1 - Action menu and compact Home
+
+- Reorganized menus around user actions.
+- Added manual daily processing under the Management menu.
+- Added article-list sorting by rank, work status, clicks, impressions, CTR, position, and last update.
+- Changed the Home rank summary to a three-row, two-column layout with missing articles in the lower-right cell.
+
 ## Product 5.0 Official Home Compact / Daily URL Review
 
 - Homeへ記事ランク件数と ↗・→・↘ の前回比を追加
