@@ -467,7 +467,7 @@ function sbmBuildHomeSheet_() {
   sh.setFrozenRows(3);
   [130,130,130,130,130,130,130,130].forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
   sh.setRowHeights(1,30,24);
-  sh.setRowHeights(6,3,34); sh.setRowHeights(11,4,28); sh.setRowHeights(18,2,32); sh.setRowHeights(20,3,28);
+  sh.setRowHeights(6,3,26); sh.setRowHeights(11,4,28); sh.setRowHeights(18,2,24); sh.setRowHeights(20,3,28);
   sh.getRange('A1:H30').setFontFamily('Arial').setVerticalAlignment('middle').setWrap(true);
   sh.getRange('A1:G1').setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold').setFontSize(16).setHorizontalAlignment('left');
   sh.getRange('H1').setBackground('#0b8043').setFontColor('#d9ead3').setHorizontalAlignment('right');
