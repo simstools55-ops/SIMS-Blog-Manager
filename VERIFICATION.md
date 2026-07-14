@@ -1,7 +1,8 @@
-# Product 5.2.0 検証記録
+# Verification
 
-- `Code.gs` JavaScript構文チェック：合格
-- `apps-script/Code.gs` と `distribution/コード.gs`：同一内容
-- Home再構築に必要な43行を事前確保
-- グラフ元データの見出し設定と補助列非表示を確認
-- 既存シートを継続利用する更新方式
+- JavaScript構文チェック：合格
+- `apps-script/Code.gs` と `distribution/コード.gs`：一致
+- Search Console重複表示：削除
+- Home判定基準：記事DBの記事ランク分布へ変更
+- 内部ランク名：Homeの利用者向け文章には非表示
+- 既存シート：継続利用可能
