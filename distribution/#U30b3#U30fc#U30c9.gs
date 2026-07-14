@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.1.0';
+const SBM_VERSION = '5.0.1';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -3548,50 +3548,23 @@ function sbmGetTodayCandidates_() {
   try { return JSON.parse(String(sbmGetSetting_('TodayRecommendationJson','[]')) || '[]'); } catch(e) { return []; }
 }
 
-/** 今日の改善シートに実際に表示されている記事行数を返します。 */
-function sbmGetTodayDisplayedRowCount_() {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
-  if (!sh || sh.getLastRow() < 2) return 0;
-  var hm = sbmHeaderMap_(sh);
-  var titleCol = hm['記事タイトル'];
-  if (!titleCol) return 0;
-  var values = sh.getRange(2, titleCol, sh.getLastRow() - 1, 1).getDisplayValues();
-  var count = 0;
-  for (var i = 0; i < values.length; i++) {
-    if (String(values[i][0] || '').trim()) count++;
-  }
-  return count;
-}
-
 function sbmShowMoreTodayRecommendations() {
   var candidates = sbmGetTodayCandidates_();
   if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-
-  // 設定値ではなく、シート上の実表示件数を正本として扱います。
-  var current = sbmGetTodayDisplayedRowCount_();
-  if (current < 0) current = 0;
-  sbmSetSetting_('DisplayedImprovementCount', String(current), '今日の改善の実表示件数と同期');
-
-  var configuredMax = Math.min(6, sbmGetTodayMaxDisplayCount_());
-  var max = Math.min(configuredMax, candidates.length);
+  var current = sbmNumber_(sbmGetSetting_('DisplayedImprovementCount','2')) || 2;
+  var max = Math.min(6, sbmGetTodayMaxDisplayCount_(), candidates.length);
   if (current >= max) {
-    var limitMessage = candidates.length < configuredMax
-      ? '現在利用できる改善候補は' + max + '件です。\nすべて表示しています。'
-      : '今日の改善は最大' + configuredMax + '件まで表示できます。\n現在、最大' + configuredMax + '件を表示しています。';
-    sbmAlert_('表示件数の上限です', limitMessage);
+    sbmAlert_('表示件数の上限です', '今日の改善は最大' + max + '件まで表示できます。\n現在、最大' + max + '件を表示しています。');
     return;
   }
-
-  var next = Math.min(max, current + 2);
+  var next = Math.min(max,current+2);
   sbmSetHomeProcessing_('処理中', '今日の改善を追加表示', sbmNowText_(), '', '', true);
   try {
-    sbmWriteTodayRecommendations_(candidates, next);
-    sbmApplyTodayWorkState_(candidates, next);
+    sbmWriteTodayRecommendations_(candidates,next);
+    sbmApplyTodayWorkState_(candidates,next);
     sbmRefreshHome_();
     sbmOpenTodayImprovement();
-    var msg = next >= max
-      ? (max >= configuredMax ? '最大' + configuredMax + '件を表示しています。' : '利用可能な' + max + '件をすべて表示しています。')
-      : next + '件を表示しています。';
+    var msg = next >= max ? '最大' + max + '件を表示しています。' : next + '件を表示しています。';
     sbmSetHomeProcessing_('完了', '今日の改善を追加表示', '', sbmNowText_(), msg, false);
     sbmAlert_('表示を追加しました', msg);
   } catch (e) {
@@ -3603,15 +3576,11 @@ function sbmShowMoreTodayRecommendations() {
 function sbmResetTodayRecommendations() {
   var candidates = sbmGetTodayCandidates_();
   if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-  var initial = Math.max(1, Math.min(sbmGetTodayInitialDisplayCount_(), candidates.length));
-
-  // 先に設定値を初期件数へ戻し、再描画後も実表示件数で同期します。
-  sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善を初期表示件数へ戻す');
-  sbmWriteTodayRecommendations_(candidates, initial);
-  sbmApplyTodayWorkState_(candidates, initial);
+  var n=Math.min(2,candidates.length);
+  sbmWriteTodayRecommendations_(candidates,n);
+  sbmApplyTodayWorkState_(candidates,n);
   sbmRefreshHome_();
   sbmOpenTodayImprovement();
-  sbmAlert_('初期表示に戻しました', '今日の改善を初期' + initial + '件表示に戻しました。');
 }
 
 function sbmApplyTodayWorkState_(candidates, count) {
@@ -3644,126 +3613,6 @@ function sbmFindArticleDbByUrl_(url){
   return null;
 }
 
-function sbmDecodeHtmlEntities_(s) {
-  return String(s || '')
-    .replace(/&nbsp;|&#160;/gi, ' ')
-    .replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'")
-    .replace(/&#(\d+);/g, function(_, n){ try { return String.fromCharCode(Number(n)); } catch(e) { return _; } })
-    .replace(/&#x([0-9a-f]+);/gi, function(_, n){ try { return String.fromCharCode(parseInt(n,16)); } catch(e) { return _; } });
-}
-
-function sbmArticleTextFromHtml_(html) {
-  html = String(html || '');
-  if (!html) return '';
-  html = html.replace(/<!--[\s\S]*?-->/g, ' ')
-    .replace(/<(script|style|noscript|svg|canvas|iframe|form)[^>]*>[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<(nav|header|footer|aside)[^>]*>[\s\S]*?<\/\1>/gi, ' ');
-
-  var candidates = [];
-  var patterns = [
-    /<article\b[^>]*>([\s\S]*?)<\/article>/gi,
-    /<(?:div|main)\b[^>]*(?:class|id)=["'][^"']*(?:entry-content|post-content|article-body|article-content|post-body|main-content|hatena-body|hentry)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|main)>/gi,
-    /<main\b[^>]*>([\s\S]*?)<\/main>/gi
-  ];
-  patterns.forEach(function(re){ var m; while ((m = re.exec(html)) !== null) candidates.push(m[1] || ''); });
-  var source = candidates.length ? candidates.sort(function(a,b){return b.length-a.length;})[0] : html;
-  source = source
-    .replace(/<(div|section|aside)\b[^>]*(?:class|id)=["'][^"']*(?:share|social|related|recommend|ranking|profile|author|comment|breadcrumb|advert|adsense|widget|sidebar|toc)[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<br\s*\/?\s*>/gi, '\n')
-    .replace(/<h1\b[^>]*>/gi, '\n# ').replace(/<h2\b[^>]*>/gi, '\n## ').replace(/<h3\b[^>]*>/gi, '\n### ')
-    .replace(/<h4\b[^>]*>/gi, '\n#### ')
-    .replace(/<li\b[^>]*>/gi, '\n- ')
-    .replace(/<(p|blockquote|tr|table|ul|ol)\b[^>]*>/gi, '\n')
-    .replace(/<\/(h1|h2|h3|h4|p|blockquote|li|tr|table|ul|ol|div|section)>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ');
-  source = sbmDecodeHtmlEntities_(source)
-    .replace(/[ \t]+/g, ' ')
-    .replace(/ *\n */g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-  return source;
-}
-
-function sbmStructureArticleText_(text, sourceType) {
-  text = String(text || '').replace(/\r\n?/g, '\n').trim();
-  if (!text) return {ok:false, message:'本文を確認できませんでした。'};
-  var maxChars = 50000;
-  var truncated = text.length > maxChars;
-  if (truncated) text = text.substring(0, maxChars);
-  var lines = text.split('\n');
-  var intro = [], sections = [], current = null;
-  lines.forEach(function(line){
-    line = String(line || '').trim();
-    if (!line) return;
-    var m = line.match(/^(#{1,4})\s+(.+)$/);
-    if (m) {
-      current = {level:m[1].length, heading:m[2].trim(), text:''};
-      sections.push(current);
-    } else if (current) {
-      current.text += (current.text ? '\n' : '') + line;
-    } else {
-      intro.push(line);
-    }
-  });
-  if (!sections.length) sections.push({level:2, heading:'本文', text:text});
-  sections = sections.filter(function(x){ return x.heading || x.text; }).map(function(x){
-    return {level:x.level, heading:x.heading, characters:String(x.text || '').length, text:String(x.text || '')};
-  });
-  return {
-    ok:true,
-    data:{
-      format:'SIMS_ARTICLE_SOURCE_V1', version:'1.0', source_type:String(sourceType || 'unknown'),
-      extracted_at:sbmDateText_(new Date()), truncated:truncated,
-      character_count:text.length, introduction:intro.join('\n'), sections:sections
-    }
-  };
-}
-
-function sbmFetchArticleSource_(url) {
-  url = sbmNormalizeUrl_(url || '');
-  if (!/^https?:\/\//i.test(url)) return {ok:false, message:'記事URLが正しくありません。'};
-  try {
-    var res = UrlFetchApp.fetch(url, {
-      muteHttpExceptions:true, followRedirects:true,
-      headers:{'User-Agent':'Mozilla/5.0 (compatible; SIMS-Blog-Manager/5.1; +article-source)'}
-    });
-    var code = res.getResponseCode();
-    if (code < 200 || code >= 400) return {ok:false, message:'URLから本文を取得できませんでした（HTTP '+code+'）。'};
-    var headers = res.getAllHeaders ? res.getAllHeaders() : {};
-    var contentType = String(headers['Content-Type'] || headers['content-type'] || '');
-    if (contentType && contentType.toLowerCase().indexOf('text/html') < 0) return {ok:false, message:'HTML記事ではないため本文を取得できませんでした。'};
-    var text = sbmArticleTextFromHtml_(res.getContentText() || '');
-    if (text.length < 200) return {ok:false, message:'本文として十分な文章を抽出できませんでした。'};
-    return sbmStructureArticleText_(text, 'url');
-  } catch(e) {
-    return {ok:false, message:'URLから本文を取得できませんでした。\n'+String(e && e.message || e)};
-  }
-}
-
-function sbmAnalyzePastedArticleSource(text, meta) {
-  text = String(text || '').trim();
-  if (!text) return {ok:false, message:'切り抜いた記事本文を貼り付けてください。'};
-  if (/<(?:article|main|h1|h2|p)\b/i.test(text)) text = sbmArticleTextFromHtml_(text);
-  var result = sbmStructureArticleText_(text, 'manual_clip');
-  if (!result.ok) return result;
-  return {ok:true, prompt:sbmBuildImprovementPrompt_(meta || {}, result.data), characterCount:result.data.character_count, sectionCount:result.data.sections.length};
-}
-
-function sbmBuildImprovementPrompt_(meta, articleData) {
-  var articleId=String(meta.articleId||''), url=String(meta.url||''), title=String(meta.title||''), seoTitle=String(meta.seoTitle||''), description=String(meta.description||''), query=String(meta.query||'');
-  var prompt='次の記事をSEO改善してください。\n' +
-    'ArticleID: '+articleId+'\nURL: '+url+'\n記事タイトル: '+title+'\nSEOタイトル: '+seoTitle+'\nメタディスクリプション: '+description+'\nメインクエリ: '+query+'\n' +
-    '現在値: クリック '+meta.clicks+'、表示 '+meta.imps+'、CTR '+meta.ctrText+'、順位 '+meta.posText+'位\n' +
-    '改善目的: '+meta.kind+'。タイトル、導入文、見出し、FAQを優先し、既存記事の良い部分は残してください。\n';
-  if (articleData) prompt += '\n【現在の記事本文データ（JSON）】\n```json\n'+JSON.stringify(articleData, null, 2)+'\n```\n本文データを根拠に、修正箇所が分かるビフォー・アフター形式と簡潔な修正理由を示してください。\n';
-  else prompt += '\n【現在の記事本文】\n本文を取得できていません。改善ナビで本文を貼り付けてから依頼文をコピーしてください。\n';
-  return prompt + '\n【SIMSへのフィードバック出力ルール】\n' +
-    '回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。JSONの前後に説明を書いても構いませんが、JSON内にはコメントを入れないでください。\n' +
-    '{\n  "format": "SIMS_FEEDBACK_V1",\n  "version": "1.1",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n' +
-    '変更していない項目はfalse、変更後の値がない項目は空文字にしてください。recommended_review_daysは7・14・30のいずれかにしてください。improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。';
-}
-
 function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var title=String(a['記事タイトル']||'（タイトル未取得）');
   var url=String(a['記事URL']||'');
@@ -3773,24 +3622,52 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var clicks=sbmNumber_(a['クリック数'])||0, imps=sbmNumber_(a['表示回数'])||0, ctr=sbmNormalizeCtrNumber_(a['CTR']), pos=sbmNumber_(a['掲載順位'])||0;
   var target=sbmExpectedCtrTarget_(pos), expected=Math.max(0,Math.round(imps*Math.max(0,target-ctr)));
   var advice= kind.indexOf('CTR')>=0 ? ['P0：SEOタイトルを検索意図に合わせる','P1：導入文で結論と対象読者を明確にする','P2：検索クエリに対応するFAQを追加する'] : ['P0：タイトル・見出しを主検索意図に合わせる','P1：導入文を短くし、結論を先に提示する','P2：不足する説明を1～2項目追加する'];
-  var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind};
-  var fetched=sbmFetchArticleSource_(url);
-  var prompt=sbmBuildImprovementPrompt_(meta, fetched.ok ? fetched.data : null);
+  var articleId=String(a['ArticleID']||'').trim();
+  var seoTitle=String(a['SEOタイトル']||'').trim();
+  var description=String(a['メタディスクリプション']||'').trim();
+  var prompt='次の記事をSEO改善してください。\n' +
+    'ArticleID: '+articleId+'\nURL: '+url+'\n記事タイトル: '+title+'\nSEOタイトル: '+seoTitle+'\nメタディスクリプション: '+description+'\nメインクエリ: '+query+'\n' +
+    '現在値: クリック '+clicks+'、表示 '+imps+'、CTR '+(ctr*100).toFixed(1)+'%、順位 '+pos.toFixed(1)+'位\n' +
+    '改善目的: '+kind+'。タイトル、導入文、見出し、FAQを優先し、既存記事の良い部分は残してください。\n\n' +
+    '【SIMSへのフィードバック出力ルール】\n' +
+    '回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。JSONの前後に説明を書いても構いませんが、JSON内にはコメントを入れないでください。\n' +
+    '{\n' +
+    '  "format": "SIMS_FEEDBACK_V1",\n' +
+    '  "version": "1.1",\n' +
+    '  "article_id": "'+articleId+'",\n' +
+    '  "article_url": "'+url+'",\n' +
+    '  "completed_at": "YYYY-MM-DD",\n' +
+    '  "changes": {\n' +
+    '    "article_title": false, "seo_title": false, "description": false,\n' +
+    '    "introduction": false, "headings": false, "faq": false,\n' +
+    '    "internal_links": false, "body": false, "images": false\n' +
+    '  },\n' +
+    '  "new_values": {\n' +
+    '    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n' +
+    '  },\n' +
+    '  "improvement_type": "normal",\n' +
+    '  "confidence": "high",\n' +
+    '  "expected_effect": {"ctr": "", "clicks": ""},\n' +
+    '  "next_action": "monitor",\n' +
+    '  "summary": "実施した改善の要約",\n' +
+    '  "warnings": [],\n' +
+    '  "estimated_minutes": 20,\n' +
+    '  "recommended_review_days": 14\n' +
+    '}\n' +
+    '変更していない項目はfalse、変更後の値がない項目は空文字にしてください。recommended_review_daysは7・14・30のいずれかにしてください。improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。';
   function esc(x){return String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-  var statusHtml=fetched.ok ? '<div class="source-ok">✅ URLから記事本文を取得しました（'+fetched.data.character_count.toLocaleString()+'文字・'+fetched.data.sections.length+'セクション）</div>' : '<div class="source-ng">⚠️ '+esc(fetched.message)+'<br>下欄へWebクリッパー等で切り抜いた本文を貼り付けてください。</div>';
-  var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124;line-height:1.65}h2{margin:0 0 8px;color:#0b8043}.tag{display:inline-block;padding:4px 10px;border-radius:14px;background:#e6f4ea;color:#137333;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.card{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;text-align:center}.sec{margin-top:16px;border-top:1px solid #dadce0;padding-top:12px}.p{background:#fff8e1;border-left:4px solid #fbbc04;padding:10px;margin:7px 0}.reason{white-space:pre-wrap;background:#eef5ff;padding:12px;border-radius:8px}.prompt{white-space:pre-wrap;background:#f1f3f4;padding:12px;border-radius:8px;font-size:12px;max-height:300px;overflow:auto}.btn{display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:9px 14px;border-radius:6px;font-weight:700;margin-right:8px;border:0;cursor:pointer}.source-ok{background:#e6f4ea;color:#137333;padding:10px;border-radius:8px}.source-ng{background:#fef7e0;color:#7a4d00;padding:10px;border-radius:8px}textarea{width:100%;height:150px;box-sizing:border-box;padding:10px;margin-top:8px;font-family:monospace}</style></head><body>'+ 
-    '<h2>改善ナビ</h2><span class="tag">'+esc(kind)+'</span><h3>'+esc(title)+'</h3><div>'+esc(rank)+' ／ '+esc(work)+'</div>'+ 
-    '<div class="grid"><div class="card"><b>クリック</b><br>'+clicks.toLocaleString()+'</div><div class="card"><b>表示回数</b><br>'+imps.toLocaleString()+'</div><div class="card"><b>CTR</b><br>'+(ctr*100).toFixed(1)+'%</div><div class="card"><b>順位</b><br>'+pos.toFixed(1)+'</div></div>'+ 
-    '<div class="sec"><b>記事本文データ</b>'+statusHtml+(fetched.ok?'':'<textarea id="pasted" placeholder="記事タイトル、見出し、本文を貼り付けてください。広告や関連記事が混ざっていても解析時に可能な範囲で除外します。"></textarea><br><button class="btn" onclick="analyzePasted()">貼り付け本文を解析</button><span id="analyzeMsg"></span>')+'</div>'+ 
-    '<div class="sec"><b>なぜ今改善するのか</b><div class="reason">'+esc(reason||('表示回数とCTR・順位から改善余地がある記事です。期待効果：約'+expected+'クリック増。'))+'</div></div>'+ 
-    '<div class="sec"><b>今やる価値</b><p>'+(expected>=30?'★★★★★ 非常に高い':expected>=10?'★★★★☆ 高い':'★★★☆☆ 検討価値あり')+'</p></div>'+ 
-    '<div class="sec"><b>改善ポイント</b>'+advice.map(function(x){return '<div class="p">'+esc(x)+'</div>';}).join('')+'</div>'+ 
-    '<div class="sec"><b>作業時間の目安</b><p>'+(kind.indexOf('即効性')>=0?'約15～20分':'約20分')+'</p></div>'+ 
-    '<div class="sec"><b>AIでリライトするための依頼文</b><div class="prompt" id="prompt">'+esc(prompt)+'</div><button class="btn" onclick="copyPrompt()">依頼文をコピー</button></div>'+ 
-    '<div class="sec"><a class="btn" href="'+esc(url)+'" target="_blank">記事を開く</a></div>'+ 
-    '<div class="sec" style="background:#e6f4ea;border:1px solid #b7dfc2;border-radius:8px;padding:14px"><b>記事の修正が完了したら、改善結果を登録してください。</b><p style="margin:6px 0 10px;color:#5f6368">Claudeの回答末尾にあるSIMS向けJSONを貼り付けて登録します。</p><button class="btn" style="background:#0b8043" onclick="registerFeedback()">✅ 改善完了を登録</button></div>'+ 
-    '<script>var meta='+JSON.stringify(meta).replace(/</g,'\\u003c')+';function copyPrompt(){var t=document.getElementById("prompt").innerText;navigator.clipboard.writeText(t).then(function(){alert("コピーしました")})}function analyzePasted(){var el=document.getElementById("pasted"),msg=document.getElementById("analyzeMsg");msg.textContent="解析中…";google.script.run.withFailureHandler(function(e){msg.textContent=(e&&e.message)||String(e)}).withSuccessHandler(function(r){if(!r.ok){msg.textContent=r.message;return;}document.getElementById("prompt").innerText=r.prompt;msg.textContent="解析完了（"+r.characterCount+"文字・"+r.sectionCount+"セクション）";}).sbmAnalyzePastedArticleSource(el.value,meta)}function registerFeedback(){google.script.run.withFailureHandler(function(e){alert((e&&e.message)||String(e));}).withSuccessHandler(function(){google.script.host.close();}).sbmOpenImprovementFeedbackDialog();}</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(760)),'改善ナビ');
+  var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124;line-height:1.65}h2{margin:0 0 8px;color:#0b8043}.tag{display:inline-block;padding:4px 10px;border-radius:14px;background:#e6f4ea;color:#137333;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.card{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;text-align:center}.sec{margin-top:16px;border-top:1px solid #dadce0;padding-top:12px}.p{background:#fff8e1;border-left:4px solid #fbbc04;padding:10px;margin:7px 0}.reason{white-space:pre-wrap;background:#eef5ff;padding:12px;border-radius:8px}.prompt{white-space:pre-wrap;background:#f1f3f4;padding:12px;border-radius:8px;font-size:12px}.btn{display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:9px 14px;border-radius:6px;font-weight:700;margin-right:8px}</style></head><body>'+
+    '<h2>改善ナビ</h2><span class="tag">'+esc(kind)+'</span><h3>'+esc(title)+'</h3><div>'+esc(rank)+' ／ '+esc(work)+'</div>'+
+    '<div class="grid"><div class="card"><b>クリック</b><br>'+clicks.toLocaleString()+'</div><div class="card"><b>表示回数</b><br>'+imps.toLocaleString()+'</div><div class="card"><b>CTR</b><br>'+(ctr*100).toFixed(1)+'%</div><div class="card"><b>順位</b><br>'+pos.toFixed(1)+'</div></div>'+
+    '<div class="sec"><b>なぜ今改善するのか</b><div class="reason">'+esc(reason||('表示回数とCTR・順位から改善余地がある記事です。期待効果：約'+expected+'クリック増。'))+'</div></div>'+
+    '<div class="sec"><b>今やる価値</b><p>'+(expected>=30?'★★★★★ 非常に高い':expected>=10?'★★★★☆ 高い':'★★★☆☆ 検討価値あり')+'</p></div>'+
+    '<div class="sec"><b>改善ポイント</b>'+advice.map(function(x){return '<div class="p">'+esc(x)+'</div>';}).join('')+'</div>'+
+    '<div class="sec"><b>作業時間の目安</b><p>'+(kind.indexOf('即効性')>=0?'約15～20分':'約20分')+'</p></div>'+
+    '<div class="sec"><b>AIでリライトするための依頼文</b><div class="prompt" id="prompt">'+esc(prompt)+'</div><button onclick="copyPrompt()">コピー</button></div>'+
+    '<div class="sec"><a class="btn" href="'+esc(url)+'" target="_blank">記事を開く</a></div>'+
+    '<div class="sec" style="background:#e6f4ea;border:1px solid #b7dfc2;border-radius:8px;padding:14px"><b>記事の修正が完了したら、改善結果を登録してください。</b><p style="margin:6px 0 10px;color:#5f6368">Claudeの回答末尾にあるSIMS向けJSONを貼り付けて登録します。</p><button class="btn" style="border:0;cursor:pointer;background:#0b8043" onclick="registerFeedback()">✅ 改善完了を登録</button></div>'+
+    '<script>function copyPrompt(){var t=document.getElementById("prompt").innerText;navigator.clipboard.writeText(t).then(function(){alert("コピーしました")})}function registerFeedback(){google.script.run.withFailureHandler(function(e){alert((e&&e.message)||String(e));}).withSuccessHandler(function(){google.script.host.close();}).sbmOpenImprovementFeedbackDialog();}</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(780).setHeight(720)),'改善ナビ');
 }
 
 /** Homeを記事DBと設定だけから更新する現行版。 */
