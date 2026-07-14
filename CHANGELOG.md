@@ -1,3 +1,10 @@
+## Product 5.0 Official Reset Base - Candidate Limit
+
+- 改善候補の保持上限を10件に固定
+- 今日の改善を初期2件・最大6件に固定
+- 効果測定を7日・14日・21日・28日の4回測定として仕様統一
+- 配布物の文字化けファイル名を修正
+
 # Changelog
 
 ## 5.2.0 - Home Dashboard Evolution

@@ -59,7 +59,7 @@ const SBM_DEFAULTS = Object.freeze({
   DAILY_FETCH_MAX_ROWS: 1500,
   PAGE_FETCH_MAX_ROWS: 5000,
   QUERY_FETCH_PAGE_LIMIT: 50,
-  ANALYSIS_CANDIDATE_LIMIT: 50,
+  ANALYSIS_CANDIDATE_LIMIT: 10,
   ANALYSIS_ARTICLE_LIMIT: 120,
   TITLE_FETCH_DEFAULT: 'ON',
   META_FETCH_MAX_ROWS: 50,
@@ -290,8 +290,8 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS, 'Search Console取得日数');
   sbmSetSettingIfEmpty_('OncePerDay', 'ON', '1日1回取得制限');
   sbmSetSettingIfEmpty_('LastFetchDate', '', '最終取得日');
-  sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数。Product 5.0では50件で打ち切り');
-  if ((sbmNumber_(sbmGetSetting_('AnalysisCandidateLimit','0')) || 0) < 50) sbmSetSetting_('AnalysisCandidateLimit', 50, 'Product 5.0: STEP Bは改善候補50件で打ち切り');
+  sbmSetSettingIfEmpty_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, '分析後に保存する改善候補数。Product 5.0 Officialでは10件で打ち切り');
+  if ((sbmNumber_(sbmGetSetting_('AnalysisCandidateLimit','0')) || 0) !== SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT) sbmSetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT, 'Product 5.0 Official: STEP Bは改善候補10件で打ち切り');
   sbmSetSettingIfEmpty_('AnalysisArticleLimit', SBM_DEFAULTS.ANALYSIS_ARTICLE_LIMIT, 'STEP Bで実際に重い分析を行う最大記事数。タイムアウト対策用');
   sbmSetSettingIfEmpty_('FetchArticleTitles', SBM_DEFAULTS.TITLE_FETCH_DEFAULT, '記事タイトル取得を外部アクセスで行うか。データ一覧のH1/titleタグ表示に使用');
   sbmSetSettingIfEmpty_('DataListTitleFetch', 'OFF', 'STEP Bでは外部取得しない。タイトル補完はSTEP Aで行う');
@@ -344,11 +344,11 @@ function sbmBuildUserSettingsSheet_() {
     validInt_(sbmGetSetting_('ArticleInfoBatch', SBM_DEFAULTS.ARTICLE_INFO_BATCH), 30, 100, SBM_DEFAULTS.ARTICLE_INFO_BATCH));
   var todayInitial = validInt_(previous['今日の改善初期表示件数'], 1, 6,
     validInt_(sbmGetSetting_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY), 1, 6, SBM_DEFAULTS.TODAY_INITIAL_DISPLAY));
-  var todayMax = validInt_(previous['今日の改善最大表示件数'], 2, 20,
-    validInt_(sbmGetSetting_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY), 2, 20, SBM_DEFAULTS.TODAY_MAX_DISPLAY));
+  var todayMax = validInt_(previous['今日の改善最大表示件数'], 2, 6,
+    validInt_(sbmGetSetting_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY), 2, 6, SBM_DEFAULTS.TODAY_MAX_DISPLAY));
   if (todayMax < todayInitial) todayMax = Math.max(todayInitial, SBM_DEFAULTS.TODAY_MAX_DISPLAY);
-  var candidateLimit = validInt_(previous['改善候補抽出件数'], 10, 200,
-    validInt_(sbmGetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT), 10, 200, SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT));
+  var candidateLimit = validInt_(previous['改善候補抽出件数'], 10, 10,
+    validInt_(sbmGetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT), 10, 10, SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT));
   var searchDays = validInt_(previous['Search Console取得期間（日）'], 7, 365,
     validInt_(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS), 7, 365, SBM_DEFAULTS.SEARCH_DAYS));
 
@@ -357,8 +357,8 @@ function sbmBuildUserSettingsSheet_() {
     SBM_HEADERS.USER_SETTINGS,
     ['記事情報補完件数', articleBatch, '初回セットアップで1回に補完する記事数。30～100の整数（推奨50件）'],
     ['今日の改善初期表示件数', todayInitial, '今日の改善を開いたときに最初に表示する件数。1～6の整数（推奨2件）'],
-    ['今日の改善最大表示件数', todayMax, '「次のおすすめ」で追加表示できる上限。2～20の整数（推奨6件）'],
-    ['改善候補抽出件数', candidateLimit, '記事DBから保持する改善候補数。10～200の整数（推奨50件）'],
+    ['今日の改善最大表示件数', todayMax, '「次のおすすめ」で追加表示できる上限。2～6の整数（正式上限6件）'],
+    ['改善候補抽出件数', candidateLimit, '記事DBから保持する改善候補数。Product 5.0 Officialでは10件固定'],
     ['Search Console取得期間（日）', searchDays, 'ページ指標を集計する期間。7～365日の整数（推奨90日）']
   ]);
 
@@ -419,7 +419,7 @@ function sbmGetTodayInitialDisplayCount_() {
 function sbmGetTodayMaxDisplayCount_() {
   var initial = sbmGetTodayInitialDisplayCount_();
   var n = sbmNumber_(sbmGetSetting_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY)) || SBM_DEFAULTS.TODAY_MAX_DISPLAY;
-  return Math.max(initial, Math.min(20, Math.floor(n)));
+  return Math.max(initial, Math.min(6, Math.floor(n)));
 }
 function sbmBuildHomeSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.HOME);
@@ -2771,8 +2771,8 @@ function sbmLegacyOnEdit_(e) {
       var rules = {
         2: {key:'ArticleInfoBatch', min:30, max:100, label:'記事情報補完件数'},
         3: {key:'TodayInitialDisplayCount', min:1, max:6, label:'今日の改善初期表示件数'},
-        4: {key:'TodayMaxDisplayCount', min:2, max:20, label:'今日の改善最大表示件数'},
-        5: {key:'AnalysisCandidateLimit', min:10, max:200, label:'改善候補抽出件数'},
+        4: {key:'TodayMaxDisplayCount', min:2, max:6, label:'今日の改善最大表示件数'},
+        5: {key:'AnalysisCandidateLimit', min:10, max:10, label:'改善候補抽出件数'},
         6: {key:'SearchDays', min:7, max:365, label:'Search Console取得期間（日）'}
       };
       var rule = rules[row];
