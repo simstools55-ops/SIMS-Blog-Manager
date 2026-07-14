@@ -1,3 +1,11 @@
+## Product 5.0 Official Home Compact / Daily URL Review
+
+- Homeへ記事ランク件数と ↗・→・↘ の前回比を追加
+- Home下部の処理状況を、処理名・開始時刻・処理結果・お願いの4項目へ簡素化
+- 起動時の日次更新確認を、その日の未実行時だけ表示するよう整理
+- Search Console未取得URLを、3回連続または14日以上で「要確認」と判定
+- データ未取得・要確認の記事を改善候補から除外
+
 ## Product 5.0 Official Reset Base - Candidate Limit
 
 - 改善候補の保持上限を10件に固定
