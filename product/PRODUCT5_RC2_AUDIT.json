@@ -1,9 +1,0 @@
-{
-  "version": "5.0.0-official-rc2",
-  "lines": 6278,
-  "function_definitions": 355,
-  "unique_functions": 355,
-  "duplicate_functions": [],
-  "weekly_sections_present": true,
-  "legacy_extend_menu_present": false
-}
