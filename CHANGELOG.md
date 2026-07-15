@@ -1,6 +1,6 @@
 # Changelog
 
-## 5.2.2
+## 5.2.3
 
 - 改善ナビ起動時に、対象URLの最新Search Consoleクエリを毎回取得
 - 取得したクエリをSearchConsole_Dataへ保存し、上位20件と内部リンク候補の再計算に使用
