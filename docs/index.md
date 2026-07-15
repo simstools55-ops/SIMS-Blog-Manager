@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.1 Official
+# SIMS-Blog-Manager Product 5.1.2 Official
 
 SIMS-Blog-Managerは、Google Search Consoleのデータから改善候補を選び、改善作業と4週間の効果をGoogleスプレッドシートで管理するツールです。
 
