@@ -1,3 +1,7 @@
+# SIMS-Blog-Manager Product 5.2.0 Official
+
+Product 5.2.0 adds automatic internal-link candidate collection to the Improvement Navigator. Candidates are selected from the article database and Search Console queries and are included in the AI improvement request with URLs and relevance reasons.
+
 # SIMS-Blog-Manager Product 5.1.3 Official
 
 Product 5.1系の正式基準版です。Homeと上部メニューを毎日の作業フローに合わせて再設計し、改善履歴の再構築と書式反映を安定化しました。

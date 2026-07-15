@@ -1,3 +1,12 @@
+# Product 5.2.0 Official — Internal Link Candidates
+
+- 改善ナビに内部リンク候補の自動抽出を追加
+- 記事DBとSearch Console上位クエリから関連度をスコアリング
+- 関連性のある記事を3～8件、タイトル・URL・メインクエリ・理由付きで表示
+- AI向け改善依頼文へ候補記事と採用ルールを自動挿入
+- 検索意図が近い候補にはカニバリ注意を表示
+- 関連性の低い記事は件数合わせで追加しない
+
 # Product 5.1.3 Official Release Sync
 
 - Apps Script、docs、distributionを5.1.3で同期

@@ -1,4 +1,4 @@
-# Product 5.1.3 Official 公開手順
+# Product 5.2.0 Official 公開手順
 
 ## 1. mainへ反映
 
@@ -7,7 +7,7 @@ maintenanceブランチで実機確認後、mainへマージします。
 推奨コミットタイトル：
 
 ```text
-Release Product 5.1.3 Official
+Release Product 5.2.0 Official
 ```
 
 ## 2. GitHub Pages
@@ -17,7 +17,7 @@ Release Product 5.1.3 Official
 ## 3. タグ
 
 ```text
-v5.1.3
+v5.2.0
 ```
 
 ## 4. GitHub Release
@@ -25,18 +25,18 @@ v5.1.3
 タイトル：
 
 ```text
-SIMS-Blog-Manager Product 5.1.3 Official
+SIMS-Blog-Manager Product 5.2.0 Official
 ```
 
 添付ファイル：
 
 ```text
-SIMS-Blog-Manager-Product-5.1.3-Distribution.zip
+SIMS-Blog-Manager-Product-5.2.0-Distribution.zip
 ```
 
 ## 5. 公開後確認
 
-- マニュアルサイトのバージョンが5.1.3
+- マニュアルサイトのバージョンが5.2.0
 - ダウンロードファイルの展開が正常
 - `コード.gs`と`apps-script/Code.gs`が一致
 - テンプレート名がProduct 5.1 Official

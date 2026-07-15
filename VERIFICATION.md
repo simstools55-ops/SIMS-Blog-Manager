@@ -1,4 +1,4 @@
-# Product 5.1.3 Official 検証項目
+# Product 5.2.0 Official 検証項目
 
 ## コード・配布物
 

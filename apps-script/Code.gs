@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.1.3';
+const SBM_VERSION = '5.2.0';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -431,7 +431,7 @@ function sbmBuildHomeSheet_() {
   if (sh.getMaxRows() < 29) sh.insertRowsAfter(sh.getMaxRows(), 29 - sh.getMaxRows());
 
   sh.getRange('A1:G1').merge().setValue('SIMS-Blog-Manager  Home');
-  sh.getRange('H1').setValue('v5.1.3');
+  sh.getRange('H1').setValue('v5.2.0');
   sh.getRange('A2').setValue('ブログ名'); sh.getRange('B2:D2').merge();
   sh.getRange('E2').setValue('最終更新'); sh.getRange('F2:H2').merge();
   sh.getRange('A3').setValue('総記事数'); sh.getRange('B3').setValue('0件');
@@ -2222,7 +2222,7 @@ function sbmSetHomeProcessing_(state, processName, startedText, finishedText, re
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
   if (!sh) return;
   try {
-    if (String(sh.getRange('H1').getValue()) !== 'v5.1.3') sbmBuildHomeSheet_();
+    if (String(sh.getRange('H1').getValue()) !== 'v5.2.0') sbmBuildHomeSheet_();
     sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
     sh.getRange('A21:H24').setBackground(isProcessing ? '#fff2cc' : '#d9ead3');
     sh.getRange('B22:H22').setValue(processName || state || '待機中');
@@ -3827,14 +3827,64 @@ function sbmAnalyzePastedArticleSource(text, meta) {
   return {ok:true, prompt:sbmBuildImprovementPrompt_(meta || {}, result.data), characterCount:result.data.character_count, sectionCount:result.data.sections.length};
 }
 
+/** Product 5.2: 記事DBとSearch Consoleクエリから内部リンク候補を抽出します。 */
+function sbmInternalLinkNormalizeText_(value) {
+  return String(value || '').toLowerCase().replace(/https?:\/\/[^\s]+/g, ' ').replace(/[\u3000\s]+/g, ' ').replace(/[\-–—_|｜/\\:：,，.。!！?？()（）\[\]「」『』【】<>＜＞]+/g, ' ').trim();
+}
+function sbmInternalLinkTokens_(value) {
+  var text=sbmInternalLinkNormalizeText_(value), out={}; if(!text)return [];
+  var stop={'について':1,'とは':1,'方法':1,'やり方':1,'使い方':1,'原因':1,'対処法':1,'解決':1,'おすすめ':1,'まとめ':1,'最新版':1,'完全版':1,'記事':1,'ブログ':1,'できない':1,'する':1,'した':1,'して':1,'から':1,'まで':1,'ため':1,'場合':1,'how':1,'what':1,'the':1,'and':1,'for':1,'with':1};
+  (text.match(/[a-z0-9][a-z0-9+._-]*|[ぁ-んァ-ヶー一-龠々]{2,}/g)||[]).forEach(function(word){
+    word=word.replace(/^[-_.]+|[-_.]+$/g,''); if(!word||stop[word])return;
+    if(/^[ぁ-んァ-ヶー一-龠々]+$/.test(word)&&word.length>=4){for(var n=2;n<=Math.min(4,word.length);n++){for(var i=0;i<=word.length-n;i++){var gram=word.substring(i,i+n);if(!stop[gram])out[gram]=true;}}}
+    out[word]=true;
+  }); return Object.keys(out);
+}
+function sbmInternalLinkTokenSet_(value){var set={};sbmInternalLinkTokens_(value).forEach(function(t){set[t]=true;});return set;}
+function sbmInternalLinkOverlap_(left,right){var a=sbmInternalLinkTokenSet_(left),b=sbmInternalLinkTokenSet_(right),common=[];Object.keys(a).forEach(function(t){if(b[t])common.push(t);});common.sort(function(x,y){return y.length-x.length;});return common;}
+function sbmInternalLinkQueriesByUrl_(){
+  var rows=sbmRowsAsObjects_(SBM_SHEETS.RAW_DATA)||[],grouped={};
+  rows.forEach(function(r){var url=sbmNormalizeUrl_(r.URL||r['記事URL']||''),q=String(r.Query||r['クエリ']||'').trim();if(!url||!q)return;(grouped[url]||(grouped[url]=[])).push({query:q,clicks:sbmNumber_(r.Clicks||r['クリック数'])||0,imps:sbmNumber_(r.Impressions||r['表示回数'])||0});});
+  Object.keys(grouped).forEach(function(url){grouped[url].sort(function(a,b){return(b.clicks-a.clicks)||(b.imps-a.imps);});grouped[url]=grouped[url].slice(0,20).map(function(x){return x.query;});});return grouped;
+}
+function sbmInternalLinkCategory_(url){try{var path=String(url||'').replace(/^https?:\/\/[^/]+/i,'').split(/[?#]/)[0],parts=path.split('/').filter(Boolean);if(parts.length>=2&&!/^\d{4}$/.test(parts[0]))return parts[0];}catch(e){}return '';}
+function sbmFindInternalLinkCandidates_(targetArticle,minCount,maxCount){
+  minCount=Math.max(0,Number(minCount||3));maxCount=Math.max(minCount,Math.min(8,Number(maxCount||8)));
+  var articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],queryMap=sbmInternalLinkQueriesByUrl_();
+  var targetUrl=sbmNormalizeUrl_(targetArticle['記事URL']||targetArticle.URL||''),targetTitle=String(targetArticle['記事タイトル']||''),targetMain=String(targetArticle['メインクエリ']||''),targetQueries=queryMap[targetUrl]||[],targetAll=[targetTitle,targetMain].concat(targetQueries).join(' '),targetCategory=sbmInternalLinkCategory_(targetUrl),ranked=[];
+  articles.forEach(function(a){
+    var url=sbmNormalizeUrl_(a['記事URL']||'');if(!url||url===targetUrl)return;
+    var flags=String(a['管理フラグ']||'')+' '+String(a['記事ステータス']||'');if(/管理対象外|削除|要確認|データ未取得/.test(flags))return;
+    var title=String(a['記事タイトル']||'').trim();if(!title)return;var main=String(a['メインクエリ']||'').trim(),queries=queryMap[url]||[],candidateAll=[title,main].concat(queries).join(' ');
+    var mainCommon=sbmInternalLinkOverlap_(targetMain,main),titleCommon=sbmInternalLinkOverlap_(targetTitle,title),allCommon=sbmInternalLinkOverlap_(targetAll,candidateAll),score=0;
+    if(targetMain&&main&&sbmInternalLinkNormalizeText_(targetMain)===sbmInternalLinkNormalizeText_(main))score+=70;
+    score+=Math.min(45,mainCommon.reduce(function(n,t){return n+(t.length>=4?12:5);},0));score+=Math.min(30,titleCommon.reduce(function(n,t){return n+(t.length>=4?8:3);},0));score+=Math.min(25,allCommon.reduce(function(n,t){return n+(t.length>=4?4:1);},0));
+    if(targetCategory&&targetCategory===sbmInternalLinkCategory_(url))score+=6;var rank=String(a['記事ランク']||'');if(/エース|安定/.test(rank))score+=5;else if(/成長/.test(rank))score+=3;var imps=sbmNumber_(a['表示回数'])||0;if(imps>=1000)score+=3;else if(imps>=100)score+=1;if(score<15)return;
+    var reasons=[];if(mainCommon.length)reasons.push('メインクエリの共通語：'+mainCommon.slice(0,3).join('・'));if(titleCommon.length)reasons.push('記事タイトルの共通語：'+titleCommon.slice(0,3).join('・'));var queryOnly=allCommon.filter(function(t){return mainCommon.indexOf(t)<0&&titleCommon.indexOf(t)<0;});if(queryOnly.length)reasons.push('Search Consoleクエリの共通語：'+queryOnly.slice(0,3).join('・'));if(targetCategory&&targetCategory===sbmInternalLinkCategory_(url))reasons.push('同じURLカテゴリー');if(!reasons.length)reasons.push('検索クエリと記事内容の関連性がある');
+    ranked.push({title:title,url:url,mainQuery:main,rank:rank,score:score,reason:reasons.slice(0,2).join('／'),cannibalRisk:score>=80&&mainCommon.some(function(t){return t.length>=3;})});
+  });
+  ranked.sort(function(a,b){return(b.score-a.score)||a.title.localeCompare(b.title,'ja');});var strong=ranked.filter(function(x){return x.score>=30;}).slice(0,maxCount);if(strong.length>=minCount||ranked.length<=strong.length)return strong;return ranked.slice(0,Math.min(maxCount,Math.max(strong.length,minCount)));
+}
+function sbmInternalLinkPromptText_(candidates){
+  candidates=candidates||[];var text='\n【内部リンク候補】\n';if(!candidates.length)return text+'ブログ内データから、十分な関連性を持つ候補記事は見つかりませんでした。無理に内部リンクを追加しないでください。\n';
+  text+='以下はSIMS-Blog-Managerが記事タイトル・URL・メインクエリ・Search Consoleクエリから抽出した候補です。\nすべてを使用する必要はありません。本文の流れと読者の検索意図に合うものだけを選び、自然な設置位置とアンカーテキストを提案してください。関連性が低い候補は使用しないでください。\n\n';
+  candidates.forEach(function(c,i){text+=(i+1)+'. '+c.title+'\n   URL: '+c.url+'\n';if(c.mainQuery)text+='   メインクエリ: '+c.mainQuery+'\n';text+='   関連理由: '+c.reason+'\n';if(c.cannibalRisk)text+='   注意: 対象記事と検索意図が近い可能性があります。カニバリを避けるため、両記事の役割とリンク方向も確認してください。\n';text+='\n';});return text;
+}
+function sbmInternalLinkCandidatesHtml_(candidates){
+  candidates=candidates||[];if(!candidates.length)return '<div class="source-ng">十分な関連性を持つ内部リンク候補は見つかりませんでした。無理に追加する必要はありません。</div>';
+  return candidates.map(function(c,i){var warn=c.cannibalRisk?'<div style="color:#b06000;margin-top:5px">⚠️ 検索意図が近い可能性があります。役割分担とリンク方向を確認してください。</div>':'';return '<div class="link-candidate"><b>'+(i+1)+'. '+sbmEscapeHtml_(c.title)+'</b><br><a href="'+sbmEscapeHtml_(c.url)+'" target="_blank">'+sbmEscapeHtml_(c.url)+'</a>'+(c.mainQuery?'<br><span>メインクエリ：'+sbmEscapeHtml_(c.mainQuery)+'</span>':'')+'<br><span>関連理由：'+sbmEscapeHtml_(c.reason)+'</span>'+warn+'</div>';}).join('');
+}
+
 function sbmBuildImprovementPrompt_(meta, articleData) {
   var articleId=String(meta.articleId||''), url=String(meta.url||''), title=String(meta.title||''), seoTitle=String(meta.seoTitle||''), description=String(meta.description||''), query=String(meta.query||'');
+  var internalLinkCandidates = Array.isArray(meta.internalLinkCandidates) ? meta.internalLinkCandidates : [];
   var prompt='次の記事をSEO改善してください。\n' +
     'ArticleID: '+articleId+'\nURL: '+url+'\n記事タイトル: '+title+'\nSEOタイトル: '+seoTitle+'\nメタディスクリプション: '+description+'\nメインクエリ: '+query+'\n' +
     '現在値: クリック '+meta.clicks+'、表示 '+meta.imps+'、CTR '+meta.ctrText+'、順位 '+meta.posText+'位\n' +
     '改善目的: '+meta.kind+'。タイトル、導入文、見出し、FAQを優先し、既存記事の良い部分は残してください。\n';
   if (articleData) prompt += '\n【現在の記事本文データ（JSON）】\n```json\n'+JSON.stringify(articleData, null, 2)+'\n```\n本文データを根拠に、修正箇所が分かるビフォー・アフター形式と簡潔な修正理由を示してください。\n';
   else prompt += '\n【現在の記事本文】\n本文を取得できていません。改善ナビで本文を貼り付けてから依頼文をコピーしてください。\n';
+  prompt += sbmInternalLinkPromptText_(internalLinkCandidates);
   return prompt + '\n【SIMSへのフィードバック出力ルール】\n' +
     '回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。JSONの前後に説明を書いても構いませんが、JSON内にはコメントを入れないでください。\n' +
     '{\n  "format": "SIMS_FEEDBACK_V1",\n  "version": "1.1",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n' +
@@ -3850,18 +3900,20 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var clicks=sbmNumber_(a['クリック数'])||0, imps=sbmNumber_(a['表示回数'])||0, ctr=sbmNormalizeCtrNumber_(a['CTR']), pos=sbmNumber_(a['掲載順位'])||0;
   var target=sbmExpectedCtrTarget_(pos), expected=Math.max(0,Math.round(imps*Math.max(0,target-ctr)));
   var advice= kind.indexOf('CTR')>=0 ? ['P0：SEOタイトルを検索意図に合わせる','P1：導入文で結論と対象読者を明確にする','P2：検索クエリに対応するFAQを追加する'] : ['P0：タイトル・見出しを主検索意図に合わせる','P1：導入文を短くし、結論を先に提示する','P2：不足する説明を1～2項目追加する'];
-  var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind};
+  var internalLinkCandidates=sbmFindInternalLinkCandidates_(a,3,8);
+  var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind,internalLinkCandidates:internalLinkCandidates};
   var fetched=sbmFetchArticleSource_(url);
   var prompt=sbmBuildImprovementPrompt_(meta, fetched.ok ? fetched.data : null);
   function esc(x){return String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   var statusHtml=fetched.ok ? '<div class="source-ok">✅ URLから記事本文を取得しました（'+fetched.data.character_count.toLocaleString()+'文字・'+fetched.data.sections.length+'セクション）</div>' : '<div class="source-ng">⚠️ '+esc(fetched.message)+'<br>下欄へWebクリッパー等で切り抜いた本文を貼り付けてください。</div>';
-  var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124;line-height:1.65}h2{margin:0 0 8px;color:#0b8043}.tag{display:inline-block;padding:4px 10px;border-radius:14px;background:#e6f4ea;color:#137333;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.card{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;text-align:center}.sec{margin-top:16px;border-top:1px solid #dadce0;padding-top:12px}.p{background:#fff8e1;border-left:4px solid #fbbc04;padding:10px;margin:7px 0}.reason{white-space:pre-wrap;background:#eef5ff;padding:12px;border-radius:8px}.prompt{white-space:pre-wrap;background:#f1f3f4;padding:12px;border-radius:8px;font-size:12px;max-height:300px;overflow:auto}.btn{display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:9px 14px;border-radius:6px;font-weight:700;margin-right:8px;border:0;cursor:pointer}.source-ok{background:#e6f4ea;color:#137333;padding:10px;border-radius:8px}.source-ng{background:#fef7e0;color:#7a4d00;padding:10px;border-radius:8px}textarea{width:100%;height:150px;box-sizing:border-box;padding:10px;margin-top:8px;font-family:monospace}</style></head><body>'+ 
+  var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124;line-height:1.65}h2{margin:0 0 8px;color:#0b8043}.tag{display:inline-block;padding:4px 10px;border-radius:14px;background:#e6f4ea;color:#137333;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.card{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;text-align:center}.sec{margin-top:16px;border-top:1px solid #dadce0;padding-top:12px}.p{background:#fff8e1;border-left:4px solid #fbbc04;padding:10px;margin:7px 0}.reason{white-space:pre-wrap;background:#eef5ff;padding:12px;border-radius:8px}.prompt{white-space:pre-wrap;background:#f1f3f4;padding:12px;border-radius:8px;font-size:12px;max-height:300px;overflow:auto}.btn{display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:9px 14px;border-radius:6px;font-weight:700;margin-right:8px;border:0;cursor:pointer}.source-ok{background:#e6f4ea;color:#137333;padding:10px;border-radius:8px}.source-ng{background:#fef7e0;color:#7a4d00;padding:10px;border-radius:8px}.link-candidate{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.link-candidate a{color:#1a73e8;word-break:break-all}textarea{width:100%;height:150px;box-sizing:border-box;padding:10px;margin-top:8px;font-family:monospace}</style></head><body>'+ 
     '<h2>改善ナビ</h2><span class="tag">'+esc(kind)+'</span><h3>'+esc(title)+'</h3><div>'+esc(rank)+' ／ '+esc(work)+'</div>'+ 
     '<div class="grid"><div class="card"><b>クリック</b><br>'+clicks.toLocaleString()+'</div><div class="card"><b>表示回数</b><br>'+imps.toLocaleString()+'</div><div class="card"><b>CTR</b><br>'+(ctr*100).toFixed(1)+'%</div><div class="card"><b>順位</b><br>'+pos.toFixed(1)+'</div></div>'+ 
     '<div class="sec"><b>記事本文データ</b>'+statusHtml+(fetched.ok?'':'<textarea id="pasted" placeholder="記事タイトル、見出し、本文を貼り付けてください。広告や関連記事が混ざっていても解析時に可能な範囲で除外します。"></textarea><br><button class="btn" onclick="analyzePasted()">貼り付け本文を解析</button><span id="analyzeMsg"></span>')+'</div>'+ 
     '<div class="sec"><b>なぜ今改善するのか</b><div class="reason">'+esc(reason||('表示回数とCTR・順位から改善余地がある記事です。期待効果：約'+expected+'クリック増。'))+'</div></div>'+ 
     '<div class="sec"><b>今やる価値</b><p>'+(expected>=30?'★★★★★ 非常に高い':expected>=10?'★★★★☆ 高い':'★★★☆☆ 検討価値あり')+'</p></div>'+ 
     '<div class="sec"><b>改善ポイント</b>'+advice.map(function(x){return '<div class="p">'+esc(x)+'</div>';}).join('')+'</div>'+ 
+    '<div class="sec"><b>内部リンク候補（'+internalLinkCandidates.length+'件）</b><p style="color:#5f6368;font-size:13px">記事DBとSearch Consoleクエリから抽出しています。採用・配置・アンカーテキストは記事本文に合わせてAIが判断します。</p>'+sbmInternalLinkCandidatesHtml_(internalLinkCandidates)+'</div>'+ 
     '<div class="sec"><b>作業時間の目安</b><p>'+(kind.indexOf('即効性')>=0?'約15～20分':'約20分')+'</p></div>'+ 
     '<div class="sec"><b>AIでリライトするための依頼文</b><div class="prompt" id="prompt">'+esc(prompt)+'</div><button class="btn" onclick="copyPrompt()">依頼文をコピー</button></div>'+ 
     '<div class="sec"><a class="btn" href="'+esc(url)+'" target="_blank">記事を開く</a></div>'+ 
@@ -5343,7 +5395,7 @@ function sbmParseDate_(value) {
 
 /**
  * 履歴・設定値の日付を柔軟に解釈する互換パーサー。
- * Product 5.1.3: Homeの週間集計からも利用します。
+ * Product 5.2.0: Homeの週間集計からも利用します。
  */
 function sbmParseDateFlexible_(value) {
   return sbmParseDate_(value);
@@ -5382,7 +5434,7 @@ function sbmApplyHistoryFinalStyle_() {
 function sbmRefreshHome_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.1.3') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.2.0') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -6222,7 +6274,7 @@ function sbmHandleRepairNextAction(action) {
  * Clean setup wizard / menu cleanup / developer diagnostics
  * ========================================================================== */
 
-var SBM_RELEASE_NAME = 'Product 5.1.3 Official';
+var SBM_RELEASE_NAME = 'Product 5.2.0 Official';
 
 /* ---------- 共通：ウィザード ---------- */
 
