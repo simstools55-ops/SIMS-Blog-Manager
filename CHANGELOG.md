@@ -1,4 +1,4 @@
-# Product 5.2.0 Official — Internal Link Candidates
+# Product 5.2.1 Official — Internal Link Candidates
 
 - 改善ナビに内部リンク候補の自動抽出を追加
 - 記事DBとSearch Console上位クエリから関連度をスコアリング
@@ -59,7 +59,7 @@
 
 # Changelog
 
-## 5.2.0 - Home Dashboard Evolution
+## 5.2.1 - Home Dashboard Evolution
 
 - Homeの「ブログの現在地」コメント欄と「今日の改善状況」件数欄をコンパクト化し、画面全体を見渡しやすく調整
 - Search Consoleと重複するクリック数・表示回数・平均掲載順位・推移グラフをHomeから削除
@@ -478,3 +478,10 @@
 - 改善結果登録（JSON）の入口をメニューと記事DBツールバーに統一
 - 改善ナビ下部に「改善完了を登録」ボタンを追加
 - 完了登録後の「今日の改善」を選択不可・グレー表示へ変更
+## 5.2.1
+
+- SIMS-Core向け依頼文にSearch Console上位20クエリを追加
+- 改善優先順位、記事ランク、変更方針を追加
+- 内部リンク候補を推奨アンカー、関連クエリ、関連度の形式へ変更
+- 内部リンク利用ルールとコピペ可能なHTML出力要件を追加
+- カニバリ候補表示を今回の仕様から除外

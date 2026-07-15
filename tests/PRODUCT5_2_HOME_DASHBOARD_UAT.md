@@ -1,4 +1,4 @@
-# Product 5.2.0 Home Dashboard UAT
+# Product 5.2.1 Home Dashboard UAT
 
 1. maintenanceブランチへ更新ファイルを反映する。
 2. Apps ScriptのCode.gsを上書きして保存する。

@@ -1,12 +1,12 @@
 # テンプレートコピーURLの設定
 
-Product 5.2.0 Official では、利用者はマニュアルサイトのボタンから Google スプレッドシートを自分の Drive へコピーします。
+Product 5.2.1 Official では、利用者はマニュアルサイトのボタンから Google スプレッドシートを自分の Drive へコピーします。
 
 ただし、このボタンを有効にするには、管理者が実在する Google スプレッドシートのIDを設定する必要があります。
 
 ## 手順
 
-1. Product 5.2.0 Official の完成版スプレッドシートを Google Drive に用意します。
+1. Product 5.2.1 Official の完成版スプレッドシートを Google Drive に用意します。
 2. 共有設定を「リンクを知っている全員が閲覧可」にします。
 3. スプレッドシートのURLからIDをコピーします。
 
@@ -27,4 +27,4 @@ https://docs.google.com/spreadsheets/d/スプレッドシートID/copy
 
 `YOUR_TEMPLATE_SPREADSHEET_ID` のような仮IDを公開ページに残すと、利用者は「ファイルが存在しません」という画面になります。
 
-Product 5.2.0 Official では、仮リンクを利用者向けページに出さない運用にします。
+Product 5.2.1 Official では、仮リンクを利用者向けページに出さない運用にします。

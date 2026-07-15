@@ -1,4 +1,4 @@
-site_name: SIMS-Blog-Manager Product 5.2.0 Official
+site_name: SIMS-Blog-Manager Product 5.2.1 Official
 site_description: Google Search Consoleを使い、今日改善すべき記事を30秒で決めるブログ改善マネージャー
 site_url: https://simstools55-ops.github.io/SIMS-Blog-Manager/
 repo_url: https://github.com/simstools55-ops/SIMS-Blog-Manager
@@ -50,4 +50,4 @@ nav:
 
 extra:
   generator: false
-copyright: SIMS-Blog-Manager Product 5.2.0 Official / Version 5.2.0
+copyright: SIMS-Blog-Manager Product 5.2.1 Official / Version 5.2.1
