@@ -1,6 +1,6 @@
 # Googleスプレッドシートテンプレート公開手順
 
-このページは、Product 5.0 Official を公開する管理者向けの手順です。
+このページは、Product 5.1.3 Official を公開する管理者向けの手順です。
 
 ## 目的
 
@@ -10,9 +10,9 @@
 
 ### 1. テンプレート用スプレッドシートを作成する
 
-1. Product 5.0 のExcelテンプレートをGoogle Driveへアップロードする
+1. Product 5.1 のExcelテンプレートをGoogle Driveへアップロードする
 2. Googleスプレッドシートとして開く
-3. ファイル名を `SIMS-Blog-Manager Product 5.0 Template` にする
+3. ファイル名を `SIMS-Blog-Manager Product 5.1 Template` にする
 4. Apps Scriptを開く
 5. `apps-script/コード.gs` の内容を貼り付ける
 6. 保存する

@@ -6218,124 +6218,11 @@ function sbmHandleRepairNextAction(action) {
 
 
 /* ========================================================================== *
- * Product 5.0 RC11: Developer hidden-sheets menu
- *
- * Developer版: true
- * Product版:   false
- * ========================================================================== */
-var SBM_ENABLE_DEVELOPER_MENU = false;
-
-function sbmDeveloperVisibleSheetNames_() {
-  return [
-    SBM_SHEETS.HOME,
-    SBM_SHEETS.TODAY,
-    SBM_SHEETS.EFFECT,
-    SBM_SHEETS.ARTICLE_DB,
-    SBM_SHEETS.FEEDBACK_HISTORY,
-    SBM_SHEETS.SETUP
-  ];
-}
-
-function sbmDeveloperInternalSheets_() {
-  var visible = {};
-  sbmDeveloperVisibleSheetNames_().forEach(function(name) {
-    visible[String(name)] = true;
-  });
-
-  return SpreadsheetApp.getActiveSpreadsheet().getSheets().filter(function(sh) {
-    return !visible[sh.getName()];
-  });
-}
-
-/**
- * 開発・不具合調査用に、内部シートをまとめて表示します。
- */
-function sbmShowDeveloperSheets() {
-  var sheets = sbmDeveloperInternalSheets_();
-  var shown = [];
-
-  sheets.forEach(function(sh) {
-    try {
-      sh.showSheet();
-      shown.push(sh.getName());
-    } catch (e) {}
-  });
-
-  SpreadsheetApp.flush();
-  SpreadsheetApp.getUi().alert(
-    '開発者用',
-    shown.length
-      ? '内部シートを表示しました。\n\n' + shown.join('\n')
-      : '表示対象の内部シートはありません。',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
-}
-
-/**
- * 内部シートをまとめて非表示へ戻します。
- * 内部シートを開いている場合は、先にHomeへ移動します。
- */
-function sbmHideDeveloperSheets() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var active = ss.getActiveSheet();
-  var visibleNames = sbmDeveloperVisibleSheetNames_();
-
-  if (active && visibleNames.indexOf(active.getName()) < 0) {
-    var home = ss.getSheetByName(SBM_SHEETS.HOME);
-    if (home) {
-      home.showSheet();
-      ss.setActiveSheet(home);
-    }
-  }
-
-  var hidden = [];
-  sbmDeveloperInternalSheets_().forEach(function(sh) {
-    try {
-      sh.hideSheet();
-      hidden.push(sh.getName());
-    } catch (e) {}
-  });
-
-  SpreadsheetApp.flush();
-  SpreadsheetApp.getUi().alert(
-    '開発者用',
-    hidden.length
-      ? '内部シートを非表示に戻しました。\n\n' + hidden.join('\n')
-      : '非表示対象の内部シートはありません。',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
-}
-
-/**
- * 開発者が内部シート名を確認するための一覧表示。
- */
-function sbmShowDeveloperSheetList() {
-  var sheets = sbmDeveloperInternalSheets_();
-  var lines = sheets.map(function(sh) {
-    return (sh.isSheetHidden() ? '非表示：' : '表示中：') + sh.getName();
-  });
-
-  SpreadsheetApp.getUi().alert(
-    '内部シート一覧',
-    lines.length ? lines.join('\n') : '内部シートはありません。',
-    SpreadsheetApp.getUi().ButtonSet.OK
-  );
-}
-
-/**
- * 最終メニュー構成。
- * Product版では SBM_ENABLE_DEVELOPER_MENU を false にするだけで
- * 「開発者用」メニューが表示されなくなります。
- */
-
-
-/* ========================================================================== *
  * SIMS-Blog-Manager Product 5.0 Release 1 Sprint 1
  * Clean setup wizard / menu cleanup / developer diagnostics
  * ========================================================================== */
 
 var SBM_RELEASE_NAME = 'Product 5.1.3 Official';
-var SBM_ENABLE_DEVELOPER_MENU = false;
 
 /* ---------- 共通：ウィザード ---------- */
 
@@ -6600,17 +6487,6 @@ function sbmShowRepairCompletionNavigator_() {
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(540).setHeight(390),'シートの作成・修復');
 }
 
-/* ---------- 開発者用 ---------- */
-
-function sbmClearProcessLogDeveloper() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName(SBM_SHEETS.PROCESS_LOG);
-  if (!sh) return true;
-  if (sh.getLastRow() > 1) sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).clearContent();
-  SpreadsheetApp.flush();
-  SpreadsheetApp.getUi().alert('開発者用','処理ログをクリアしました。',SpreadsheetApp.getUi().ButtonSet.OK);
-  return true;
-}
 
 /* ---------- Release 1 最終メニュー ---------- */
 

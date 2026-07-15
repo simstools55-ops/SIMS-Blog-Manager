@@ -1,3 +1,10 @@
+# Product 5.1.3 Official Release Sync
+
+- Apps Script、docs、distributionを5.1.3で同期
+- マニュアルの旧メニュー・旧バージョン表記を整理
+- 利用者配布版から開発者用コードを除去
+- GitHub Pagesと配布ZIPの公開手順を更新
+
 # Product 5.1.3 修正
 
 - 未取得記事の注意書きを白背景・右寄せに変更

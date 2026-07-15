@@ -1,25 +1,23 @@
-# Product 5.0 Official 公開手順
+# Product 5.1.3 Official 公開手順
 
-## 1. GitHubへ反映
+## 1. mainへ反映
 
-正式版リポジトリZIPの内容を既存リポジトリへ上書きします。
+maintenanceブランチで実機確認後、mainへマージします。
 
-推奨コミットメッセージ：
+推奨コミットタイトル：
 
 ```text
-Release v5.0.0
+Release Product 5.1.3 Official
 ```
 
 ## 2. GitHub Pages
 
-`.github/workflows/deploy.yml` は既存設定と同じ内容です。ファイルの更新は不要ですが、正式版ZIPには正しい配置で収録しています。
+`docs/`、`mkdocs.yml`、`requirements.txt`をmainへ反映すると、既存のGitHub Actions設定でマニュアルサイトが更新されます。`deploy.yml`自体の変更は不要です。
 
-GitHubへ反映すると、MkDocsが自動ビルドされます。
-
-## 3. Gitタグ
+## 3. タグ
 
 ```text
-v5.0.0
+v5.1.3
 ```
 
 ## 4. GitHub Release
@@ -27,13 +25,18 @@ v5.0.0
 タイトル：
 
 ```text
-SIMS-Blog-Manager Product 5.0 Official
+SIMS-Blog-Manager Product 5.1.3 Official
 ```
 
 添付ファイル：
 
 ```text
-SIMS-Blog-Manager-Product-5.0-Official-Distribution.zip
+SIMS-Blog-Manager-Product-5.1.3-Distribution.zip
 ```
 
-Release本文には `GITHUB_RELEASE_NOTES.md` の内容を使用します。
+## 5. 公開後確認
+
+- マニュアルサイトのバージョンが5.1.3
+- ダウンロードファイルの展開が正常
+- `コード.gs`と`apps-script/Code.gs`が一致
+- テンプレート名がProduct 5.1 Official

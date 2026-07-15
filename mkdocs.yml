@@ -29,16 +29,21 @@ nav:
       - Google Cloud API有効化: setup/google-cloud-api.md
       - Search Console接続テスト: setup/search-console-test.md
   - 毎日の使い方: daily-workflow/index.md
+  - Home画面: home-dashboard.md
   - ユーザーガイド:
       - メニューの使い方: user-guide/menu.md
       - 今日の改善: user-guide/todays-improvement.md
       - 改善ブリーフ: user-guide/improvement-brief.md
-      - 改善ログ: user-guide/improvement-log.md
-      - 効果測定: user-guide/effectiveness.md
+      - 改善履歴: user-guide/improvement-log.md
+      - 改善の推移: user-guide/effectiveness.md
+      - 記事一覧: user-guide/data-list.md
+      - 改善中の記事: user-guide/in-progress.md
+      - 処理状況: user-guide/process-status.md
   - 改善ガイド: improvement-guide/index.md
   - FAQ: faq/index.md
   - トラブルシューティング:
       - よくあるエラー: troubleshooting/index.md
+      - 改善履歴・日次処理: troubleshooting/common-errors.md
       - 403エラー: troubleshooting/error-403.md
       - 今日の改善が空: troubleshooting/empty-queue.md
   - リリースノート: release-notes/index.md
