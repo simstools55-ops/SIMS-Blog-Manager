@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.2.3 Official
+ * SIMS-Blog-Manager Product 5.2.4 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.3';
+const SBM_VERSION = '5.2.4';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -1749,7 +1749,7 @@ function sbmUniqueCount_(arr) {
 
 
 /**
- * Product 5.2.3: 改善ナビ起動時に対象URLの最新クエリを毎回取得します。
+ * Product 5.2.4: 改善ナビ起動時に対象URLの最新クエリを毎回取得します。
  * 取得結果はSearchConsole_Dataへ保存し、依頼文と内部リンク候補の両方に利用します。
  */
 function sbmFetchTopQueriesForUrlNow_(url, limit) {
@@ -1796,7 +1796,9 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
 }
 
 function sbmReplaceRawQueriesForUrl_(url, range, capturedAt, queries) {
-  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.RAW_DATA) || sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var originalSheet = ss.getActiveSheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.RAW_DATA) || sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA);
   sbmEnsureHeaders_(sh, SBM_HEADERS.RAW_DATA);
   var values = sh.getLastRow() >= 2 ? sh.getRange(2,1,sh.getLastRow()-1,SBM_HEADERS.RAW_DATA.length).getValues() : [];
   var normalized = sbmNormalizeUrl_(url);
@@ -1810,6 +1812,17 @@ function sbmReplaceRawQueriesForUrl_(url, range, capturedAt, queries) {
   });
   if (sh.getLastRow() > 1) sh.getRange(2,1,sh.getLastRow()-1,SBM_HEADERS.RAW_DATA.length).clearContent();
   if (values.length) sh.getRange(2,1,values.length,SBM_HEADERS.RAW_DATA.length).setValues(values);
+  SpreadsheetApp.flush();
+  // Product 5.2.4: 内部保存用シートを利用者画面に残さない。
+  try {
+    if (originalSheet && originalSheet.getSheetId() !== sh.getSheetId()) {
+      ss.setActiveSheet(originalSheet);
+      originalSheet.activate();
+      sh.hideSheet();
+    }
+  } catch (restoreError) {
+    sbmLog_('QuerySheetRestore', 'Warning', String(restoreError));
+  }
 }
 
 function sbmFetchMainQueryForUrl_(url) {
@@ -4080,11 +4093,18 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
     '<div class="sec" style="background:#e6f4ea;border:1px solid #b7dfc2;border-radius:8px;padding:14px"><b>記事の修正が完了したら、改善結果を登録してください。</b><p style="margin:6px 0 10px;color:#5f6368">Claudeの回答末尾にあるSIMS向けJSONを貼り付けて登録します。</p><button class="btn" style="background:#0b8043" onclick="registerFeedback()">✅ 改善完了を登録</button></div>'+ 
     '<script>var meta='+JSON.stringify(meta).replace(/</g,'\\u003c')+';function copyPrompt(){var t=document.getElementById("prompt").innerText;navigator.clipboard.writeText(t).then(function(){alert("コピーしました")})}function analyzePasted(){var el=document.getElementById("pasted"),msg=document.getElementById("analyzeMsg");msg.textContent="解析中…";google.script.run.withFailureHandler(function(e){msg.textContent=(e&&e.message)||String(e)}).withSuccessHandler(function(r){if(!r.ok){msg.textContent=r.message;return;}document.getElementById("prompt").innerText=r.prompt;msg.textContent="解析完了（"+r.characterCount+"文字・"+r.sectionCount+"セクション）";}).sbmAnalyzePastedArticleSource(el.value,meta)}function registerFeedback(){google.script.run.withFailureHandler(function(e){alert((e&&e.message)||String(e));}).withSuccessHandler(function(){google.script.host.close();}).sbmOpenImprovementFeedbackDialog();}</script></body></html>';
   try {
-    if (originalSheet && ss.getActiveSheet().getSheetId() !== originalSheet.getSheetId()) {
+    var rawSheet = ss.getSheetByName(SBM_SHEETS.RAW_DATA);
+    if (originalSheet) {
       ss.setActiveSheet(originalSheet);
       originalSheet.activate();
     }
-  } catch (restoreError) {}
+    if (rawSheet && (!originalSheet || rawSheet.getSheetId() !== originalSheet.getSheetId())) {
+      rawSheet.hideSheet();
+    }
+    SpreadsheetApp.flush();
+  } catch (restoreError) {
+    sbmLog_('ImprovementNaviSheetRestore', 'Warning', String(restoreError));
+  }
   SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(760)),'改善ナビ');
 }
 
