@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.1.0';
+const SBM_VERSION = '5.1.1';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -431,7 +431,7 @@ function sbmBuildHomeSheet_() {
   if (sh.getMaxRows() < 29) sh.insertRowsAfter(sh.getMaxRows(), 29 - sh.getMaxRows());
 
   sh.getRange('A1:G1').merge().setValue('SIMS-Blog-Manager  Home');
-  sh.getRange('H1').setValue('v5.1.0');
+  sh.getRange('H1').setValue('v5.1.1');
   sh.getRange('A2').setValue('ブログ名'); sh.getRange('B2:D2').merge();
   sh.getRange('E2').setValue('最終更新'); sh.getRange('F2:H2').merge();
   sh.getRange('A3').setValue('総記事数'); sh.getRange('B3').setValue('0件');
@@ -458,9 +458,10 @@ function sbmBuildHomeSheet_() {
     sh.getRange(r,5,1,2).merge().setValue(right[i][0]); sh.getRange(r,7,1,2).merge().setValue(right[i][1]);
   }
 
-  sh.getRange('A20:H20').merge().setValue('今週のアドバイス');
-  sh.getRange('A21:H22').merge().setValue('今週の取り組みに合わせて、次の作業を案内します。');
-  sh.getRange('A24:H24').merge().setValue('※未取得記事：Search Consoleから一時的にデータを取得できなかった記事などです。記事が削除されたことを意味するものではありません。');
+  sh.getRange('A19:H20').merge().setValue('※未取得記事：Search Consoleから一時的にデータを取得できなかった記事などです。記事が削除されたことを意味するものではありません。');
+
+  sh.getRange('A22:H22').merge().setValue('今週のアドバイス');
+  sh.getRange('A23:H24').merge().setValue('今週の取り組みに合わせて、次の作業を案内します。');
 
   sh.getRange('A26:H26').merge().setValue('処理状況');
   sh.getRange('A27').setValue('処理名'); sh.getRange('B27:H27').merge();
@@ -470,7 +471,7 @@ function sbmBuildHomeSheet_() {
 
   sh.setFrozenRows(3);
   [120,120,120,120,120,120,120,120].forEach(function(w,i){ sh.setColumnWidth(i+1,w); });
-  sh.setRowHeights(1,29,24); sh.setRowHeights(11,2,28); sh.setRowHeights(21,2,28);
+  sh.setRowHeights(1,29,24); sh.setRowHeights(11,2,28); sh.setRowHeights(19,2,22); sh.setRowHeights(23,2,28);
   sh.getRange('A1:H29').setFontFamily('Arial').setVerticalAlignment('middle').setWrap(true);
   sh.getRange('A1:G1').setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold').setFontSize(16);
   sh.getRange('H1').setBackground('#0b8043').setFontColor('#d9ead3').setHorizontalAlignment('right');
@@ -479,18 +480,19 @@ function sbmBuildHomeSheet_() {
   sh.getRange('A6:H8').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID).setHorizontalAlignment('center').setFontWeight('bold');
   sh.getRange('A6:D8').setBackground('#f3f8f3'); sh.getRange('E6:H8').setBackground('#fff8e8');
   sh.getRange('A10:H10').setBackground('#dbeafe').setFontWeight('bold');
-  sh.getRange('A11:H12').setBackground('#f8fbff').setBorder(true,true,true,true,false,false,'#cbdcf0',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12);
+  sh.getRange('A11:H12').setBackground('#f8fbff').setBorder(true,true,true,true,false,false,'#cbdcf0',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12).setFontWeight('normal');
   sh.getRange('A14:D14').setBackground('#f1f3f4').setFontWeight('bold');
   sh.getRange('E14:H14').setBackground('#e6f4ea').setFontWeight('bold');
   sh.getRange('A15:H18').setBorder(true,true,true,true,true,true,'#dadce0',SpreadsheetApp.BorderStyle.SOLID);
   sh.getRange('A15:B18').setFontWeight('bold'); sh.getRange('E15:F18').setFontWeight('bold');
   sh.getRange('C15:D18').setHorizontalAlignment('center').setFontWeight('bold').setFontSize(15);
   sh.getRange('G15:H18').setHorizontalAlignment('center').setFontWeight('bold').setFontSize(15);
-  sh.getRange('A20:H20').setBackground('#fce8b2').setFontWeight('bold');
-  sh.getRange('A21:H22').setBackground('#fffaf0').setBorder(true,true,true,true,false,false,'#e6cf8b',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12);
-  sh.getRange('A24:H24').setFontSize(9).setFontColor('#5f6368').setBackground('#f8f9fa');
+  sh.getRange('A19:H20').setFontSize(9).setFontColor('#5f6368').setBackground('#f8f9fa').setFontWeight('normal');
+  sh.getRange('A22:H22').setBackground('#fce8b2').setFontWeight('bold');
+  sh.getRange('A23:H24').setBackground('#fffaf0').setBorder(true,true,true,true,false,false,'#e6cf8b',SpreadsheetApp.BorderStyle.SOLID).setFontSize(12).setFontWeight('normal');
   sh.getRange('A26:H29').setBorder(true,true,true,true,true,true,'#c8d6c4',SpreadsheetApp.BorderStyle.SOLID).setBackground('#d9ead3');
-  sh.getRange('A26:H26').setFontWeight('bold'); sh.getRange('A:A').setFontWeight('bold'); sh.getRange('D:D').setFontWeight('bold');
+  sh.getRange('A26:H26').setFontWeight('bold');
+  sh.getRangeList(['A2','A3','A27','A28','A29','D28']).setFontWeight('bold');
   try { sh.getRange('J:M').clearContent(); sh.showColumns(10,4); } catch(e) {}
 }
 
@@ -2220,7 +2222,7 @@ function sbmSetHomeProcessing_(state, processName, startedText, finishedText, re
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
   if (!sh) return;
   try {
-    if (String(sh.getRange('H1').getValue()) !== 'v5.1.0') sbmBuildHomeSheet_();
+    if (String(sh.getRange('H1').getValue()) !== 'v5.1.1') sbmBuildHomeSheet_();
     sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
     sh.getRange('A21:H24').setBackground(isProcessing ? '#fff2cc' : '#d9ead3');
     sh.getRange('B22:H22').setValue(processName || state || '待機中');
@@ -5338,6 +5340,15 @@ function sbmParseDate_(value) {
   return isNaN(d2.getTime()) ? null : d2;
 }
 
+
+/**
+ * 履歴・設定値の日付を柔軟に解釈する互換パーサー。
+ * Product 5.1.1: Homeの週間集計からも利用します。
+ */
+function sbmParseDateFlexible_(value) {
+  return sbmParseDate_(value);
+}
+
 /**
  * 改善履歴一覧の最終表示書式。
  * 改善日・週次測定日時は折り返して、日本語表記を見切れなくします。
@@ -5371,7 +5382,7 @@ function sbmApplyHistoryFinalStyle_() {
 function sbmRefreshHome_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.1.0') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.1.1') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -5413,7 +5424,7 @@ function sbmRefreshHome_() {
   sh.getRange('G8:H8').setValue(missingCount + '件 ' + arrow(missingCount,'PrevMissingCount'));
 
   var snapshot = sbmHomeRankSnapshot_(rows, counts, work);
-  sh.getRange('A11:H12').setValue(sbmHomeOverallMessage_(blogName, snapshot));
+  sh.getRange('A11:H12').setValue(sbmHomeOverallMessage_(blogName, snapshot)).setFontWeight('normal');
   sh.getRange('C15:D15').setValue(work.today + '件');
   sh.getRange('C16:D16').setValue(work.progress + '件');
   sh.getRange('C17:D17').setValue(work.monitor + '件');
@@ -5425,7 +5436,7 @@ function sbmRefreshHome_() {
   sh.getRange('G16:H16').setValue(work.monitor + '件');
   sh.getRange('G17:H17').setValue(weekly.completed + '件');
   sh.getRange('G18:H18').setValue(candidateCount + '件');
-  sh.getRange('A21:H22').setValue(sbmHomeWeeklyAdvice_(weekly, work, candidateCount, missingCount));
+  sh.getRange('A23:H24').setValue(sbmHomeWeeklyAdvice_(weekly, work, candidateCount, missingCount)).setFontWeight('normal');
 }
 
 function sbmHomeWeeklyActivity_() {

@@ -1,3 +1,8 @@
+# Product 5.1.1 修正
+
+- Home週間集計のReferenceErrorを修正
+- Homeメッセージの文字ウェイトと未取得記事説明の配置を調整
+
 # Product 5.1 Official
 
 ## 主な変更
