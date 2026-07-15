@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.1 Official Release 1 Sprint 5
+ * SIMS-Blog-Manager Product 5.2.2 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.1';
+const SBM_VERSION = '5.2.2';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -1746,6 +1746,68 @@ function sbmUniqueCount_(arr) {
   return Object.keys(m).length;
 }
 
+
+
+/**
+ * Product 5.2.2: 改善ナビ起動時に対象URLの最新クエリを毎回取得します。
+ * 取得結果はSearchConsole_Dataへ保存し、依頼文と内部リンク候補の両方に利用します。
+ */
+function sbmFetchTopQueriesForUrlNow_(url, limit) {
+  url = sbmNormalizeUrl_(url || '');
+  limit = Math.max(1, Math.min(100, Number(limit || 20)));
+  if (!url) return {ok:false, queries:[], message:'記事URLが正しくありません。'};
+  var property = sbmGetSetting_('SearchConsoleProperty','');
+  if (!property) return {ok:false, queries:[], message:'Search Consoleプロパティが設定されていません。'};
+  try {
+    var range = sbmSearchConsoleDateRange_();
+    var data = sbmSearchConsoleApiRequest_(property, {
+      startDate: range.startDate,
+      endDate: range.endDate,
+      dimensions: ['query'],
+      rowLimit: 25000,
+      dimensionFilterGroups: [{filters:[{dimension:'page', operator:'equals', expression:url}]}]
+    });
+    var capturedAt = sbmNowText_();
+    var queries = (data.rows || []).map(function(r){
+      return {
+        query: r.keys && r.keys[0] ? String(r.keys[0]) : '',
+        clicks: sbmNumber_(r.clicks || 0),
+        imps: sbmNumber_(r.impressions || 0),
+        ctr: sbmNormalizeCtrNumber_(r.ctr || 0),
+        position: sbmNumber_(r.position || 0)
+      };
+    }).filter(function(r){ return r.query; });
+    queries.sort(function(a,b){
+      return (b.clicks-a.clicks) || (b.imps-a.imps) || (a.position-b.position);
+    });
+    sbmReplaceRawQueriesForUrl_(url, range, capturedAt, queries);
+    return {
+      ok:true,
+      queries:queries.slice(0, limit),
+      total:queries.length,
+      message:queries.length ? ('最新クエリを'+queries.length+'件取得しました。') : '対象期間のクエリは0件でした。'
+    };
+  } catch(e) {
+    return {ok:false, queries:[], message:'最新クエリの取得に失敗しました。'+String(e && e.message || e)};
+  }
+}
+
+function sbmReplaceRawQueriesForUrl_(url, range, capturedAt, queries) {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.RAW_DATA) || sbmGetOrCreateSheet_(SBM_SHEETS.RAW_DATA);
+  sbmEnsureHeaders_(sh, SBM_HEADERS.RAW_DATA);
+  var values = sh.getLastRow() >= 2 ? sh.getRange(2,1,sh.getLastRow()-1,SBM_HEADERS.RAW_DATA.length).getValues() : [];
+  var normalized = sbmNormalizeUrl_(url);
+  values = values.filter(function(row){
+    var rowUrl = sbmNormalizeUrl_(row[3] || '');
+    var query = String(row[2] || '').trim();
+    return !(rowUrl === normalized && query);
+  });
+  (queries || []).forEach(function(q){
+    values.push([range.startDate, range.endDate, q.query, normalized, q.clicks, q.imps, q.ctr, q.position, capturedAt]);
+  });
+  if (sh.getLastRow() > 1) sh.getRange(2,1,sh.getLastRow()-1,SBM_HEADERS.RAW_DATA.length).clearContent();
+  if (values.length) sh.getRange(2,1,values.length,SBM_HEADERS.RAW_DATA.length).setValues(values);
+}
 
 function sbmFetchMainQueryForUrl_(url) {
   try {
@@ -3911,9 +3973,13 @@ function sbmFindInternalLinkCandidates_(targetArticle,minCount,maxCount){
   if(strong.length>=minCount||ranked.length<=strong.length)return strong;
   return ranked.slice(0,Math.min(maxCount,Math.max(strong.length,minCount)));
 }
-function sbmTopQueriesPromptText_(queries){
+function sbmTopQueriesPromptText_(queries,status){
   queries=queries||[];var text='\n【Search Console 上位クエリ】\n';
-  if(!queries.length)return text+'対象URLのクエリデータはありません。\n';
+  if(!queries.length){
+    if(status&&status.ok===false)return text+'取得状態：取得失敗\n'+String(status.message||'Search Consoleからクエリを取得できませんでした。')+'\n';
+    return text+'取得件数：0件\n※対象期間にSearch Consoleのクエリデータがありませんでした。\n';
+  }
+  text+='取得件数：'+queries.length+'件\n';
   queries.slice(0,20).forEach(function(q,i){
     text+=(i+1)+'. '+q.query+'\n   クリック：'+q.clicks+'\n   表示回数：'+q.imps+'\n   CTR：'+(q.ctr*100).toFixed(2)+'%\n   平均順位：'+q.position.toFixed(1)+'\n\n';
   });
@@ -3955,7 +4021,7 @@ function sbmBuildImprovementPrompt_(meta, articleData) {
   var internalLinkCandidates=Array.isArray(meta.internalLinkCandidates)?meta.internalLinkCandidates:[],topQueries=Array.isArray(meta.topQueries)?meta.topQueries:[];
   var prompt='【記事基本情報】\nArticleID：'+articleId+'\nURL：'+url+'\n記事タイトル：'+title+'\nSEOタイトル：'+seoTitle+'\nメタディスクリプション：'+description+'\nメインクエリ：'+query+'\n' +
     '\n【Search Console 概要】\nクリック：'+meta.clicks+'\n表示回数：'+meta.imps+'\nCTR：'+meta.ctrText+'\n平均順位：'+meta.posText+'\n' +
-    sbmTopQueriesPromptText_(topQueries) +
+    sbmTopQueriesPromptText_(topQueries,meta.topQueryStatus) +
     '\n【改善目的】\n'+meta.kind+'。検索意図を優先し、既存記事の良い部分を残したまま改善してください。\n' +
     sbmImprovementPriorityText_() +
     '\n【記事ランク】\n'+sbmCoreRankText_(meta.rank)+'\n' +
@@ -3977,16 +4043,22 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var clicks=sbmNumber_(a['クリック数'])||0, imps=sbmNumber_(a['表示回数'])||0, ctr=sbmNormalizeCtrNumber_(a['CTR']), pos=sbmNumber_(a['掲載順位'])||0;
   var target=sbmExpectedCtrTarget_(pos), expected=Math.max(0,Math.round(imps*Math.max(0,target-ctr)));
   var advice= kind.indexOf('CTR')>=0 ? ['P0：SEOタイトルを検索意図に合わせる','P1：導入文で結論と対象読者を明確にする','P2：検索クエリに対応するFAQを追加する'] : ['P0：タイトル・見出しを主検索意図に合わせる','P1：導入文を短くし、結論を先に提示する','P2：不足する説明を1～2項目追加する'];
-  var internalLinkCandidates=sbmFindInternalLinkCandidates_(a,3,8);
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('対象記事の最新クエリをSearch Consoleから取得しています。通常は数秒で完了します。','改善ナビ',10); } catch(e) {}
+  var freshQueryResult=sbmFetchTopQueriesForUrlNow_(url,20);
   var topQueryMap=sbmTopQueriesByUrl_();
-  var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,rank:rank,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind,topQueries:topQueryMap[sbmNormalizeUrl_(url)]||[],internalLinkCandidates:internalLinkCandidates};
+  var normalizedUrl=sbmNormalizeUrl_(url);
+  var topQueries=freshQueryResult.ok ? freshQueryResult.queries : (topQueryMap[normalizedUrl]||[]);
+  var internalLinkCandidates=sbmFindInternalLinkCandidates_(a,3,8);
+  var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,rank:rank,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind,topQueries:topQueries,topQueryStatus:freshQueryResult,internalLinkCandidates:internalLinkCandidates};
   var fetched=sbmFetchArticleSource_(url);
   var prompt=sbmBuildImprovementPrompt_(meta, fetched.ok ? fetched.data : null);
   function esc(x){return String(x||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
   var statusHtml=fetched.ok ? '<div class="source-ok">✅ URLから記事本文を取得しました（'+fetched.data.character_count.toLocaleString()+'文字・'+fetched.data.sections.length+'セクション）</div>' : '<div class="source-ng">⚠️ '+esc(fetched.message)+'<br>下欄へWebクリッパー等で切り抜いた本文を貼り付けてください。</div>';
+  var queryStatusHtml=freshQueryResult.ok ? '<div class="source-ok">✅ '+esc(freshQueryResult.message)+' 依頼文には上位'+topQueries.length+'件を使用します。</div>' : '<div class="source-ng">⚠️ '+esc(freshQueryResult.message)+'<br>保存済みクエリがある場合は代替利用します。</div>';
   var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124;line-height:1.65}h2{margin:0 0 8px;color:#0b8043}.tag{display:inline-block;padding:4px 10px;border-radius:14px;background:#e6f4ea;color:#137333;font-weight:700}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.card{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;text-align:center}.sec{margin-top:16px;border-top:1px solid #dadce0;padding-top:12px}.p{background:#fff8e1;border-left:4px solid #fbbc04;padding:10px;margin:7px 0}.reason{white-space:pre-wrap;background:#eef5ff;padding:12px;border-radius:8px}.prompt{white-space:pre-wrap;background:#f1f3f4;padding:12px;border-radius:8px;font-size:12px;max-height:300px;overflow:auto}.btn{display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:9px 14px;border-radius:6px;font-weight:700;margin-right:8px;border:0;cursor:pointer}.source-ok{background:#e6f4ea;color:#137333;padding:10px;border-radius:8px}.source-ng{background:#fef7e0;color:#7a4d00;padding:10px;border-radius:8px}.link-candidate{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:10px;margin:8px 0;font-size:13px}.link-candidate a{color:#1a73e8;word-break:break-all}textarea{width:100%;height:150px;box-sizing:border-box;padding:10px;margin-top:8px;font-family:monospace}</style></head><body>'+ 
     '<h2>改善ナビ</h2><span class="tag">'+esc(kind)+'</span><h3>'+esc(title)+'</h3><div>'+esc(rank)+' ／ '+esc(work)+'</div>'+ 
     '<div class="grid"><div class="card"><b>クリック</b><br>'+clicks.toLocaleString()+'</div><div class="card"><b>表示回数</b><br>'+imps.toLocaleString()+'</div><div class="card"><b>CTR</b><br>'+(ctr*100).toFixed(1)+'%</div><div class="card"><b>順位</b><br>'+pos.toFixed(1)+'</div></div>'+ 
+    '<div class="sec"><b>Search Console最新クエリ</b>'+queryStatusHtml+'</div>'+ 
     '<div class="sec"><b>記事本文データ</b>'+statusHtml+(fetched.ok?'':'<textarea id="pasted" placeholder="記事タイトル、見出し、本文を貼り付けてください。広告や関連記事が混ざっていても解析時に可能な範囲で除外します。"></textarea><br><button class="btn" onclick="analyzePasted()">貼り付け本文を解析</button><span id="analyzeMsg"></span>')+'</div>'+ 
     '<div class="sec"><b>なぜ今改善するのか</b><div class="reason">'+esc(reason||('表示回数とCTR・順位から改善余地がある記事です。期待効果：約'+expected+'クリック増。'))+'</div></div>'+ 
     '<div class="sec"><b>今やる価値</b><p>'+(expected>=30?'★★★★★ 非常に高い':expected>=10?'★★★★☆ 高い':'★★★☆☆ 検討価値あり')+'</p></div>'+ 

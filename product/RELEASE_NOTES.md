@@ -1,3 +1,9 @@
+# SIMS-Blog-Manager Product 5.2.2
+
+- 改善ナビ起動時に対象URLの最新クエリを毎回取得
+- 上位20クエリと内部リンク候補へ即時反映
+- 取得状態の明確化と保存済みクエリへのフォールバック
+
 # SIMS-Blog-Manager Product 5.2.1 Official
 
 Product 5.2.1 adds automatic internal-link candidate collection to the Improvement Navigator. Candidates are selected from the article database and Search Console queries and are included in the AI improvement request with URLs and relevance reasons.

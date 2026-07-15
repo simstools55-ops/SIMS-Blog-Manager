@@ -1,3 +1,9 @@
+# SIMS-Blog-Manager Product 5.2.2
+
+- 改善ナビ起動時に対象URLの最新クエリを毎回取得
+- 上位20クエリと内部リンク候補へ即時反映
+- 取得状態の明確化と保存済みクエリへのフォールバック
+
 # SIMS-Blog-Manager Product 5.2.1 Official
 
 SIMS-Coreへ渡す改善依頼文を強化しました。

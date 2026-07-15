@@ -1,3 +1,12 @@
+# Changelog
+
+## 5.2.2
+
+- 改善ナビ起動時に、対象URLの最新Search Consoleクエリを毎回取得
+- 取得したクエリをSearchConsole_Dataへ保存し、上位20件と内部リンク候補の再計算に使用
+- 取得成功・0件・取得失敗を改善ナビと依頼文で区別して表示
+- API取得に失敗した場合は保存済みクエリを代替利用
+
 # Product 5.2.1 Official — Internal Link Candidates
 
 - 改善ナビに内部リンク候補の自動抽出を追加
@@ -57,7 +66,6 @@
 - 効果測定を7日・14日・21日・28日の4回測定として仕様統一
 - 配布物の文字化けファイル名を修正
 
-# Changelog
 
 ## 5.2.1 - Home Dashboard Evolution
 
