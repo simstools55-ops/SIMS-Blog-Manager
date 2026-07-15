@@ -1,6 +1,6 @@
 # メニューの使い方
 
-Product 5.0 Officialでは、シート名ではなく「何をするか」で操作を選びます。
+Product 5.1 Officialでは、シート名ではなく「何をするか」で操作を選びます。
 
 ## SIMS-Blog-Manager
 

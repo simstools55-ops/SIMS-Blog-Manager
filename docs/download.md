@@ -1,6 +1,6 @@
 # 製品本体の場所
 
-Product 5.0 Officialの製品本体は、このZIP内にあります。
+Product 5.1 Officialの製品本体は、このZIP内にあります。
 
 ## スプレッドシート
 

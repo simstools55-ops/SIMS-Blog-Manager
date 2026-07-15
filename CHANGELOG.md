@@ -1,3 +1,10 @@
+## 5.1.0 - 2026-07-15
+
+- HomeのUI/UXを再設計
+- 今週の取り組みと作業アドバイスを追加
+- 改善履歴表示時の再構築・書式反映漏れを修正
+- 改善の推移へ名称を統一
+
 
 ## 5.3.1 - Action menu and compact Home
 
@@ -6,7 +13,7 @@
 - Added article-list sorting by rank, work status, clicks, impressions, CTR, position, and last update.
 - Changed the Home rank summary to a three-row, two-column layout with missing articles in the lower-right cell.
 
-## Product 5.0 Official Home Compact / Daily URL Review
+## Product 5.1 Official Home Compact / Daily URL Review
 
 - Homeへ記事ランク件数と ↗・→・↘ の前回比を追加
 - Home下部の処理状況を、処理名・開始時刻・処理結果・お願いの4項目へ簡素化
@@ -14,7 +21,7 @@
 - Search Console未取得URLを、3回連続または14日以上で「要確認」と判定
 - データ未取得・要確認の記事を改善候補から除外
 
-## Product 5.0 Official Reset Base - Candidate Limit
+## Product 5.1 Official Reset Base - Candidate Limit
 
 - 改善候補の保持上限を10件に固定
 - 今日の改善を初期2件・最大6件に固定
@@ -53,10 +60,10 @@
 
 - 改善結果JSON登録機能へのメニュー入口を復元。
 - 今日の改善操作・記事操作・記事DBツールバーからJSON登録画面を開けるよう修正。
-# Product 5.0 Official RC2
+# Product 5.1 Official RC2
 
-- 改善履歴の詳細画面を、既存の「改善計画・実施した改善・改善効果」の構成を維持したまま拡張
-- 改善効果を「改善前と現在の比較・4週間の効果測定・最終判定」に分割
+- 改善履歴の詳細画面を、既存の「改善計画・実施した改善・改善の推移」の構成を維持したまま拡張
+- 改善の推移を「改善前と現在の比較・4週間の効果測定・最終判定」に分割
 - 未測定の週も予定日付きで表示
 - 測定済みの週は測定日時・判定・SIMS寸評を表示
 - 1～4週目の表示から改善提案を除外し、最終判定時だけ表示
@@ -64,7 +71,7 @@
 
 ## Product 5.0 Release 1 Sprint 3.3
 
-- 測定延長が改善効果更新後に元へ戻る根本原因を修正
+- 測定延長が改善の推移更新後に元へ戻る根本原因を修正
 - 推奨確認日数を延長後の日数へ同期
 - 見出し直接上書きによる列ずれリスクを除去
 
@@ -263,14 +270,14 @@
 ## Product 5.0.0 RC11 - History / Effectiveness Reliability Fix
 
 - 改善履歴の非破壊修復と旧改善ログからの復元を追加。
-- 効果測定を「改善効果」へ改称し、モニター中の記事から一覧を再生成。
+- 効果測定を「改善の推移」へ改称し、モニター中の記事から一覧を再生成。
 - 一択チェックボックスの反応速度を改善。
 - 修復完了ナビゲーターの画面遷移を修正。
 
 ## Product 5.0 RC11 Detail Popup Naming and Metrics Fix
 
-- 効果測定詳細ポップアップを「改善効果の詳細」へ改称。
-- 改善効果の数値を小数第1位、CTRをパーセント表示へ統一。
+- 効果測定詳細ポップアップを「改善の推移の詳細」へ改称。
+- 改善の推移の数値を小数第1位、CTRをパーセント表示へ統一。
 - 記事管理の詳細ポップアップを「選択記事の詳細」へ改称。
 - 選択記事の詳細から改善ナビを開くボタンを追加。
 - 詳細表示の空欄は「ー」で統一。
@@ -286,7 +293,7 @@
 - New improvement registrations receive a unique `改善履歴ID` such as `H000001`.
 - The same ID is written into the corresponding improvement-effect record.
 - Improvement-history detail now includes a button to open the exact linked improvement-effect detail.
-- Old history rows without an ID are not guessed or searched; they show `対応する改善効果データはありません。`.
+- Old history rows without an ID are not guessed or searched; they show `対応する改善の推移データはありません。`.
 - The link is one improvement event to one effect record, enabling future analysis of which changes produced results.
 
 
@@ -371,7 +378,7 @@
 - Reduced the main user menu to Home, Initial Setup, Blog Information Change, and Repair.
 - Moved Process Log actions into the Developer menu.
 
-## Product 5.0 Official Release 1 Sprint 2 - 2026-07-12
+## Product 5.1 Official Release 1 Sprint 2 - 2026-07-12
 
 - Apps Scriptの同名関数再定義76件を削除
 - `Code.gs`を7,602行から6,056行へスリム化
@@ -383,7 +390,7 @@
 
 - 初回セットアップ最終STEPの名称・説明を改善
 - 今日の改善の最大6件表示文言と上限通知を修正
-- 改善効果詳細に比較日を追加
+- 改善の推移詳細に比較日を追加
 - 7日延長の日付書式と改善履歴同期を修正
 - Home処理状況へ今日の改善・測定延長を反映
 - 記事の全改善履歴へ閉じるボタンを追加
@@ -398,27 +405,27 @@
 ## Product 5.0 Release 1 Sprint 3.2
 
 - 7日延長後に改善履歴の測定予定日が戻る問題を修正
-- 延長後に改善履歴と改善効果の見出し・日付書式を再適用
-- 改善履歴を正本として改善効果を再生成する同期方式へ変更
+- 延長後に改善履歴と改善の推移の見出し・日付書式を再適用
+- 改善履歴を正本として改善の推移を再生成する同期方式へ変更
 
 ## Product 5.0 Release 1 Sprint 4
 
 - 効果測定を7・14・21・28日の4回測定へ変更
 - 7日延長機能を廃止
 - 改善履歴に4回分の測定日時・判定を保存
-- 改善効果の次回予定日を週次で自動更新
+- 改善の推移の次回予定日を週次で自動更新
 - 28日目の測定後に自動完了
 
 ## Product 5.0 Release 1 Sprint 5
 
 - 4週間効果測定モデルを正式スキーマとして強制適用。
-- 起動時と「シートを作成・修復」実行時に改善履歴・改善効果を新仕様へ移行。
+- 起動時と「シートを作成・修復」実行時に改善履歴・改善の推移を新仕様へ移行。
 - 旧「7日間延長」「測定完了」メニューを完全除去。
 - 改善履歴の旧「測定予定日」を実測日時へ誤変換しないよう修正。
 - バージョン情報メニューを追加。
 - 配布パッケージから旧分割ソース `src/` を除外。
 
-## Product 5.0 Official RC1
+## Product 5.1 Official RC1
 
 - 改善履歴一覧から4回分の測定日時を非表示化し、1週～4週の判定欄へ整理
 - 測定日時と各週のSIMS寸評を詳細ポップアップへ移動
@@ -426,10 +433,10 @@
 - 4週目終了後にのみ最終総括と改善提案を生成
 - 旧「1回目判定～4回目判定」「最新判定」から新スキーマへ移行
 
-## Product 5.0 Official RC3 Performance
+## Product 5.1 Official RC3 Performance
 
 - 改善履歴の「開く」から全件再構築・再書式設定を除外
-- 改善効果の「開く」から効果測定更新・全体書式設定を除外
+- 改善の推移の「開く」から効果測定更新・全体書式設定を除外
 - 起動時のシート移行をスキーマバージョン判定方式へ変更
 - 起動時の「今日の改善」再計算を、保存済み表示がある場合は省略
 - 記事管理更新時の重複並べ替えを1回へ統合
