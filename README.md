@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.1.2 Official
+# SIMS-Blog-Manager Product 5.1.3 Official
 
 Google Search Consoleのデータを使い、改善すべき記事の選定、改善作業の記録、4週間の効果測定をGoogleスプレッドシートで管理する製品です。
 

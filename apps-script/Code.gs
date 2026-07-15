@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.1.2';
+const SBM_VERSION = '5.1.3';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -431,7 +431,7 @@ function sbmBuildHomeSheet_() {
   if (sh.getMaxRows() < 29) sh.insertRowsAfter(sh.getMaxRows(), 29 - sh.getMaxRows());
 
   sh.getRange('A1:G1').merge().setValue('SIMS-Blog-Manager  Home');
-  sh.getRange('H1').setValue('v5.1.2');
+  sh.getRange('H1').setValue('v5.1.3');
   sh.getRange('A2').setValue('ブログ名'); sh.getRange('B2:D2').merge();
   sh.getRange('E2').setValue('最終更新'); sh.getRange('F2:H2').merge();
   sh.getRange('A3').setValue('総記事数'); sh.getRange('B3').setValue('0件');
@@ -2222,7 +2222,7 @@ function sbmSetHomeProcessing_(state, processName, startedText, finishedText, re
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
   if (!sh) return;
   try {
-    if (String(sh.getRange('H1').getValue()) !== 'v5.1.2') sbmBuildHomeSheet_();
+    if (String(sh.getRange('H1').getValue()) !== 'v5.1.3') sbmBuildHomeSheet_();
     sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.HOME);
     sh.getRange('A21:H24').setBackground(isProcessing ? '#fff2cc' : '#d9ead3');
     sh.getRange('B22:H22').setValue(processName || state || '待機中');
@@ -3501,7 +3501,7 @@ function sbmBuildTodayRecommendationsManual() {
     sbmRefreshHome_();
     sbmOpenTodayImprovement();
     sbmSetHomeProcessing_('完了', '今日の改善を作成', '', sbmNowText_(), initial + '件を表示', false);
-    sbmAlert_('今日の改善を作成しました', '即効性とCTR改善の推移から、最初の' + initial + '記事を表示しました。\n「今日の改善を開始」メニューから2件ずつ、最大6件まで追加できます。');
+    sbmAlert_('今日の改善を作成しました', '即効性とCTR改善の推移から、最初の' + initial + '記事を表示しました。\n「記事改善スタート」メニューから2件ずつ、最大6件まで追加できます。');
   } catch (e) {
     sbmSetHomeProcessing_('エラー', '今日の改善を作成', '', sbmNowText_(), String(e), false);
     sbmAlert_('今日の改善作成エラー', String(e));
@@ -5343,7 +5343,7 @@ function sbmParseDate_(value) {
 
 /**
  * 履歴・設定値の日付を柔軟に解釈する互換パーサー。
- * Product 5.1.2: Homeの週間集計からも利用します。
+ * Product 5.1.3: Homeの週間集計からも利用します。
  */
 function sbmParseDateFlexible_(value) {
   return sbmParseDate_(value);
@@ -5382,7 +5382,7 @@ function sbmApplyHistoryFinalStyle_() {
 function sbmRefreshHome_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.1.2') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== 'v5.1.3') { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -5458,7 +5458,7 @@ function sbmHomeWeeklyAdvice_(weekly, work, candidateCount, missingCount) {
   weekly = weekly || {improved:0,completed:0}; work = work || {};
   if (missingCount > 0) return '未取得記事があります。記事が削除されたとは限りません。次回の日次処理でも未取得が続く場合は、Search ConsoleのURL検査や公開状態を確認しましょう。';
   if (Number(work.monitor||0) >= 5 && weekly.completed === 0) return '改善推移確認中の記事が増えています。新しい改善を増やしすぎず、7日・14日・21日・28日の結果確認を優先しましょう。';
-  if (weekly.improved >= 4) return '今週は' + weekly.improved + '件を改善しており、良いペースです。改善推移を確認しながら、効果が高かった方法を次の記事にも活用しましょう。';
+  if (weekly.improved >= 4) return '今週は' + weekly.improved + '件を改善しており、良いペースです。推移を確認しながら、効果が高かった方法を次の記事にも活用しましょう。';
   if (weekly.improved > 0) return '今週は' + weekly.improved + '件を改善しました。無理に件数を増やさず、今日の改善から優先度の高い記事を続けましょう。';
   if (candidateCount > 0) return '今週はまだ改善結果が登録されていません。今日の改善から1件選び、改善後は結果登録まで完了させましょう。';
   return '改善候補が少なくなっています。管理メニューの日次処理を実行し、最新のSearch Consoleデータから候補を更新しましょう。';
@@ -5582,33 +5582,50 @@ function sbmArticleDetailNaviButtonHtml_(url) {
 /**
  * シート作成・修復後の最終更新。
  */
-function sbmRefreshHistoryAndEffectAfterRepair_() {
+/**
+ * 改善履歴の再構築・書式・チェックボックス設定を一つにまとめます。
+ * シートの作成・修復と「改善履歴を開く」の両方から利用します。
+ *
+ * @param {boolean} updateEffect 改善の推移も最新化する場合はtrue
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} 改善履歴シート
+ */
+function sbmRefreshImprovementHistorySheet_(updateEffect) {
   try { sbmEnsureHistoryAndEffectSchemas_(); } catch (e) {}
   try { sbmRepairImprovementHistoryData_(); } catch (e) {
-    sbmLog_('RepairImprovementHistory', 'Warning', String(e));
+    sbmLog_('RefreshImprovementHistoryRepair', 'Warning', String(e));
   }
-  try { sbmUpdateEffectivenessCore_(false); } catch (e) {
-    sbmLog_('RepairImprovementEffect', 'Warning', String(e));
+  if (updateEffect) {
+    try { sbmUpdateEffectivenessCore_(false); } catch (e) {
+      sbmLog_('RefreshImprovementEffect', 'Warning', String(e));
+    }
   }
   try { sbmRebuildImprovementHistoryList_(); } catch (e) {
-    sbmLog_('RepairHistoryListRebuild', 'Warning', String(e));
+    sbmLog_('RefreshImprovementHistoryRebuild', 'Warning', String(e));
   }
-  try { sbmApplyHistoryFinalStyle_(); } catch (e) {}
+
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  try { sbmApplyHistoryFinalStyle_(); } catch (e) {
+    sbmLog_('RefreshImprovementHistoryStyle', 'Warning', String(e));
+  }
+  try { sbmApplySelectionUi_(sh); } catch (e) {
+    sbmLog_('RefreshImprovementHistorySelection', 'Warning', String(e));
+  }
+  sh.showSheet();
+  SpreadsheetApp.flush();
+  return sh;
+}
+
+function sbmRefreshHistoryAndEffectAfterRepair_() {
+  sbmRefreshImprovementHistorySheet_(true);
   try { sbmStyleEffectSheetV2_(); } catch (e) {}
   SpreadsheetApp.flush();
 }
 
 /**
- * 改善履歴を開く際も最終書式を適用します。
+ * 改善履歴を開く際に一覧・書式・チェックボックスを必ず再反映します。
  */
 function sbmOpenImprovementHistory() {
-  try { sbmEnsureHistoryAndEffectSchemas_(); } catch (e) {}
-  try { sbmRepairImprovementHistoryData_(); } catch (e) { sbmLog_('OpenHistoryRepair', 'Warning', String(e)); }
-  try { sbmRebuildImprovementHistoryList_(); } catch (e) { sbmLog_('OpenHistoryRebuild', 'Warning', String(e)); }
-  try { sbmApplyHistoryFinalStyle_(); } catch (e) {}
-  try { sbmApplySelectionUi_(sh); } catch (e) {}
-  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
-  sh.showSheet();
+  var sh = sbmRefreshImprovementHistorySheet_(false);
   SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);
   sh.activate();
   SpreadsheetApp.flush();
@@ -6045,7 +6062,7 @@ function sbmWriteTodayRecommendations_(candidates, count) {
   var guideRow = shown.length + 3;
   sh.getRange(guideRow, 1).setValue(
     shown.length < (candidates || []).length
-      ? '上部メニュー「SIMS-Blog-Manager → 今日の改善を開始 → 次の2件を表示」で追加できます。'
+      ? '上部メニュー「記事改善スタート → 次の2件を表示」で追加できます。'
       : '最大6件を表示しています。'
   ).setFontColor('#5f6368');
 
@@ -6317,7 +6334,7 @@ function sbmShowDeveloperSheetList() {
  * Clean setup wizard / menu cleanup / developer diagnostics
  * ========================================================================== */
 
-var SBM_RELEASE_NAME = 'Product 5.1.2 Official';
+var SBM_RELEASE_NAME = 'Product 5.1.3 Official';
 var SBM_ENABLE_DEVELOPER_MENU = false;
 
 /* ---------- 共通：ウィザード ---------- */
@@ -6668,48 +6685,7 @@ function onOpen() {
 
   var ui = SpreadsheetApp.getUi();
 
-  // 日常作業は上部メニューへ独立表示します。
-  ui.createMenu('今日の改善を開始')
-    .addItem('今日の改善を開く','sbmOpenTodayImprovement')
-    .addItem('選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
-    .addSeparator()
-    .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
-    .addItem('初期2件に戻す','sbmResetTodayRecommendations')
-    .addToUi();
-
-  ui.createMenu('改善結果を登録')
-    .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
-    .addToUi();
-
-  ui.createMenu('改善記事の状況を確認')
-    .addItem('改善記事の状況を開く','sbmOpenImprovementStatus')
-    .addToUi();
-
-  ui.createMenu('全ブログ記事を確認する')
-    .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
-    .addItem('選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
-    .addItem('選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
-    .addSeparator()
-    .addItem('記事ランク順','sbmSortArticlesByRank')
-    .addItem('改善状態順','sbmSortArticlesByWork')
-    .addItem('クリック数の多い順','sbmSortArticlesByClicks')
-    .addItem('表示回数の多い順','sbmSortArticlesByImpressions')
-    .addItem('CTRの高い順','sbmSortArticlesByCtr')
-    .addItem('掲載順位の高い順','sbmSortArticlesByPosition')
-    .addItem('最終取得日時の新しい順','sbmSortArticlesByUpdated')
-    .addToUi();
-
-  ui.createMenu('改善推移を確認')
-    .addItem('改善の推移を開く','sbmOpenEffectiveness')
-    .addItem('最新データで更新','sbmUpdateEffectiveness')
-    .addItem('選択記事の詳細を見る','sbmShowSelectedEffectDetail')
-    .addSeparator()
-    .addItem('改善履歴を開く','sbmOpenImprovementHistory')
-    .addItem('選択した履歴の詳細を見る','sbmOpenSelectedHistoryDetail')
-    .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll')
-    .addToUi();
-
-  // 初期設定・更新・修復などは製品名メニューへ集約します。
+  // 製品管理メニューを最左翼に配置します。
   ui.createMenu('SIMS-Blog-Manager')
     .addItem('Homeを確認する','sbmOpenHome')
     .addSeparator()
@@ -6725,17 +6701,47 @@ function onOpen() {
     .addItem('バージョン情報','sbmShowVersionInfo')
     .addToUi();
 
-  // 配布版では開発者用メニューを表示しません。
-  if (SBM_ENABLE_DEVELOPER_MENU) {
-    ui.createMenu('開発者用')
-      .addItem('内部シートを表示','sbmShowDeveloperSheets')
-      .addItem('内部シートを非表示','sbmHideDeveloperSheets')
-      .addItem('内部シート一覧','sbmShowDeveloperSheetList')
-      .addSeparator()
-      .addItem('処理ログを開く','sbmOpenProcessLog')
-      .addItem('処理ログをクリア','sbmClearProcessLogDeveloper')
-      .addToUi();
-  }
+  // 毎日の作業入口であることが伝わる名称にします。
+  ui.createMenu('記事改善スタート')
+    .addItem('今日の改善を開く','sbmOpenTodayImprovement')
+    .addItem('選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
+    .addSeparator()
+    .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
+    .addItem('初期2件に戻す','sbmResetTodayRecommendations')
+    .addToUi();
+
+  ui.createMenu('結果登録')
+    .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
+    .addToUi();
+
+  // 改善中の記事と4週間の測定状況をここへ統合します。
+  ui.createMenu('推移確認')
+    .addItem('改善の推移を開く','sbmOpenImprovementStatus')
+    .addItem('最新データで更新','sbmUpdateEffectiveness')
+    .addItem('選択記事の詳細を見る','sbmShowSelectedEffectDetail')
+    .addToUi();
+
+  ui.createMenu('記事一覧')
+    .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
+    .addItem('選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
+    .addItem('選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
+    .addSeparator()
+    .addItem('記事ランク順','sbmSortArticlesByRank')
+    .addItem('改善状態順','sbmSortArticlesByWork')
+    .addItem('クリック数の多い順','sbmSortArticlesByClicks')
+    .addItem('表示回数の多い順','sbmSortArticlesByImpressions')
+    .addItem('CTRの高い順','sbmSortArticlesByCtr')
+    .addItem('掲載順位の高い順','sbmSortArticlesByPosition')
+    .addItem('最終取得日時の新しい順','sbmSortArticlesByUpdated')
+    .addToUi();
+
+  ui.createMenu('改善履歴')
+    .addItem('改善履歴を開く','sbmOpenImprovementHistory')
+    .addItem('選択した履歴の詳細を見る','sbmOpenSelectedHistoryDetail')
+    .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+  // 配布版では開発者用メニューを生成しません。
 
   try { sbmPromptArticleDbUpdateOnOpen_(); } catch (e) { try { sbmLog_('OnOpenDailyPrompt','Warning',String(e)); } catch(ignore) {} }
   try { sbmEnsureTodayRecommendations_('open'); } catch (e) {}
