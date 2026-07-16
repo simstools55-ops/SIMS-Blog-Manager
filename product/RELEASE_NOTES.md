@@ -1,4 +1,4 @@
-## Product 5.2.9 Official
+## Product 5.2.10 Official
 
 - 復元不能な改善履歴の孤立行をバックアップ後に削除
 - 改善履歴IDの重複と同一履歴の重複を整理

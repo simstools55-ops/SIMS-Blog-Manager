@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.2.9 Official
+ * SIMS-Blog-Manager Product 5.2.10 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.9';
+const SBM_VERSION = '5.2.10';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -4812,8 +4812,10 @@ function sbmLegacyHistoryObjects_(){
   vals.forEach(function(r){
     if(r.every(function(v){return v===''||v===null;})) return;
     var o={}; heads.forEach(function(h,i){if(h)o[h]=r[i];});
-    var url=String(o['URL']||''), a=byUrl[sbmNormalizeUrl_(url)]||{};
-    if(!url && !o['記事タイトル']) return;
+    var url=String(o['URL']||''), normalizedUrl=sbmNormalizeUrl_(url), a=byUrl[normalizedUrl]||{};
+    // Product 5.2.10: URLも記事照合もできない旧ログ行は再取り込みしません。
+    // 「UI」などの孤立行が改善履歴へ復活する経路を遮断します。
+    if(!normalizedUrl || !sbmLooksLikeUrl_(url) || !a['ArticleID']) return;
     var improveDate=o['改善日']||'', reviewDate=o['初回測定日']||'';
     out.push({
       '選択':false,'改善日':improveDate,'記事タイトル':o['記事タイトル']||a['記事タイトル']||'',
@@ -4918,6 +4920,35 @@ function sbmRepairImprovementHistoryData_(){
 
   current=current.map(enrichHistory);
   var legacy=sbmLegacyHistoryObjects_().map(enrichHistory);
+
+  // Product 5.2.10: 記事DBと照合できず、改善内容も持たない短いタイトル行は孤立データとして除外します。
+  function isOrphanAfterEnrich(o){
+    var aid=String(o['ArticleID']||'').trim();
+    var url=sbmNormalizeUrl_(o['記事URL']||'');
+    var articleMatched=!!(aid&&byArticleId[aid]) || !!(url&&byUrl[url]);
+    var title=String(o['記事タイトル']||'').trim();
+    var summary=String(o['改善概要']||'').trim();
+    var changed=String(o['変更箇所']||'').trim();
+    var rawJson=String(o['AI改善結果JSON']||'').trim();
+    var planJson=String(o['改善計画JSON']||'').trim();
+    return !articleMatched && title.length<=3 && !summary && !changed && !rawJson && !planJson;
+  }
+
+  current=current.filter(function(o){
+    if(isOrphanAfterEnrich(o)){
+      removed.push({reason:'記事照合不能の孤立行',object:o});
+      return false;
+    }
+    return true;
+  });
+  legacy=legacy.filter(function(o){
+    if(isOrphanAfterEnrich(o)){
+      removed.push({reason:'旧ログ由来の孤立行',object:o});
+      return false;
+    }
+    return true;
+  });
+
   var candidates=current.concat(legacy), byHistoryId={}, withoutHistoryId=[];
 
   candidates.forEach(function(o){
@@ -5635,7 +5666,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRefreshHome_();
   SpreadsheetApp.flush();
 
-  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.9 history-integrity cleanup applied');
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.10 orphan-history cleanup applied');
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 

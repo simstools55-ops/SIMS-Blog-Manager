@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.2.9 Official
+# SIMS-Blog-Manager Product 5.2.10 Official
 
 - 改善履歴のデータ整合性クリーンアップを追加
 - 「UI」など識別情報を持たない復元不能行を自動除外
