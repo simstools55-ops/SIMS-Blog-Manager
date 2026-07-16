@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.2.8 Official
+ * SIMS-Blog-Manager Product 5.2.9 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.8';
+const SBM_VERSION = '5.2.9';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -4485,6 +4485,11 @@ function sbmNormalizeImprovementFeedback_(raw) {
 
 function sbmAppendImprovementHistory_(data,row,before) {
   sbmEnsureHistoryAndEffectSchemas_();
+  var identityId=String(data.article_id||'').trim(), identityUrl=String(data.article_url||'').trim();
+  if(!identityId && !identityUrl){
+    sbmLog_('AppendImprovementHistory','Error','ArticleID and article URL are both missing. History registration was stopped.');
+    throw new Error('改善履歴を登録できません。ArticleIDまたは記事URLが必要です。');
+  }
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), changed=sbmFeedbackChangedLabels_(data.changes).join('、');
   var historyId = sbmNextImprovementHistoryId_();
   var articleTitle=String(row[SBM_HEADERS.ARTICLE_DB.indexOf('記事タイトル')]||data.new_values.article_title||before.title);
@@ -4827,24 +4832,76 @@ function sbmLegacyHistoryObjects_(){
 function sbmHistoryKey_(o){
   return [String(o['ArticleID']||''),sbmNormalizeUrl_(o['記事URL']||''),String(o['改善日']||''),String(o['改善概要']||'').slice(0,40)].join('|');
 }
+
+function sbmHistoryCompletenessScore_(o){
+  var fields=['改善履歴ID','ArticleID','記事URL','記事タイトル','改善概要','変更箇所','AI改善結果JSON','改善計画JSON','メインクエリ'];
+  var score=0;
+  fields.forEach(function(k){
+    var v=String(o[k]===undefined||o[k]===null?'':o[k]).trim();
+    if(v) score += (k==='改善履歴ID'||k==='ArticleID'||k==='記事URL') ? 3 : 1;
+  });
+  for(var i=1;i<=4;i++){
+    if(String(o[i+'回目測定日時']||'').trim()) score++;
+    if(String(o[i+'週']||'').trim() && String(o[i+'週']||'').trim()!=='未測定') score++;
+  }
+  return score;
+}
+
+function sbmIsUnrecoverableHistoryObject_(o){
+  var historyId=String(o['改善履歴ID']||'').trim();
+  var articleId=String(o['ArticleID']||'').trim();
+  var url=String(o['記事URL']||'').trim();
+  var rawJson=String(o['AI改善結果JSON']||'').trim();
+  var planJson=String(o['改善計画JSON']||'').trim();
+  return !historyId && !articleId && !url && !rawJson && !planJson;
+}
+
+function sbmBackupRemovedHistoryRows_(items){
+  if(!items || !items.length) return;
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var name='改善履歴_除外バックアップ';
+  var sh=ss.getSheetByName(name);
+  var headers=['除外日時','除外理由'].concat(SBM_HISTORY_HEADERS_V2);
+  if(!sh){
+    sh=ss.insertSheet(name);
+    sh.getRange(1,1,1,headers.length).setValues([headers]);
+    sh.setFrozenRows(1);
+    sh.getRange(1,1,1,headers.length).setBackground('#5f6368').setFontColor('#ffffff').setFontWeight('bold');
+  }else if(sh.getLastRow()===0){
+    sh.getRange(1,1,1,headers.length).setValues([headers]);
+  }
+  var now=sbmNowText_();
+  var rows=items.map(function(item){
+    var o=item.object||{};
+    return [now,item.reason||'復元不能'].concat(SBM_HISTORY_HEADERS_V2.map(function(h){return o[h]!==undefined?o[h]:'';}));
+  });
+  sh.getRange(sh.getLastRow()+1,1,rows.length,headers.length).setValues(rows);
+  try{sh.hideSheet();}catch(e){}
+}
+
 function sbmRepairImprovementHistoryData_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(), sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), headers=SBM_HISTORY_HEADERS_V2.slice();
-  var current=[];
+  var current=[], removed=[];
   if(sh.getLastRow()>1){
     var vals=sh.getDataRange().getValues(), oldHeads=vals.shift().map(function(v){return String(v||'').trim();});
     vals.forEach(function(r){
       if(r.every(function(v){return v===''||v===null;})) return;
       var o={}; oldHeads.forEach(function(h,i){if(h)o[h]=r[i];});
-      if(!sbmLooksLikeBrokenHistoryObject_(o)) current.push(o);
+      if(sbmLooksLikeBrokenHistoryObject_(o)){
+        removed.push({reason:'列ずれ・形式不正',object:o});
+      }else{
+        current.push(o);
+      }
     });
   }
-  // Product 5.2.8: 記事管理とAI返却JSONを使って、列ずれで欠けた履歴項目を補完します。
+
   var articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[], byArticleId={}, byUrl={};
   articles.forEach(function(a){
     var aid=String(a['ArticleID']||'').trim(), au=sbmNormalizeUrl_(a['記事URL']||'');
     if(aid) byArticleId[aid]=a;
     if(au) byUrl[au]=a;
   });
+
   function enrichHistory(o){
     var article=byArticleId[String(o['ArticleID']||'').trim()] || byUrl[sbmNormalizeUrl_(o['記事URL']||'')] || {};
     var nv=sbmHistoryJsonNewValues_(o);
@@ -4858,24 +4915,78 @@ function sbmRepairImprovementHistoryData_(){
     if(!String(o['変更後メタディスクリプション']||'').trim()) o['変更後メタディスクリプション']=nv.description||'';
     return o;
   }
+
   current=current.map(enrichHistory);
-  var legacy=sbmLegacyHistoryObjects_().map(enrichHistory), merged=[], seen={};
-  current.concat(legacy).forEach(function(o){
-    var k=sbmHistoryKey_(o); if(seen[k]) return; seen[k]=true;
+  var legacy=sbmLegacyHistoryObjects_().map(enrichHistory);
+  var candidates=current.concat(legacy), byHistoryId={}, withoutHistoryId=[];
+
+  candidates.forEach(function(o){
+    if(sbmIsUnrecoverableHistoryObject_(o)){
+      removed.push({reason:'識別情報がなく復元不能',object:o});
+      return;
+    }
+    var hid=String(o['改善履歴ID']||'').trim();
+    if(!hid){
+      withoutHistoryId.push(o);
+      return;
+    }
+    if(!byHistoryId[hid]){
+      byHistoryId[hid]=o;
+    }else{
+      var oldScore=sbmHistoryCompletenessScore_(byHistoryId[hid]);
+      var newScore=sbmHistoryCompletenessScore_(o);
+      if(newScore>oldScore){
+        removed.push({reason:'改善履歴ID重複（情報量の少ない行）',object:byHistoryId[hid]});
+        byHistoryId[hid]=o;
+      }else{
+        removed.push({reason:'改善履歴ID重複（情報量の少ない行）',object:o});
+      }
+    }
+  });
+
+  var merged=Object.keys(byHistoryId).map(function(k){return byHistoryId[k];}).concat(withoutHistoryId);
+  var seen={};
+  merged=merged.filter(function(o){
+    var k=sbmHistoryKey_(o);
+    if(seen[k]){
+      removed.push({reason:'同一履歴の重複',object:o});
+      return false;
+    }
+    seen[k]=true;
+    return true;
+  });
+
+  var articleCounts={};
+  merged.forEach(function(o){
+    var aid=String(o['ArticleID']||'').trim();
+    if(aid) articleCounts[aid]=(articleCounts[aid]||0)+1;
     var measured=0; for(var wi=1;wi<=4;wi++){if(o[wi+'回目測定日時'])measured=wi;}
     if(!o['状態'])o['状態']=measured>=4?'完了':measured>0?'測定中':'測定待ち';
     if(!o['最終判定'])o['最終判定']=measured>=4?(o['4週']||'完了'):(measured>0?'測定中':'測定待ち');
     for(var wj=1;wj<=4;wj++){if(!o[wj+'週'])o[wj+'週']='未測定';}
-    merged.push(o);
   });
+
+  Object.keys(articleCounts).forEach(function(aid){
+    if(articleCounts[aid]>1){
+      sbmLog_('HistoryIntegrityArticleRepeat','Info','ArticleID '+aid+' has '+articleCounts[aid]+' history records.');
+    }
+  });
+
   var aliases={'改善日':['改善日','登録日時'],'1週':['1週','1回目判定'],'2週':['2週','2回目判定'],'3週':['3週','3回目判定'],'4週':['4週','4回目判定'],'1回目測定日時':['1回目測定日時'],'最終判定':['最終判定','最新判定','効果判定'],'記事URL':['記事URL','URL'],'改善概要':['改善概要','改善内容'],'変更箇所':['変更箇所','修正内容']};
   var rows=merged.map(function(o){return headers.map(function(h){var names=aliases[h]||[h];for(var i=0;i<names.length;i++){if(o[names[i]]!==undefined)return o[names[i]];}return h==='選択'?false:'';});});
+
+  if(removed.length){
+    try{sbmBackupRemovedHistoryRows_(removed);}catch(e){sbmLog_('HistoryCleanupBackup','Warning',String(e));}
+  }
+
   sh.clear();
   if(sh.getMaxColumns()<headers.length) sh.insertColumnsAfter(sh.getMaxColumns(),headers.length-sh.getMaxColumns());
   sh.getRange(1,1,1,headers.length).setValues([headers]);
   if(rows.length) sh.getRange(2,1,rows.length,headers.length).setValues(rows);
   sbmStyleHistorySheetV2_();
-  return rows.length;
+
+  sbmLog_('HistoryIntegrityCleanup','Done','kept='+rows.length+', removed='+removed.length);
+  return {kept:rows.length,removed:removed.length};
 }
 
 
@@ -5524,7 +5635,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRefreshHome_();
   SpreadsheetApp.flush();
 
-  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.8 schema and column-reference repair applied');
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.9 history-integrity cleanup applied');
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 
