@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.2.7 Official
+ * SIMS-Blog-Manager Product 5.2.8 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.7';
+const SBM_VERSION = '5.2.8';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -1328,7 +1328,30 @@ function sbmSupplementArticleDbMetaManual(silent) {
       }
 
       // 様子見：取得しない。既存値だけ保持する。
-      out.push([sbmStatusLabel_(status), url, mainQuery, clicks, imps, ctr, pos, articleTitle, seoTitle, metaDesc, r['最終取得日時'] || now, sbmNumber_(r['元URL件数'] || 0), r['除外理由'] || '', r['備考'] || '']);
+      // Product 5.2.8: 列位置に依存せず、既存レコードを保持したまま補完結果だけを更新します。
+      var preserved = {};
+      SBM_HEADERS.ARTICLE_DB.forEach(function(h){ preserved[h] = r[h] !== undefined ? r[h] : ''; });
+      preserved['記事ランク'] = preserved['記事ランク'] || '';
+      preserved['作業状態'] = preserved['作業状態'] || '未着手';
+      preserved['記事URL'] = url;
+      preserved['メインクエリ'] = mainQuery;
+      preserved['クリック数'] = clicks;
+      preserved['表示回数'] = imps;
+      preserved['CTR'] = ctr;
+      preserved['掲載順位'] = pos;
+      preserved['記事タイトル'] = articleTitle;
+      preserved['SEOタイトル'] = seoTitle;
+      preserved['メタディスクリプション'] = metaDesc;
+      preserved['最終取得日時'] = r['最終取得日時'] || now;
+      preserved['元URL件数'] = sbmNumber_(r['元URL件数'] || 0);
+      preserved['除外理由'] = r['除外理由'] || '';
+      preserved['備考'] = r['備考'] || '';
+      if (articleTitle || seoTitle || metaDesc || mainQuery) {
+        preserved['記事情報補完済み'] = '○';
+        preserved['補完日時'] = now;
+        preserved['補完エラー'] = '';
+      }
+      out.push(SBM_HEADERS.ARTICLE_DB.map(function(h){ return preserved[h] !== undefined ? preserved[h] : ''; }));
     }
 
     sbmWriteArticleDb_(out);
@@ -4638,7 +4661,7 @@ function sbmOpenSelectedHistoryArticleAll(){
   var rows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY).filter(function(r){return(id&&String(r['ArticleID']||'')===id)||sbmNormalizeUrl_(r['記事URL']||'')===sbmNormalizeUrl_(url);});
   if(!rows.length)return sbmAlert_('改善履歴','履歴がありません。');
   var e=sbmEscapeHtml_,cards=rows.slice().reverse().map(function(r){
-    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=String(r[i+'週']||'').trim(),measured=!!j&&j!=='未測定'&&j!=='未判定',planned=sbmWeeklyPlannedDate_(r,i),plannedText=planned?Utilities.formatDate(planned,SBM_DEFAULTS.TIMEZONE,'yyyy/M/d'):'日付不明';measurements+='<br>'+i+'週目：'+(measured?e(sbmHistoryDisplayValue_(dt))+' / '+e(j):'未測定（予定：'+e(plannedText)+'）');}
+    var measurements='';for(var i=1;i<=4;i++){var dt=r[i+'回目測定日時'],j=String(r[i+'週']||'').trim(),measured=!!j&&j!=='未測定'&&j!=='未判定',planned=sbmWeeklyPlannedDate_(r,i),plannedText=planned?Utilities.formatDate(planned,SBM_DEFAULTS.TIMEZONE,'yyyy/M/d'):'日付不明';measurements+='<br>'+i+'週目：'+(measured?e(sbmHistoryDateOnlyText_(dt))+' / '+e(j):'未測定（予定：'+e(plannedText)+'）');}
     return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:10px 0"><b>'+e(r['改善日'])+'</b>　'+e(r['最終判定']||r['状態']||'測定待ち')+'<br>'+e(r['改善概要'])+'<br>変更：'+e(r['変更箇所'])+measurements+'</div>';
   }).join('');
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput('<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px"><h2>記事の全改善履歴</h2><h3>'+e(o['記事タイトル'])+'</h3>'+cards+'<div style="text-align:right;margin-top:18px"><button onclick="google.script.host.close()" style="padding:9px 18px;border:1px solid #9aa0a6;border-radius:6px;background:#fff;font-weight:700;cursor:pointer">閉じる</button></div></div>').setWidth(720).setHeight(650),'記事の全改善履歴');
@@ -4765,11 +4788,14 @@ function sbmLooksLikeArticleId_(v){ return /^A\d{4,}$/i.test(String(v||'').trim(
 function sbmLooksLikeUrl_(v){ return /^https?:\/\//i.test(String(v||'').trim()); }
 function sbmLooksLikeBrokenHistoryObject_(o){
   var d=o['改善日'], t=String(o['記事タイトル']||'').trim(), u=String(o['記事URL']||'').trim(), id=String(o['ArticleID']||'').trim();
+  var historyId=String(o['改善履歴ID']||'').trim(), summary=String(o['改善概要']||'').trim(), changed=String(o['変更箇所']||'').trim();
   if(String(d).toUpperCase()==='FALSE' || d===false) return true;
   if(!sbmLooksLikeHistoryDate_(d)) return true;
   if(!t || /^(true|false)$/i.test(t) || /^\d{1,3}$/.test(t)) return true;
   if(u && !sbmLooksLikeUrl_(u)) return true;
   if(id && !sbmLooksLikeArticleId_(id)) return true;
+  // Product 5.2.8: 列ずれで作られた「UI」等の孤立行を除外します。
+  if(!u && !id && !historyId && !summary && !changed && t.length <= 3) return true;
   return false;
 }
 function sbmLegacyHistoryObjects_(){
@@ -4812,7 +4838,28 @@ function sbmRepairImprovementHistoryData_(){
       if(!sbmLooksLikeBrokenHistoryObject_(o)) current.push(o);
     });
   }
-  var legacy=sbmLegacyHistoryObjects_(), merged=[], seen={};
+  // Product 5.2.8: 記事管理とAI返却JSONを使って、列ずれで欠けた履歴項目を補完します。
+  var articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[], byArticleId={}, byUrl={};
+  articles.forEach(function(a){
+    var aid=String(a['ArticleID']||'').trim(), au=sbmNormalizeUrl_(a['記事URL']||'');
+    if(aid) byArticleId[aid]=a;
+    if(au) byUrl[au]=a;
+  });
+  function enrichHistory(o){
+    var article=byArticleId[String(o['ArticleID']||'').trim()] || byUrl[sbmNormalizeUrl_(o['記事URL']||'')] || {};
+    var nv=sbmHistoryJsonNewValues_(o);
+    if(!String(o['記事タイトル']||'').trim() || String(o['記事タイトル']||'').trim().length<=3)
+      o['記事タイトル']=nv.article_title||article['記事タイトル']||article['SEOタイトル']||o['記事タイトル']||'';
+    if(!String(o['記事URL']||'').trim()) o['記事URL']=article['記事URL']||'';
+    if(!String(o['ArticleID']||'').trim()) o['ArticleID']=article['ArticleID']||'';
+    if(!String(o['メインクエリ']||'').trim()) o['メインクエリ']=nv.main_query||article['メインクエリ']||'';
+    if(!String(o['変更後タイトル']||'').trim()) o['変更後タイトル']=nv.article_title||'';
+    if(!String(o['変更後SEOタイトル']||'').trim()) o['変更後SEOタイトル']=nv.seo_title||'';
+    if(!String(o['変更後メタディスクリプション']||'').trim()) o['変更後メタディスクリプション']=nv.description||'';
+    return o;
+  }
+  current=current.map(enrichHistory);
+  var legacy=sbmLegacyHistoryObjects_().map(enrichHistory), merged=[], seen={};
   current.concat(legacy).forEach(function(o){
     var k=sbmHistoryKey_(o); if(seen[k]) return; seen[k]=true;
     var measured=0; for(var wi=1;wi<=4;wi++){if(o[wi+'回目測定日時'])measured=wi;}
@@ -4926,6 +4973,12 @@ function sbmEnsureCloseButton_(output) {
 function sbmHistoryDisplayValue_(v) {
   return sbmDisplayValueJa_(v);
 }
+function sbmHistoryDateOnlyText_(v) {
+  if (v === null || v === undefined || String(v).trim() === '') return 'ー';
+  var d = sbmParseDate_(v);
+  if (!d) return String(v);
+  return Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy/M/d');
+}
 function sbmHistoryNumberText_(v) {
   var n = Number(String(v === null || v === undefined ? '' : v).replace(/,/g,''));
   if (!isFinite(n)) return 'ー';
@@ -5028,7 +5081,7 @@ function sbmDetailCtr1_(v) {
 function sbmFormatEffectDateLabel_(value) {
   var d = sbmParseDate_(value);
   if (!d) return '日付不明';
-  return Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy/MM/dd');
+  return Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy/M/d');
 }
 
 function sbmEffectDetailHtmlV2_(o) {
@@ -5208,7 +5261,7 @@ function sbmWeeklyHistoryHtml_(o) {
     var plannedText = planned ? Utilities.formatDate(planned, SBM_DEFAULTS.TIMEZONE, 'yyyy/M/d') : '日付不明';
     var statusHtml;
     if (measured) {
-      statusHtml = '<div class="field"><span class="label">測定日時：</span>' + e(sbmHistoryDisplayValue_(dt)) + '</div>'
+      statusHtml = '<div class="field"><span class="label">測定日時：</span>' + e(sbmHistoryDateOnlyText_(dt)) + '</div>'
         + '<div class="field"><span class="label">判定：</span>' + e(judge) + '</div>'
         + '<div class="field"><span class="label">SIMS寸評</span><div class="box">' + e(comment || '測定結果を記録しました。') + '</div></div>';
     } else {
@@ -5310,7 +5363,7 @@ function sbmHistoryDetailHtmlV2_(o) {
   return '<!doctype html><html><head><base target="_top">'+css+'</head><body>'
     + '<h2>改善履歴の詳細</h2><h3>'+e(sbmHistoryDisplayValue_(o['記事タイトル']))+'</h3>'
     + '<div class="meta"><div class="field"><span class="label">改善履歴ID：</span>'+e(sbmHistoryDisplayValue_(o['改善履歴ID']))+'</div>'
-    + '<div class="field"><span class="label">改善日：</span>'+e(sbmHistoryDisplayValue_(o['改善日']))+'</div></div>'
+    + '<div class="field"><span class="label">改善日：</span>'+e(sbmHistoryDateOnlyText_(o['改善日']))+'</div></div>'
     + '<div class="section"><h3>1. 改善計画</h3>'+planHtml+'</div>'
     + '<div class="section"><h3>2. 実施した改善</h3>'+resultHtml+'</div>'
     + '<div class="section"><h3>3. 改善の推移</h3>'+effectHtml+'</div>'
@@ -5471,7 +5524,7 @@ function sbmInitializeSheets(showAlert) {
   sbmRefreshHome_();
   SpreadsheetApp.flush();
 
-  sbmLog_('InitializeSheets', 'Done', 'Product 5.1 Official four-week measurement schema applied');
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.8 schema and column-reference repair applied');
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 
@@ -5992,6 +6045,7 @@ function sbmArticleDbDetailHtml_(o) {
 
   var rank = String(o['記事ランク'] || '');
   var workState = String(o['作業状態'] || '');
+  var displayTitle = String(o['記事タイトル'] || o['SEOタイトル'] || o['メインクエリ'] || o['記事URL'] || '').trim();
   var advice = sbmArticleDbWorkAdvice_(rank, workState);
   var url = String(o['記事URL'] || '');
   var safeJsUrl = JSON.stringify(url).replace(/</g, '\\u003c');
@@ -6014,7 +6068,7 @@ function sbmArticleDbDetailHtml_(o) {
     + '#msg{font-size:12px;color:#5f6368;margin-top:8px;text-align:right}'
     + '</style></head><body>'
     + '<h2>選択記事の詳細</h2>'
-    + '<h3>' + e(value(o['記事タイトル'])) + '</h3>'
+    + '<h3>' + e(value(displayTitle)) + '</h3>'
     + '<div class="summary"><b>' + e(value(rank)) + ' × ' + e(value(workState)) + '</b><br>' + e(value(advice)) + '</div>'
     + '<table>'
     + row('記事ランク', rank)
@@ -6025,6 +6079,8 @@ function sbmArticleDbDetailHtml_(o) {
     + row('表示回数', o['表示回数表示'] || o['表示回数'])
     + row('CTR', o['CTR表示'] || o['CTR'])
     + row('掲載順位', o['掲載順位表示'] || o['掲載順位'])
+    + row('データ更新日', sbmHistoryDateOnlyText_(o['データ更新日']))
+    + row('記事タイトル', o['記事タイトル'])
     + row('SEOタイトル', o['SEOタイトル'])
     + row('メタディスクリプション', o['メタディスクリプション'])
     + row('最終取得日時', o['最終取得日時'])
