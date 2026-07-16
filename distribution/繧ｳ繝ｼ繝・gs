@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.2.6 Official
+ * SIMS-Blog-Manager Product 5.2.7 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.6';
+const SBM_VERSION = '5.2.7';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -1779,7 +1779,8 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
         startDate: range.startDate,
         endDate: range.endDate,
         dimensions: ['query'],
-        rowLimit: 25000,
+        // 上位20件の判断に25,000行は不要。API応答と実行時間を優先します。
+        rowLimit: 250,
         dimensionFilterGroups: [{filters:[{dimension:'page', operator:'equals', expression:variants[vi]}]}]
       });
       apiRows = data.rows || [];
@@ -1795,7 +1796,8 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
           startDate: range.startDate,
           endDate: range.endDate,
           dimensions: ['query','page'],
-          rowLimit: 25000,
+          // フォールバックは候補確認用に限定し、大量取得によるタイムアウトを防ぎます。
+          rowLimit: 1000,
           dimensionFilterGroups: [{filters:[{dimension:'page', operator:'contains', expression:pathExpr}]}]
         });
         apiRows = (fallback.rows || []).filter(function(r){
@@ -1820,7 +1822,8 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
     queries.sort(function(a,b){
       return (b.clicks-a.clicks) || (b.imps-a.imps) || (a.position-b.position);
     });
-    sbmReplaceRawQueriesForUrl_(normalizedUrl, range, capturedAt, queries);
+    // 改善ナビでは取得結果をそのまま利用します。
+    // SearchConsole_Data全体の読み直し・全件書き換えは行わず、タイムアウトと画面遷移を防ぎます。
     return {
       ok:true,
       queries:queries.slice(0, limit),
@@ -4002,10 +4005,12 @@ function sbmInternalLinkRelatedQuery_(targetMain,targetQueries,candidateMain,can
   if(common.length)return common.slice(0,3).join('・');
   return String(candidateMain||((candidateQueries||[])[0])||'').trim();
 }
-function sbmFindInternalLinkCandidates_(targetArticle,minCount,maxCount){
+function sbmFindInternalLinkCandidates_(targetArticle,minCount,maxCount,freshTargetQueries){
   minCount=Math.max(0,Number(minCount||3));maxCount=Math.max(minCount,Math.min(8,Number(maxCount||8)));
   var articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],queryMap=sbmInternalLinkQueriesByUrl_();
-  var targetUrl=sbmNormalizeUrl_(targetArticle['記事URL']||targetArticle.URL||''),targetTitle=String(targetArticle['記事タイトル']||''),targetMain=String(targetArticle['メインクエリ']||''),targetQueries=queryMap[targetUrl]||[],targetAll=[targetTitle,targetMain].concat(targetQueries).join(' '),targetCategory=sbmInternalLinkCategory_(targetUrl),ranked=[];
+  var targetUrl=sbmNormalizeUrl_(targetArticle['記事URL']||targetArticle.URL||''),targetTitle=String(targetArticle['記事タイトル']||''),targetMain=String(targetArticle['メインクエリ']||'');
+  var targetQueries=(freshTargetQueries&&freshTargetQueries.length?freshTargetQueries:(queryMap[targetUrl]||[])).map(function(q){return typeof q==='string'?q:String(q&&q.query||'');}).filter(Boolean);
+  var targetAll=[targetTitle,targetMain].concat(targetQueries).join(' '),targetCategory=sbmInternalLinkCategory_(targetUrl),ranked=[];
   articles.forEach(function(a){
     var url=sbmNormalizeUrl_(a['記事URL']||'');if(!url||url===targetUrl)return;
     var flags=String(a['管理フラグ']||'')+' '+String(a['記事ステータス']||'');if(/管理対象外|削除|要確認|データ未取得/.test(flags))return;
@@ -4130,7 +4135,7 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var topQueryMap=sbmTopQueriesByUrl_();
   var normalizedUrl=sbmNormalizeUrl_(url);
   var topQueries=freshQueryResult.ok ? freshQueryResult.queries : (topQueryMap[normalizedUrl]||[]);
-  var internalLinkCandidates=sbmFindInternalLinkCandidates_(a,3,8);
+  var internalLinkCandidates=sbmFindInternalLinkCandidates_(a,3,8,topQueries);
   var meta={articleId:String(a['ArticleID']||'').trim(),url:url,title:title,seoTitle:String(a['SEOタイトル']||'').trim(),description:String(a['メタディスクリプション']||'').trim(),query:query,rank:rank,clicks:clicks,imps:imps,ctrText:(ctr*100).toFixed(1)+'%',posText:pos.toFixed(1),kind:kind,topQueries:topQueries,topQueryStatus:freshQueryResult,internalLinkCandidates:internalLinkCandidates};
   var fetched=sbmFetchArticleSource_(url);
   var prompt=sbmBuildImprovementPrompt_(meta, fetched.ok ? fetched.data : null);
@@ -6160,7 +6165,7 @@ function sbmStyleEffectSheetV2_() {
           vals[i][0] = sbmMeasurementDateTimeText_(vals[i][0]);
         }
       }
-      range.setValues(vals).setWrap(true);
+      range.setValues(vals).setWrap(true).setHorizontalAlignment('center');
     }
 
     if (hm['記事タイトル']) sh.getRange(2, hm['記事タイトル'], n, 1).setWrap(true);
