@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.2.5 Official
+# SIMS-Blog-Manager Product 5.2.6 Official
 
 - Home表示後の日次処理確認を正式化
 - 改善ナビにメインクエリと最新クエリ内の一致状況を表示

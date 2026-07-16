@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.2.5
+# SIMS-Blog-Manager Product 5.2.6
 
 - 改善ナビ起動時に対象URLの最新クエリを毎回取得
 - 上位20クエリと内部リンク候補へ即時反映

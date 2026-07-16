@@ -29,3 +29,10 @@
 
 - Improve setup wizard with popup input
 - Prevent daily fetch until Search Console connection test succeeds
+
+## 5.2.6
+
+- 改善ナビの対象URL別クエリ取得を、URL表記差・末尾スラッシュ・canonical差に対応。
+- メインクエリ未設定時は最新クエリの最上位を候補として記事管理へ補完。
+- 改善関連の日付表示を `2026/7/16` 形式へ統一し、時刻表示を除去。
+- 記事管理へ「データ更新日」を追加し、Search Console数値の最終正常更新日を表示。
