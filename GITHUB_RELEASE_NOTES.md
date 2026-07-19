@@ -1,14 +1,11 @@
-# SIMS-Blog-Manager Product 5.2.10 Official
+# SIMS-Blog-Manager Product 5.3.0 Official
 
-- 改善履歴のデータ整合性クリーンアップを追加
-- 「UI」など識別情報を持たない復元不能行を自動除外
-- 除外行は `改善履歴_除外バックアップ` へ保存
-- 改善履歴IDの重複は情報量の多い行を維持
-- 新規履歴の識別情報検証を追加
+SIMS Writer v1.0.0のSIMS_FEEDBACK_V2へ対応し、将来のProtocolにも追従しやすい前方互換Parserへ更新しました。
 
-# SIMS-Blog-Manager Product 5.2.7 Official
+## 主な変更
 
-- Home表示後の日次処理確認を正式化
-- 改善ナビにメインクエリと最新クエリ内の一致状況を表示
-- 改善の推移に改善実施日を追加し、経過日数を日本時間で正確に算出
-- SIMS-Coreとの役割分担を明確化
+- SIMS_FEEDBACK_V1・V2・V3以降を受け入れ
+- 未知フィールドをエラーにしない
+- 必須項目のみ厳密チェック
+- Feedback FormatとWriter Versionを改善履歴に保存
+- V1/V2/未知フィールド付きV2/将来V形式の回帰テスト追加

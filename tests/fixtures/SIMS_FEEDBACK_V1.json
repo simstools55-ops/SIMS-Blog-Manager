@@ -1,0 +1,11 @@
+{
+  "format": "SIMS_FEEDBACK_V1",
+  "version": "1.1",
+  "article_id": "A000001",
+  "article_url": "https://example.com/v1",
+  "completed_at": "2026-07-19",
+  "changes": {"body": true, "internal_links": false},
+  "new_values": {"article_title": "", "seo_title": "", "description": "", "main_query": "sample"},
+  "summary": "V1 regression fixture",
+  "warnings": []
+}

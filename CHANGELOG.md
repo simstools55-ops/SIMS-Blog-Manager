@@ -1,3 +1,11 @@
+## 5.3.0
+
+- SIMS_FEEDBACK_V1・V2・将来のSIMS_FEEDBACK_V数字を受け入れる前方互換Parserへ変更。
+- 必須項目だけを検証し、未知フィールドを許容。
+- learning、swls、diagnostics、reason_codes、warning_codes、version_candidateを含むV2を正常登録。
+- 改善履歴へFeedback FormatとWriter Versionを保存。
+- 改善ナビの出力例をSIMS_FEEDBACK_V2へ更新。
+
 ## 5.2.10
 
 - 改善履歴の孤立行が旧「改善ログ」から再取り込みされる経路を修正。

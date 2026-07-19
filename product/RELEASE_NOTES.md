@@ -1,3 +1,7 @@
+# Product 5.3.0
+
+SIMS Feedback Protocolを前方互換化しました。V1・V2・将来のV数字形式を受け入れ、未知フィールドは元JSONに保持したまま正常登録します。
+
 ## Product 5.2.10 Official
 
 - 復元不能な改善履歴の孤立行をバックアップ後に削除

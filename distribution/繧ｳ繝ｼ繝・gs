@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product 5.2.10 Official
+ * SIMS-Blog-Manager Product 5.3.0 Official
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.2.10';
-const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-weekly-v3';
+const SBM_VERSION = '5.3.0';
+const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-feedback-forward-v1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -43,7 +43,7 @@ const SBM_HEADERS = Object.freeze({
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
   PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
-  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON']
+  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','Feedback Format','Writer Version']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -4116,7 +4116,7 @@ function sbmBuildImprovementPrompt_(meta, articleData) {
   else prompt+='\n【現在の記事本文】\n本文を取得できていません。改善ナビで本文を貼り付けてから依頼文をコピーしてください。\n';
   prompt+=sbmInternalLinkPromptText_(internalLinkCandidates)+sbmInternalLinkRulesText_();
   return prompt+'\n【SIMSへのフィードバック出力ルール】\n回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。内部リンク候補を評価しただけの場合はchanges.internal_linksをfalseとし、実際に追加・置換・削除した場合のみtrueにしてください。\n'+
-    '{\n  "format": "SIMS_FEEDBACK_V1",\n  "version": "1.1",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
+    '{\n  "format": "SIMS_FEEDBACK_V2",\n  "version": "1.1",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
     '変更していない項目はfalse、変更後の値がない項目は空文字にしてください。recommended_review_daysは7・14・30のいずれか、improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。';
 }
 
@@ -4211,7 +4211,7 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
 
 
 /**
- * SIMS Feedback Format v1
+ * SIMS Feedback Protocol (Forward Compatible)
  * Claude等が返したJSONを貼り付け、記事DB・改善履歴・モニター状態へ反映します。
  */
 function sbmOpenImprovementFeedbackDialog() {
@@ -4222,7 +4222,7 @@ function sbmOpenImprovementFeedbackDialog() {
     'textarea{width:100%;height:260px;box-sizing:border-box;font-family:monospace;font-size:12px;padding:10px;border:1px solid #dadce0;border-radius:6px}'+
     '.note{background:#eef5ff;border-radius:8px;padding:10px;margin:10px 0}.error{color:#b3261e;white-space:pre-wrap}.preview{display:none;background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:12px;margin-top:12px;white-space:pre-wrap}'+
     'button{border:0;border-radius:6px;padding:9px 14px;margin:10px 6px 0 0;font-weight:700;cursor:pointer}.primary{background:#1a73e8;color:white}.success{background:#0b8043;color:white}.secondary{background:#f1f3f4;color:#202124}</style></head><body>'+
-    '<h2>改善結果を登録</h2><div class="note">'+sbmEscapeHtml_(selected)+'<br>AIの回答末尾にある <b>SIMS AI Protocol（SIMS_FEEDBACK_V1）のJSONを、そのまま貼り付けてください。</div>'+
+    '<h2>改善結果を登録</h2><div class="note">'+sbmEscapeHtml_(selected)+'<br>AIの回答末尾にある <b>SIMS_FEEDBACK_V1以降のJSON</b>を、そのまま貼り付けてください。未知の追加項目が含まれていても登録できます。</div>'+
     '<textarea id="json" placeholder="ここへSIMS改善結果のJSONを貼り付けます"></textarea><br>'+
     '<button class="primary" onclick="analyze()">内容を解析</button><button class="secondary" onclick="google.script.host.close()">キャンセル</button>'+
     '<div id="error" class="error"></div><div id="preview" class="preview"></div><button id="register" class="success" style="display:none" onclick="registerData()">この内容で登録</button>'+
@@ -4364,7 +4364,7 @@ const SBM_HISTORY_HEADERS_V2 = [
   '最終総括','最終改善提案',
   'ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ',
   '改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）',
-  '注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON'
+  '注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','Feedback Format','Writer Version'
 ];
 
 const SBM_EFFECT_HEADERS_V2 = [
@@ -4429,7 +4429,8 @@ function sbmEnsureHistoryAndEffectSchemas_() {
     '次のアクション':['次のアクション'], '維持した項目':['維持した項目'], '作業時間（分）':['作業時間（分）'],
     '注意事項':['注意事項'], '改善前クリック':['改善前クリック'], '改善前表示回数':['改善前表示回数'],
     '改善前CTR':['改善前CTR'], '改善前順位':['改善前順位'], 'AI改善結果JSON':['AI改善結果JSON'],
-    '改善履歴ID':['改善履歴ID'], '改善計画JSON':['改善計画JSON']
+    '改善履歴ID':['改善履歴ID'], '改善計画JSON':['改善計画JSON'],
+    'Feedback Format':['Feedback Format','フィードバック形式'], 'Writer Version':['Writer Version','SIMS Writer Version','Writerバージョン']
   });
   sbmMigrateSheetByHeaderNames_(SBM_SHEETS.EFFECT, SBM_EFFECT_HEADERS_V2, {
     '改善実施日':['改善実施日','改善日','登録日時'],
@@ -4470,17 +4471,92 @@ function sbmMigrateSheetByHeaderNames_(sheetName, newHeaders, aliases) {
 
 function sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh,headers){ if(sh.getLastRow()===0 || String(sh.getRange(1,1).getValue())!==headers[0]){sh.clear();sh.getRange(1,1,1,headers.length).setValues([headers]);} }
 
+function sbmIsSupportedFeedbackFormat_(format) {
+  return /^SIMS_FEEDBACK_V[1-9]\d*$/.test(String(format || '').trim());
+}
+
+function sbmFeedbackProtocolVersion_(format) {
+  var m = String(format || '').trim().match(/^SIMS_FEEDBACK_V([1-9]\d*)$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
+function sbmExtractWriterVersion_(obj) {
+  obj = obj || {};
+  var candidates = [
+    obj.writer_version,
+    obj.sims_writer_version,
+    obj.version_candidate,
+    obj.writer && obj.writer.version,
+    obj.generator && obj.generator.version,
+    obj.producer && obj.producer.version,
+    obj.product && /SIMS\s*Writer/i.test(String(obj.product.name || '')) ? obj.product.version : '',
+    obj.swls && obj.swls.writer_version,
+    obj.diagnostics && obj.diagnostics.writer_version
+  ];
+  for (var i = 0; i < candidates.length; i++) {
+    var value = String(candidates[i] === undefined || candidates[i] === null ? '' : candidates[i]).trim();
+    if (value) return value;
+  }
+  return '';
+}
+
 function sbmNormalizeImprovementFeedback_(raw) {
-  var text=String(raw||'').trim(), first=text.indexOf('{'), last=text.lastIndexOf('}');
-  if(first<0||last<=first) throw new Error('JSONを見つけられません。AIの回答末尾にある { から } までを貼り付けてください。');
-  var obj; try{obj=JSON.parse(text.substring(first,last+1));}catch(e){throw new Error('JSON形式を読み取れません。内容を編集せず、そのままコピーしてください。\n'+e.message);}
-  if(String(obj.format||'')!=='SIMS_FEEDBACK_V1') throw new Error('format が SIMS_FEEDBACK_V1 ではありません。');
-  var changes=obj.changes||{}, nv=obj.new_values||obj.new_data||{}, boolKeys=['article_title','seo_title','description','introduction','headings','faq','internal_links','body','images'];
-  var normalizedChanges={}; boolKeys.forEach(function(k){normalizedChanges[k]=changes[k]===true;});
-  var days=28; // Product 5.1 Official: 7・14・21・28日の4回測定で固定
-  var minutes=parseInt(obj.estimated_minutes!==undefined?obj.estimated_minutes:obj.minutes,10); if(!isFinite(minutes)||minutes<0)minutes=0;
-  var warnings=Array.isArray(obj.warnings)?obj.warnings.map(String):[];
-  return {format:'SIMS_FEEDBACK_V1',version:String(obj.version||'1.0'),article_id:String(obj.article_id||''),article_url:String(obj.article_url||obj.url||''),completed_at:String(obj.completed_at||sbmDateText_(new Date())),ai_name:String(obj.ai_name||obj.ai||obj.model||''),changes:normalizedChanges,new_values:{article_title:String(nv.article_title||nv.title||''),seo_title:String(nv.seo_title||''),description:String(nv.description||''),main_query:String(nv.main_query||'')},improvement_type:String(obj.improvement_type||'normal'),confidence:String(obj.confidence||''),expected_effect:obj.expected_effect||{},next_action:String(obj.next_action||'monitor'),kept_sections:Array.isArray(obj.kept_sections)?obj.kept_sections.map(String):[],summary:String(obj.summary||'').trim()||'改善内容の登録',warnings:warnings,estimated_minutes:minutes,recommended_review_days:days,raw_json:JSON.stringify(obj)};
+  var text = String(raw || '').trim(), first = text.indexOf('{'), last = text.lastIndexOf('}');
+  if (first < 0 || last <= first) throw new Error('JSONを見つけられません。AIの回答末尾にある { から } までを貼り付けてください。');
+  var obj;
+  try { obj = JSON.parse(text.substring(first, last + 1)); }
+  catch (e) { throw new Error('JSON形式を読み取れません。内容を編集せず、そのままコピーしてください。\n' + e.message); }
+
+  var format = String(obj.format || '').trim();
+  if (!sbmIsSupportedFeedbackFormat_(format)) {
+    throw new Error('format は SIMS_FEEDBACK_V1、SIMS_FEEDBACK_V2 など SIMS_FEEDBACK_V数字 の形式で指定してください。');
+  }
+
+  var articleId = String(obj.article_id || obj.articleId || '').trim();
+  var articleUrl = String(obj.article_url || obj.url || obj.articleUrl || '').trim();
+  if (!articleId && !articleUrl) throw new Error('改善結果登録には article_id または article_url が必要です。');
+  if (!obj.changes || typeof obj.changes !== 'object' || Array.isArray(obj.changes)) {
+    throw new Error('改善結果登録に必要な changes オブジェクトがありません。');
+  }
+
+  var changes = obj.changes || {}, nv = obj.new_values || obj.new_data || {};
+  var boolKeys = ['article_title','seo_title','description','introduction','headings','faq','internal_links','body','images'];
+  var normalizedChanges = {};
+  boolKeys.forEach(function(k){ normalizedChanges[k] = changes[k] === true; });
+
+  var days = 28; // Product 5.1 Official: 7・14・21・28日の4回測定で固定
+  var minutes = parseInt(obj.estimated_minutes !== undefined ? obj.estimated_minutes : obj.minutes, 10);
+  if (!isFinite(minutes) || minutes < 0) minutes = 0;
+  var warnings = Array.isArray(obj.warnings) ? obj.warnings.map(String) : [];
+  var completedAt = String(obj.completed_at || obj.completedAt || sbmDateText_(new Date()));
+
+  return {
+    format: format,
+    protocol_version: sbmFeedbackProtocolVersion_(format),
+    version: String(obj.version || ''),
+    writer_version: sbmExtractWriterVersion_(obj),
+    article_id: articleId,
+    article_url: articleUrl,
+    completed_at: completedAt,
+    ai_name: String(obj.ai_name || obj.ai || obj.model || (obj.writer && obj.writer.name) || ''),
+    changes: normalizedChanges,
+    new_values: {
+      article_title: String(nv.article_title || nv.title || ''),
+      seo_title: String(nv.seo_title || ''),
+      description: String(nv.description || ''),
+      main_query: String(nv.main_query || '')
+    },
+    improvement_type: String(obj.improvement_type || 'normal'),
+    confidence: String(obj.confidence || ''),
+    expected_effect: (obj.expected_effect && typeof obj.expected_effect === 'object') ? obj.expected_effect : {},
+    next_action: String(obj.next_action || 'monitor'),
+    kept_sections: Array.isArray(obj.kept_sections) ? obj.kept_sections.map(String) : [],
+    summary: String(obj.summary || '').trim() || '改善内容の登録',
+    warnings: warnings,
+    estimated_minutes: minutes,
+    recommended_review_days: days,
+    raw_json: (typeof obj.raw_json === 'string' && obj.raw_json.trim()) ? obj.raw_json : JSON.stringify(obj)
+  };
 }
 
 function sbmAppendImprovementHistory_(data,row,before) {
@@ -4503,7 +4579,8 @@ function sbmAppendImprovementHistory_(data,row,before) {
     '期待クリック効果':String((data.expected_effect||{}).clicks||''),'次のアクション':data.next_action,
     '維持した項目':(data.kept_sections||[]).join(' / '),'作業時間（分）':data.estimated_minutes,'注意事項':data.warnings.join(' / '),
     '改善前クリック':before.clicks,'改善前表示回数':before.impressions,'改善前CTR':before.ctr,'改善前順位':before.position,
-    'AI改善結果JSON':data.raw_json||'','改善履歴ID':historyId,'改善計画JSON':JSON.stringify(planSnapshot||{})
+    'AI改善結果JSON':data.raw_json||'','改善履歴ID':historyId,'改善計画JSON':JSON.stringify(planSnapshot||{}),
+    'Feedback Format':data.format||'','Writer Version':data.writer_version||''
   };
   sh.appendRow(SBM_HISTORY_HEADERS_V2.map(function(h){return record[h]!==undefined?record[h]:'';}));
   sbmStyleHistorySheetV2_();
@@ -5348,7 +5425,7 @@ function sbmBuildImprovementPlanSnapshot_(articleUrl, articleId) {
     priorities: priorities,
     main_query: query,
     estimated_time: estimate || '',
-    ai_request_summary: '記事URL・ArticleID・現在のSearch Console指標・改善優先項目をAIへ渡し、完成記事とSIMS_FEEDBACK_V1の出力を依頼。'
+    ai_request_summary: '記事URL・ArticleID・現在のSearch Console指標・改善優先項目をAIへ渡し、完成記事とSIMS_FEEDBACK_V2以降の出力を依頼。'
   };
 }
 
@@ -5469,6 +5546,8 @@ function sbmHistoryDetailHtmlV2_(o) {
   }
 
   var resultHtml = '<div class="field"><span class="label">使用AI：</span>'+e(sbmHistoryDisplayValue_(o['使用AI']))+'</div>'
+    + '<div class="field"><span class="label">Feedback Format：</span>'+e(sbmHistoryDisplayValue_(o['Feedback Format']))
+    + '　<span class="label">Writer Version：</span>'+e(sbmHistoryDisplayValue_(o['Writer Version']))+'</div>'
     + '<div class="field"><span class="label">変更箇所：</span>'+e(sbmHistoryDisplayValue_(o['変更箇所']))+'</div>'
     + '<div class="field"><span class="label">改善規模：</span>'+e(sbmHistoryDisplayValue_(o['改善規模']))
     + '　<span class="label">確信度：</span>'+e(sbmHistoryDisplayValue_(o['確信度']))
@@ -5633,7 +5712,7 @@ function sbmInitializeSheets(showAlert) {
 
   // Product 5.1 Official: 改善履歴を4回測定形式へ強制移行
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.1 Officialのシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3 Officialのシート構造バージョン');
 
   // 改善履歴と改善の推移を非破壊で再構築・再表示
   try {
@@ -6993,7 +7072,7 @@ function sbmEnsureOfficialSchemaOnce_() {
   sbmMigrateArticleManagementSheet_();
   sbmMigrateEffectSheetName_();
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.1 Officialのシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3 Officialのシート構造バージョン');
   return true;
 }
 
