@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.3.0 Official
+# SIMS-Blog-Manager Product 5.3.1 Official
 
 SIMS Writer v1.0.0のSIMS_FEEDBACK_V2へ対応し、将来のProtocolにも追従しやすい前方互換Parserへ更新しました。
 
