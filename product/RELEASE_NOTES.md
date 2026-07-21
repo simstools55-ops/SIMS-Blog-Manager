@@ -1,3 +1,4 @@
+- SiteURL命名統一と、シート修復後のHome自動復帰を追加。
 # Product 5.3.1
 
 SIMS Feedback Protocolを前方互換化しました。V1・V2・将来のV数字形式を受け入れ、未知フィールドは元JSONに保持したまま正常登録します。

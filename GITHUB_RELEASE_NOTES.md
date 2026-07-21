@@ -1,3 +1,4 @@
+- SiteURL命名統一と、シート修復後のHome自動復帰を追加。
 # SIMS-Blog-Manager Product 5.3.1 Official
 
 SIMS Writer v1.0.0のSIMS_FEEDBACK_V2へ対応し、将来のProtocolにも追従しやすい前方互換Parserへ更新しました。

@@ -9,6 +9,9 @@ const checks = [
   ['site prompt', code.includes('【サイト情報】\\nSiteID：')],
   ['site id json', code.includes('"site_id": "\'+siteId+\'"')],
   ['site name json', code.includes('"site_name": "\'+siteName+\'"')],
+  ['site url prompt', code.includes('SiteURL：\'+siteUrl')],
+  ['site url json', code.includes('"site_url": "\'+siteUrl+\'"')],
+  ['repair returns home', code.includes('function sbmActivateHomeAfterRepair_()') && code.includes('ss.setActiveSheet(home)')],
   ['startup reason log', code.includes("sbmLog_('DailyPromptDecision'")],
 ];
 let failed = false;

@@ -605,7 +605,7 @@ function sbmEnsureSiteIdentity_() {
     siteName = blogName;
     sbmSetSetting_('SiteName', siteName, 'SIMS製品間で表示するサイト名');
   }
-  return {siteId:siteId, siteName:siteName, blogUrl:blogUrl};
+  return {siteId:siteId, siteName:siteName, siteUrl:blogUrl, blogUrl:blogUrl};
 }
 
 function sbmSetupStep1BlogInfo() {
@@ -4190,9 +4190,9 @@ function sbmInternalLinkCandidatesHtml_(candidates){
 
 function sbmBuildImprovementPrompt_(meta, articleData) {
   var articleId=String(meta.articleId||''), url=String(meta.url||''), title=String(meta.title||''), seoTitle=String(meta.seoTitle||''), description=String(meta.description||''), query=String(meta.query||'');
-  var site = sbmEnsureSiteIdentity_(), siteId=String(site.siteId||''), siteName=String(site.siteName||''), blogUrl=String(site.blogUrl||'');
+  var site = sbmEnsureSiteIdentity_(), siteId=String(site.siteId||''), siteName=String(site.siteName||''), siteUrl=String(site.siteUrl||site.blogUrl||'');
   var internalLinkCandidates=Array.isArray(meta.internalLinkCandidates)?meta.internalLinkCandidates:[],topQueries=Array.isArray(meta.topQueries)?meta.topQueries:[];
-  var prompt='【サイト情報】\nSiteID：'+siteId+'\nSiteName：'+siteName+'\nBlogURL：'+blogUrl+'\n' +
+  var prompt='【サイト情報】\nSiteID：'+siteId+'\nSiteName：'+siteName+'\nSiteURL：'+siteUrl+'\n' +
     '\n【記事基本情報】\nArticleID：'+articleId+'\nURL：'+url+'\n記事タイトル：'+title+'\nSEOタイトル：'+seoTitle+'\nメタディスクリプション：'+description+'\nメインクエリ：'+query+'\n' +
     '\n【Search Console 概要】\nクリック：'+meta.clicks+'\n表示回数：'+meta.imps+'\nCTR：'+meta.ctrText+'\n平均順位：'+meta.posText+'\n' +
     sbmTopQueriesPromptText_(topQueries,meta.topQueryStatus) +
@@ -4204,7 +4204,7 @@ function sbmBuildImprovementPrompt_(meta, articleData) {
   else prompt+='\n【現在の記事本文】\n本文を取得できていません。改善ナビで本文を貼り付けてから依頼文をコピーしてください。\n';
   prompt+=sbmInternalLinkPromptText_(internalLinkCandidates)+sbmInternalLinkRulesText_();
   return prompt+'\n【SIMSへのフィードバック出力ルール】\n回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。内部リンク候補を評価しただけの場合はchanges.internal_linksをfalseとし、実際に追加・置換・削除した場合のみtrueにしてください。\n'+
-    '{\n  "format": "SIMS_FEEDBACK_V2",\n  "version": "1.1",\n  "site_id": "'+siteId+'",\n  "site_name": "'+siteName+'",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
+    '{\n  "format": "SIMS_FEEDBACK_V2",\n  "version": "1.1",\n  "site_id": "'+siteId+'",\n  "site_name": "'+siteName+'",\n  "site_url": "'+siteUrl+'",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
     '変更していない項目はfalse、変更後の値がない項目は空文字にしてください。recommended_review_daysは7・14・30のいずれか、improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。';
 }
 
@@ -5830,11 +5830,27 @@ function sbmInitializeSheets(showAlert) {
 
   sbmApplySelectionUiAll_();
   sbmArrangeUserSheets_();
+  sbmActivateHomeAfterRepair_();
+
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.3.1 sheet repair completed and Home refreshed');
+  if (showAlert) sbmShowRepairCompletionNavigator_();
+}
+
+/**
+ * シートの作成・修復の最終処理。
+ * Homeを最新状態へ再描画し、表示シートをHomeへ戻してから終了します。
+ */
+function sbmActivateHomeAfterRepair_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   sbmRefreshHome_();
   SpreadsheetApp.flush();
-
-  sbmLog_('InitializeSheets', 'Done', 'Product 5.2.10 orphan-history cleanup applied');
-  if (showAlert) sbmShowRepairCompletionNavigator_();
+  var home = ss.getSheetByName(SBM_SHEETS.HOME);
+  if (!home) throw new Error('Homeシートを表示できませんでした。');
+  home.showSheet();
+  ss.setActiveSheet(home);
+  home.activate();
+  try { home.getRange('A1').activate(); } catch (e) {}
+  SpreadsheetApp.flush();
 }
 
 
@@ -6959,7 +6975,7 @@ function sbmShowRelease1SetupStep_(step) {
     body = '<div class="field"><label>ブログ名</label><input id="blogName" value="'+sbmEscapeHtml_(s.blogName)+'"></div>'
       + '<div class="field"><label>SiteID</label><input id="siteId" value="'+sbmEscapeHtml_(s.siteId || sbmSiteIdFromUrl_(s.blogUrl))+'"></div>'
     + '<div class="field"><label>SiteName</label><input id="siteName" value="'+sbmEscapeHtml_(s.siteName || s.blogName)+'"></div>'
-    + '<div class="field"><label>ブログURL</label><input id="blogUrl" value="'+sbmEscapeHtml_(s.blogUrl)+'"></div>'
+    + '<div class="field"><label>SiteURL</label><input id="blogUrl" value="'+sbmEscapeHtml_(s.blogUrl)+'"></div>'
       + '<div class="field"><label>Search Consoleプロパティ</label><input id="property" value="'+sbmEscapeHtml_(s.property)+'"></div>';
   } else if (step === 2) {
     body = '<div class="box">'
@@ -7113,7 +7129,7 @@ function sbmOpenBlogInfoChange() {
     + '<div class="field"><label>ブログ名</label><input id="blogName" value="'+sbmEscapeHtml_(s.blogName)+'"></div>'
     + '<div class="field"><label>SiteID</label><input id="siteId" value="'+sbmEscapeHtml_(s.siteId || sbmSiteIdFromUrl_(s.blogUrl))+'"></div>'
     + '<div class="field"><label>SiteName</label><input id="siteName" value="'+sbmEscapeHtml_(s.siteName || s.blogName)+'"></div>'
-    + '<div class="field"><label>ブログURL</label><input id="blogUrl" value="'+sbmEscapeHtml_(s.blogUrl)+'"></div>'
+    + '<div class="field"><label>SiteURL</label><input id="blogUrl" value="'+sbmEscapeHtml_(s.blogUrl)+'"></div>'
     + '<div class="field"><label>Search Consoleプロパティ</label><input id="property" value="'+sbmEscapeHtml_(s.property)+'"></div>'
     + '<div id="msg"></div><div class="actions">'
     + '<button class="run" onclick="save()">保存</button><button class="end" onclick="google.script.host.close()">閉じる</button>'
@@ -7153,6 +7169,7 @@ function sbmShowRepairCompletionNavigator_() {
     + '</head><body><h2>シートの作成・修復が完了しました</h2>'
     + '<div class="box">✓ 必要なシート・見出し・表示書式を確認しました。<br>'
     + '✓ 今日の改善、改善の推移、記事管理、改善履歴を再表示しました。<br>'
+    + '✓ Homeを最新状態へ更新し、Homeへ戻りました。<br>'
     + '最終更新日時：<b>'+sbmEscapeHtml_(lastText)+'</b></div>'
     + '<p>次の操作を選択してください。</p><div class="actions">'
     + '<button class="run" onclick="setup()">初回セットアップを開始</button>'

@@ -9,8 +9,8 @@
 - ArticleIDの採番方法は変更しない。
 - サイト識別には `SiteID + ArticleID` を使用する。
 - 記事URLは最終識別子として継続利用する。
-- 改善依頼文へ `SiteID`、`SiteName`、`BlogURL` を追加する。
-- SIMS_FEEDBACK_V2の例へ `site_id`、`site_name` を任意項目として追加する。
+- 改善依頼文へ `SiteID`、`SiteName`、`SiteURL` を追加する。
+- SIMS_FEEDBACK_V2の例へ `site_id`、`site_name`、`site_url` を任意項目として追加する。
 - 既存環境ではブログURLのホスト名からSiteIDを自動補完する。
 
 ## 日次処理
