@@ -1,3 +1,7 @@
+# SIMS-Blog-Manager Product 5.3.2 Maintenance
+
+SIMS Writer v1.0.0以降の `changes` 配列形式を登録できるようにし、V1オブジェクト形式との後方互換を維持しました。`change_flags` と未知フィールドも許容します。
+
 - SiteURL命名統一と、シート修復後のHome自動復帰を追加。
 # SIMS-Blog-Manager Product 5.3.1 Official
 

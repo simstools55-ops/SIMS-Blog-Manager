@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.3.1 Maintenance
+ * SIMS-Blog-Manager Product 5.3.2 Maintenance
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.3.1';
+const SBM_VERSION = '5.3.2';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-site-daily-v1';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -4588,6 +4588,88 @@ function sbmExtractWriterVersion_(obj) {
   return '';
 }
 
+function sbmFeedbackChangeKey_(target) {
+  var key = String(target || '').trim().toLowerCase().replace(/[\s\-]+/g, '_');
+  var aliases = {
+    article_title:'article_title', title:'article_title', post_title:'article_title',
+    seo_title:'seo_title', seo:'seo_title',
+    description:'description', meta_description:'description', meta:'description',
+    introduction:'introduction', intro:'introduction', lead:'introduction',
+    heading:'headings', headings:'headings', outline:'headings',
+    faq:'faq',
+    internal_link:'internal_links', internal_links:'internal_links',
+    body:'body', content:'body', conclusion:'body',
+    image:'images', images:'images'
+  };
+  return aliases[key] || '';
+}
+
+function sbmNormalizeFeedbackChanges_(changes, changeFlags) {
+  var boolKeys = ['article_title','seo_title','description','introduction','headings','faq','internal_links','body','images'];
+  var flags = {}, details = [];
+  boolKeys.forEach(function(k){ flags[k] = false; });
+
+  function mark(target, value) {
+    var key = sbmFeedbackChangeKey_(target);
+    if (key && value !== false && value !== null && value !== undefined) flags[key] = true;
+    return key;
+  }
+
+  if (Array.isArray(changes)) {
+    changes.forEach(function(item){
+      if (!item || typeof item !== 'object') return;
+      var targets = Array.isArray(item.target) ? item.target : [item.target || item.type || item.field || item.section];
+      var normalizedTargets = [];
+      targets.forEach(function(target){ var key = mark(target, true); if (key) normalizedTargets.push(key); });
+      details.push({
+        targets: normalizedTargets,
+        target: String(item.target || item.type || item.field || item.section || ''),
+        before: item.before === undefined || item.before === null ? '' : String(item.before),
+        after: item.after === undefined || item.after === null ? '' : String(item.after),
+        reason: item.reason === undefined || item.reason === null ? '' : String(item.reason),
+        expected_effect: item.expected_effect === undefined || item.expected_effect === null ? '' : String(item.expected_effect)
+      });
+    });
+  } else {
+    Object.keys(changes || {}).forEach(function(rawKey){
+      var value = changes[rawKey];
+      var key = sbmFeedbackChangeKey_(rawKey);
+      if (!key) return;
+      if (typeof value === 'boolean') flags[key] = value;
+      else if (value && typeof value === 'object') {
+        flags[key] = true;
+        details.push({
+          targets:[key], target:rawKey,
+          before:value.before === undefined || value.before === null ? '' : String(value.before),
+          after:value.after === undefined || value.after === null ? '' : String(value.after),
+          reason:value.reason === undefined || value.reason === null ? '' : String(value.reason),
+          expected_effect:value.expected_effect === undefined || value.expected_effect === null ? '' : String(value.expected_effect)
+        });
+      } else if (value) flags[key] = true;
+    });
+  }
+
+  if (changeFlags && typeof changeFlags === 'object' && !Array.isArray(changeFlags)) {
+    Object.keys(changeFlags).forEach(function(rawKey){
+      var key = sbmFeedbackChangeKey_(rawKey);
+      if (key && changeFlags[rawKey] === true) flags[key] = true;
+    });
+  }
+  return {flags:flags, details:details};
+}
+
+function sbmApplyChangeDetailsToNewValues_(newValues, details) {
+  if (!newValues || typeof newValues !== 'object') return;
+  (details || []).forEach(function(detail){
+    if (!detail || !detail.after) return;
+    (detail.targets || []).forEach(function(key){
+      if (key === 'article_title' && !newValues.article_title && !newValues.title) newValues.article_title = detail.after;
+      if (key === 'seo_title' && !newValues.seo_title) newValues.seo_title = detail.after;
+      if (key === 'description' && !newValues.description && !newValues.meta_description) newValues.description = detail.after;
+    });
+  });
+}
+
 function sbmNormalizeImprovementFeedback_(raw) {
   var text = String(raw || '').trim(), first = text.indexOf('{'), last = text.lastIndexOf('}');
   if (first < 0 || last <= first) throw new Error('JSONを見つけられません。AIの回答末尾にある { から } までを貼り付けてください。');
@@ -4603,14 +4685,17 @@ function sbmNormalizeImprovementFeedback_(raw) {
   var articleId = String(obj.article_id || obj.articleId || '').trim();
   var articleUrl = String(obj.article_url || obj.url || obj.articleUrl || '').trim();
   if (!articleId && !articleUrl) throw new Error('改善結果登録には article_id または article_url が必要です。');
-  if (!obj.changes || typeof obj.changes !== 'object' || Array.isArray(obj.changes)) {
-    throw new Error('改善結果登録に必要な changes オブジェクトがありません。');
+  var hasChanges = Object.prototype.hasOwnProperty.call(obj, 'changes');
+  if (!hasChanges || !obj.changes || typeof obj.changes !== 'object') {
+    throw new Error('改善結果登録に必要な changes がありません。changes はオブジェクト形式または配列形式で指定してください。');
   }
 
-  var changes = obj.changes || {}, nv = obj.new_values || obj.new_data || {};
-  var boolKeys = ['article_title','seo_title','description','introduction','headings','faq','internal_links','body','images'];
-  var normalizedChanges = {};
-  boolKeys.forEach(function(k){ normalizedChanges[k] = changes[k] === true; });
+  var normalizedResult = sbmNormalizeFeedbackChanges_(obj.changes, obj.change_flags);
+  var normalizedChanges = normalizedResult.flags;
+  var changeDetails = normalizedResult.details;
+  var nv = (obj.new_values && typeof obj.new_values === 'object') ? obj.new_values :
+    ((obj.new_data && typeof obj.new_data === 'object') ? obj.new_data : {});
+  sbmApplyChangeDetailsToNewValues_(nv, changeDetails);
 
   var days = 28; // Product 5.1 Official: 7・14・21・28日の4回測定で固定
   var minutes = parseInt(obj.estimated_minutes !== undefined ? obj.estimated_minutes : obj.minutes, 10);
@@ -4628,17 +4713,18 @@ function sbmNormalizeImprovementFeedback_(raw) {
     completed_at: completedAt,
     ai_name: String(obj.ai_name || obj.ai || obj.model || (obj.writer && obj.writer.name) || ''),
     changes: normalizedChanges,
+    change_details: changeDetails,
     new_values: {
       article_title: String(nv.article_title || nv.title || ''),
       seo_title: String(nv.seo_title || ''),
-      description: String(nv.description || ''),
+      description: String(nv.description || nv.meta_description || ''),
       main_query: String(nv.main_query || '')
     },
     improvement_type: String(obj.improvement_type || 'normal'),
     confidence: String(obj.confidence || ''),
     expected_effect: (obj.expected_effect && typeof obj.expected_effect === 'object') ? obj.expected_effect : {},
     next_action: String(obj.next_action || 'monitor'),
-    kept_sections: Array.isArray(obj.kept_sections) ? obj.kept_sections.map(String) : [],
+    kept_sections: Array.isArray(obj.kept_sections) ? obj.kept_sections.map(String) : (Array.isArray(obj.protected_elements) ? obj.protected_elements.map(String) : []),
     summary: String(obj.summary || '').trim() || '改善内容の登録',
     warnings: warnings,
     estimated_minutes: minutes,
@@ -5800,7 +5886,7 @@ function sbmInitializeSheets(showAlert) {
 
   // Product 5.1 Official: 改善履歴を4回測定形式へ強制移行
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3.1 Maintenanceのシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3.2 Maintenanceのシート構造バージョン');
 
   // 改善履歴と改善の推移を非破壊で再構築・再表示
   try {
@@ -5832,7 +5918,7 @@ function sbmInitializeSheets(showAlert) {
   sbmArrangeUserSheets_();
   sbmActivateHomeAfterRepair_();
 
-  sbmLog_('InitializeSheets', 'Done', 'Product 5.3.1 sheet repair completed and Home refreshed');
+  sbmLog_('InitializeSheets', 'Done', 'Product 5.3.2 sheet repair completed and Home refreshed');
   if (showAlert) sbmShowRepairCompletionNavigator_();
 }
 
@@ -6902,7 +6988,7 @@ function sbmHandleRepairNextAction(action) {
  * Clean setup wizard / menu cleanup / developer diagnostics
  * ========================================================================== */
 
-var SBM_RELEASE_NAME = 'Product 5.3.1 Maintenance';
+var SBM_RELEASE_NAME = 'Product 5.3.2 Maintenance';
 
 /* ---------- 共通：ウィザード ---------- */
 
@@ -7194,7 +7280,7 @@ function sbmEnsureOfficialSchemaOnce_() {
   sbmMigrateArticleManagementSheet_();
   sbmMigrateEffectSheetName_();
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3.1 Maintenanceのシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.3.2 Maintenanceのシート構造バージョン');
   return true;
 }
 

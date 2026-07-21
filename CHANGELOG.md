@@ -1,3 +1,11 @@
+## 5.3.2
+
+- SIMS_FEEDBACK_V2の `changes` 配列形式に対応
+- 従来のchangesオブジェクト形式を継続サポート
+- `change_flags` を変更判定へ統合
+- `internal_link`、`meta_description`などの別名を正規化
+- 未知フィールドを許容し、元JSONを改善履歴へ保存
+
 ## 5.3.1
 
 - Writer依頼文のサイトURL表記を `BlogURL` から `SiteURL` へ統一し、JSONへ `site_url` を追加。
