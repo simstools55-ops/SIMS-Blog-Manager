@@ -1,4 +1,4 @@
-## 5.3.2
+## 5.4.0
 
 - SIMS_FEEDBACK_V2の `changes` 配列形式に対応
 - 従来のchangesオブジェクト形式を継続サポート

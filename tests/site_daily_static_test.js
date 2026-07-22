@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs','utf8');
 const checks = [
-  ['version', code.includes("const SBM_VERSION = '5.3.2'")],
+  ['version', code.includes("const SBM_VERSION = '5.4.0'")],
   ['no fixed old home version', !code.includes("!== 'v5.2.1'")],
   ['single daily key', code.includes('LastSuccessfulDailyUpdateEpoch')],
   ['daily status helper', code.includes('function sbmDailyUpdateStatus_()')],
