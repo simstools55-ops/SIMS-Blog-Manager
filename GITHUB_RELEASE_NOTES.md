@@ -1,16 +1,11 @@
-# SIMS-Blog-Manager Product 5.4.2 Maintenance
+# SIMS-Blog-Manager Product 5.4.3 Maintenance
 
-SIMS Writer v1.0.0以降の `changes` 配列形式を登録できるようにし、V1オブジェクト形式との後方互換を維持しました。`change_flags` と未知フィールドも許容します。
-
-- SiteURL命名統一と、シート修復後のHome自動復帰を追加。
-# SIMS-Blog-Manager Product 5.3.1 Official
-
-SIMS Writer v1.0.0のSIMS_FEEDBACK_V2へ対応し、将来のProtocolにも追従しやすい前方互換Parserへ更新しました。
+日次処理の自動継続で発生したScriptApp権限エラーを修正しました。時間主導トリガーを使用せず、安全時間に達した場合は処理位置を保存して、ダイアログの「続きを実行」から再開します。
 
 ## 主な変更
 
-- SIMS_FEEDBACK_V1・V2・V3以降を受け入れ
-- 未知フィールドをエラーにしない
-- 必須項目のみ厳密チェック
-- Feedback FormatとWriter Versionを改善履歴に保存
-- V1/V2/未知フィールド付きV2/将来V形式の回帰テスト追加
+- `ScriptApp.getProjectTriggers()` / `newTrigger()` / `deleteTrigger()`への依存を削除
+- 日次処理のフェーズと一時データを保存し、「続きを実行」で再開
+- 処理中は回転スピナー、進捗率、現在工程を表示
+- 認証やSearch Console設定が必要な場合は具体的な操作案内を表示
+- 初回セットアップのSiteID・SiteName非表示、Home未実施の赤文字表示を維持

@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.4.1
+ * SIMS-Blog-Manager Product 5.4.3
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.4.2';
+const SBM_VERSION = '5.4.3';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -133,6 +133,7 @@ function sbmGetDailyRuntimeState_() {
   var message = String(sbmGetSetting_('DailyUpdateMessage','') || '');
   var actionRequired = String(sbmGetSetting_('DailyUpdateActionRequired','NO')) === 'YES';
   var actionMessage = String(sbmGetSetting_('DailyUpdateActionMessage','') || '');
+  var continuationRequired = String(sbmGetSetting_('DailyUpdateContinuationRequired','NO')) === 'YES';
   return {
     running: running,
     completedToday: daily.completedToday,
@@ -143,9 +144,10 @@ function sbmGetDailyRuntimeState_() {
     message: message,
     actionRequired: actionRequired,
     actionMessage: actionMessage,
+    continuationRequired: continuationRequired,
     error: String(sbmGetSetting_('DailyUpdateLastError','') || ''),
     startedEpoch: startedEpoch,
-    label: running ? '実行中' : (phase === 'ERROR' ? 'エラー' : (daily.completedToday ? '本日完了' : '未実施'))
+    label: running ? '実行中' : (continuationRequired ? '続行待ち' : (phase === 'ERROR' ? 'エラー' : (daily.completedToday ? '本日完了' : '未実施')))
   };
 }
 
@@ -167,7 +169,8 @@ function sbmOpenDailyUpdateDialog() {
   }
   var state = sbmGetDailyRuntimeState_();
   var initial = state.running ? '日次処理は実行中です。進捗を確認しています。' :
-    (state.completedToday ? '本日の日次処理は完了しています。再実行する場合は「実行する」を押してください。' : '本日の日次処理はまだ実行されていません。');
+    (state.continuationRequired ? '安全な実行時間に達したため一時停止しました。「続きを実行」を押してください。' :
+    (state.completedToday ? '本日の日次処理は完了しています。再実行する場合は「実行する」を押してください。' : '本日の日次処理はまだ実行されていません。'));
   var html = '<!DOCTYPE html><html><head><base target="_top"><style>'
     + 'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:22px;color:#202124}h2{color:#0b8043;margin:0 0 12px}'
     + '.box{background:#f8f9fa;border-left:5px solid #0b8043;padding:12px;margin:12px 0;line-height:1.7;white-space:pre-wrap}.note{font-size:13px;color:#5f6368;line-height:1.6}'
@@ -177,9 +180,9 @@ function sbmOpenDailyUpdateDialog() {
     + '@keyframes spin{to{transform:rotate(360deg)}}.error{color:#b3261e;border-left-color:#b3261e}.done{color:#0b8043;font-weight:700}.action{background:#fef7e0;border-left-color:#b06000;color:#8a4b08}</style></head><body>'
     + '<h2>日次処理</h2><div id="message" class="box">' + sbmEscapeHtml_(initial) + '</div>'
     + '<div id="spinner" class="spinner"></div><div id="progressWrap" style="display:none"><div class="bar"><div id="bar"></div></div><div id="percent" class="percent"></div></div>'
-    + '<p class="note">処理時間が長い場合は内部で自動的に続きを実行します。利用者の追加操作が必要な場合だけ、この画面に具体的な手順を表示します。</p>'
-    + '<div class="buttons"><button id="closeBtn" class="close" onclick="google.script.host.close()">閉じる</button><button id="runBtn" class="run" onclick="runDaily()"' + (state.running ? ' style="display:none"' : '') + '>実行する</button></div>'
-    + '<script>var timer=null;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function render(s){var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=s.message||"日次処理を実行しています。";b.style.width=(s.progress||0)+"%";pc.textContent=(s.progress||0)+"%";return;}sp.style.display="none";pw.style.display="none";if(s.actionRequired){m.className="box action";m.textContent=(s.actionMessage||"利用者の操作が必要です。");r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);return;}if(s.completedToday){m.className="box done";m.textContent="日次処理が完了しました。記事管理、改善候補、今日の改善、Homeを更新しました。";clearInterval(timer);return;}m.className="box";m.textContent=s.message||"未実施です。";}function poll(){google.script.run.withSuccessHandler(render).withFailureHandler(function(){}).sbmGetDailyUpdateClientStatus();}function runDaily(){uiRunning();document.getElementById("message").textContent="日次処理を開始しています。";google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(){poll();}).sbmRunDailyUpdateFromDialog();if(!timer)timer=setInterval(poll,2500);}if(' + (state.running ? 'true' : 'false') + '){uiRunning();timer=setInterval(poll,2500);poll();}</script></body></html>';
+    + '<p class="note">処理が安全な実行時間内に終わらない場合は途中状態を保存します。その場合は、この画面に「続きを実行」と具体的な操作方法を表示します。</p>'
+    + '<div class="buttons"><button id="closeBtn" class="close" onclick="google.script.host.close()">閉じる</button><button id="runBtn" class="run" onclick="runDaily()"' + (state.running ? ' style="display:none"' : '') + '>' + (state.continuationRequired ? '続きを実行' : '実行する') + '</button></div>'
+    + '<script>var timer=null;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function render(s){var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=s.message||"日次処理を実行しています。";b.style.width=(s.progress||0)+"%";pc.textContent=(s.progress||0)+"%";return;}sp.style.display="none";pw.style.display="none";if(s.continuationRequired){m.className="box action";m.textContent=s.actionMessage||"安全な実行時間に達したため一時停止しました。処理位置は保存されています。下の「続きを実行」を押してください。";r.style.display="inline-block";r.textContent="続きを実行";clearInterval(timer);timer=null;return;}if(s.actionRequired){m.className="box action";m.textContent=(s.actionMessage||"利用者の操作が必要です。");r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.completedToday){m.className="box done";m.textContent="日次処理が完了しました。記事管理、改善候補、今日の改善、Homeを更新しました。";r.style.display="none";clearInterval(timer);timer=null;return;}m.className="box";m.textContent=s.message||"未実施です。";r.style.display="inline-block";r.textContent="実行する";}function poll(){google.script.run.withSuccessHandler(render).withFailureHandler(function(){}).sbmGetDailyUpdateClientStatus();}function runDaily(){uiRunning();document.getElementById("message").textContent="日次処理を開始しています。";google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(){poll();}).sbmRunDailyUpdateFromDialog();if(!timer)timer=setInterval(poll,2500);}if(' + (state.running ? 'true' : 'false') + '){uiRunning();timer=setInterval(poll,2500);poll();}</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(590).setHeight(500)), '日次処理');
 }
 
@@ -193,13 +196,20 @@ function sbmRunDailyUpdateFromDialog() {
   try {
     var state = sbmGetDailyRuntimeState_();
     if (!state.running) {
-      sbmClearDailyContinuationTriggers_();
+      var resume = !!state.continuationRequired;
       sbmSetSetting_('DailyUpdateRunning','YES','日次処理の実行状態');
-      sbmSetSetting_('DailyUpdateStartedEpoch',String(Date.now()),'日次処理の開始日時（Unixミリ秒）');
+      sbmSetSetting_('DailyUpdateContinuationRequired','NO','日次処理の続行操作が必要か');
+      sbmSetSetting_('DailyUpdateStartedEpoch',String(Date.now()),'今回の日次処理実行の開始日時（Unixミリ秒）');
       sbmSetSetting_('DailyUpdateLastError','','直近の日次処理エラー');
       sbmSetSetting_('DailyUpdateActionRequired','NO','利用者操作が必要か');
       sbmSetSetting_('DailyUpdateActionMessage','','利用者へ案内する操作内容');
-      sbmSetDailyProgress_('FETCH',5,'Search Consoleからデータを取得しています。');
+      if (resume) {
+        var resumePhase = String(sbmGetSetting_('DailyUpdatePhase','FETCH') || 'FETCH');
+        sbmSetDailyProgress_(resumePhase, Number(sbmGetSetting_('DailyUpdateProgress',5) || 5), '保存済みの処理位置から再開しています。' + sbmDailyPhaseLabel_(resumePhase));
+      } else {
+        sbmClearDailyWork_();
+        sbmSetDailyProgress_('FETCH',5,'Search Consoleからデータを取得しています。');
+      }
       try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(ignore) {}
     }
   } finally {
@@ -208,8 +218,9 @@ function sbmRunDailyUpdateFromDialog() {
   return sbmContinueDailyUpdate_();
 }
 
+// Product 5.4.2との互換用。時間主導トリガーは作成しません。
 function sbmDailyUpdateContinuationTrigger() {
-  return sbmContinueDailyUpdate_();
+  return {ok:false,continuing:false,message:'自動継続トリガーは使用しません。日次処理ダイアログの「続きを実行」を押してください。'};
 }
 
 function sbmContinueDailyUpdate_() {
@@ -246,8 +257,10 @@ function sbmContinueDailyUpdate_() {
         var completedAt = new Date();
         sbmMarkDailyUpdateCompleted_(completedAt);
         sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
+        sbmSetSetting_('DailyUpdateContinuationRequired','NO','日次処理の続行操作が必要か');
+        sbmSetSetting_('DailyUpdateActionRequired','NO','利用者操作が必要か');
+        sbmSetSetting_('DailyUpdateActionMessage','','利用者へ案内する操作内容');
         sbmSetDailyProgress_('DONE',100,'日次処理が完了しました。');
-        sbmClearDailyContinuationTriggers_();
         sbmClearDailyWork_();
         try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(eHome) { sbmLog_('DailyHomeRefresh','Warning',String(eHome)); }
         return {ok:true,continuing:false,message:'日次処理が完了しました。'};
@@ -255,8 +268,13 @@ function sbmContinueDailyUpdate_() {
       if (phase === 'DONE') return {ok:true,continuing:false,message:'日次処理が完了しました。'};
       throw new Error('不明な日次処理フェーズです: ' + phase);
     }
-    sbmScheduleDailyContinuation_();
-    return {ok:true,continuing:true,message:'処理を自動継続します。'};
+    sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
+    sbmSetSetting_('DailyUpdateContinuationRequired','YES','日次処理の続行操作が必要か');
+    sbmSetSetting_('DailyUpdateActionRequired','NO','利用者操作が必要か');
+    sbmSetSetting_('DailyUpdateActionMessage','安全な実行時間に達したため一時停止しました。処理位置は保存されています。日次処理ダイアログの「続きを実行」を押してください。','利用者へ案内する操作内容');
+    sbmSetDailyProgress_(String(sbmGetSetting_('DailyUpdatePhase','FETCH')), Number(sbmGetSetting_('DailyUpdateProgress',0)), '安全な実行時間に達したため一時停止しました。「続きを実行」を押してください。');
+    try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(ignorePause) {}
+    return {ok:true,continuing:false,requiresContinuation:true,message:'「続きを実行」を押してください。'};
   } catch(e) {
     sbmHandleDailyUpdateError_(e);
     throw e;
@@ -288,25 +306,15 @@ function sbmClearDailyWork_() {
   if (sh) ss.deleteSheet(sh);
 }
 
-function sbmScheduleDailyContinuation_() {
-  sbmClearDailyContinuationTriggers_();
-  ScriptApp.newTrigger('sbmDailyUpdateContinuationTrigger').timeBased().after(60 * 1000).create();
-  sbmSetDailyProgress_(String(sbmGetSetting_('DailyUpdatePhase','FETCH')), Number(sbmGetSetting_('DailyUpdateProgress',0)), '処理時間を安全に分割しました。約1分後に自動で続きを実行します。');
-}
-
-function sbmClearDailyContinuationTriggers_() {
-  ScriptApp.getProjectTriggers().forEach(function(t){ if (t.getHandlerFunction() === 'sbmDailyUpdateContinuationTrigger') ScriptApp.deleteTrigger(t); });
-}
-
 function sbmHandleDailyUpdateError_(e) {
   var text = String(e && e.message ? e.message : e);
   var action = /authorization|authorize|permission|権限|認証|Search Console|property|プロパティ|access denied|not have access/i.test(text);
   sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
+  sbmSetSetting_('DailyUpdateContinuationRequired','NO','日次処理の続行操作が必要か');
   sbmSetSetting_('DailyUpdateLastError',text,'直近の日次処理エラー');
   sbmSetSetting_('DailyUpdateActionRequired',action ? 'YES' : 'NO','利用者操作が必要か');
   sbmSetSetting_('DailyUpdateActionMessage',action ? 'Search Consoleへの接続または認証を確認してください。管理メニューの「接続テスト」を実行し、完了後に日次処理を再実行してください。' : '','利用者へ案内する操作内容');
   sbmSetDailyProgress_('ERROR',0,action ? '利用者の確認が必要です。' : '日次処理でエラーが発生しました。');
-  sbmClearDailyContinuationTriggers_();
   try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(ignore) {}
   try { sbmLog_('DailyUpdate','Error',text); } catch(ignore2) {}
 }

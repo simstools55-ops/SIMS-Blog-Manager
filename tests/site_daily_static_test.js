@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs','utf8');
 const checks = [
-  ['version', code.includes("const SBM_VERSION = '5.4.2'")],
+  ['version', code.includes("const SBM_VERSION = '5.4.3'")],
   ['single daily key', code.includes('LastSuccessfulDailyUpdateEpoch')],
   ['daily status helper', code.includes('function sbmDailyUpdateStatus_()')],
   ['runtime status helper', code.includes('function sbmGetDailyRuntimeState_()')],
@@ -9,7 +9,9 @@ const checks = [
   ['running dialog executor', code.includes('function sbmRunDailyUpdateFromDialog()')],
   ['document lock', code.includes('LockService.getDocumentLock()')],
   ['phased daily runner', code.includes('function sbmContinueDailyUpdate_()')],
-  ['automatic continuation trigger', code.includes('function sbmDailyUpdateContinuationTrigger()')],
+  ['manual continuation state', code.includes('DailyUpdateContinuationRequired')],
+  ['continue button', code.includes('続きを実行')],
+  ['no trigger management api', !code.includes('getProjectTriggers()') && !code.includes('.newTrigger(') && !code.includes('deleteTrigger(')],
   ['daily work sheet', code.includes('__Daily_Update_Work')],
   ['spinner animation', code.includes('@keyframes spin')],
   ['client progress polling', code.includes('sbmGetDailyUpdateClientStatus')],
