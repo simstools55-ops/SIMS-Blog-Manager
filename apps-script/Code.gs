@@ -120,11 +120,12 @@ function sbmGetDailyRuntimeState_() {
   var running = String(sbmGetSetting_('DailyUpdateRunning','NO')) === 'YES';
   var startedEpoch = Number(sbmGetSetting_('DailyUpdateStartedEpoch',0) || 0);
   var heartbeatEpoch = Number(sbmGetSetting_('DailyUpdateHeartbeatEpoch',0) || 0);
-  var stale = running && (!heartbeatEpoch || (Date.now() - heartbeatEpoch) > 45 * 60 * 1000);
+  var stale = running && (!heartbeatEpoch || (Date.now() - heartbeatEpoch) > 7 * 60 * 1000);
   if (stale) {
     sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
-    sbmSetSetting_('DailyUpdatePhase','ERROR','日次処理の現在フェーズ');
-    sbmSetSetting_('DailyUpdateLastError','日次処理が長時間更新されなかったため停止状態にしました。再度「日次処理を実行」してください。','直近の日次処理エラー');
+    sbmSetSetting_('DailyUpdateContinuationRequired','YES','日次処理の続行操作が必要か');
+    sbmSetSetting_('DailyUpdateLastError','','直近の日次処理エラー');
+    sbmSetSetting_('DailyUpdateActionMessage','処理応答が停止したため安全停止しました。保存済みの工程から再開できます。下の「続きを実行」を押してください。','利用者へ案内する操作内容');
     running = false;
   }
   var daily = sbmDailyUpdateStatus_();
@@ -182,7 +183,7 @@ function sbmOpenDailyUpdateDialog() {
     + '<div id="spinner" class="spinner"></div><div id="progressWrap" style="display:none"><div class="bar"><div id="bar"></div></div><div id="percent" class="percent"></div></div>'
     + '<p class="note">処理が安全な実行時間内に終わらない場合は途中状態を保存します。その場合は、この画面に「続きを実行」と具体的な操作方法を表示します。</p>'
     + '<div class="buttons"><button id="closeBtn" class="close" onclick="google.script.host.close()">閉じる</button><button id="runBtn" class="run" onclick="runDaily()"' + (state.running ? ' style="display:none"' : '') + '>' + (state.continuationRequired ? '続きを実行' : '実行する') + '</button></div>'
-    + '<script>var timer=null;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function render(s){var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=s.message||"日次処理を実行しています。";b.style.width=(s.progress||0)+"%";pc.textContent=(s.progress||0)+"%";return;}sp.style.display="none";pw.style.display="none";if(s.continuationRequired){m.className="box action";m.textContent=s.actionMessage||"安全な実行時間に達したため一時停止しました。処理位置は保存されています。下の「続きを実行」を押してください。";r.style.display="inline-block";r.textContent="続きを実行";clearInterval(timer);timer=null;return;}if(s.actionRequired){m.className="box action";m.textContent=(s.actionMessage||"利用者の操作が必要です。");r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.completedToday){m.className="box done";m.textContent="日次処理が完了しました。記事管理、改善候補、今日の改善、Homeを更新しました。";r.style.display="none";clearInterval(timer);timer=null;return;}m.className="box";m.textContent=s.message||"未実施です。";r.style.display="inline-block";r.textContent="実行する";}function poll(){google.script.run.withSuccessHandler(render).withFailureHandler(function(){}).sbmGetDailyUpdateClientStatus();}function runDaily(){uiRunning();document.getElementById("message").textContent="日次処理を開始しています。";google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(){poll();}).sbmRunDailyUpdateFromDialog();if(!timer)timer=setInterval(poll,2500);}if(' + (state.running ? 'true' : 'false') + '){uiRunning();timer=setInterval(poll,2500);poll();}</script></body></html>';
+    + '<script>var timer=null;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function render(s){var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=s.message||"日次処理を実行しています。";b.style.width=(s.progress||0)+"%";pc.textContent=(s.progress||0)+"%";return;}sp.style.display="none";pw.style.display="none";if(s.continuationRequired){m.className="box action";m.textContent=s.actionMessage||"安全な実行時間に達したため一時停止しました。処理位置は保存されています。下の「続きを実行」を押してください。";r.style.display="inline-block";r.textContent="続きを実行";clearInterval(timer);timer=null;return;}if(s.actionRequired){m.className="box action";m.textContent=(s.actionMessage||"利用者の操作が必要です。");r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";clearInterval(timer);timer=null;return;}if(s.completedToday){m.className="box done";m.textContent="日次処理が完了しました。記事管理、改善候補、今日の改善、Homeを更新しました。";r.style.display="none";clearInterval(timer);timer=null;return;}m.className="box";m.textContent=s.message||"未実施です。";r.style.display="inline-block";r.textContent="実行する";}function poll(){google.script.run.withSuccessHandler(render).withFailureHandler(function(e){var m=document.getElementById("message");m.className="box action";m.textContent="進捗確認の応答がありません。処理本体が終了している場合は数分以内に「続きを実行」へ切り替わります。\n"+((e&&e.message)?e.message:"");}).sbmGetDailyUpdateClientStatus();}function runDaily(){uiRunning();document.getElementById("message").textContent="日次処理を開始しています。";google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(){poll();}).sbmRunDailyUpdateFromDialog();if(!timer)timer=setInterval(poll,2500);}if(' + (state.running ? 'true' : 'false') + '){uiRunning();timer=setInterval(poll,2500);poll();}</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(590).setHeight(500)), '日次処理');
 }
 
@@ -207,6 +208,7 @@ function sbmRunDailyUpdateFromDialog() {
         var resumePhase = String(sbmGetSetting_('DailyUpdatePhase','FETCH') || 'FETCH');
         sbmSetDailyProgress_(resumePhase, Number(sbmGetSetting_('DailyUpdateProgress',5) || 5), '保存済みの処理位置から再開しています。' + sbmDailyPhaseLabel_(resumePhase));
       } else {
+        sbmLog_('DailyPhase','Done','FINALIZE');
         sbmClearDailyWork_();
         sbmSetDailyProgress_('FETCH',5,'Search Consoleからデータを取得しています。');
       }
@@ -229,31 +231,38 @@ function sbmContinueDailyUpdate_() {
   var started = new Date();
   try {
     if (String(sbmGetSetting_('DailyUpdateRunning','NO')) !== 'YES') return {ok:true,continuing:false,message:'日次処理は実行されていません。'};
-    while (sbmSecondsSince_(started) < 250) {
+    while (sbmSecondsSince_(started) < 215) {
       var phase = String(sbmGetSetting_('DailyUpdatePhase','FETCH') || 'FETCH');
       if (phase === 'FETCH') {
+        sbmLog_('DailyPhase','Start','FETCH');
         sbmSetDailyProgress_('FETCH',10,'Search Consoleからページデータを取得しています。');
         var profiler = sbmCreateProfiler_('日次処理 Search Console取得');
         var result = sbmFetchSearchConsolePageRowsForArticleDb_(profiler);
         sbmWriteDailyWorkRows_(result.rows);
         sbmSetSetting_('DailyUpdateRawRows',String(result.rawRows),'日次処理で取得した元行数');
         sbmSetSetting_('DailyUpdateExcluded',String(result.excluded),'日次処理で除外したURL数');
+        sbmLog_('DailyPhase','Done','FETCH rows=' + result.rows.length + ' raw=' + result.rawRows);
         sbmSetDailyProgress_('MERGE',45,'Search Consoleデータの取得が完了しました。記事管理を更新しています。');
         continue;
       }
       if (phase === 'MERGE') {
+        sbmLog_('DailyPhase','Start','MERGE');
         var freshRows = sbmReadDailyWorkRows_();
         var mergeResult = sbmMergeArticleDbDaily_(freshRows);
         sbmSetSetting_('DailyUpdateMergeResult',JSON.stringify(mergeResult),'日次処理の差分更新結果');
+        sbmLog_('DailyPhase','Done','MERGE ' + JSON.stringify(mergeResult));
         sbmSetDailyProgress_('RECOMMEND',75,'記事管理を更新しました。改善候補と今日の改善を作成しています。');
         continue;
       }
       if (phase === 'RECOMMEND') {
+        sbmLog_('DailyPhase','Start','RECOMMEND');
         try { sbmEnsureTodayRecommendations_('daily'); } catch (eToday) { sbmLog_('DailyTodayDefault','Warning',String(eToday)); }
+        sbmLog_('DailyPhase','Done','RECOMMEND');
         sbmSetDailyProgress_('FINALIZE',90,'改善候補を更新しました。Homeと完了状態を更新しています。');
         continue;
       }
       if (phase === 'FINALIZE') {
+        sbmLog_('DailyPhase','Start','FINALIZE');
         var completedAt = new Date();
         sbmMarkDailyUpdateCompleted_(completedAt);
         sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
@@ -3628,18 +3637,23 @@ function sbmLegacyStatusToWorkState_(status) {
   return '未着手';
 }
 
+function sbmPercentileRankSorted_(sortedValues, value) {
+  var a = sortedValues || [];
+  if (!a.length) return 0;
+  value = sbmNumber_(value);
+  var lo = 0, hi = a.length;
+  while (lo < hi) { var mid = (lo + hi) >> 1; if (a[mid] < value) lo = mid + 1; else hi = mid; }
+  var first = lo;
+  lo = 0; hi = a.length;
+  while (lo < hi) { var mid2 = (lo + hi) >> 1; if (a[mid2] <= value) lo = mid2 + 1; else hi = mid2; }
+  var last = lo;
+  return Math.max(0, Math.min(1, (first + (last - first) * 0.5) / a.length));
+}
+
 function sbmPercentileRank_(sortedValues, value) {
   var a = (sortedValues || []).map(function(v){ return sbmNumber_(v); }).filter(function(v){ return isFinite(v); });
-  if (!a.length) return 0;
   a.sort(function(x,y){ return x-y; });
-  value = sbmNumber_(value);
-  var less = 0, equal = 0;
-  for (var i=0; i<a.length; i++) {
-    if (a[i] < value) less++;
-    else if (a[i] === value) equal++;
-    else break;
-  }
-  return Math.max(0, Math.min(1, (less + equal * 0.5) / a.length));
+  return sbmPercentileRankSorted_(a, value);
 }
 
 function sbmApplyArticleRanksToObjectMap_(map) {
@@ -3655,8 +3669,8 @@ function sbmApplyArticleRanksToObjectMap_(map) {
     var ctr = sbmNumber_(r['CTR'] || 0);
     var pos = sbmNumber_(r['掲載順位'] || 0);
     if (imps < minImps) { r['記事ランク'] = '🌱 育成'; return; }
-    var clickPct = sbmPercentileRank_(clickVals, clicks);
-    var impPct = sbmPercentileRank_(impVals, imps);
+    var clickPct = sbmPercentileRankSorted_(clickVals, clicks);
+    var impPct = sbmPercentileRankSorted_(impVals, imps);
     var ctrScore = Math.max(0, Math.min(1, ctr / 0.08));
     var posScore = pos > 0 ? Math.max(0, Math.min(1, (40 - Math.min(pos,40)) / 39)) : 0;
     var score = clickPct * 50 + impPct * 20 + ctrScore * 15 + posScore * 15;
