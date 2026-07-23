@@ -1,5 +1,13 @@
 # Changelog
 
+## Product 5.5.2 - Daily Status Polling Fix
+
+- 日次処理ダイアログの `setInterval(..., 2500)` を廃止しました。
+- 状態確認は前回の応答完了後、10秒待ってから次の1件だけを実行します。
+- 状態確認の同時実行を防止し、Apps Scriptの実行履歴が大量のポーリングで埋まる問題を修正しました。
+- ダイアログを閉じたときは保留中の状態確認を停止します。
+- 日次処理継続関数に重複していたドキュメントロック取得を修正しました。
+
 ## Product 5.5.1 - Daily Dialog Spinner Fix
 
 - Fixed the daily dialog client-side JavaScript newline escaping.
