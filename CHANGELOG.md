@@ -1,5 +1,11 @@
 # Changelog
 
+## Product 5.5.1 - Daily Dialog Spinner Fix
+
+- Fixed the daily dialog client-side JavaScript newline escaping.
+- Restored immediate spinner and progress display after clicking Run.
+
+
 ## Product 5.5.0 - Daily Processing Stability
 
 - 日次処理の応答停止判定を45分から7分へ短縮し、エラーではなく続行待ちへ安全復旧
