@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.4.1 Maintenance
+# SIMS-Blog-Manager Product 5.4.2 Maintenance
 
 SIMS Writer v1.0.0以降の `changes` 配列形式を登録できるようにし、V1オブジェクト形式との後方互換を維持しました。`change_flags` と未知フィールドも許容します。
 
