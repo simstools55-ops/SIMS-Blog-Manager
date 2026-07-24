@@ -1,6 +1,12 @@
+# Product 5.5.4
+
+- 日次処理ダイアログの表示フローを「Search Console取得中」→「データ分析・処理中」→「完了結果」に統一しました。
+- 完了画面の自動終了を廃止し、処理件数・今日の改善件数・処理時間を確認してから「閉じる」で終了する仕様に変更しました。
+- 日次処理状態をDocument Propertiesにも同期し、進捗確認を軽量化してHomeとダイアログの状態不一致を自己修復します。
+
 # Changelog
 
-## Product 5.5.3 - Daily Completion UI and Status Consistency
+## Product 5.5.4 - Daily Completion UI and Status Consistency
 
 - 日次処理本体の戻り値をダイアログへ直接反映し、完了後のスピナー残留を修正。
 - ダイアログに工程・進捗率・更新記事数・今日の改善件数・処理時間を表示し、完了3秒後に自動終了。
