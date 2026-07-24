@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.3';
+const SBM_VERSION = '5.6.5';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -252,7 +252,7 @@ function sbmDailyFetchStageStatus_() {
 }
 
 /**
- * Product 5.6.3
+ * Product 5.6.5
  * 日次処理を、利用者には一連の処理として見せながら、サーバー側では
  * STEP 1（Search Console取得）、STEP 2（分析・記事DB更新）、STEP 3（効果測定・完了確定）に分割します。
  * 定期ポーリングは使用せず、各STEPの成功後に次のSTEPを一度だけ呼び出します。
@@ -274,7 +274,7 @@ function sbmOpenDailyUpdateDialog() {
     + 'button{border:0;border-radius:6px;padding:10px 18px;font-weight:700;cursor:pointer}.run{background:#0b8043;color:white}.close{background:#f1f3f4}'
     + '.spinner{display:none;width:42px;height:42px;border:5px solid #dfe7df;border-top-color:#0b8043;border-radius:50%;animation:spin .9s linear infinite;margin:22px auto}'
     + '@keyframes spin{to{transform:rotate(360deg)}}.error{color:#b3261e;border-left-color:#b3261e}.done{color:#0b8043;border-left-color:#0b8043}'
-    + '.result{display:grid;grid-template-columns:1fr auto;gap:5px 20px;margin-top:10px}.result b{text-align:right}'
+    + '.result{margin-top:8px}.group{margin-top:10px;padding-top:8px;border-top:1px solid #e0e0e0}.group:first-child{border-top:0;margin-top:6px;padding-top:0}.groupTitle{font-size:13px;font-weight:700;color:#0b8043;margin-bottom:5px}.resultGrid{display:grid;grid-template-columns:1fr auto;gap:3px 18px;font-size:14px;line-height:1.35}.resultGrid b{text-align:right}.groupNote{margin-top:7px;font-size:11px;line-height:1.45;color:#5f6368}'
     + '.stage{font-weight:700;color:#0b8043;margin-bottom:6px}</style></head><body>'
     + '<h2>日次処理</h2>'
     + '<div id="message" class="box">' + sbmEscapeHtml_(initial) + '</div>'
@@ -287,9 +287,9 @@ function sbmOpenDailyUpdateDialog() {
     + 'function showRunning(title,text){if(terminal)return;el("spinner").style.display="block";el("message").className="box";el("message").innerHTML="<div class=stage>"+title+"</div>"+text;el("note").textContent="処理中です。完了までこの画面を閉じずにお待ちください。";}'
     + 'function showFailure(prefix,e,retry){if(terminal)return;el("spinner").style.display="none";el("message").className="box error";el("message").textContent=prefix+String.fromCharCode(10,10)+((e&&e.message)?e.message:String(e));el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";if(retry){el("runBtn").textContent="再実行する";el("runBtn").disabled=false;el("runBtn").style.display="inline-block";}}'
     + 'function startDaily(){terminal=false;el("runBtn").disabled=true;el("runBtn").style.display="none";el("cancelBtn").style.display="none";showRunning("STEP 1 / 3　Search Consoleデータ取得中","Search Consoleから最新のページデータを取得しています。");google.script.run.withFailureHandler(function(e){showFailure("Search Consoleデータの取得に失敗しました。",e,true);}).withSuccessHandler(function(fetch){if(terminal)return;showRunning("STEP 2 / 3　データ分析・記事DB更新中","取得したデータを分析し、記事DBと記事ランクを更新しています。");google.script.run.withFailureHandler(function(e){showFailure("データ分析・記事DB更新に失敗しました。",e,true);}).withSuccessHandler(function(){if(terminal)return;showRunning("STEP 3 / 3　改善の推移・完了処理中","改善後の推移を更新し、日次処理の完了状態を確定しています。");google.script.run.withFailureHandler(function(e){showFailure("改善の推移・完了処理に失敗しました。",e,true);}).withSuccessHandler(function(r){showComplete(r||{});}).sbmRunDailyFinalizeStageFromDialog();}).sbmRunDailyAnalysisStageFromDialog();}).sbmRunDailyFetchStageFromDialog();}'
-    + 'function showComplete(r){if(terminal)return;terminal=true;el("spinner").style.display="none";el("message").className="box done";el("message").innerHTML="✓ 日次処理が完了しました。<div class=result><span>Search Console取得行</span><b>"+Number(r.rawRows||0)+"件</b><span>有効な記事URL</span><b>"+Number(r.validRows||0)+"件</b><span>既存記事更新</span><b>"+Number(r.updated||0)+"件</b><span>新規記事追加</span><b>"+Number(r.added||0)+"件</b><span>記事DB合計</span><b>"+Number(r.total||0)+"件</b><span>改善の推移更新</span><b>"+Number(r.effectRows||0)+"件</b><span>今回の測定記録</span><b>"+Number(r.measurementRecorded||0)+"件</b><span>Search Console取得時間</span><b>"+formatTime(r.fetchElapsedSeconds)+"</b><span>分析・処理時間</span><b>"+formatTime(r.analysisElapsedSeconds)+"</b><span>完了処理時間</span><b>"+formatTime(r.finalizeElapsedSeconds)+"</b><span>全体所要時間</span><b>"+formatTime(r.totalElapsedSeconds)+"</b></div>";el("note").textContent="結果を確認して「閉じる」を押してください。";el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";}'
+    + 'function showComplete(r){if(terminal)return;terminal=true;var updated=Math.max(0,Number(r.updated||0)),added=Math.max(0,Number(r.added||0)),total=Math.max(0,Number(r.total||0)),outside=Math.max(0,total-updated-added);el("spinner").style.display="none";el("message").className="box done";el("message").innerHTML="✓ 日次処理が完了しました。<div class=result><div class=group><div class=groupTitle>Search Console</div><div class=resultGrid><span>取得行</span><b>"+Number(r.rawRows||0).toLocaleString()+"件</b><span>有効な記事URL</span><b>"+Number(r.validRows||0).toLocaleString()+"件</b></div></div><div class=group><div class=groupTitle>記事DB</div><div class=resultGrid><span>更新記事</span><b>"+updated.toLocaleString()+"件</b><span>更新対象外</span><b>"+outside.toLocaleString()+"件</b><span>新規記事</span><b>"+added.toLocaleString()+"件</b><span>総記事数</span><b>"+total.toLocaleString()+"件</b></div><div class=groupNote>※更新対象外：今回のSearch Consoleデータ取得で対象とならなかった記事です。</div></div><div class=group><div class=groupTitle>改善効果</div><div class=resultGrid><span>モニタ中</span><b>"+Number(r.monitoringCount||0).toLocaleString()+"件</b></div></div><div class=group><div class=groupTitle>処理時間</div><div class=resultGrid><span>Search Console取得</span><b>"+formatTime(r.fetchElapsedSeconds)+"</b><span>分析・処理</span><b>"+formatTime(r.analysisElapsedSeconds)+"</b><span>全体所要時間</span><b>"+formatTime(r.totalElapsedSeconds)+"</b></div></div></div>";el("note").textContent="結果を確認して「閉じる」を押してください。";el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";}'
     + '</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(690), '日次処理');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(790), '日次処理');
 }
 
 function sbmGetDailyUpdateClientStatus() {
@@ -417,6 +417,9 @@ function sbmRunDailyFinalizeStageFromDialog() {
     var afterHistory = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || [];
     var afterCount = afterHistory.reduce(function(total,h){ return total + sbmHistoryMeasurementState_(h).count; }, 0);
     measurementRecorded = Math.max(0, afterCount - beforeCount);
+    var monitoringCount = afterHistory.reduce(function(total,h){
+      return total + (sbmHistoryMeasurementState_(h).complete ? 0 : 1);
+    }, 0);
 
     var summary = {};
     try { summary = JSON.parse(String(sbmGetSetting_('DailyStage2SummaryJson','{}') || '{}')); } catch(ignoreSummary) {}
@@ -437,6 +440,7 @@ function sbmRunDailyFinalizeStageFromDialog() {
     summary.ok = true;
     summary.effectRows = effectRows;
     summary.measurementRecorded = measurementRecorded;
+    summary.monitoringCount = Number(monitoringCount || 0);
     summary.finalizeElapsedSeconds = Number(finalizeElapsed || 0);
     summary.totalElapsedSeconds = Number(totalElapsed || 0);
     return summary;
