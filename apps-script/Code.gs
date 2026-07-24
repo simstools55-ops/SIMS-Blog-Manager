@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.4.3';
+const SBM_VERSION = '5.5.3';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -164,7 +164,48 @@ function sbmSetDailyProgress_(phase, progress, message) {
   sbmSetSetting_('DailyUpdateHeartbeatEpoch', String(Date.now()), '日次処理の最終進捗更新日時（Unixミリ秒）');
 }
 
+function sbmRepairDailySettingDuplicates_() {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.SETTINGS);
+  if (!sh || sh.getLastRow() < 2) return 0;
+  var dailyKeys = {
+    LastSuccessfulDailyUpdateEpoch:true, DailyUpdateRunning:true, DailyUpdateStartedEpoch:true,
+    DailyUpdateLastError:true, DailyUpdatePhase:true, DailyUpdateProgress:true,
+    DailyUpdateMessage:true, DailyUpdateHeartbeatEpoch:true, DailyUpdateContinuationRequired:true,
+    DailyUpdateActionRequired:true, DailyUpdateActionMessage:true, DailyUpdateRawRows:true,
+    DailyUpdateExcluded:true, DailyUpdateMergeResult:true
+  };
+  var values = sh.getRange(2,1,sh.getLastRow()-1,1).getValues();
+  var seen = {}, deleteRows = [];
+  for (var i = 0; i < values.length; i++) {
+    var key = String(values[i][0] || '');
+    if (!dailyKeys[key]) continue;
+    if (seen[key]) deleteRows.push(i + 2);
+    else seen[key] = true;
+  }
+  deleteRows.sort(function(a,b){ return b-a; }).forEach(function(row){ sh.deleteRow(row); });
+  if (deleteRows.length) sbmLog_('DailySettings','Repair','duplicate keys removed=' + deleteRows.length);
+  return deleteRows.length;
+}
+
+function sbmDailyCompletionResult_() {
+  var startedEpoch = Number(sbmGetSetting_('DailyUpdateStartedEpoch',0) || 0);
+  var elapsedSec = startedEpoch > 0 ? Math.max(0, Math.round((Date.now() - startedEpoch) / 1000)) : 0;
+  var rawRows = Number(sbmGetSetting_('DailyUpdateRawRows',0) || 0);
+  var merge = {};
+  try { merge = JSON.parse(String(sbmGetSetting_('DailyUpdateMergeResult','{}') || '{}')); } catch(ignore) {}
+  var updated = Number(merge.updated || 0) + Number(merge.added || 0);
+  if (!updated) updated = rawRows;
+  var todayCount = Number(sbmGetSetting_('TodayWorkCount',0) || 0);
+  return {
+    ok:true, running:false, completedToday:true, phase:'DONE', progress:100,
+    message:'日次処理が完了しました。', updatedArticles:updated,
+    recommendationCount:todayCount, elapsedSeconds:elapsedSec,
+    displayText:sbmJapaneseDateTimeText_(new Date())
+  };
+}
+
 function sbmOpenDailyUpdateDialog() {
+  sbmRepairDailySettingDuplicates_();
   if (!sbmIsSetupComplete_() || String(sbmGetSetting_('ConnectionStatus','')) !== 'OK') {
     return sbmAlert_('日次処理を実行できません', '初回セットアップとSearch Console接続テストを完了してください。');
   }
@@ -183,7 +224,7 @@ function sbmOpenDailyUpdateDialog() {
     + '<div id="spinner" class="spinner"></div><div id="progressWrap" style="display:none"><div class="bar"><div id="bar"></div></div><div id="percent" class="percent"></div></div>'
     + '<p class="note">処理が安全な実行時間内に終わらない場合は途中状態を保存します。その場合は、この画面に「続きを実行」と具体的な操作方法を表示します。</p>'
     + '<div class="buttons"><button id="closeBtn" class="close" onclick="stopPolling();google.script.host.close()">閉じる</button><button id="runBtn" class="run" onclick="runDaily()"' + (state.running ? ' style="display:none"' : '') + '>' + (state.continuationRequired ? '続きを実行' : '実行する') + '</button></div>'
-    + '<script>var pollTimer=null,pollInFlight=false,dialogClosed=false;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function stopPolling(){dialogClosed=true;if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}pollInFlight=false;}function schedulePoll(delay){if(dialogClosed||pollTimer||pollInFlight)return;pollTimer=setTimeout(function(){pollTimer=null;poll();},Math.max(0,delay||10000));}function render(s){var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=s.message||"日次処理を実行しています。";b.style.width=(s.progress||0)+"%";pc.textContent=(s.progress||0)+"%";schedulePoll(10000);return;}sp.style.display="none";pw.style.display="none";if(s.continuationRequired){m.className="box action";m.textContent=s.actionMessage||"安全な実行時間に達したため一時停止しました。処理位置は保存されています。下の「続きを実行」を押してください。";r.style.display="inline-block";r.textContent="続きを実行";stopPolling();return;}if(s.actionRequired){m.className="box action";m.textContent=(s.actionMessage||"利用者の操作が必要です。");r.style.display="inline-block";r.textContent="再実行する";stopPolling();return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";stopPolling();return;}if(s.completedToday){m.className="box done";m.textContent="日次処理が完了しました。記事管理、改善候補、今日の改善、Homeを更新しました。";r.style.display="none";stopPolling();return;}m.className="box";m.textContent=s.message||"未実施です。";r.style.display="inline-block";r.textContent="実行する";stopPolling();}function poll(){if(dialogClosed||pollInFlight)return;pollInFlight=true;google.script.run.withSuccessHandler(function(s){pollInFlight=false;render(s);}).withFailureHandler(function(e){pollInFlight=false;var m=document.getElementById("message");m.className="box action";m.textContent="進捗確認の応答がありません。10秒後に再確認します。\\n"+((e&&e.message)?e.message:"");schedulePoll(10000);}).sbmGetDailyUpdateClientStatus();}function runDaily(){dialogClosed=false;if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}uiRunning();document.getElementById("message").textContent="日次処理を開始しています。";google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(){poll();}).sbmRunDailyUpdateFromDialog();}window.addEventListener("beforeunload",stopPolling);if(' + (state.running ? 'true' : 'false') + '){uiRunning();schedulePoll(0);}</script></body></html>';
+    + '<script>var pollTimer=null,pollInFlight=false,dialogClosed=false;function uiRunning(){document.getElementById("runBtn").style.display="none";document.getElementById("spinner").style.display="block";document.getElementById("progressWrap").style.display="block";}function stopPolling(){if(pollTimer){clearTimeout(pollTimer);pollTimer=null;}pollInFlight=false;}function closeLater(){setTimeout(function(){dialogClosed=true;stopPolling();google.script.host.close();},3000);}function schedulePoll(delay){if(dialogClosed||pollTimer||pollInFlight)return;pollTimer=setTimeout(function(){pollTimer=null;poll();},Math.max(0,delay||10000));}function completionText(s){var sec=Number(s.elapsedSeconds||0),min=Math.floor(sec/60),rest=sec%60,time=(min?min+"分":"")+rest+"秒";return "✓ 日次処理が完了しました\\n\\n更新記事\\n"+Number(s.updatedArticles||0)+"件\\n\\n今日の改善\\n"+Number(s.recommendationCount||0)+"件\\n\\n処理時間\\n"+time;}function render(s){s=s||{};var m=document.getElementById("message"),sp=document.getElementById("spinner"),pw=document.getElementById("progressWrap"),b=document.getElementById("bar"),pc=document.getElementById("percent"),r=document.getElementById("runBtn");if(s.running){uiRunning();m.className="box";m.textContent=(s.message||"日次処理を実行しています。")+"\\n\\n進捗 "+Number(s.progress||0)+"%";b.style.width=Number(s.progress||0)+"%";pc.textContent=Number(s.progress||0)+"%";schedulePoll(10000);return;}sp.style.display="none";pw.style.display="none";if(s.continuationRequired||s.requiresContinuation){m.className="box action";m.textContent=s.actionMessage||s.message||"安全な実行時間に達したため一時停止しました。処理位置は保存されています。下の「続きを実行」を押してください。";r.style.display="inline-block";r.textContent="続きを実行";stopPolling();return;}if(s.actionRequired){m.className="box action";m.textContent=s.actionMessage||"利用者の操作が必要です。";r.style.display="inline-block";r.textContent="再実行する";stopPolling();return;}if(s.error){m.className="box error";m.textContent=s.error;r.style.display="inline-block";r.textContent="再実行する";stopPolling();return;}if(s.completedToday||s.phase==="DONE"){m.className="box done";m.textContent=completionText(s);r.style.display="none";stopPolling();closeLater();return;}m.className="box";m.textContent=s.message||"未実施です。";r.style.display="inline-block";r.textContent="実行する";stopPolling();}function poll(){if(dialogClosed||pollInFlight)return;pollInFlight=true;google.script.run.withSuccessHandler(function(s){pollInFlight=false;render(s);}).withFailureHandler(function(e){pollInFlight=false;var m=document.getElementById("message");m.className="box action";m.textContent="進捗確認の応答がありません。10秒後に再確認します。\\n"+((e&&e.message)?e.message:"");schedulePoll(10000);}).sbmGetDailyUpdateClientStatus();}function runDaily(){dialogClosed=false;stopPolling();uiRunning();document.getElementById("message").textContent="日次処理を開始しています。\\n\\n進捗 0%";document.getElementById("bar").style.width="0%";document.getElementById("percent").textContent="0%";schedulePoll(10000);google.script.run.withFailureHandler(function(e){render({running:false,error:(e&&e.message)?e.message:String(e)});}).withSuccessHandler(function(result){render(result||{});}).sbmRunDailyUpdateFromDialog();}window.addEventListener("beforeunload",function(){dialogClosed=true;stopPolling();});if(' + (state.running ? 'true' : 'false') + '){uiRunning();schedulePoll(0);}</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(590).setHeight(500)), '日次処理');
 }
 
@@ -264,7 +305,10 @@ function sbmContinueDailyUpdate_() {
       if (phase === 'FINALIZE') {
         sbmLog_('DailyPhase','Start','FINALIZE');
         var completedAt = new Date();
+        sbmRepairDailySettingDuplicates_();
         sbmMarkDailyUpdateCompleted_(completedAt);
+        var savedEpoch = Number(sbmGetSetting_('LastSuccessfulDailyUpdateEpoch',0) || 0);
+        if (!savedEpoch || Math.abs(savedEpoch - completedAt.getTime()) > 1000) throw new Error('日次処理の完了日時を保存できませんでした。もう一度実行してください。');
         sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
         sbmSetSetting_('DailyUpdateContinuationRequired','NO','日次処理の続行操作が必要か');
         sbmSetSetting_('DailyUpdateActionRequired','NO','利用者操作が必要か');
@@ -272,9 +316,9 @@ function sbmContinueDailyUpdate_() {
         sbmSetDailyProgress_('DONE',100,'日次処理が完了しました。');
         sbmClearDailyWork_();
         try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(eHome) { sbmLog_('DailyHomeRefresh','Warning',String(eHome)); }
-        return {ok:true,continuing:false,message:'日次処理が完了しました。'};
+        return sbmDailyCompletionResult_();
       }
-      if (phase === 'DONE') return {ok:true,continuing:false,message:'日次処理が完了しました。'};
+      if (phase === 'DONE') return sbmDailyCompletionResult_();
       throw new Error('不明な日次処理フェーズです: ' + phase);
     }
     sbmSetSetting_('DailyUpdateRunning','NO','日次処理の実行状態');
@@ -6317,9 +6361,9 @@ function sbmRefreshHome_() {
   if (blogUrl) sh.getRange('D3:H3').setFormula('=HYPERLINK("' + blogUrl.replace(/"/g,'""') + '","' + blogUrl.replace(/"/g,'""') + '")');
   else sh.getRange('D3:H3').clearContent();
   var runtimeState = sbmGetDailyRuntimeState_();
-  var statusText = runtimeState.running ? '▶ 実行中 ' + runtimeState.progress + '%　' + (runtimeState.message || '完了までお待ちください') : (runtimeState.completedToday ? '○ 本日完了　最終実行：' + runtimeState.displayText : (runtimeState.label === 'エラー' ? '▲ エラー　メニューから日次処理を開いて内容を確認してください。' : '● 未実施　メニュー「SIMS-Blog-Manager」→「日次処理を実行」から開始してください。'));
+  var statusText = runtimeState.running ? '▶ 実行中' : (runtimeState.completedToday ? '○ 本日完了' : (runtimeState.continuationRequired ? '◇ 続行待ち' : (runtimeState.label === 'エラー' ? '▲ エラー' : '● 未実施')));
   sh.getRange('B4:H4').setValue(statusText);
-  sh.getRange('A4:H4').setBackground(runtimeState.running ? '#dbeafe' : (runtimeState.completedToday ? '#e6f4ea' : (runtimeState.label === 'エラー' ? '#fce8e6' : '#fff2cc')));
+  sh.getRange('A4:H4').setBackground(runtimeState.running ? '#dbeafe' : (runtimeState.completedToday ? '#e6f4ea' : (runtimeState.continuationRequired ? '#fef7e0' : (runtimeState.label === 'エラー' ? '#fce8e6' : '#fff2cc'))));
   sh.getRange('B4:H4').setFontColor(runtimeState.running ? '#174ea6' : (runtimeState.completedToday ? '#0b8043' : '#b3261e')).setFontWeight(runtimeState.completedToday ? 'normal' : 'bold');
 
   function arrow(current, key) {
