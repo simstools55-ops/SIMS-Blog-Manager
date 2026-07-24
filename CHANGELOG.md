@@ -1,3 +1,9 @@
+# Product 5.6.0 Stage 1
+
+- Rebuild daily processing from a minimal Search Console fetch-only flow.
+- Remove progress polling and legacy multi-state dialog behavior from the active entry point.
+- Show fetched rows, valid article URLs, exclusions, and elapsed time until the user closes the dialog.
+
 # Product 5.5.4
 
 - 日次処理ダイアログの表示フローを「Search Console取得中」→「データ分析・処理中」→「完了結果」に統一しました。
