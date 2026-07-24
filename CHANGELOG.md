@@ -1,3 +1,10 @@
+# Product 5.6.0 Stage 1.1
+
+- 日次処理ダイアログの実行ボタンが反応しない問題を修正
+- 生成後のクライアントJavaScriptに残っていた引用符・改行の構文エラーを解消
+- ダイアログ専用ボタンと重複していた共通の「閉じる」ボタン注入を停止
+- 生成HTMLからJavaScriptを抽出して構文・実行動作を検証する回帰テストを追加
+
 # Product 5.6.0 Stage 1
 
 - Rebuild daily processing from a minimal Search Console fetch-only flow.

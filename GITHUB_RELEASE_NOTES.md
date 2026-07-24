@@ -1,9 +1,14 @@
-# Product 5.6.0 Stage 1
+# Product 5.6.0 Stage 1.1
 
-- Rebuild daily processing from a minimal Search Console fetch-only flow.
-- Remove progress polling and legacy multi-state dialog behavior from the active entry point.
-- Show fetched rows, valid article URLs, exclusions, and elapsed time until the user closes the dialog.
+日次処理 Stage 1 のダイアログ修正版です。
 
-# Product 5.5.4
+## 修正
 
-日次処理ダイアログの進行表示と完了確認を安定化しました。Search Console取得中、データ分析・処理中、完了結果を明確に表示し、完了後は利用者が「閉じる」を押すまで結果を保持します。Homeは日次処理の状態のみを表示します。
+- 「実行する」を押しても反応しないクライアントJavaScript構文エラーを修正
+- クリック直後にスピナーを表示し、Search Console取得関数を確実に呼び出す
+- 取得完了後に取得行数、有効URL数、除外件数、所要時間を表示
+- ダイアログ下部の重複した「閉じる」ボタンを削除
+
+## 注意
+
+このStage 1では記事DB更新・分析・改善候補作成は実行しません。

@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.0-stage1';
+const SBM_VERSION = '5.6.0-stage1.1';
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -291,9 +291,9 @@ function sbmOpenDailyUpdateDialog() {
     + '<script>'
     + 'function el(id){return document.getElementById(id);}function closeDialog(){google.script.host.close();}'
     + 'function formatTime(sec){sec=Number(sec||0);var m=Math.floor(sec/60),s=sec%60;return (m?m+"分":"")+s+"秒";}'
-    + 'function runFetch(){el("runBtn").disabled=true;el("runBtn").style.display="none";el("cancelBtn").style.display="none";el("spinner").style.display="block";el("message").className="box";el("message").textContent="Search Consoleのデータを取得しています。\n\n完了までこの画面を閉じずにお待ちください。";el("note").textContent="取得中です。処理が完了すると件数と所要時間を表示します。";google.script.run.withFailureHandler(function(e){el("spinner").style.display="none";el("message").className="box error";el("message").textContent="Search Consoleデータの取得に失敗しました。\n\n"+((e&&e.message)?e.message:String(e));el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";el("runBtn").textContent="再実行する";el("runBtn").disabled=false;el("runBtn").style.display="inline-block";}).withSuccessHandler(function(r){r=r||{};el("spinner").style.display="none";el("message").className="box done";el("message").innerHTML="✓ Search Consoleデータの取得が完了しました。<div class=\"result\"><span>Search Console取得行</span><b>"+Number(r.rawRows||0)+"件</b><span>有効な記事URL</span><b>"+Number(r.validRows||0)+"件</b><span>除外</span><b>"+Number(r.excluded||0)+"件</b><span>所要時間</span><b>"+formatTime(r.elapsedSeconds)+"</b></div>";el("note").textContent="結果を確認して「閉じる」を押してください。";el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";}).sbmRunDailyFetchStageFromDialog();}'
+    + 'function runFetch(){el("runBtn").disabled=true;el("runBtn").style.display="none";el("cancelBtn").style.display="none";el("spinner").style.display="block";el("message").className="box";el("message").textContent="Search Consoleのデータを取得しています。"+String.fromCharCode(10,10)+"完了までこの画面を閉じずにお待ちください。";el("note").textContent="取得中です。処理が完了すると件数と所要時間を表示します。";google.script.run.withFailureHandler(function(e){el("spinner").style.display="none";el("message").className="box error";el("message").textContent="Search Consoleデータの取得に失敗しました。"+String.fromCharCode(10,10)+((e&&e.message)?e.message:String(e));el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";el("runBtn").textContent="再実行する";el("runBtn").disabled=false;el("runBtn").style.display="inline-block";}).withSuccessHandler(function(r){r=r||{};el("spinner").style.display="none";el("message").className="box done";el("message").innerHTML="✓ Search Consoleデータの取得が完了しました。<div class=result><span>Search Console取得行</span><b>"+Number(r.rawRows||0)+"件</b><span>有効な記事URL</span><b>"+Number(r.validRows||0)+"件</b><span>除外</span><b>"+Number(r.excluded||0)+"件</b><span>所要時間</span><b>"+formatTime(r.elapsedSeconds)+"</b></div>";el("note").textContent="結果を確認して「閉じる」を押してください。";el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";}).sbmRunDailyFetchStageFromDialog();}'
     + '</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(590).setHeight(500)), '日次処理');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(590).setHeight(500), '日次処理');
 }
 
 function sbmGetDailyUpdateClientStatus() {
