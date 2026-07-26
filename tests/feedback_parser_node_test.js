@@ -79,6 +79,35 @@ const future = parse({
 assert.strictEqual(future.protocol_version, 9);
 assert.strictEqual(future.changes.faq, false);
 
+
+const v42 = parse({
+  format: 'SIMS_FEEDBACK_V2', contract_version: '4.2', article_id: 'A000039',
+  publication_result: {
+    public_ok_changes: [
+      {target:'seo_title', before:'Old title', after:'New title', reason:'CTR improvement'},
+      {target:'faq', before:'', after:'FAQ added'}
+    ],
+    user_decision_changes: [{target:'body', reason:'User confirmation required'}],
+    change_summary: {overview:'Title and FAQ updated', count:2}
+  },
+  changes: {body:true},
+  new_values: {seo_title:'New title'}
+});
+assert.strictEqual(v42.publication_result_source, 'v4.2');
+assert.strictEqual(v42.changes.seo_title, true);
+assert.strictEqual(v42.changes.faq, true);
+assert.strictEqual(v42.changes.body, false);
+assert.strictEqual(v42.new_values.seo_title, 'New title');
+assert.strictEqual(Array.from(v42.user_decision_changes).length, 1);
+assert.ok(v42.summary.includes('Title and FAQ updated'));
+
+const v42StringSummary = parse({
+  format:'SIMS_FEEDBACK_V2', article_url:'https://example.com/v42',
+  publication_result:{public_ok_changes:[], user_decision_changes:[], change_summary:'公開OK修正なし'}
+});
+assert.strictEqual(v42StringSummary.summary, '公開OK修正なし');
+assert.strictEqual(v42StringSummary.publication_result_source, 'v4.2');
+
 const detailedObject = parse({
   format: 'SIMS_FEEDBACK_V2', article_id:'A3',
   changes: {meta_description:{before:'old',after:'new meta'}}
@@ -87,6 +116,6 @@ assert.strictEqual(detailedObject.changes.description, true);
 assert.strictEqual(detailedObject.new_values.description, 'new meta');
 
 assert.throws(() => parse({format:'OTHER_V2', article_id:'A1', changes:{}}), /format/);
-assert.throws(() => parse({format:'SIMS_FEEDBACK_V2', article_id:'A1'}), /changes/);
+assert.throws(() => parse({format:'SIMS_FEEDBACK_V2', article_id:'A1'}), /public_ok_changes|changes/);
 
 console.log('feedback_parser_node_test: PASS');

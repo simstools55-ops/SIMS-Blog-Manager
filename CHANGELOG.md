@@ -1,3 +1,18 @@
+## 5.6.7
+
+- Writer Contract v4.2 publication_result mapping support
+- Preserve legacy changes compatibility
+- Save public/user-decision changes and change summary
+
+## Product 5.6.6
+
+- 改善ナビで対象記事のSearch Consoleクエリを最大200件取得するよう変更しました。
+- 改善依頼文の末尾に固定列順の `Search Console Query Data` ブロックを追加しました。
+- クエリは表示回数降順で、Query / Clicks / Impressions / CTR / Positionを加工せず出力します。
+- QueryRows / CapturedImp / TotalImp / Coverage / DataTimestampを追加しました。
+- 従来の上位20クエリ表示は後方互換のため維持しています。
+- 日次処理およびシート構成は変更していません。
+
 ## Product 5.6.5
 
 - 日次処理完了画面の「記事更新」を「記事DB」へ変更しました。

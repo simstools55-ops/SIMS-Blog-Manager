@@ -4,7 +4,8 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.5';
+const SBM_VERSION = '5.6.7';
+const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
@@ -43,7 +44,7 @@ const SBM_HEADERS = Object.freeze({
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
   PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
-  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','Feedback Format','Writer Version']
+  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','公開OK変更JSON','利用者判断変更JSON','変更サマリーJSON','Feedback Format','Writer Version']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -2241,7 +2242,7 @@ function sbmUniqueCount_(arr) {
 function sbmFetchTopQueriesForUrlNow_(url, limit) {
   var originalUrl = String(url || '').trim().split('#')[0].split('?')[0];
   var normalizedUrl = sbmNormalizeUrl_(originalUrl);
-  limit = Math.max(1, Math.min(100, Number(limit || 20)));
+  limit = Math.max(1, Math.min(QUERY_ROW_LIMIT, Number(limit || QUERY_ROW_LIMIT)));
   if (!normalizedUrl) return {ok:false, queries:[], message:'記事URLが正しくありません。'};
   var property = sbmGetSetting_('SearchConsoleProperty','');
   if (!property) return {ok:false, queries:[], message:'Search Consoleプロパティが設定されていません。'};
@@ -2261,8 +2262,8 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
         startDate: range.startDate,
         endDate: range.endDate,
         dimensions: ['query'],
-        // 上位20件の判断に25,000行は不要。API応答と実行時間を優先します。
-        rowLimit: 250,
+        // 改善依頼文へ最大200件を渡すため、少し余裕を持って取得します。
+        rowLimit: Math.max(QUERY_ROW_LIMIT, 250),
         dimensionFilterGroups: [{filters:[{dimension:'page', operator:'equals', expression:variants[vi]}]}]
       });
       apiRows = data.rows || [];
@@ -2302,7 +2303,7 @@ function sbmFetchTopQueriesForUrlNow_(url, limit) {
       };
     }).filter(function(r){ return r.query; });
     queries.sort(function(a,b){
-      return (b.clicks-a.clicks) || (b.imps-a.imps) || (a.position-b.position);
+      return (b.imps-a.imps) || (b.clicks-a.clicks) || (a.position-b.position);
     });
     // 改善ナビでは取得結果をそのまま利用します。
     // SearchConsole_Data全体の読み直し・全件書き換えは行わず、タイムアウトと画面遷移を防ぎます。
@@ -4506,6 +4507,30 @@ function sbmTopQueriesPromptText_(queries,status){
   });
   return text;
 }
+function sbmDetailedQueryDataPromptText_(queries,status,totalImpressions){
+  queries=(queries||[]).slice(0,QUERY_ROW_LIMIT);
+  var capturedImpressions=queries.reduce(function(sum,q){return sum+sbmNumber_(q.imps||0);},0);
+  var total=sbmNumber_(totalImpressions||0);
+  var coverage=total>0?(capturedImpressions/total*100):0;
+  var fetchedAt=status&&status.fetchedAt?String(status.fetchedAt):sbmNowText_();
+  var text='\n==================================================\nSearch Console Query Data\n(Max '+QUERY_ROW_LIMIT+' rows)\n\n';
+  text+='DataTimestamp : '+fetchedAt+' JST\n\n';
+  text+='Query Coverage\n';
+  text+='QueryRows      : '+queries.length+'\n';
+  text+='CapturedImp    : '+capturedImpressions+'\n';
+  text+='TotalImp       : '+total+'\n';
+  text+='Coverage       : '+coverage.toFixed(2)+'%\n\n';
+  text+='Format:\nQuery|Clicks|Impressions|CTR|Position\n\n--------------------------------------------------\n\n';
+  if(!queries.length){
+    text+=(status&&status.ok===false?'取得失敗：'+String(status.message||'Search Consoleからクエリを取得できませんでした。'):'対象期間にクエリデータはありません。')+'\n';
+  }else{
+    queries.forEach(function(q){
+      text+=String(q.query||'')+'|'+sbmNumber_(q.clicks||0)+'|'+sbmNumber_(q.imps||0)+'|'+(sbmNormalizeCtrNumber_(q.ctr||0)*100).toFixed(2)+'|'+sbmNumber_(q.position||0).toFixed(1)+'\n';
+    });
+  }
+  return text+'\n==================================================\n';
+}
+
 function sbmCoreRankText_(rank){
   rank=String(rank||'');
   if(/エース|^S/.test(rank))return 'S（エース）';
@@ -4552,9 +4577,10 @@ function sbmBuildImprovementPrompt_(meta, articleData) {
   if(articleData)prompt+='\n【現在の記事本文データ（JSON）】\n```json\n'+JSON.stringify(articleData,null,2)+'\n```\n本文データを根拠に、修正箇所が明確なビフォー・アフター形式と簡潔な修正理由を示してください。アフターはそのままコピーして記事へ貼り付けられる完成形にしてください。\n';
   else prompt+='\n【現在の記事本文】\n本文を取得できていません。改善ナビで本文を貼り付けてから依頼文をコピーしてください。\n';
   prompt+=sbmInternalLinkPromptText_(internalLinkCandidates)+sbmInternalLinkRulesText_();
-  return prompt+'\n【SIMSへのフィードバック出力ルール】\n回答の最後に、下記仕様のJSONをコードブロックで必ず1つ出力してください。内部リンク候補を評価しただけの場合はchanges.internal_linksをfalseとし、実際に追加・置換・削除した場合のみtrueにしてください。\n'+
-    '{\n  "format": "SIMS_FEEDBACK_V2",\n  "version": "1.1",\n  "site_id": "'+siteId+'",\n  "site_name": "'+siteName+'",\n  "site_url": "'+siteUrl+'",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "changes": {\n    "article_title": false, "seo_title": false, "description": false,\n    "introduction": false, "headings": false, "faq": false,\n    "internal_links": false, "body": false, "images": false\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "summary": "実施した改善の要約",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
-    '変更していない項目はfalse、変更後の値がない項目は空文字にしてください。recommended_review_daysは7・14・30のいずれか、improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。';
+  return prompt+'\n【SIMSへのフィードバック出力ルール】\n回答の最後に、SIMS Writer Contract v4.2準拠のJSONをコードブロックで必ず1つ出力してください。公開OKの修正はpublication_result.public_ok_changes、利用者判断が必要な修正はpublication_result.user_decision_changesへ分けてください。\n'+
+    '{\n  "format": "SIMS_FEEDBACK_V2",\n  "contract_version": "4.2",\n  "site_id": "'+siteId+'",\n  "site_name": "'+siteName+'",\n  "site_url": "'+siteUrl+'",\n  "article_id": "'+articleId+'",\n  "article_url": "'+url+'",\n  "completed_at": "YYYY-MM-DD",\n  "publication_result": {\n    "public_ok_changes": [],\n    "user_decision_changes": [],\n    "change_summary": "実施した改善の要約"\n  },\n  "new_values": {\n    "article_title": "", "seo_title": "", "description": "", "main_query": "'+query+'"\n  },\n  "improvement_type": "normal",\n  "confidence": "high",\n  "expected_effect": {"ctr": "", "clicks": ""},\n  "next_action": "monitor",\n  "warnings": [],\n  "estimated_minutes": 20,\n  "recommended_review_days": 14\n}\n'+
+    'public_ok_changesとuser_decision_changesは配列形式で出力し、各変更にはtarget・before・after・reasonを含めてください。変更がない場合は空配列にしてください。recommended_review_daysは7・14・30のいずれか、improvement_typeはminor・normal・major、confidenceはhigh・medium・low、next_actionはmonitor・remeasure・rewrite・noneのいずれかにしてください。'+
+    sbmDetailedQueryDataPromptText_(topQueries,meta.topQueryStatus,meta.imps);
 }
 
 function sbmSaveMainQueryForArticle_(url, mainQuery) {
@@ -4587,7 +4613,7 @@ function sbmShowImprovementNaviDialog_(a, kind, reason) {
   var target=sbmExpectedCtrTarget_(pos), expected=Math.max(0,Math.round(imps*Math.max(0,target-ctr)));
   var advice= kind.indexOf('CTR')>=0 ? ['P0：SEOタイトルを検索意図に合わせる','P1：導入文で結論と対象読者を明確にする','P2：検索クエリに対応するFAQを追加する'] : ['P0：タイトル・見出しを主検索意図に合わせる','P1：導入文を短くし、結論を先に提示する','P2：不足する説明を1～2項目追加する'];
   try { SpreadsheetApp.getActiveSpreadsheet().toast('対象記事の最新クエリをSearch Consoleから取得しています。通常は数秒で完了します。','改善ナビ',10); } catch(e) {}
-  var freshQueryResult=sbmFetchTopQueriesForUrlNow_(url,20);
+  var freshQueryResult=sbmFetchTopQueriesForUrlNow_(url,QUERY_ROW_LIMIT);
   if (!query && freshQueryResult && freshQueryResult.queries && freshQueryResult.queries.length) {
     query = String(freshQueryResult.queries[0].query || '').trim();
     if (query) { a['メインクエリ'] = query; try { sbmSaveMainQueryForArticle_(url, query); } catch(e) {} }
@@ -4801,7 +4827,7 @@ const SBM_HISTORY_HEADERS_V2 = [
   '最終総括','最終改善提案',
   'ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ',
   '改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）',
-  '注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','Feedback Format','Writer Version'
+  '注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','公開OK変更JSON','利用者判断変更JSON','変更サマリーJSON','Feedback Format','Writer Version'
 ];
 
 const SBM_EFFECT_HEADERS_V2 = [
@@ -4867,6 +4893,7 @@ function sbmEnsureHistoryAndEffectSchemas_() {
     '注意事項':['注意事項'], '改善前クリック':['改善前クリック'], '改善前表示回数':['改善前表示回数'],
     '改善前CTR':['改善前CTR'], '改善前順位':['改善前順位'], 'AI改善結果JSON':['AI改善結果JSON'],
     '改善履歴ID':['改善履歴ID'], '改善計画JSON':['改善計画JSON'],
+    '公開OK変更JSON':['公開OK変更JSON'], '利用者判断変更JSON':['利用者判断変更JSON'], '変更サマリーJSON':['変更サマリーJSON'],
     'Feedback Format':['Feedback Format','フィードバック形式'], 'Writer Version':['Writer Version','SIMS Writer Version','Writerバージョン']
   });
   sbmMigrateSheetByHeaderNames_(SBM_SHEETS.EFFECT, SBM_EFFECT_HEADERS_V2, {
@@ -5034,12 +5061,17 @@ function sbmNormalizeImprovementFeedback_(raw) {
   var articleId = String(obj.article_id || obj.articleId || '').trim();
   var articleUrl = String(obj.article_url || obj.url || obj.articleUrl || '').trim();
   if (!articleId && !articleUrl) throw new Error('改善結果登録には article_id または article_url が必要です。');
-  var hasChanges = Object.prototype.hasOwnProperty.call(obj, 'changes');
-  if (!hasChanges || !obj.changes || typeof obj.changes !== 'object') {
-    throw new Error('改善結果登録に必要な changes がありません。changes はオブジェクト形式または配列形式で指定してください。');
+  var publicationResult = (obj.publication_result && typeof obj.publication_result === 'object' && !Array.isArray(obj.publication_result)) ? obj.publication_result : {};
+  var hasPublicOkChanges = Object.prototype.hasOwnProperty.call(publicationResult, 'public_ok_changes') &&
+    publicationResult.public_ok_changes !== null && typeof publicationResult.public_ok_changes === 'object';
+  var hasLegacyChanges = Object.prototype.hasOwnProperty.call(obj, 'changes') &&
+    obj.changes !== null && typeof obj.changes === 'object';
+  if (!hasPublicOkChanges && !hasLegacyChanges) {
+    throw new Error('改善結果登録に必要な publication_result.public_ok_changes または changes がありません。');
   }
 
-  var normalizedResult = sbmNormalizeFeedbackChanges_(obj.changes, obj.change_flags);
+  var primaryChanges = hasPublicOkChanges ? publicationResult.public_ok_changes : obj.changes;
+  var normalizedResult = sbmNormalizeFeedbackChanges_(primaryChanges, obj.change_flags);
   var normalizedChanges = normalizedResult.flags;
   var changeDetails = normalizedResult.details;
   var nv = (obj.new_values && typeof obj.new_values === 'object') ? obj.new_values :
@@ -5051,6 +5083,14 @@ function sbmNormalizeImprovementFeedback_(raw) {
   if (!isFinite(minutes) || minutes < 0) minutes = 0;
   var warnings = Array.isArray(obj.warnings) ? obj.warnings.map(String) : [];
   var completedAt = String(obj.completed_at || obj.completedAt || sbmDateText_(new Date()));
+  var userDecisionChanges = Object.prototype.hasOwnProperty.call(publicationResult, 'user_decision_changes') ? publicationResult.user_decision_changes : [];
+  var changeSummary = Object.prototype.hasOwnProperty.call(publicationResult, 'change_summary') ? publicationResult.change_summary : '';
+  function flexibleText(value) {
+    if (value === undefined || value === null) return '';
+    if (typeof value === 'string') return value.trim();
+    try { return JSON.stringify(value); } catch (e) { return String(value); }
+  }
+  var summaryText = String(obj.summary || '').trim() || flexibleText(changeSummary) || '改善内容の登録';
 
   return {
     format: format,
@@ -5063,6 +5103,10 @@ function sbmNormalizeImprovementFeedback_(raw) {
     ai_name: String(obj.ai_name || obj.ai || obj.model || (obj.writer && obj.writer.name) || ''),
     changes: normalizedChanges,
     change_details: changeDetails,
+    publication_result_source: hasPublicOkChanges ? 'v4.2' : 'legacy',
+    public_ok_changes: primaryChanges,
+    user_decision_changes: userDecisionChanges,
+    change_summary: changeSummary,
     new_values: {
       article_title: String(nv.article_title || nv.title || ''),
       seo_title: String(nv.seo_title || ''),
@@ -5074,7 +5118,7 @@ function sbmNormalizeImprovementFeedback_(raw) {
     expected_effect: (obj.expected_effect && typeof obj.expected_effect === 'object') ? obj.expected_effect : {},
     next_action: String(obj.next_action || 'monitor'),
     kept_sections: Array.isArray(obj.kept_sections) ? obj.kept_sections.map(String) : (Array.isArray(obj.protected_elements) ? obj.protected_elements.map(String) : []),
-    summary: String(obj.summary || '').trim() || '改善内容の登録',
+    summary: summaryText,
     warnings: warnings,
     estimated_minutes: minutes,
     recommended_review_days: days,
@@ -5103,6 +5147,9 @@ function sbmAppendImprovementHistory_(data,row,before) {
     '維持した項目':(data.kept_sections||[]).join(' / '),'作業時間（分）':data.estimated_minutes,'注意事項':data.warnings.join(' / '),
     '改善前クリック':before.clicks,'改善前表示回数':before.impressions,'改善前CTR':before.ctr,'改善前順位':before.position,
     'AI改善結果JSON':data.raw_json||'','改善履歴ID':historyId,'改善計画JSON':JSON.stringify(planSnapshot||{}),
+    '公開OK変更JSON':JSON.stringify(data.public_ok_changes===undefined?{}:data.public_ok_changes),
+    '利用者判断変更JSON':JSON.stringify(data.user_decision_changes===undefined?[]:data.user_decision_changes),
+    '変更サマリーJSON':typeof data.change_summary==='string'?data.change_summary:JSON.stringify(data.change_summary===undefined?'':data.change_summary),
     'Feedback Format':data.format||'','Writer Version':data.writer_version||''
   };
   sh.appendRow(SBM_HISTORY_HEADERS_V2.map(function(h){return record[h]!==undefined?record[h]:'';}));

@@ -1,3 +1,10 @@
+# SIMS-Blog-Manager Product 5.6.7
+
+- SIMS Writer Contract v4.2 `publication_result.public_ok_changes` に対応
+- `user_decision_changes` と `change_summary` を改善履歴へ保存
+- 旧 `changes` の後方互換を維持
+- 改善依頼文の出力例をContract v4.2へ更新
+
 # SIMS-Blog-Manager Product 5.4.3 Maintenance
 
 SIMS Writer v1.0.0以降の `changes` 配列形式を登録できるようにし、V1オブジェクト形式との後方互換を維持しました。`change_flags` と未知フィールドも許容します。
