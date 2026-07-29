@@ -4,9 +4,9 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.7';
+const SBM_VERSION = '5.6.8';
 const QUERY_ROW_LIMIT = 200;
-const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v2';
+const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
   HOME: 'Home',
   TODAY: '今日の改善',
@@ -33,7 +33,7 @@ const SBM_HEADERS = Object.freeze({
   USER_SETTINGS: ['設定項目','値','説明'],
   SYSTEM_LOG: ['CreatedAt', 'Action', 'Status', 'Detail'],
   QUERY_DATA: ['記事ステータス','記事タイトル','メインクエリ','クリック数','表示回数','CTR','平均順位','詳細','最終取得日時','記事URL','SEOタイトル（titleタグ）','メタディスクリプション'],
-  ARTICLE_DB: ['選択','記事ランク','作業状態','記事URL','メインクエリ','クリック数','表示回数','CTR','掲載順位','データ更新日','記事タイトル','詳細','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス','最終確認日','連続未取得日数','管理フラグ'],
+  ARTICLE_DB: ['選択','記事ランク','作業状態','記事URL','メインクエリ','H1タイトル','クリック数','表示回数','CTR','掲載順位','データ更新日','記事タイトル','詳細','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考','ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス','最終確認日','連続未取得日数','管理フラグ'],
   RAW_DATA: ['StartDate','EndDate','Query','URL','Clicks','Impressions','CTR','Position','CapturedAt'],
   DIAGNOSIS: ['URL','Title','MainQuery','SubQueries','FAQQueries','SeparateArticleQueries','NoiseQueries','QuerySummary','Clicks','Impressions','CTR','Position','DiagnosisCode','Diagnosis','Recommendation','EstimatedMinutes','OpportunityScore','Reason','AnalyzedAt'],
   TODAY: ['選択','区分','記事タイトル','改善理由・期待効果','予想時間','記事ランク','メインクエリ','クリック数','表示回数','CTR','掲載順位','記事URL','候補ID'],
@@ -1390,6 +1390,7 @@ function sbmNextArticleId_(map) {
 function sbmWriteArticleDbObjects_(map) {
   var rows = Object.keys(map || {}).map(function(url){
     var r = map[url];
+    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
   });
   sbmWriteArticleDb_(rows);
@@ -1693,6 +1694,7 @@ function sbmMergeArticleDbDaily_(freshRows) {
   sbmApplyArticleRanksToObjectMap_(map);
   var rows = Object.keys(map).map(function(url){
     var r = map[url];
+    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
   });
   sbmWriteArticleDb_(rows);
@@ -1832,6 +1834,7 @@ function sbmSupplementArticleDbMetaManual(silent) {
         preserved['補完日時'] = now;
         preserved['補完エラー'] = '';
       }
+      preserved['H1タイトル'] = preserved['H1タイトル'] || preserved['記事タイトル'] || '';
       out.push(SBM_HEADERS.ARTICLE_DB.map(function(h){ return preserved[h] !== undefined ? preserved[h] : ''; }));
     }
 
@@ -3934,7 +3937,8 @@ function sbmUpdateArticleRankManual() {
     sbmApplyArticleRanksToObjectMap_(map);
     var out = Object.keys(map).map(function(url){
       var r = map[url];
-      return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
+      r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
+    return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
     });
     sbmWriteArticleDb_(out);
     sbmUpdateHomeArticleDbCounts_(out);
@@ -5377,7 +5381,15 @@ function sbmSortArticleDbRows_(rows){rows=rows||[];rows.sort(function(a,b){var w
 function sbmMigrateArticleManagementSheet_() {
   var ss=SpreadsheetApp.getActiveSpreadsheet(), old=ss.getSheetByName('記事DB'), cur=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
   if(old&&!cur){old.setName(SBM_SHEETS.ARTICLE_DB);cur=old;}
-  if(cur){var heads=cur.getRange(1,1,1,Math.max(1,cur.getLastColumn())).getDisplayValues()[0].map(String);if(heads.indexOf('選択')<0)sbmMigrateSheetByHeaderNames_(SBM_SHEETS.ARTICLE_DB,SBM_HEADERS.ARTICLE_DB,{});}
+  if(cur){
+    var heads=cur.getRange(1,1,1,Math.max(1,cur.getLastColumn())).getDisplayValues()[0].map(String);
+    var expected=SBM_HEADERS.ARTICLE_DB;
+    var mismatch=heads.length<expected.length || expected.some(function(h,i){return heads[i]!==h;});
+    if(mismatch){
+      sbmMigrateSheetByHeaderNames_(SBM_SHEETS.ARTICLE_DB,expected,{'H1タイトル':['H1タイトル','記事タイトル']});
+      sbmStyleArticleDbSheet_(sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB));
+    }
+  }
 }
 function sbmSelectedArticleContext_(){try{var sh=SpreadsheetApp.getActiveSheet();if(!sh||[SBM_SHEETS.ARTICLE_DB,SBM_SHEETS.TODAY].indexOf(sh.getName())<0)return null;var row=sbmGetCheckedRow_(sh,true)||((sh.getActiveRange()&&sh.getActiveRange().getRow()>1)?sh.getActiveRange().getRow():0);if(!row)return null;var rec=sbmRowRecord_(sh,row),url=String(rec['記事URL']||''),a=sbmFindArticleDbByUrl_(url)||rec;return{articleId:String(a['ArticleID']||''),articleUrl:String(a['記事URL']||url),articleTitle:String(a['記事タイトル']||rec['記事タイトル']||'')};}catch(e){return null;}}
 function sbmGetSelectedArticleDbSummary(){var sh=SpreadsheetApp.getActiveSheet();if(!sh||sh.getName()!==SBM_SHEETS.ARTICLE_DB)return{ok:false};var row=sbmGetCheckedRow_(sh,true)||((sh.getActiveRange()&&sh.getActiveRange().getRow()>1)?sh.getActiveRange().getRow():0);if(!row)return{ok:false};var hm=sbmHeaderMap_(sh);function val(n){return hm[n]?sh.getRange(row,hm[n]).getDisplayValue():'';}return{ok:true,row:row,title:val('記事タイトル'),url:val('記事URL'),rank:val('記事ランク'),work:val('作業状態')};}
@@ -6226,15 +6238,17 @@ function sbmStyleArticleDbSheet_(sh) {
   sh.setRowHeight(1, 34);
 
   var widths = {
-    '選択':48,'記事ランク':110,'作業状態':115,'記事URL':285,'メインクエリ':210,
+    '選択':48,'記事ランク':110,'作業状態':115,'記事URL':285,'メインクエリ':210,'H1タイトル':430,
     'クリック数':90,'表示回数':95,'CTR':72,'掲載順位':88,'データ更新日':105,'記事タイトル':430
   };
   Object.keys(widths).forEach(function(h){
     if (hm[h]) sh.setColumnWidth(hm[h], widths[h]);
   });
 
+  try { sh.showColumns(1, Math.min(11, sh.getMaxColumns())); } catch (e) {}
+
   [
-    'SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考',
+    '記事タイトル','SEOタイトル','メタディスクリプション','最終取得日時','元URL件数','除外理由','備考',
     'ArticleID','記事情報補完済み','補完日時','補完エラー','記事ステータス',
     '最終確認日','連続未取得日数','管理フラグ','詳細'
   ].forEach(function(h){
@@ -6248,7 +6262,7 @@ function sbmStyleArticleDbSheet_(sh) {
     sh.getRange(2, 1, n, lc).setVerticalAlignment('middle');
     sh.setRowHeights(2, n, 54);
 
-    ['記事タイトル','メインクエリ','記事URL'].forEach(function(h){
+    ['H1タイトル','メインクエリ','記事URL'].forEach(function(h){
       if (hm[h]) sh.getRange(2, hm[h], n, 1).setWrap(true).setVerticalAlignment('top');
     });
 
@@ -6282,7 +6296,7 @@ function sbmInitializeSheets(showAlert) {
 
   // Product 5.1 Official: 改善履歴を4回測定形式へ強制移行
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.4.1のシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.8の記事一覧・改善の推移表示構造バージョン');
 
   // 改善履歴と改善の推移を非破壊で再構築・再表示
   try {
@@ -7013,6 +7027,8 @@ function sbmStyleEffectSheetV2_() {
     if (hm[h]) sh.setColumnWidth(hm[h], widths[h]);
   });
 
+  // 旧版や利用者操作で非表示になった列も、一覧表示時に必ず復元します。
+  try { sh.showColumns(1, Math.min(11, sh.getMaxColumns())); } catch (e) {}
   if (sh.getMaxColumns() >= 12) {
     try { sh.hideColumns(12, sh.getMaxColumns() - 11); } catch (e) {}
   }
@@ -7678,7 +7694,7 @@ function sbmEnsureOfficialSchemaOnce_() {
   sbmMigrateArticleManagementSheet_();
   sbmMigrateEffectSheetName_();
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.4.1のシート構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.8の記事一覧・改善の推移表示構造バージョン');
   return true;
 }
 

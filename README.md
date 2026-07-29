@@ -1,10 +1,10 @@
-# SIMS-Blog-Manager Product 5.6.7 Official
+# SIMS-Blog-Manager Product 5.6.8 Official
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
 ## 正式バージョン
 
-`5.6.7`
+`5.6.8`
 
 ## 毎日の基本操作
 
@@ -48,6 +48,12 @@ Google Search Consoleのデータを使い、改善する記事の選定、改�
 - `spreadsheet/`：テンプレートとシート仕様
 - `tests/`：テスト手順
 
+
+## Product 5.6.8 — 記事一覧H1表示・改善の推移表示修正
+
+- 記事一覧で、保存済みH1タイトルをメインクエリとクリック数の間に表示
+- 改善の推移で現在順位と判定まで必ず表示
+- 日次処理や外部取得処理は変更なし
 
 ## Product 5.6.7 — SIMS Writer Contract v4.2対応
 
