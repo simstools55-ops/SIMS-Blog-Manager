@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.8';
+const SBM_VERSION = '5.6.9';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -5432,7 +5432,7 @@ function onEdit(e){
   }catch(err2){console.error(err2);}
 }
 
-function sbmOpenEffectiveness(){sbmMigrateEffectSheetName_();var sh=sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);sh.activate();}
+function sbmOpenEffectiveness(){sbmMigrateEffectSheetName_();var sh=sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);try{sbmStyleEffectSheetV2_();}catch(e){}SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh);sh.activate();}
 function sbmUpdateEffectiveness(){sbmMigrateEffectSheetName_();return sbmUpdateEffectivenessCore_(true);}
 
 
@@ -7056,8 +7056,42 @@ function sbmStyleEffectSheetV2_() {
     if (hm['経過日数']) sh.getRange(2, hm['経過日数'], n, 1).setNumberFormat('0');
     if (hm['改善前CTR']) sh.getRange(2, hm['改善前CTR'], n, 1).setNumberFormat('0.0%');
     if (hm['現在CTR']) sh.getRange(2, hm['現在CTR'], n, 1).setNumberFormat('0.0%');
-    if (hm['改善前順位']) sh.getRange(2, hm['改善前順位'], n, 1).setNumberFormat('0.0');
-    if (hm['現在順位']) sh.getRange(2, hm['現在順位'], n, 1).setNumberFormat('0.0');
+    if (hm['改善前順位']) {
+      var beforePosRange = sh.getRange(2, hm['改善前順位'], n, 1);
+      beforePosRange.setValues(beforePosRange.getValues().map(function(r){
+        var v = r[0];
+        if (v === '' || v === null) return [''];
+        var num = Number(String(v).replace(/,/g, '').trim());
+        return [isFinite(num) ? num : v];
+      })).setNumberFormat('0.0').setHorizontalAlignment('right');
+    }
+    if (hm['現在順位']) {
+      var currentPosRange = sh.getRange(2, hm['現在順位'], n, 1);
+      currentPosRange.setValues(currentPosRange.getValues().map(function(r){
+        var v = r[0];
+        if (v === '' || v === null) return [''];
+        var num = Number(String(v).replace(/,/g, '').trim());
+        return [isFinite(num) ? num : v];
+      })).setNumberFormat('0.0').setHorizontalAlignment('right');
+    }
+
+    if (hm['判定']) {
+      var judgmentRange = sh.getRange(2, hm['判定'], n, 1);
+      var judgmentValues = judgmentRange.getDisplayValues();
+      var backgrounds = [], fontColors = [], fontWeights = [];
+      judgmentValues.forEach(function(r) {
+        var value = String(r[0] || '').trim();
+        var bg = '#f1f3f4', fg = '#5f6368', weight = 'normal';
+        if (value === '大きく改善') { bg = '#0b8043'; fg = '#ffffff'; weight = 'bold'; }
+        else if (value === '改善') { bg = '#b7e1cd'; fg = '#0d652d'; weight = 'bold'; }
+        else if (value === '横ばい') { bg = '#fce8b2'; fg = '#7a4f01'; weight = 'bold'; }
+        else if (value === '悪化') { bg = '#f4c7c3'; fg = '#b31412'; weight = 'bold'; }
+        else if (value === '測定中') { bg = '#d2e3fc'; fg = '#174ea6'; weight = 'bold'; }
+        else if (value === '測定待ち' || value === '未測定' || value === '未判定') { bg = '#e8eaed'; fg = '#5f6368'; }
+        backgrounds.push([bg]); fontColors.push([fg]); fontWeights.push([weight]);
+      });
+      judgmentRange.setBackgrounds(backgrounds).setFontColors(fontColors).setFontWeights(fontWeights).setHorizontalAlignment('center');
+    }
 
     sh.setRowHeights(2, n, 58);
     try { sh.autoResizeRows(2, n); } catch (e) {}
