@@ -1,3 +1,7 @@
+## Product 5.6.10 — Search Console列マッピング緊急修正
+
+Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
+
 # SIMS-Blog-Manager Product 5.6.8 Official
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。

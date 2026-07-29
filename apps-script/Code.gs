@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.9';
+const SBM_VERSION = '5.6.10';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -1539,11 +1539,41 @@ function sbmFetchSearchConsolePageRowsForArticleDb_(profiler) {
     var ctr = m.impressions ? m.clicks / m.impressions : 0;
     var pos = m.impressions ? m.weightedPositionSum / m.impressions : 0;
     var status = sbmClassifyArticleDbStatus_(url, m.clicks, m.impressions, ctr, pos, statusMap);
-    return [false, sbmLegacyStatusToRank_(status), sbmLegacyStatusToWorkState_(status), url, '', m.clicks, m.impressions, ctr, pos, sbmDisplayDateText_(m.capturedAt), '', '記事詳細', '', '', m.capturedAt, m.originalCount, '', '', '', '×', '', '', sbmStatusLabel_(status), sbmDisplayDateText_(m.capturedAt), 0, '正常'];
+    return [false, sbmLegacyStatusToRank_(status), sbmLegacyStatusToWorkState_(status), url, '', '', m.clicks, m.impressions, ctr, pos, sbmDisplayDateText_(m.capturedAt), '', '記事詳細', '', '', m.capturedAt, m.originalCount, '', '', '', '×', '', '', sbmStatusLabel_(status), sbmDisplayDateText_(m.capturedAt), 0, '正常'];
   });
   out = sbmSortArticleDbRows_(out);
   if (profiler) profiler.lap('URL正規化・記事URL抽出', rows.length, out.length, '#付きURL ' + fragmentCount + '件 / 除外 ' + excluded + '件 / サンプル ' + invalidSamples.join(' | ') + ' / ' + sbmSecondsSince_(tNormalize) + '秒');
   return {rawRows: rows.length, rows: out, excluded: excluded, fragmentCount: fragmentCount};
+}
+
+
+/** Product 5.6.10: Search Consoleページ行の列ずれ・異常値をDB書込み前に検知します。 */
+function sbmValidateFreshArticleDbRows_(freshRows) {
+  var headers = SBM_HEADERS.ARTICLE_DB;
+  var idx = {};
+  headers.forEach(function(h, i){ idx[h] = i; });
+  var errors = [];
+  (freshRows || []).forEach(function(row, n){
+    if (!Array.isArray(row) || row.length !== headers.length) {
+      errors.push('行' + (n + 1) + ': 列数 ' + (Array.isArray(row) ? row.length : '不正') + '（期待値 ' + headers.length + '）');
+      return;
+    }
+    var url = String(row[idx['記事URL']] || '');
+    var clicks = sbmNumber_(row[idx['クリック数']]);
+    var imps = sbmNumber_(row[idx['表示回数']]);
+    var ctr = sbmNumber_(row[idx['CTR']]);
+    var pos = sbmNumber_(row[idx['掲載順位']]);
+    if (!isFinite(clicks) || clicks < 0) errors.push('行' + (n + 1) + ': クリック数異常 ' + clicks + ' / ' + url);
+    if (!isFinite(imps) || imps < 0) errors.push('行' + (n + 1) + ': 表示回数異常 ' + imps + ' / ' + url);
+    if (!isFinite(ctr) || ctr < 0 || ctr > 1.000001) errors.push('行' + (n + 1) + ': CTR異常 ' + ctr + ' / ' + url);
+    if (!isFinite(pos) || pos < 0 || pos > 1000) errors.push('行' + (n + 1) + ': 掲載順位異常 ' + pos + ' / ' + url);
+    if (clicks > imps && imps >= 0) errors.push('行' + (n + 1) + ': クリック数が表示回数を超過 ' + clicks + '/' + imps + ' / ' + url);
+    if (imps === 0 && clicks > 0) errors.push('行' + (n + 1) + ': 表示回数0でクリックあり / ' + url);
+  });
+  if (errors.length) {
+    throw new Error('Search Consoleデータの列対応または値に異常があります。記事DBの更新を中止しました。\n' + errors.slice(0, 10).join('\n'));
+  }
+  return true;
 }
 
 
@@ -1616,6 +1646,7 @@ function sbmSortArticleDbManual() {
  * 新規URLだけ新しいArticleIDで追加し、記事情報は未補完として保持します。
  */
 function sbmMergeArticleDbDaily_(freshRows) {
+  sbmValidateFreshArticleDbRows_(freshRows || []);
   var existingRows = [];
   try { existingRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
   var map = {};
