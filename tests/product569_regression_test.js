@@ -6,6 +6,6 @@ const checks=[
  ['Query 200 retained',code.includes('QUERY_ROW_LIMIT = 200')],
  ['Effect columns visible',code.includes('sh.showColumns(1, Math.min(11, sh.getMaxColumns()))')],
  ['Current position decimal',code.includes('currentPosRange')&&code.includes("setNumberFormat('0.0')")],
- ['Judgment colors',code.includes("value === '大きく改善'")&&code.includes("value === '悪化'")]
+ ['Judgment colors',code.includes("value === '大きく改善'")&&code.includes("value === '元に戻す検討'")]
 ];
 let ok=true;for(const [n,v] of checks){console.log((v?'PASS ':'FAIL ')+n);if(!v)ok=false;}process.exit(ok?0:1);

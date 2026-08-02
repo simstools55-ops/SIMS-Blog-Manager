@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.4.3
+ * SIMS-Blog-Manager Product 5.6.11
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.10';
+const SBM_VERSION = '5.6.11';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -66,8 +66,8 @@ const SBM_DEFAULTS = Object.freeze({
   META_FETCH_MAX_ROWS: 50,
   ARTICLE_DB_BUILD_BATCH: 100,
   ARTICLE_INFO_BATCH: 50,
-  TODAY_INITIAL_DISPLAY: 2,
-  TODAY_MAX_DISPLAY: 6,
+  TODAY_INITIAL_DISPLAY: 5,
+  TODAY_MAX_DISPLAY: 10,
   TIMEZONE: 'Asia/Tokyo'
 });
 
@@ -350,7 +350,7 @@ function sbmRunDailyAnalysisStageFromDialog() {
     var candidateCount = candidates.length;
     var displayedCount = 0;
     if (candidateCount > 0) {
-      displayedCount = Math.min(2, candidateCount);
+      displayedCount = Math.min(sbmGetTodayDisplayCount_(), candidateCount);
       sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '日次処理で作成した今日の改善候補');
       sbmSetSetting_('DisplayedImprovementCount', String(displayedCount), '今日の改善の初期表示件数');
       sbmWriteTodayRecommendations_(candidates, displayedCount);
@@ -748,9 +748,9 @@ function sbmEnsureDefaultSettings_() {
   sbmSetSettingIfEmpty_('ManagedRatio', SBM_DEFAULTS.MANAGED_RATIO, '管理対象割合');
   sbmSetSettingIfEmpty_('DailyMinutes', SBM_DEFAULTS.DAILY_MINUTES, '今日の改善時間');
   sbmSetSettingIfEmpty_('QueueLimit', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY, '今日の改善の初期表示件数');
-  sbmSetSettingIfEmpty_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY, '今日の改善の初期表示件数');
-  sbmSetSettingIfEmpty_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY, '今日の改善の最大表示件数');
-  sbmSetSettingIfEmpty_('TodayDisplayMode', 'TOP5', '今日の改善表示モード。TOP5 または ALL');
+  sbmSetSettingIfEmpty_('TodayDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY, '今日の改善に表示する件数。1～10');
+  sbmSetSettingIfEmpty_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY, '旧版互換。今日の改善表示件数');
+  sbmSetSettingIfEmpty_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY, '旧版互換。改善候補保持上限');
   sbmSetSettingIfEmpty_('RelatedQueries', SBM_DEFAULTS.RELATED_QUERIES, '改善ブリーフ用クエリ件数。Product 5.0では最大50件を分類');
   sbmSetSettingIfEmpty_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS, '最低表示回数');
   sbmSetSettingIfEmpty_('MinClicks', SBM_DEFAULTS.MIN_CLICKS, '最低クリック数');
@@ -819,51 +819,42 @@ function sbmBuildUserSettingsSheet_() {
 
   var articleBatch = validInt_(previous['記事情報補完件数'], 30, 100,
     validInt_(sbmGetSetting_('ArticleInfoBatch', SBM_DEFAULTS.ARTICLE_INFO_BATCH), 30, 100, SBM_DEFAULTS.ARTICLE_INFO_BATCH));
-  var todayInitial = validInt_(previous['今日の改善初期表示件数'], 1, 6,
-    validInt_(sbmGetSetting_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY), 1, 6, SBM_DEFAULTS.TODAY_INITIAL_DISPLAY));
-  var todayMax = validInt_(previous['今日の改善最大表示件数'], 2, 6,
-    validInt_(sbmGetSetting_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY), 2, 6, SBM_DEFAULTS.TODAY_MAX_DISPLAY));
-  if (todayMax < todayInitial) todayMax = Math.max(todayInitial, SBM_DEFAULTS.TODAY_MAX_DISPLAY);
+  var todayDisplay = validInt_(previous['今日の改善表示件数'], 1, 10,
+    validInt_(sbmGetSetting_('TodayDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY), 1, 10, SBM_DEFAULTS.TODAY_INITIAL_DISPLAY));
   var candidateLimit = validInt_(previous['改善候補抽出件数'], 10, 10,
     validInt_(sbmGetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT), 10, 10, SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT));
   var searchDays = validInt_(previous['Search Console取得期間（日）'], 7, 365,
     validInt_(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS), 7, 365, SBM_DEFAULTS.SEARCH_DAYS));
 
   sh.clear();
-  sh.getRange(1,1,6,3).setValues([
+  sh.getRange(1,1,5,3).setValues([
     SBM_HEADERS.USER_SETTINGS,
     ['記事情報補完件数', articleBatch, '初回セットアップで1回に補完する記事数。30～100の整数（推奨50件）'],
-    ['今日の改善初期表示件数', todayInitial, '今日の改善を開いたときに最初に表示する件数。1～6の整数（推奨2件）'],
-    ['今日の改善最大表示件数', todayMax, '「次のおすすめ」で追加表示できる上限。2～6の整数（正式上限6件）'],
-    ['改善候補抽出件数', candidateLimit, '記事DBから保持する改善候補数。Product 5.1 Officialでは10件固定'],
+    ['今日の改善表示件数', todayDisplay, '保持済みの改善候補10件から今日の改善に表示する件数。1～10の整数（初期値5件）'],
+    ['改善候補抽出件数', candidateLimit, '記事DBから保持する改善候補数。10件固定'],
     ['Search Console取得期間（日）', searchDays, 'ページ指標を集計する期間。7～365日の整数（推奨90日）']
   ]);
 
   function intRule_(min, max) {
-    return SpreadsheetApp.newDataValidation()
-      .requireNumberBetween(min, max)
-      .setAllowInvalid(false)
-      .setHelpText(min + '～' + max + 'の整数を入力してください。')
-      .build();
+    return SpreadsheetApp.newDataValidation().requireNumberBetween(min, max).setAllowInvalid(false)
+      .setHelpText(min + '～' + max + 'の整数を入力してください。').build();
   }
   sh.getRange('B2').setDataValidation(intRule_(30,100));
-  sh.getRange('B3').setDataValidation(intRule_(1,6));
-  sh.getRange('B4').setDataValidation(intRule_(2,20));
-  sh.getRange('B5').setDataValidation(intRule_(10,200));
-  sh.getRange('B6').setDataValidation(intRule_(7,365));
-  sh.getRange('B2:B6').setNumberFormat('0');
+  sh.getRange('B3').setDataValidation(intRule_(1,10));
+  sh.getRange('B4').setDataValidation(intRule_(10,10));
+  sh.getRange('B5').setDataValidation(intRule_(7,365));
+  sh.getRange('B2:B5').setNumberFormat('0');
   sh.setFrozenRows(1);
-  sh.setColumnWidth(1, 250);
-  sh.setColumnWidth(2, 120);
-  sh.setColumnWidth(3, 650);
+  sh.setColumnWidth(1, 250); sh.setColumnWidth(2, 120); sh.setColumnWidth(3, 650);
   sh.getRange('A1:C1').setBackground('#0b8043').setFontColor('#ffffff').setFontWeight('bold');
-  sh.getRange('A1:C6').setBorder(true,true,true,true,true,true).setVerticalAlignment('middle').setWrap(true);
-  sh.getRange('B2:B6').setBackground('#fff2cc').setFontWeight('bold').setHorizontalAlignment('center');
+  sh.getRange('A1:C5').setBorder(true,true,true,true,true,true).setVerticalAlignment('middle').setWrap(true);
+  sh.getRange('B2:B5').setBackground('#fff2cc').setFontWeight('bold').setHorizontalAlignment('center');
 
   sbmSetSetting_('ArticleInfoBatch', articleBatch, '記事情報補完の1回あたり件数。30～100');
-  sbmSetSetting_('TodayInitialDisplayCount', todayInitial, '今日の改善の初期表示件数');
-  sbmSetSetting_('QueueLimit', todayInitial, '既存の今日の改善表示件数と同期');
-  sbmSetSetting_('TodayMaxDisplayCount', todayMax, '今日の改善の最大表示件数');
+  sbmSetSetting_('TodayDisplayCount', todayDisplay, '今日の改善に表示する件数。1～10');
+  sbmSetSetting_('TodayInitialDisplayCount', todayDisplay, '旧版互換。今日の改善表示件数');
+  sbmSetSetting_('QueueLimit', todayDisplay, '旧版互換。今日の改善表示件数');
+  sbmSetSetting_('TodayMaxDisplayCount', 10, '旧版互換。改善候補保持上限');
   sbmSetSetting_('AnalysisCandidateLimit', candidateLimit, '改善候補抽出件数');
   sbmSetSetting_('SearchDays', searchDays, 'Search Console取得期間（日）');
 }
@@ -888,16 +879,17 @@ function sbmGetArticleInfoBatch_() {
   return n;
 }
 
-function sbmGetTodayInitialDisplayCount_() {
-  var n = sbmNumber_(sbmGetSetting_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY)) || SBM_DEFAULTS.TODAY_INITIAL_DISPLAY;
-  return Math.max(1, Math.min(6, Math.floor(n)));
+function sbmGetTodayDisplayCount_() {
+  var legacy = sbmGetSetting_('TodayInitialDisplayCount', SBM_DEFAULTS.TODAY_INITIAL_DISPLAY);
+  var n = sbmNumber_(sbmGetSetting_('TodayDisplayCount', legacy)) || SBM_DEFAULTS.TODAY_INITIAL_DISPLAY;
+  n = Math.max(1, Math.min(10, Math.floor(n)));
+  sbmSetSetting_('TodayDisplayCount', String(n), '今日の改善に表示する件数。1～10');
+  return n;
 }
 
-function sbmGetTodayMaxDisplayCount_() {
-  var initial = sbmGetTodayInitialDisplayCount_();
-  var n = sbmNumber_(sbmGetSetting_('TodayMaxDisplayCount', SBM_DEFAULTS.TODAY_MAX_DISPLAY)) || SBM_DEFAULTS.TODAY_MAX_DISPLAY;
-  return Math.max(initial, Math.min(6, Math.floor(n)));
-}
+// 旧関数名は互換用に残します。
+function sbmGetTodayInitialDisplayCount_() { return sbmGetTodayDisplayCount_(); }
+function sbmGetTodayMaxDisplayCount_() { return SBM_DEFAULTS.TODAY_MAX_DISPLAY; }
 function sbmBuildHomeSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.HOME);
   sh.clear();
@@ -2543,11 +2535,11 @@ function sbmBuildTodayQueue_() {
   var diag = sbmRowsAsObjects_(SBM_SHEETS.DIAGNOSIS).sort(function(a,b){return sbmNumber_(b.OpportunityScore)-sbmNumber_(a.OpportunityScore);});
   var active = sbmActiveMeasurementUrlMap_();
   diag = diag.filter(function(d){ return !active[sbmNormalizeUrl_(d.URL || '')]; });
-  var mode = String(sbmGetSetting_('TodayDisplayMode','TOP5'));
+  var mode = 'CONFIGURED';
   var candidateCap = sbmNumber_(sbmGetSetting_('AnalysisCandidateLimit', SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT)) || SBM_DEFAULTS.ANALYSIS_CANDIDATE_LIMIT;
   diag = diag.slice(0, candidateCap);
   sbmSetSetting_('ImprovementCandidateCount', diag.length, '直近の改善候補数（測定中を除く）');
-  var limit = mode === 'ALL' ? Math.min(sbmGetTodayMaxDisplayCount_(), diag.length) : Math.min(sbmGetTodayInitialDisplayCount_(), diag.length);
+  var limit = Math.min(sbmGetTodayDisplayCount_(), diag.length);
   var out = [];
   var briefRows = [];
   for (var i=0; i<diag.length && out.length<limit; i++) {
@@ -2853,8 +2845,8 @@ function sbmQueryScore_(q) { return sbmNumber_(q.Impressions) * 0.6 + sbmNumber_
 function sbmStars_(score) { score = sbmNumber_(score); if (score>=90) return '★★★★★'; if (score>=75) return '★★★★☆'; if (score>=60) return '★★★☆☆'; if (score>=40) return '★★☆☆☆'; return '★☆☆☆☆'; }
 function sbmRatioNumber_(v) { var n = sbmNumber_(v); if (n > 1) return n/100; return n || 0.3; }
 
-function sbmSetTodayTop5() { var n = sbmGetTodayInitialDisplayCount_(); sbmSetSetting_('TodayDisplayMode','TOP5','今日の改善は初期表示件数を表示'); sbmBuildTodayQueue_(); sbmRefreshHome_(); sbmAlert_('表示を変更しました','今日の改善をおすすめ' + n + '件表示にしました。'); }
-function sbmSetTodayAll() { var n = sbmGetTodayMaxDisplayCount_(); sbmSetSetting_('TodayDisplayMode','ALL','今日の改善を最大表示件数まで表示'); sbmBuildTodayQueue_(); sbmRefreshHome_(); sbmAlert_('表示を変更しました','今日の改善を最大' + n + '件まで表示しました。'); }
+function sbmSetTodayTop5() { sbmSetSetting_('TodayDisplayCount','5','今日の改善表示件数'); sbmBuildTodayQueue_(); sbmRefreshHome_(); sbmAlert_('表示を変更しました','今日の改善を5件表示にしました。'); }
+function sbmSetTodayAll() { sbmSetSetting_('TodayDisplayCount','10','今日の改善表示件数'); sbmBuildTodayQueue_(); sbmRefreshHome_(); sbmAlert_('表示を変更しました','今日の改善を最大10件表示にしました。'); }
 
 
 function sbmBuildDataListFromAnalysis_() {
@@ -3426,33 +3418,34 @@ function sbmLegacyOnEdit_(e) {
     var sheetName = sh.getName();
     var row = e.range.getRow();
     var col = e.range.getColumn();
-    if (sheetName === SBM_SHEETS.USER_SETTINGS && col === 2 && row >= 2 && row <= 6) {
+    if (sheetName === SBM_SHEETS.USER_SETTINGS && col === 2 && row >= 2 && row <= 5) {
       var rules = {
         2: {key:'ArticleInfoBatch', min:30, max:100, label:'記事情報補完件数'},
-        3: {key:'TodayInitialDisplayCount', min:1, max:6, label:'今日の改善初期表示件数'},
-        4: {key:'TodayMaxDisplayCount', min:2, max:6, label:'今日の改善最大表示件数'},
-        5: {key:'AnalysisCandidateLimit', min:10, max:10, label:'改善候補抽出件数'},
-        6: {key:'SearchDays', min:7, max:365, label:'Search Console取得期間（日）'}
+        3: {key:'TodayDisplayCount', min:1, max:10, label:'今日の改善表示件数'},
+        4: {key:'AnalysisCandidateLimit', min:10, max:10, label:'改善候補抽出件数'},
+        5: {key:'SearchDays', min:7, max:365, label:'Search Console取得期間（日）'}
       };
       var rule = rules[row];
+      if (!rule) return;
       var n = sbmNumber_(e.value || 0);
       var valid = Number.isFinite(n) && Math.floor(n) === n && n >= rule.min && n <= rule.max;
-      if (valid && row === 4) {
-        var initialCount = sbmNumber_(sh.getRange('B3').getValue()) || SBM_DEFAULTS.TODAY_INITIAL_DISPLAY;
-        valid = n >= initialCount;
-      }
-      if (valid && row === 3) {
-        var maxCount = sbmNumber_(sh.getRange('B4').getValue()) || SBM_DEFAULTS.TODAY_MAX_DISPLAY;
-        valid = n <= maxCount;
-      }
       if (!valid) {
-        var extra = row === 3 || row === 4 ? '\n初期表示件数は最大表示件数以下にしてください。' : '';
-        sbmAlert_('設定値を確認してください', rule.label + 'は' + rule.min + '～' + rule.max + 'の整数で入力してください。' + extra);
+        sbmAlert_('設定値を確認してください', rule.label + 'は' + rule.min + '～' + rule.max + 'の整数で入力してください。');
         sbmBuildUserSettingsSheet_();
         return;
       }
       sbmSetSetting_(rule.key, n, rule.label + '（設定シート）');
-      if (row === 3) sbmSetSetting_('QueueLimit', n, '既存の今日の改善表示件数と同期');
+      if (row === 3) {
+        sbmSetSetting_('TodayInitialDisplayCount', n, '旧版互換。今日の改善表示件数');
+        sbmSetSetting_('QueueLimit', n, '旧版互換。今日の改善表示件数');
+        var candidates = sbmGetTodayCandidates_();
+        if (candidates.length) {
+          var shown = Math.min(n, candidates.length);
+          sbmWriteTodayRecommendations_(candidates, shown);
+          sbmApplyTodayWorkState_(candidates, shown);
+          sbmRefreshHome_();
+        }
+      }
       return;
     }
     if (row <= 1) return;
@@ -4043,7 +4036,7 @@ function sbmCompleteImprovementRow_(row, fromEdit) {
 
 /**
  * Product 5.0: 記事DB直結「今日の改善」Ver.1
- * 即効性3件＋CTR改善3件を準備し、初期2件・最大6件を段階表示します。
+ * 記事DBから改善候補を最大10件保持し、利用者設定の1～10件を表示します。
  */
 function sbmBuildTodayImprovementSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.TODAY);
@@ -4067,7 +4060,7 @@ function sbmOpenTodayImprovement() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) { sbmBuildTodayImprovementSheet_(); sh = ss.getSheetByName(SBM_SHEETS.TODAY); }
-  // シート上の候補が0件なら、記事DBの保存済みデータから初期2件を補充します。
+  // シート上の候補が0件なら、記事DBの保存済みデータから設定件数を補充します。
   if (sbmGetTodayDisplayedRowCount_() === 0) {
     try { sbmEnsureTodayRecommendations_('open'); } catch(e) { sbmLog_('TodayOpenAutoFill','Warning',String(e)); }
     sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
@@ -4077,7 +4070,7 @@ function sbmOpenTodayImprovement() {
 
 /**
  * 起動時用の軽量処理。記事DB内の保存済み数値だけを使い、
- * 「今日の改善」に初期2件を表示します。外部取得やダイアログ表示は行いません。
+ * 「今日の改善」に設定件数（初期5件）を表示します。外部取得やダイアログ表示は行いません。
  */
 function sbmEnsureTodayRecommendations_(source) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -4097,8 +4090,8 @@ function sbmEnsureTodayRecommendations_(source) {
     return false;
   }
 
-  var initial = Math.min(2, candidates.length);
-  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補6件（' + String(source || 'auto') + '）');
+  var initial = Math.min(sbmGetTodayDisplayCount_(), candidates.length);
+  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補10件（' + String(source || 'auto') + '）');
   sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善の初期表示件数');
   sbmWriteTodayRecommendations_(candidates, initial);
   sbmApplyTodayWorkState_(candidates, initial);
@@ -4115,14 +4108,14 @@ function sbmBuildTodayRecommendationsManual() {
   try {
     var candidates = sbmSelectTodayRecommendations_();
     if (!candidates.length) return sbmAlert_('今日の改善を作成できません', '記事DBに改善候補として選べる記事がありません。日次更新と記事情報補完を確認してください。');
-    var initial = Math.min(2, candidates.length);
-    sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補6件');
+    var initial = Math.min(sbmGetTodayDisplayCount_(), candidates.length);
+    sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補10件');
     sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善に表示している件数');
     sbmWriteTodayRecommendations_(candidates, initial);
     sbmApplyTodayWorkState_(candidates, initial);
     sbmRefreshHome_();
     sbmOpenTodayImprovement();
-    sbmAlert_('今日の改善を作成しました', '即効性とCTR改善の推移から、最初の' + initial + '記事を表示しました。\n「記事改善スタート」メニューから2件ずつ、最大6件まで追加できます。');
+    sbmAlert_('今日の改善を作成しました', '改善候補10件から、設定された' + initial + '件を表示しました。表示件数は「記事改善スタート」メニューから1～10件で変更できます。');
   } catch (e) {
     sbmAlert_('今日の改善作成エラー', String(e));
   }
@@ -4260,52 +4253,36 @@ function sbmGetTodayDisplayedRowCount_() {
   return count;
 }
 
-function sbmShowMoreTodayRecommendations() {
-  var candidates = sbmGetTodayCandidates_();
-  if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-
-  // 設定値ではなく、シート上の実表示件数を正本として扱います。
-  var current = sbmGetTodayDisplayedRowCount_();
-  if (current < 0) current = 0;
-  sbmSetSetting_('DisplayedImprovementCount', String(current), '今日の改善の実表示件数と同期');
-
-  var configuredMax = Math.min(6, sbmGetTodayMaxDisplayCount_());
-  var max = Math.min(configuredMax, candidates.length);
-  if (current >= max) {
-    var limitMessage = candidates.length < configuredMax
-      ? '現在利用できる改善候補は' + max + '件です。\nすべて表示しています。'
-      : '今日の改善は最大' + configuredMax + '件まで表示できます。\n現在、最大' + configuredMax + '件を表示しています。';
-    sbmAlert_('表示件数の上限です', limitMessage);
-    return;
+function sbmSetTodayDisplayCount() {
+  var ui = SpreadsheetApp.getUi();
+  var current = sbmGetTodayDisplayCount_();
+  var res = ui.prompt('今日の改善 表示件数', '1～10の整数を入力してください。現在は' + current + '件です。', ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  var text = String(res.getResponseText() || '').trim();
+  var n = Number(text);
+  if (!/^\d+$/.test(text) || !isFinite(n) || n < 1 || n > 10) {
+    return sbmAlert_('表示件数を変更できません', '1～10の整数を入力してください。');
   }
-
-  var next = Math.min(max, current + 2);
-  try {
-    sbmWriteTodayRecommendations_(candidates, next);
-    sbmApplyTodayWorkState_(candidates, next);
-    sbmRefreshHome_();
-    sbmOpenTodayImprovement();
-    var msg = next >= max
-      ? (max >= configuredMax ? '最大' + configuredMax + '件を表示しています。' : '利用可能な' + max + '件をすべて表示しています。')
-      : next + '件を表示しています。';
-    sbmAlert_('表示を追加しました', msg);
-  } catch (e) {
-    throw e;
-  }
-}
-
-function sbmResetTodayRecommendations() {
+  n = Math.floor(n);
+  sbmSetSetting_('TodayDisplayCount', String(n), '今日の改善に表示する件数。1～10');
+  sbmSetSetting_('TodayInitialDisplayCount', String(n), '旧版互換。今日の改善表示件数');
+  sbmSetSetting_('QueueLimit', String(n), '旧版互換。今日の改善表示件数');
   var candidates = sbmGetTodayCandidates_();
-  if (!candidates.length) return sbmBuildTodayRecommendationsManual();
-  var initial = Math.max(1, Math.min(sbmGetTodayInitialDisplayCount_(), candidates.length));
-
-  // 先に設定値を初期件数へ戻し、再描画後も実表示件数で同期します。
-  sbmSetSetting_('DisplayedImprovementCount', String(initial), '今日の改善を初期表示件数へ戻す');
-  sbmWriteTodayRecommendations_(candidates, initial);
-  sbmApplyTodayWorkState_(candidates, initial);
+  if (!candidates.length) candidates = sbmSelectTodayRecommendations_();
+  sbmSetSetting_('TodayRecommendationJson', JSON.stringify(candidates), '今日の改善候補10件');
+  var shown = Math.min(n, candidates.length);
+  sbmWriteTodayRecommendations_(candidates, shown);
+  sbmApplyTodayWorkState_(candidates, shown);
   sbmRefreshHome_();
   sbmOpenTodayImprovement();
-  sbmAlert_('初期表示に戻しました', '今日の改善を初期' + initial + '件表示に戻しました。');
+  sbmAlert_('表示件数を変更しました', '今日の改善は' + shown + '件表示です。候補が不足する場合は取得済み件数まで表示します。');
+}
+
+// 旧メニュー・旧呼び出しとの互換用。
+function sbmShowMoreTodayRecommendations() { return sbmSetTodayDisplayCount(); }
+function sbmResetTodayRecommendations() {
+  sbmSetSetting_('TodayDisplayCount', String(SBM_DEFAULTS.TODAY_INITIAL_DISPLAY), '今日の改善表示件数を初期値へ戻す');
+  return sbmSetTodayDisplayCount();
 }
 
 function sbmApplyTodayWorkState_(candidates, count) {
@@ -5196,8 +5173,44 @@ function sbmAppendImprovementHistory_(data,row,before) {
 function sbmUpdateEffectivenessSilent_(){ return sbmUpdateEffectivenessCore_(false); }
 
 
-function sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta){ if((ctrDelta>=0.005&&posDelta>=1)||(clickDelta>=20&&ctrDelta>0))return '大きく改善'; if(ctrDelta>=0.002||posDelta>=1||clickDelta>0)return '改善'; if(ctrDelta<=-0.003||posDelta<=-2||clickDelta<0)return '悪化'; return '横ばい'; }
-function sbmSuggestEffectNextActionV2_(judgment,h,a){ if(judgment==='大きく改善')return '改善成功。モニターを完了し、現状維持をおすすめします。'; if(judgment==='改善')return '改善傾向です。28日目まで週次測定を継続してください。'; if(judgment==='悪化')return '改善内容を再確認し、タイトル・検索意図・導入文の再改善を検討してください。'; if(judgment==='横ばい')return '28日目まで週次測定を続け、最終判定後に再改善を検討してください。'; return '次回の週次測定日までモニターを続けてください。'; }
+function sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta,impDelta,elapsed,beforeClicks,beforeImp,currentImp){
+  elapsed = Math.max(0, Number(elapsed || 0));
+  beforeClicks = Math.max(0, Number(beforeClicks || 0));
+  beforeImp = Math.max(0, Number(beforeImp || 0));
+  currentImp = Math.max(0, Number(currentImp || 0));
+  if (elapsed < 7) return '測定待ち';
+  if (Math.max(beforeImp, currentImp) < 50) return 'データ不足';
+  var clickRate = clickDelta / Math.max(beforeClicks, 1);
+  var impRate = impDelta / Math.max(beforeImp, 1);
+  var score = 0;
+  if (clickDelta >= 10 || clickRate >= 0.20) score += 3;
+  else if (clickDelta > 0 || clickRate >= 0.05) score += 2;
+  else if (clickDelta <= -3 && clickRate <= -0.20) score -= 3;
+  else if (clickDelta < 0) score -= 2;
+  if (ctrDelta >= 0.005) score += 2; else if (ctrDelta >= 0.001) score += 1;
+  else if (ctrDelta <= -0.005) score -= 2; else if (ctrDelta < -0.001) score -= 1;
+  if (posDelta >= 2) score += 1; else if (posDelta <= -3) score -= 1;
+  if (impRate >= 0.15) score += 1; else if (impRate <= -0.20) score -= 1;
+  if (elapsed < 14) return score >= 3 ? '改善傾向' : score <= -3 ? '要確認' : '経過観察';
+  if (elapsed < 21) return score >= 4 ? '改善' : score >= 2 ? '改善傾向' : score <= -4 ? '要確認' : '経過観察';
+  if (elapsed < 28) return score >= 5 ? '大きく改善' : score >= 3 ? '改善' : score >= 1 ? '改善傾向' : score <= -4 ? '見直し候補' : score <= -2 ? '要確認' : '経過観察';
+  if (score >= 5) return '大きく改善';
+  if (score >= 3) return '改善';
+  if (score >= 1) return '改善傾向';
+  if (score <= -6 && clickRate <= -0.20 && ctrDelta <= -0.003) return '元に戻す検討';
+  if (score <= -3) return '見直し候補';
+  return '変化小';
+}
+function sbmSuggestEffectNextActionV2_(judgment,h,a){
+  if(judgment==='大きく改善')return '改善効果が明確です。現状を維持してください。';
+  if(judgment==='改善')return 'クリックを中心に改善が確認できます。測定を継続してください。';
+  if(judgment==='改善傾向')return '良い方向へ動いています。次回測定まで経過を観察してください。';
+  if(judgment==='要確認')return '初期の下振れの可能性があります。すぐに戻さず、次回測定で再確認してください。';
+  if(judgment==='見直し候補')return '十分な期間を経ても主要指標が弱いため、改善内容の再確認をおすすめします。';
+  if(judgment==='元に戻す検討')return 'クリックとCTRが明確に低下しています。保存済みBeforeを確認し、復元または再修正を検討してください。';
+  if(judgment==='データ不足')return '表示回数が少なく断定できません。測定を継続してください。';
+  return '次回の週次測定日までモニターを続けてください。';
+}
 
 function sbmHistoryMeasurementState_(h) {
   var count=0, latestDate='', latestJudgment='測定待ち';
@@ -5234,7 +5247,7 @@ function sbmBuildFinalAssessment_(judgment, ctrDelta, posDelta, clickDelta) {
   if(judgment==='大きく改善'||judgment==='改善'){
     summary+='改善前と比べて効果が確認でき、今回の改善は成功または改善傾向と判断します。';
     proposal='現在の内容を維持し、同じ改善方法を類似記事へ展開できるか検討してください。';
-  }else if(judgment==='悪化'){
+  }else if(judgment==='見直し候補'||judgment==='元に戻す検討'){
     summary+='改善前より数値が低下しており、今回の改善の推移は十分ではありませんでした。';
     proposal='検索意図、タイトル、導入文、見出し構成を改めて確認し、再改善の対象として検討してください。';
   }else{
@@ -5379,14 +5392,14 @@ function sbmUpdateEffectivenessCore_(showAlert){
     var beforeCtr=sbmNormalizeCtrNumber_(h['改善前CTR']),currentCtr=sbmNormalizeCtrNumber_(a['CTR']),beforePos=sbmNumber_(h['改善前順位']),currentPos=sbmNumber_(a['掲載順位']),beforeClicks=sbmNumber_(h['改善前クリック']),currentClicks=sbmNumber_(a['クリック数']),beforeImp=sbmNumber_(h['改善前表示回数']),currentImp=sbmNumber_(a['表示回数']);
     var ctrDelta=currentCtr-beforeCtr,posDelta=beforePos-currentPos,clickDelta=currentClicks-beforeClicks,impDelta=currentImp-beforeImp;
     var state=sbmHistoryMeasurementState_(h), due=sbmNextWeeklyDueDate_(h), dueReached=!!due&&now>=due;
-    var currentJudgment=sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta);
+    var currentJudgment=sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta,impDelta,elapsed,beforeClicks,beforeImp,currentImp);
     if(dueReached&&!state.complete){
       var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now,{ctrDelta:ctrDelta,posDelta:posDelta,clickDelta:clickDelta,impDelta:impDelta});
       if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'週']=currentJudgment;h[(rec.count)+'回目SIMS寸評']=rec.observation;h['最終判定']=rec.complete?currentJudgment:'測定中';h['状態']=rec.complete?'完了':'測定中';}
       state=sbmHistoryMeasurementState_(h);due=sbmNextWeeklyDueDate_(h);
     }
     var judgment=state.count>0?state.latestJudgment:'測定待ち';
-    var rating=sbmEvaluateEffectResult_(judgment==='大きく改善'?'成功':judgment==='改善'?'改善傾向':judgment==='悪化'?'要再改善':judgment,posDelta,ctrDelta,clickDelta);
+    var rating=sbmEvaluateEffectResult_((judgment==='大きく改善'||judgment==='改善')?'成功':judgment==='改善傾向'?'改善傾向':(judgment==='見直し候補'||judgment==='元に戻す検討')?'要再改善':judgment,posDelta,ctrDelta,clickDelta);
     var next=state.complete?String(h['最終改善提案']||'4回の週次測定が完了しました。最終判定を確認してください。'):'次回測定日まで経過を観察します。';
     var comment=state.complete?'改善後28日間の測定が完了しました。':(state.count+'回測定済み。次回は改善後'+((state.count+1)*7)+'日目です。');
     rows.push([false,improveDate,elapsed,due||'【測定完了】',state.count+'回／4回',h['記事タイトル'],beforeCtr,currentCtr,beforePos,currentPos,judgment,h['ArticleID'],h['記事URL'],h['改善概要'],h['変更箇所'],beforeClicks,currentClicks,clickDelta,beforeImp,currentImp,impDelta,ctrDelta,posDelta,h['期待CTR効果'],h['期待クリック効果'],rating,next,comment,state.latestDate||'',state.complete?'測定完了':'モニター中',h['改善履歴ID']||'']);
@@ -5394,7 +5407,7 @@ function sbmUpdateEffectivenessCore_(showAlert){
   });
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);sh.clear();sh.getRange(1,1,1,SBM_EFFECT_HEADERS_V2.length).setValues([SBM_EFFECT_HEADERS_V2]);
   if(rows.length)sh.getRange(2,1,rows.length,SBM_EFFECT_HEADERS_V2.length).setValues(rows);
-  try{if(rows.length)sh.getRange(2,1,rows.length,SBM_EFFECT_HEADERS_V2.length).sort([{column:4,ascending:true},{column:6,ascending:true}]);}catch(e){}
+  try{if(rows.length)sh.getRange(2,1,rows.length,SBM_EFFECT_HEADERS_V2.length).sort([{column:3,ascending:false},{column:2,ascending:true},{column:6,ascending:true}]);}catch(e){}
   sbmStyleEffectSheetV2_();
   if(showAlert)sbmAlert_('改善の推移','改善の推移を更新しました。対象 '+rows.length+'件'+(recordedCount?'\n今回の測定記録 '+recordedCount+'件':'') );
   return rows.length;
@@ -5967,6 +5980,36 @@ function sbmShowSelectedEffectDetail() {
   );
 }
 
+function sbmShowSelectedRollbackDetail() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.EFFECT) return sbmAlert_('修正前を確認', '改善の推移シートで対象行を選択してください。');
+  var row = (typeof sbmGetCheckedRow_ === 'function') ? sbmGetCheckedRow_(sh) : sh.getActiveRange().getRow();
+  if (!row || row <= 1) return;
+  var effect = sbmRowRecord_(sh, row);
+  var historyId = String(effect['改善履歴ID'] || '').trim();
+  var histories = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || [];
+  var h = histories.filter(function(x){ return historyId && String(x['改善履歴ID'] || '').trim() === historyId; })[0];
+  if (!h) return sbmAlert_('修正前を確認', '対応する改善履歴を確認できません。');
+  var raw = String(h['公開OK変更JSON'] || '').trim();
+  var changes = [];
+  try {
+    var parsed = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) changes = parsed;
+    else if (parsed && typeof parsed === 'object') changes = Object.keys(parsed).map(function(k){ var v=parsed[k]; return v&&typeof v==='object'?Object.assign({target:k},v):{target:k,before:'',after:String(v)}; });
+  } catch(e) {}
+  var esc=function(v){return String(v===undefined||v===null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  var cards = changes.map(function(c){
+    var before = c.before!==undefined ? c.before : (c.old_value!==undefined?c.old_value:'');
+    var after = c.after!==undefined ? c.after : (c.new_value!==undefined?c.new_value:'');
+    return '<div style="border:1px solid #dadce0;border-radius:8px;padding:12px;margin:12px 0"><b>'+esc(c.target||c.label||'変更箇所')+'</b>'+
+      '<p style="margin-bottom:4px;color:#5f6368">現在の記事（After）</p><pre style="white-space:pre-wrap;background:#f8f9fa;padding:10px">'+esc(after)+'</pre>'+
+      '<p style="margin-bottom:4px;color:#0b8043;font-weight:bold">元に戻す内容（Before）</p><pre style="white-space:pre-wrap;background:#e6f4ea;padding:10px">'+esc(before||'元の内容が保存されていません')+'</pre></div>';
+  }).join('');
+  if (!cards) cards='<p>この改善履歴には復元用のBefore／Afterが保存されていません。</p>';
+  var html='<div style="font-family:Arial,Noto Sans JP,sans-serif;padding:20px;line-height:1.6"><h2>修正前を確認</h2><p><b>'+esc(effect['記事タイトル'])+'</b></p><p>自動でブログを書き戻す機能ではありません。Beforeを確認し、必要な箇所だけコピーして復元してください。</p>'+cards+'</div>';
+  SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(850).setHeight(720)), '修正前を確認');
+}
+
 function sbmOpenImprovementNaviFromArticleDetail(articleUrl) {
   var url = String(articleUrl || '').trim();
   if (!url) return sbmAlert_('改善ナビ', '記事URLを取得できません。');
@@ -6327,7 +6370,7 @@ function sbmInitializeSheets(showAlert) {
 
   // Product 5.1 Official: 改善履歴を4回測定形式へ強制移行
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.8の記事一覧・改善の推移表示構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.11の改善推移判定・表示構造バージョン');
 
   // 改善履歴と改善の推移を非破壊で再構築・再表示
   try {
@@ -6347,7 +6390,7 @@ function sbmInitializeSheets(showAlert) {
   // 今日の改善を再描画してから、実データ行だけにチェックボックスを設定
   try {
     var todayCandidates = sbmGetTodayCandidates_();
-    var shown = parseInt(sbmGetSetting_('DisplayedImprovementCount', '2'), 10) || 2;
+    var shown = sbmGetTodayDisplayCount_();
     if (todayCandidates && todayCandidates.length) {
       sbmWriteTodayRecommendations_(todayCandidates, shown);
     }
@@ -7115,8 +7158,12 @@ function sbmStyleEffectSheetV2_() {
         var bg = '#f1f3f4', fg = '#5f6368', weight = 'normal';
         if (value === '大きく改善') { bg = '#0b8043'; fg = '#ffffff'; weight = 'bold'; }
         else if (value === '改善') { bg = '#b7e1cd'; fg = '#0d652d'; weight = 'bold'; }
-        else if (value === '横ばい') { bg = '#fce8b2'; fg = '#7a4f01'; weight = 'bold'; }
-        else if (value === '悪化') { bg = '#f4c7c3'; fg = '#b31412'; weight = 'bold'; }
+        else if (value === '改善傾向') { bg = '#d9ead3'; fg = '#274e13'; weight = 'bold'; }
+        else if (value === '経過観察' || value === '変化小') { bg = '#fce8b2'; fg = '#7a4f01'; weight = 'bold'; }
+        else if (value === '要確認') { bg = '#f9cb9c'; fg = '#7f6000'; weight = 'bold'; }
+        else if (value === '見直し候補') { bg = '#f4c7c3'; fg = '#b31412'; weight = 'bold'; }
+        else if (value === '元に戻す検討') { bg = '#b31412'; fg = '#ffffff'; weight = 'bold'; }
+        else if (value === 'データ不足') { bg = '#d9d2e9'; fg = '#351c75'; weight = 'bold'; }
         else if (value === '測定中') { bg = '#d2e3fc'; fg = '#174ea6'; weight = 'bold'; }
         else if (value === '測定待ち' || value === '未測定' || value === '未判定') { bg = '#e8eaed'; fg = '#5f6368'; }
         backgrounds.push([bg]); fontColors.push([fg]); fontWeights.push([weight]);
@@ -7309,9 +7356,7 @@ function sbmWriteTodayRecommendations_(candidates, count) {
 
   var guideRow = shown.length + 3;
   sh.getRange(guideRow, 1).setValue(
-    shown.length < (candidates || []).length
-      ? '上部メニュー「記事改善スタート → 次の2件を表示」で追加できます。'
-      : '最大6件を表示しています。'
+    '表示件数は上部メニュー「記事改善スタート → 表示件数を設定」で1～10件に変更できます。'
   ).setFontColor('#5f6368');
 
   // 念のため選択列を最終正規化
@@ -7331,7 +7376,7 @@ function sbmWriteTodayRecommendations_(candidates, count) {
  */
 function sbmFinalizeTodayImprovementSelection_() {
   var candidates = sbmGetTodayCandidates_();
-  var shown = parseInt(sbmGetSetting_('DisplayedImprovementCount', '2'), 10) || 2;
+  var shown = sbmGetTodayDisplayCount_();
   if (candidates && candidates.length) {
     sbmWriteTodayRecommendations_(candidates, Math.min(shown, candidates.length));
   } else {
@@ -7759,7 +7804,7 @@ function sbmEnsureOfficialSchemaOnce_() {
   sbmMigrateArticleManagementSheet_();
   sbmMigrateEffectSheetName_();
   sbmApplyProduct5OfficialMeasurementSchema_();
-  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.8の記事一覧・改善の推移表示構造バージョン');
+  sbmSetSetting_('OfficialSchemaVersion', SBM_OFFICIAL_SCHEMA_VERSION, 'Product 5.6.11の改善推移判定・表示構造バージョン');
   return true;
 }
 
@@ -7842,8 +7887,7 @@ function onOpen() {
     .addItem('今日の改善を開く','sbmOpenTodayImprovement')
     .addItem('選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
     .addSeparator()
-    .addItem('次の2件を表示','sbmShowMoreTodayRecommendations')
-    .addItem('初期2件に戻す','sbmResetTodayRecommendations')
+    .addItem('表示件数を設定','sbmSetTodayDisplayCount')
     .addToUi();
 
   ui.createMenu('結果登録')
@@ -7855,6 +7899,7 @@ function onOpen() {
     .addItem('改善の推移を開く','sbmOpenImprovementStatus')
     .addItem('最新データで更新','sbmUpdateEffectiveness')
     .addItem('選択記事の詳細を見る','sbmShowSelectedEffectDetail')
+    .addItem('修正前を確認','sbmShowSelectedRollbackDetail')
     .addToUi();
 
   ui.createMenu('記事一覧')
