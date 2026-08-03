@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.13';
+const SBM_VERSION = '5.6.14';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -1655,14 +1655,19 @@ function sbmMergeArticleDbDaily_(freshRows) {
   var existingRows = [];
   try { existingRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
   var map = {};
+  var previousRankByUrl = {};
   var nextNo = 1;
   existingRows.forEach(function(r){
     var url = sbmNormalizeUrl_(r['記事URL'] || '');
     if (!url) return;
     map[url] = r;
+    previousRankByUrl[url] = String(r['記事ランク'] || '').trim();
     var m = String(r['ArticleID'] || '').match(/A(\d+)/i);
     if (m) nextNo = Math.max(nextNo, Number(m[1]) + 1);
   });
+  // Product 5.6.14: Search Console取得値の異常縮小で全記事ランクが育成へ崩れることを防止します。
+  sbmGuardDailyPerformanceCollapse_(existingRows, freshRows || []);
+
   var today = sbmDateText_(new Date());
   var seen = {};
   var updated = 0, added = 0;
@@ -1728,6 +1733,7 @@ function sbmMergeArticleDbDaily_(freshRows) {
   });
   sbmStorePreviousRankCounts_(existingRows);
   sbmApplyArticleRanksToObjectMap_(map);
+  sbmGuardMassNurtureRankResult_(map, previousRankByUrl);
   var rows = Object.keys(map).map(function(url){
     var r = map[url];
     r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
@@ -3930,6 +3936,56 @@ function sbmPercentileRank_(sortedValues, value) {
   var a = (sortedValues || []).map(function(v){ return sbmNumber_(v); }).filter(function(v){ return isFinite(v); });
   a.sort(function(x,y){ return x-y; });
   return sbmPercentileRankSorted_(a, value);
+}
+
+/**
+ * Product 5.6.14: 長期集計値がほぼ全消失した取得結果を記事DBへ反映しません。
+ * 既存サイトに十分な表示実績がある場合だけ働く安全弁です。
+ */
+function sbmGuardDailyPerformanceCollapse_(existingRows, freshRows) {
+  existingRows = existingRows || [];
+  freshRows = freshRows || [];
+  if (existingRows.length < 20 || freshRows.length < 5) return true;
+
+  var previousImpressions = existingRows.reduce(function(sum, r){
+    return sum + Math.max(0, sbmNumber_((r || {})['表示回数'] || 0));
+  }, 0);
+  if (previousImpressions < 100) return true;
+
+  var impIndex = SBM_HEADERS.ARTICLE_DB.indexOf('表示回数');
+  var freshImpressions = freshRows.reduce(function(sum, row){
+    return sum + Math.max(0, sbmNumber_(Array.isArray(row) && impIndex >= 0 ? row[impIndex] : 0));
+  }, 0);
+
+  var minimumExpected = Math.max(10, previousImpressions * 0.02);
+  if (freshImpressions < minimumExpected) {
+    sbmLog_('DailyRankGuard', 'Blocked', '表示回数合計が既存値の2%未満のため記事DB更新を中止: ' + freshImpressions + ' / ' + previousImpressions);
+    throw new Error('Search Console取得値が異常に小さいため、記事DBと記事ランクの更新を中止しました。\n既存表示回数合計: ' + Math.round(previousImpressions) + '\n今回表示回数合計: ' + Math.round(freshImpressions) + '\nデータ取得状態を確認してから、もう一度日次処理を実行してください。');
+  }
+  return true;
+}
+
+/**
+ * Product 5.6.14: 既存ランクが多様だったのに90%以上が育成になる結果を保存しません。
+ */
+function sbmGuardMassNurtureRankResult_(map, previousRankByUrl) {
+  var urls = Object.keys(map || {});
+  if (urls.length < 20) return true;
+
+  var previousNonNurture = 0;
+  var currentNurture = 0;
+  urls.forEach(function(url){
+    var before = String((previousRankByUrl || {})[url] || '').trim();
+    var after = String(((map || {})[url] || {})['記事ランク'] || '').trim();
+    if (before && before !== '🌱 育成' && before !== '—') previousNonNurture++;
+    if (after === '🌱 育成') currentNurture++;
+  });
+
+  if (previousNonNurture >= 5 && currentNurture >= Math.ceil(urls.length * 0.90)) {
+    sbmLog_('DailyRankGuard', 'Blocked', '全記事の90%以上が育成になる再判定を中止: ' + currentNurture + ' / ' + urls.length);
+    throw new Error('記事ランクの異常な一括変更を検出したため、記事DB更新を中止しました。\n' + currentNurture + '件 / ' + urls.length + '件が「育成」になる計算結果でした。既存ランクは変更していません。');
+  }
+  return true;
 }
 
 function sbmApplyArticleRanksToObjectMap_(map) {
