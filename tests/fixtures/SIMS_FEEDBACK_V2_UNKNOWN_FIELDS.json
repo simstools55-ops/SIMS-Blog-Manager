@@ -1,0 +1,18 @@
+{
+  "format": "SIMS_FEEDBACK_V2",
+  "version": "2.0",
+  "writer_version": "1.0.0",
+  "article_id": "A000002",
+  "article_url": "https://example.com/v2",
+  "completed_at": "2026-07-19",
+  "changes": {"body": true, "internal_links": true},
+  "new_values": {"article_title": "", "seo_title": "", "description": "", "main_query": "sample v2"},
+  "summary": "V2 forward-compatible fixture",
+  "learning": {"record_id": "L001"},
+  "swls": {"writer_version": "1.0.0"},
+  "diagnostics": {"status": "ok"},
+  "reason_codes": ["R_TEST"],
+  "warning_codes": [],
+  "version_candidate": "1.0.1",
+  "future_field": {"allowed": true}
+}
