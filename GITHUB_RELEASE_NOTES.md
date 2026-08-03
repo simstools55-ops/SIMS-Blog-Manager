@@ -1,11 +1,24 @@
-## Product 5.6.12
+## Product 5.7.0 RC1 — SIMS Doctor 外来診療 Sprint 1
 
-改善効果を収益に近いクリック数・表示回数で確認できるようにし、Homeでモニター中の記事の状態を一覧できるようにしました。
+Product 5.6.12を安定基盤として、独立製品SIMS Doctor向けの手動JSON連携を追加しました。
 
-# Product 5.6.6
+### 追加
 
-改善ナビで取得するSearch Consoleクエリを最大200件へ拡張しました。
+- 記事一覧の選択記事から外来診療依頼JSONを生成
+- 改善の推移の選択行から外来診療依頼JSONを生成
+- `SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1`
+- Google Drive `SIMS-Doctor/Requests` への保存
+- Doctor連携状態の確認
 
-改善依頼文の末尾へ、Writerが機械的に解析できる固定列の `Search Console Query Data` ブロックを追加します。表示回数降順で、Query / Clicks / Impressions / CTR / Positionを出力し、取得件数・取得表示回数・記事総表示回数・Coverage・取得日時も併記します。
+### 非変更
 
-従来の上位20クエリブロック、日次処理、既存シート構成は変更していません。
+- 日次処理
+- Search Console取得
+- 記事ランク判定
+- 今日の改善
+- 改善履歴・改善の推移
+- Writer連携
+
+### RC確認事項
+
+Apps Script実機で、通常の日次処理と外来診療JSON生成の回帰確認を行ってください。

@@ -1,3 +1,11 @@
+# Changelog
+
+## 5.7.0-rc.1
+
+- Add manual single-article outpatient request export for SIMS Doctor.
+- Keep daily processing, article rank calculation, and improvement workflow unchanged.
+- Add JSON Schema and UAT for `SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1`.
+
 ## 5.6.12
 
 - 改善の推移の表示指標をCTR・順位からクリック数・表示回数へ変更。
@@ -697,6 +705,3 @@
 
 ## 5.6.11
 - 改善推移の経過日数順・収益重視判定・復元確認・今日の改善表示件数設定を追加。
-
-## 5.6.13
-- SIMS Doctor向け記事カタログの手動出力を追加。日次処理とは完全分離。

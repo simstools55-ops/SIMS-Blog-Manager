@@ -103,3 +103,8 @@ SIMS-Coreは候補を採用・保留・不採用に分類し、テキストリ�
 改善履歴には内部管理情報として `Feedback Format` と `Writer Version` を保存します。既存データは「シートの作成・修復」で新しい列構成へ移行できます。
 
 Product 5.3.1では、Writer依頼文のサイト情報を `SiteID / SiteName / SiteURL` に統一しました。また、「シートの作成・修復」の完了後はHomeを更新し、Homeへ戻ります。
+
+
+## SIMS Doctor 外来診療連携（5.7.0 RC1）
+
+選択した1記事について、独立製品SIMS Doctor向けの診断依頼JSONを手動生成できます。日次処理や記事ランクには接続していません。

@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.6.12
+ * SIMS-Blog-Manager Product 5.7.0 RC1
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.15';
+const SBM_VERSION = '5.7.0-rc.1';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -1655,19 +1655,14 @@ function sbmMergeArticleDbDaily_(freshRows) {
   var existingRows = [];
   try { existingRows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB); } catch(e) {}
   var map = {};
-  var previousRankByUrl = {};
   var nextNo = 1;
   existingRows.forEach(function(r){
     var url = sbmNormalizeUrl_(r['記事URL'] || '');
     if (!url) return;
     map[url] = r;
-    previousRankByUrl[url] = String(r['記事ランク'] || '').trim();
     var m = String(r['ArticleID'] || '').match(/A(\d+)/i);
     if (m) nextNo = Math.max(nextNo, Number(m[1]) + 1);
   });
-  // Product 5.6.14: Search Console取得値の異常縮小で全記事ランクが育成へ崩れることを防止します。
-  sbmGuardDailyPerformanceCollapse_(existingRows, freshRows || []);
-
   var today = sbmDateText_(new Date());
   var seen = {};
   var updated = 0, added = 0;
@@ -1733,7 +1728,6 @@ function sbmMergeArticleDbDaily_(freshRows) {
   });
   sbmStorePreviousRankCounts_(existingRows);
   sbmApplyArticleRanksToObjectMap_(map);
-  sbmGuardMassNurtureRankResult_(map, previousRankByUrl);
   var rows = Object.keys(map).map(function(url){
     var r = map[url];
     r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
@@ -3938,73 +3932,12 @@ function sbmPercentileRank_(sortedValues, value) {
   return sbmPercentileRankSorted_(a, value);
 }
 
-/**
- * Product 5.6.14: 長期集計値がほぼ全消失した取得結果を記事DBへ反映しません。
- * 既存サイトに十分な表示実績がある場合だけ働く安全弁です。
- */
-function sbmGuardDailyPerformanceCollapse_(existingRows, freshRows) {
-  existingRows = existingRows || [];
-  freshRows = freshRows || [];
-  if (existingRows.length < 20 || freshRows.length < 5) return true;
-
-  var previousImpressions = existingRows.reduce(function(sum, r){
-    return sum + Math.max(0, sbmNumber_((r || {})['表示回数'] || 0));
-  }, 0);
-  if (previousImpressions < 100) return true;
-
-  var impIndex = SBM_HEADERS.ARTICLE_DB.indexOf('表示回数');
-  var freshImpressions = freshRows.reduce(function(sum, row){
-    return sum + Math.max(0, sbmNumber_(Array.isArray(row) && impIndex >= 0 ? row[impIndex] : 0));
-  }, 0);
-
-  var minimumExpected = Math.max(10, previousImpressions * 0.02);
-  if (freshImpressions < minimumExpected) {
-    sbmLog_('DailyRankGuard', 'Blocked', '表示回数合計が既存値の2%未満のため記事DB更新を中止: ' + freshImpressions + ' / ' + previousImpressions);
-    throw new Error('Search Console取得値が異常に小さいため、記事DBと記事ランクの更新を中止しました。\n既存表示回数合計: ' + Math.round(previousImpressions) + '\n今回表示回数合計: ' + Math.round(freshImpressions) + '\nデータ取得状態を確認してから、もう一度日次処理を実行してください。');
-  }
-  return true;
-}
-
-/**
- * Product 5.6.14: 既存ランクが多様だったのに90%以上が育成になる結果を保存しません。
- */
-function sbmGuardMassNurtureRankResult_(map, previousRankByUrl) {
-  var urls = Object.keys(map || {});
-  if (urls.length < 20) return true;
-
-  var previousNonNurture = 0;
-  var currentNurture = 0;
-  urls.forEach(function(url){
-    var before = String((previousRankByUrl || {})[url] || '').trim();
-    var after = String(((map || {})[url] || {})['記事ランク'] || '').trim();
-    if (before && before !== '🌱 育成' && before !== '—') previousNonNurture++;
-    if (after === '🌱 育成') currentNurture++;
-  });
-
-  if (previousNonNurture >= 5 && currentNurture >= Math.ceil(urls.length * 0.90)) {
-    sbmLog_('DailyRankGuard', 'Blocked', '全記事の90%以上が育成になる再判定を中止: ' + currentNurture + ' / ' + urls.length);
-    throw new Error('記事ランクの異常な一括変更を検出したため、記事DB更新を中止しました。\n' + currentNurture + '件 / ' + urls.length + '件が「育成」になる計算結果でした。既存ランクは変更していません。');
-  }
-  return true;
-}
-
-function sbmGetSafeMinImpressions_() {
-  var configured = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS));
-  if (!isFinite(configured) || configured < 1 || configured > 1000) {
-    sbmLog_('RankThresholdGuard', 'Fallback', 'MinImpressionsの異常値を検出したため既定値へ戻します: ' + configured);
-    return SBM_DEFAULTS.MIN_IMPRESSIONS;
-  }
-  return configured;
-}
-
-function sbmApplyArticleRanksToObjectMap_(map, minImpressionsOverride) {
+function sbmApplyArticleRanksToObjectMap_(map) {
   var keys = Object.keys(map || {});
   var rows = keys.map(function(k){ return map[k]; }).filter(function(r){ return r && r['記事URL']; });
   var clickVals = rows.map(function(r){ return sbmNumber_(r['クリック数'] || 0); }).sort(function(a,b){return a-b;});
   var impVals = rows.map(function(r){ return sbmNumber_(r['表示回数'] || 0); }).sort(function(a,b){return a-b;});
-  var minImps = minImpressionsOverride !== undefined && minImpressionsOverride !== null
-    ? Math.max(1, sbmNumber_(minImpressionsOverride) || SBM_DEFAULTS.MIN_IMPRESSIONS)
-    : sbmGetSafeMinImpressions_();
+  var minImps = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS)) || SBM_DEFAULTS.MIN_IMPRESSIONS;
   rows.forEach(function(r){
     if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
     var clicks = sbmNumber_(r['クリック数'] || 0);
@@ -4038,28 +3971,19 @@ function sbmUpdateArticleRankManual() {
       if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
       map[url] = r;
     });
-
-    // Product 5.6.15: 復旧操作では既定の最低表示回数50を明示使用し、設定値異常の影響を受けません。
-    sbmApplyArticleRanksToObjectMap_(map, SBM_DEFAULTS.MIN_IMPRESSIONS);
-    var keys = Object.keys(map);
-    var nurtureCount = keys.filter(function(url){ return String(map[url]['記事ランク'] || '') === '🌱 育成'; }).length;
-    if (keys.length >= 20 && nurtureCount >= Math.ceil(keys.length * 0.90)) {
-      throw new Error('再計算結果の90%以上が「育成」になるため保存を中止しました。\n表示回数の列または記事ランク計算条件を確認してください。');
-    }
-
-    var out = keys.map(function(url){
+    sbmApplyArticleRanksToObjectMap_(map);
+    var out = Object.keys(map).map(function(url){
       var r = map[url];
       r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
-      return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
+    return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
     });
     sbmWriteArticleDb_(out);
-    sbmSetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS, '最低表示回数。Product 5.6.15で既定値へ復旧');
     sbmUpdateHomeArticleDbCounts_(out);
     var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('記事ランク復旧・再計算', '完了', out.length, out.length, sec, '外部アクセスなし。最低表示回数50で再計算。作業状態は維持。', startedText, sbmNowText_());
-    sbmAlert_('記事ランク復旧・再計算完了', out.length + '件の記事ランクを再計算しました。\nクリック数・表示回数などのデータと作業状態は変更していません。');
+    sbmProcessLog_('記事ランク再判定', '完了', out.length, out.length, sec, '外部アクセスなし。作業状態は維持。', startedText, sbmNowText_());
+    sbmAlert_('記事ランク再判定完了', out.length + '件の記事ランクを更新しました。\n作業状態は変更していません。');
   } catch(e) {
-    sbmAlert_('記事ランク復旧・再計算エラー', String(e));
+    sbmAlert_('記事ランク再判定エラー', String(e));
   }
 }
 
@@ -7995,13 +7919,6 @@ function onOpen() {
     .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
     .addToUi();
 
-
-  // Doctorは数か月ごとの明示操作だけで使用します。日次処理・onOpenではデータ取得を行いません。
-  ui.createMenu('SIMS Doctor連携')
-    .addItem('Doctor用記事カタログを出力','sbmDoctorGenerateArticleCatalogManual')
-    .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
-    .addToUi();
-
   // 改善中の記事と4週間の測定状況をここへ統合します。
   ui.createMenu('推移確認')
     .addItem('改善の推移を開く','sbmOpenImprovementStatus')
@@ -8014,8 +7931,6 @@ function onOpen() {
     .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
     .addItem('選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
     .addItem('選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
-    .addSeparator()
-    .addItem('記事ランクを復旧・再計算','sbmUpdateArticleRankManual')
     .addSeparator()
     .addItem('記事ランク順','sbmSortArticlesByRank')
     .addItem('改善状態順','sbmSortArticlesByWork')
@@ -8030,6 +7945,15 @@ function onOpen() {
     .addItem('改善履歴を開く','sbmOpenImprovementHistory')
     .addItem('選択した履歴の詳細を見る','sbmOpenSelectedHistoryDetail')
     .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+
+  // Doctorは独立製品です。SBMは明示操作時の依頼JSON生成だけを担当します。
+  ui.createMenu('SIMS Doctor')
+    .addItem('記事一覧の選択記事を診断依頼','sbmDoctorCreateRequestFromArticleList')
+    .addItem('改善の推移の選択記事を診断依頼','sbmDoctorCreateRequestFromEffect')
+    .addSeparator()
+    .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
     .addToUi();
 
   // 配布版では開発者用メニューを生成しません。
@@ -8052,242 +7976,364 @@ function onOpen() {
 
 
 /**
- * Product 5.6.13 - SIMS Doctor integration vertical slice.
+ * Product 5.7.0 RC1: SIMS Doctor 外来診療 Sprint 1
  *
- * Safety boundary:
- * - This path is manual-only and never runs from onOpen or daily processing.
- * - It reads the existing Article DB but does not mutate article/workflow rows.
- * - It creates no time-driven triggers and performs no Search Console request.
+ * 安全境界:
+ * - 日次処理、記事ランク、改善候補、改善履歴を変更しません。
+ * - 利用者がメニューを実行した時だけJSONを生成します。
+ * - Doctor、Writer、時間主導トリガーを自動起動しません。
  */
-const SBM_DOCTOR_CATALOG_FORMAT = 'SIMS_DOCTOR_ARTICLE_CATALOG_V1';
+const SBM_DOCTOR_SINGLE_CASE_FORMAT = 'SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1';
 const SBM_DOCTOR_CONTRACT_VERSION = '1.0';
+const SBM_DOCTOR_SCHEMA_VERSION = '1.0.0';
 
-function sbmDoctorGenerateArticleCatalogManual() {
+function sbmDoctorCreateRequestFromArticleList() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) {
+    return sbmAlert_('SIMS Doctor', '記事一覧（記事管理）を開き、対象記事を1件選択してください。');
+  }
+  var row = sbmGetCheckedRow_(sh);
+  if (!row) return;
+  return sbmDoctorCreateAndSaveRequest_('ARTICLE_LIST', sh, row);
+}
+
+function sbmDoctorCreateRequestFromEffect() {
+  var sh = SpreadsheetApp.getActiveSheet();
+  if (!sh || sh.getName() !== SBM_SHEETS.EFFECT) {
+    return sbmAlert_('SIMS Doctor', '改善の推移を開き、診断する記事の行を1行選択してください。');
+  }
+  var range = sh.getActiveRange();
+  if (!range || range.getRow() < 2 || range.getNumRows() !== 1) {
+    return sbmAlert_('SIMS Doctor', '見出し以外の対象行を1行だけ選択してください。');
+  }
+  return sbmDoctorCreateAndSaveRequest_('IMPROVEMENT_EFFECT', sh, range.getRow());
+}
+
+function sbmDoctorCreateAndSaveRequest_(sourceType, sourceSheet, sourceRow) {
+  try {
+    sbmDoctorAssertSafeToExport_();
+    var context = sbmDoctorResolveContext_(sourceType, sourceSheet, sourceRow);
+    var payload = sbmDoctorBuildSingleCaseRequest_(context);
+    var validation = sbmDoctorValidateSingleCaseRequest_(payload);
+    if (!validation.valid) throw new Error(validation.errors.join('\n'));
+    var saved = sbmDoctorSaveRequestJson_(payload);
+    sbmDoctorRememberLastRequest_(payload, saved);
+    sbmAlert_('SIMS Doctor 外来診療依頼を作成しました',
+      '記事：' + payload.article.title + '\n' +
+      'ArticleID：' + payload.article.article_id + '\n' +
+      'RequestID：' + payload.request.request_id + '\n\n' +
+      'Google Driveの「SIMS-Doctor/Requests」にJSONを保存しました。\n' +
+      '記事データ、記事ランク、改善履歴、作業状態は変更していません。');
+    return {ok:true, fileId:saved.fileId, fileUrl:saved.fileUrl, requestId:payload.request.request_id};
+  } catch (e) {
+    try { sbmLog_('DoctorSingleCaseRequest', 'Error', String(e)); } catch (ignore) {}
+    sbmAlert_('SIMS Doctor 外来診療依頼を作成できません', String(e && e.message ? e.message : e));
+    return {ok:false, error:String(e)};
+  }
+}
+
+function sbmDoctorAssertSafeToExport_() {
   var runtime = sbmGetDailyRuntimeState_();
   if (runtime && runtime.running) {
-    throw new Error('日次処理の実行中はDoctor用記事カタログを出力できません。日次処理の完了後に実行してください。');
+    throw new Error('日次処理の実行中はDoctor依頼を作成できません。日次処理の完了後に実行してください。');
   }
-
-  var payload = sbmDoctorBuildArticleCatalog_();
-  var jsonText = JSON.stringify(payload, null, 2);
-  var fileName = 'SIMS-Doctor-Article-Catalog-' + payload.site.site_id + '-' + sbmDoctorCompactTimestamp_() + '.json';
-  var folder = sbmDoctorGetOrCreateExportFolder_();
-  var file = folder.createFile(fileName, jsonText, MimeType.PLAIN_TEXT);
-
-  sbmSetSetting_('DoctorLastCatalogId', payload.catalog.catalog_id, 'Doctorへ出力した最新記事カタログID');
-  sbmSetSetting_('DoctorLastCatalogMessageId', payload.message_id, 'Doctorへ出力した最新メッセージID');
-  sbmSetSetting_('DoctorLastCatalogAt', sbmNowText_(), 'Doctor用記事カタログの最終出力日時');
-  sbmSetSetting_('DoctorLastCatalogArticleCount', String(payload.catalog.article_count), 'Doctor用記事カタログの記事数');
-  sbmSetSetting_('DoctorLastCatalogFileUrl', file.getUrl(), 'Doctor用記事カタログファイルURL');
-
-  sbmDoctorShowExportComplete_(file, payload);
-  return {
-    success: true,
-    catalogId: payload.catalog.catalog_id,
-    messageId: payload.message_id,
-    articleCount: payload.catalog.article_count,
-    eligibleCount: payload.catalog.eligible_article_count,
-    excludedCount: payload.catalog.excluded_article_count,
-    fileUrl: file.getUrl()
-  };
+  var siteId = String(sbmGetSetting_('SiteID','') || '').trim();
+  var siteName = String(sbmGetSetting_('SiteName','') || sbmGetSetting_('BlogName','') || '').trim();
+  var blogUrl = String(sbmGetSetting_('BlogUrl','') || '').trim();
+  var property = String(sbmGetSetting_('SearchConsoleProperty','') || '').trim();
+  var missing=[];
+  if (!siteId) missing.push('SiteID');
+  if (!siteName) missing.push('SiteName');
+  if (!blogUrl) missing.push('BlogUrl');
+  if (!property) missing.push('SearchConsoleProperty');
+  if (missing.length) throw new Error('Doctor連携に必要な設定がありません：' + missing.join(', '));
 }
 
-function sbmDoctorBuildArticleCatalog_() {
-  var siteId = String(sbmGetSetting_('SiteID', '') || '').trim();
-  var siteName = String(sbmGetSetting_('SiteName', '') || sbmGetSetting_('BlogName', '') || '').trim();
-  var blogUrl = String(sbmGetSetting_('BlogUrl', '') || '').trim();
-  var property = String(sbmGetSetting_('SearchConsoleProperty', '') || '').trim();
-  if (!siteId) throw new Error('SiteIDが設定されていません。先にブログ情報を確認してください。');
-  if (!siteName) throw new Error('SiteNameまたはブログ名が設定されていません。');
-  if (!blogUrl) throw new Error('ブログURLが設定されていません。');
-  if (!property) throw new Error('Search Consoleプロパティが設定されていません。');
-
-  var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
-  var articleIds = {};
-  var articles = [];
-  var eligibleCount = 0;
-  var excludedCount = 0;
-
-  rows.forEach(function(row) {
-    var articleId = String(row['ArticleID'] || '').trim();
-    var url = String(row['記事URL'] || '').trim();
-    if (!articleId && !url) return;
-    if (!articleId) throw new Error('ArticleIDが空の記事があります: ' + url);
-    if (!url) throw new Error('記事URLが空の記事があります: ' + articleId);
-    if (articleIds[articleId]) throw new Error('ArticleIDが重複しています: ' + articleId);
-    articleIds[articleId] = true;
-
-    var workflowStatus = sbmDoctorMapWorkflowStatus_(row['作業状態']);
-    var articleStatus = sbmDoctorMapArticleStatus_(row['記事ステータス'], row['管理フラグ']);
-    var exclusion = sbmDoctorExclusionReason_(workflowStatus, articleStatus);
-    var eligible = !exclusion;
-    if (eligible) eligibleCount++; else excludedCount++;
-
-    articles.push({
-      article_id: articleId,
-      url: url,
-      canonical_url: url,
-      title: String(row['記事タイトル'] || row['H1タイトル'] || '').trim(),
-      seo_title: String(row['SEOタイトル'] || '').trim() || null,
-      main_query: String(row['メインクエリ'] || '').trim() || null,
-      h1: String(row['H1タイトル'] || '').trim() || null,
-      published_at: null,
-      updated_at: sbmDoctorToIsoOrNull_(row['最終確認日'] || row['データ更新日'] || row['最終取得日時']),
-      article_status: articleStatus,
-      workflow_status: workflowStatus,
-      article_rank: String(row['記事ランク'] || '').trim() || null,
-      category: null,
-      tags: [],
-      latest_performance: {
-        period_days: Number(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS) || SBM_DEFAULTS.SEARCH_DAYS),
-        clicks: sbmDoctorNumberOrZero_(row['クリック数']),
-        impressions: sbmDoctorNumberOrZero_(row['表示回数']),
-        ctr: sbmDoctorCtrDecimal_(row['CTR']),
-        position: sbmDoctorNumberOrNull_(row['掲載順位'])
-      },
-      improvement: {
-        last_improved_at: null,
-        monitoring_until: workflowStatus === 'SBM_MONITORING' ? null : null,
-        active_improvement_id: null,
-        active_case_id: null
-      },
-      diagnosis_control: {
-        doctor_eligible: eligible,
-        exclusion_reason: exclusion,
-        manual_hold: workflowStatus === 'MANUAL_HOLD'
-      }
-    });
-  });
-
-  var now = new Date();
-  var stamp = Utilities.formatDate(now, SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
-  return {
-    format: SBM_DOCTOR_CATALOG_FORMAT,
-    contract_version: SBM_DOCTOR_CONTRACT_VERSION,
-    schema_version: '1.0.0',
-    source_system: 'SIMS_BLOG_MANAGER',
-    target_system: 'SIMS_DOCTOR',
-    message_id: 'MSG-SBM-' + stamp,
-    generated_at: sbmDoctorIsoDateTime_(now),
-    timezone: SBM_DEFAULTS.TIMEZONE,
-    site: {
-      site_id: siteId,
-      site_name: siteName,
-      blog_url: blogUrl,
-      search_console_property: property,
-      platform: sbmDoctorDetectPlatform_(blogUrl)
-    },
-    catalog: {
-      catalog_id: 'CAT-' + siteId + '-' + stamp,
-      article_count: articles.length,
-      eligible_article_count: eligibleCount,
-      excluded_article_count: excludedCount,
-      generated_from: 'ARTICLE_DATABASE',
-      is_full_snapshot: true
-    },
-    articles: articles
-  };
+function sbmDoctorResolveContext_(sourceType, sourceSheet, sourceRow) {
+  var sourceRecord = sbmRowRecord_(sourceSheet, sourceRow);
+  var url = String(sourceRecord['記事URL'] || sourceRecord['URL'] || '').trim();
+  if (!url) throw new Error('選択行から記事URLを取得できません。');
+  var article = sourceType === 'ARTICLE_LIST' ? sourceRecord : sbmFindArticleDbByUrl_(url);
+  if (!article) throw new Error('記事管理に対応する記事が見つかりません。');
+  var articleId = String(article['ArticleID'] || '').trim();
+  if (!articleId) throw new Error('対象記事にArticleIDがありません。先に記事情報を取得してください。');
+  var effect = sourceType === 'IMPROVEMENT_EFFECT' ? sourceRecord : sbmDoctorFindEffectByUrl_(url);
+  var history = sbmDoctorFindLatestHistory_(articleId, url);
+  return {sourceType:sourceType, article:article, effect:effect, history:history, sourceSheet:sourceSheet.getName(), sourceRow:sourceRow};
 }
 
-function sbmDoctorMapWorkflowStatus_(value) {
-  var text = String(value || '').trim();
-  if (text.indexOf('今日の改善') >= 0) return 'SBM_IMPROVEMENT_PENDING';
-  if (text.indexOf('改善中') >= 0) return 'SBM_IMPROVEMENT_IN_PROGRESS';
-  if (text.indexOf('モニター') >= 0 || text.indexOf('経過観察') >= 0) return 'SBM_MONITORING';
-  if (text.indexOf('保留') >= 0) return 'MANUAL_HOLD';
-  return 'AVAILABLE';
-}
-
-function sbmDoctorMapArticleStatus_(statusValue, flagValue) {
-  var text = (String(statusValue || '') + ' ' + String(flagValue || '')).toLowerCase();
-  if (text.indexOf('削除') >= 0 || text.indexOf('deleted') >= 0) return 'DELETED';
-  if (text.indexOf('アーカイブ') >= 0 || text.indexOf('archive') >= 0) return 'ARCHIVED';
-  return 'ACTIVE';
-}
-
-function sbmDoctorExclusionReason_(workflowStatus, articleStatus) {
-  if (articleStatus === 'DELETED') return 'DELETED';
-  if (articleStatus === 'ARCHIVED') return 'ARCHIVED';
-  if (workflowStatus === 'SBM_IMPROVEMENT_PENDING') return 'SBM_IMPROVEMENT_PENDING';
-  if (workflowStatus === 'SBM_IMPROVEMENT_IN_PROGRESS') return 'SBM_IMPROVEMENT_IN_PROGRESS';
-  if (workflowStatus === 'SBM_MONITORING') return 'SBM_MONITORING';
-  if (workflowStatus === 'MANUAL_HOLD') return 'MANUAL_HOLD';
+function sbmDoctorFindEffectByUrl_(url) {
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.EFFECT) || [];
+  var normalized = sbmNormalizeUrl_(url);
+  for (var i=0;i<rows.length;i++) {
+    if (sbmNormalizeUrl_(rows[i]['URL'] || '') === normalized) return rows[i];
+  }
   return null;
 }
 
-function sbmDoctorNumberOrZero_(value) {
-  var n = Number(value);
-  return isFinite(n) ? n : 0;
+function sbmDoctorFindLatestHistory_(articleId, url) {
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || [];
+  var normalized = sbmNormalizeUrl_(url);
+  var matches = rows.filter(function(r){
+    return (articleId && String(r['ArticleID'] || '').trim() === articleId) ||
+      sbmNormalizeUrl_(r['記事URL'] || '') === normalized;
+  });
+  if (!matches.length) return null;
+  return matches[matches.length-1];
 }
 
-function sbmDoctorNumberOrNull_(value) {
-  var n = Number(value);
-  return isFinite(n) && String(value || '').trim() !== '' ? n : null;
+function sbmDoctorBuildSingleCaseRequest_(ctx) {
+  var article=ctx.article, effect=ctx.effect || {}, history=ctx.history || {};
+  var now=new Date();
+  var articleId=String(article['ArticleID']||'').trim();
+  var url=String(article['記事URL']||'').trim();
+  var judgement=String(effect['判定']||'').trim();
+  var improvementDate=effect['改善日'] || history['改善日'] || null;
+  var elapsed=sbmDoctorNumberOrNull_(effect['経過日数']);
+  var hasImprovement=!!(improvementDate || history['改善履歴ID']);
+  var before={
+    clicks:sbmDoctorNumberOrNull_(effect['改善前クリック'] !== undefined ? effect['改善前クリック'] : history['改善前クリック']),
+    impressions:sbmDoctorNumberOrNull_(history['改善前表示回数']),
+    ctr:sbmDoctorCtrValue_(effect['改善前CTR'] !== undefined ? effect['改善前CTR'] : history['改善前CTR']),
+    position:sbmDoctorNumberOrNull_(effect['改善前順位'] !== undefined ? effect['改善前順位'] : history['改善前順位'])
+  };
+  var current={
+    clicks:sbmDoctorNumberOrNull_(article['クリック数']),
+    impressions:sbmDoctorNumberOrNull_(article['表示回数']),
+    ctr:sbmDoctorCtrValue_(article['CTR']),
+    position:sbmDoctorNumberOrNull_(article['掲載順位'])
+  };
+  var work=String(article['作業状態']||'未着手').trim();
+  var workflow=sbmDoctorWorkflowCode_(work);
+  var monitoring=workflow==='SBM_MONITORING';
+  var requestId='REQ-'+Utilities.formatDate(now,SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+articleId;
+  var messageId='MSG-'+Utilities.formatDate(now,SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().substring(0,8);
+  var trigger=sbmDoctorTriggerCode_(ctx.sourceType, judgement);
+  var payload={
+    format:SBM_DOCTOR_SINGLE_CASE_FORMAT,
+    contract_version:SBM_DOCTOR_CONTRACT_VERSION,
+    schema_version:SBM_DOCTOR_SCHEMA_VERSION,
+    source_system:'SIMS_BLOG_MANAGER',
+    target_system:'SIMS_DOCTOR',
+    message_id:messageId,
+    generated_at:sbmDoctorIso_(now),
+    timezone:SBM_DEFAULTS.TIMEZONE,
+    site:{
+      site_id:String(sbmGetSetting_('SiteID','')).trim(),
+      site_name:String(sbmGetSetting_('SiteName','')||sbmGetSetting_('BlogName','')).trim(),
+      blog_url:String(sbmGetSetting_('BlogUrl','')).trim(),
+      search_console_property:String(sbmGetSetting_('SearchConsoleProperty','')).trim()
+    },
+    request:{
+      request_id:requestId,
+      consultation_mode:'SINGLE_ARTICLE_CLINIC',
+      requested_by:'USER',
+      requested_at:sbmDoctorIso_(now),
+      trigger:trigger,
+      chief_complaint:sbmDoctorChiefComplaint_(ctx.sourceType, judgement),
+      urgency:judgement.indexOf('悪化')>=0?'HIGH':'NORMAL',
+      source_sheet:ctx.sourceSheet,
+      source_row:ctx.sourceRow
+    },
+    article:{
+      article_id:articleId,
+      url:url,
+      canonical_url:url,
+      title:String(article['H1タイトル']||article['記事タイトル']||'').trim(),
+      h1:String(article['H1タイトル']||'').trim(),
+      seo_title:String(article['SEOタイトル']||'').trim(),
+      meta_description:String(article['メタディスクリプション']||'').trim(),
+      main_query:String(article['メインクエリ']||'').trim(),
+      published_at:null,
+      updated_at:sbmDoctorDateOrNull_(article['補完日時']||article['最終確認日']),
+      article_rank:sbmDoctorRankCode_(article['記事ランク']),
+      article_status:String(article['記事ステータス']||'ACTIVE').trim()||'ACTIVE'
+    },
+    current_performance:{
+      period_days:Number(sbmGetSetting_('SearchDays',SBM_DEFAULTS.SEARCH_DAYS)||SBM_DEFAULTS.SEARCH_DAYS),
+      clicks:current.clicks,
+      impressions:current.impressions,
+      ctr:current.ctr,
+      position:current.position,
+      data_updated_at:sbmDoctorDateOrNull_(article['データ更新日']||article['最終取得日時']),
+      data_quality:sbmDoctorDataQuality_(current.impressions)
+    },
+    improvement_context:{
+      has_active_improvement:hasImprovement,
+      improvement_history_id:String(history['改善履歴ID']||'').trim()||null,
+      improvement_date:sbmDoctorDateOnlyOrNull_(improvementDate),
+      elapsed_days:elapsed,
+      before:before,
+      current:current,
+      changes:{
+        clicks_change:sbmDoctorSubtract_(current.clicks,before.clicks),
+        impressions_change:sbmDoctorSubtract_(current.impressions,before.impressions),
+        ctr_change:sbmDoctorSubtract_(current.ctr,before.ctr),
+        position_change:sbmDoctorSubtract_(current.position,before.position)
+      },
+      sbm_judgement:sbmDoctorJudgementCode_(judgement),
+      writer_result_format:String(history['Feedback Format']||'').trim()||null,
+      writer_version:String(history['Writer Version']||'').trim()||null,
+      changed_sections:sbmDoctorChangedSections_(history)
+    },
+    workflow:{
+      workflow_status:workflow,
+      active_improvement_id:String(history['改善履歴ID']||'').trim()||null,
+      active_case_id:null,
+      manual_hold:workflow==='MANUAL_HOLD',
+      lock:{
+        locked:workflow!=='AVAILABLE',
+        lock_owner:workflow.indexOf('SBM_')===0?'SIMS_BLOG_MANAGER':null,
+        lock_type:monitoring?'MONITORING':(workflow!=='AVAILABLE'?'WORKFLOW':null),
+        lock_reference_id:String(history['改善履歴ID']||'').trim()||null
+      },
+      doctor_diagnosis_allowed:true,
+      doctor_treatment_allowed:workflow==='AVAILABLE'
+    },
+    diagnosis_scope:{
+      requested_examinations:hasImprovement?
+        ['LONG_TERM_PERFORMANCE','POST_IMPROVEMENT_REVIEW','QUERY_ANALYSIS','SERP_COMPARISON','CANNIBALIZATION_CHECK']:
+        ['LONG_TERM_PERFORMANCE','QUERY_ANALYSIS','SERP_COMPARISON','CANNIBALIZATION_CHECK'],
+      optional_examinations:['INTERNAL_LINK_REVIEW','CONTENT_FRESHNESS_REVIEW','INDEX_STATUS_REVIEW'],
+      excluded_examinations:[],
+      allow_doctor_to_expand_scope:true,
+      maximum_data_period_days:365
+    },
+    attachments:{
+      article_body_included:false,
+      article_body:null,
+      writer_result_included:false,
+      writer_result:null,
+      writer_result_reference:{
+        improvement_history_id:String(history['改善履歴ID']||'').trim()||null,
+        feedback_format:String(history['Feedback Format']||'').trim()||null,
+        writer_version:String(history['Writer Version']||'').trim()||null
+      },
+      sbm_history_included:hasImprovement,
+      sbm_history_reference:{improvement_history_id:String(history['改善履歴ID']||'').trim()||null}
+    },
+    return_contract:{
+      format:'SIMS_DOCTOR_SINGLE_CASE_RESULT_V1',
+      contract_version:'1.0',
+      return_to:'SIMS_BLOG_MANAGER'
+    }
+  };
+  return payload;
 }
 
-function sbmDoctorCtrDecimal_(value) {
-  var n = Number(value);
-  if (!isFinite(n)) return 0;
-  return n > 1 ? n / 100 : n;
+function sbmDoctorValidateSingleCaseRequest_(p) {
+  var errors=[];
+  if (!p || typeof p!=='object') errors.push('JSONオブジェクトを生成できませんでした。');
+  if (!p || p.format!==SBM_DOCTOR_SINGLE_CASE_FORMAT) errors.push('formatが不正です。');
+  if (!p || !p.site || !p.site.site_id) errors.push('site.site_idがありません。');
+  if (!p || !p.article || !p.article.article_id) errors.push('article.article_idがありません。');
+  if (!p || !p.article || !p.article.url) errors.push('article.urlがありません。');
+  if (!p || !p.request || !p.request.request_id) errors.push('request.request_idがありません。');
+  return {valid:errors.length===0,errors:errors};
 }
 
-function sbmDoctorToIsoOrNull_(value) {
-  if (!value) return null;
-  var d = value instanceof Date ? value : new Date(value);
-  if (isNaN(d.getTime())) return null;
-  return sbmDoctorIsoDateTime_(d);
+function sbmDoctorSaveRequestJson_(payload) {
+  var root=sbmDoctorGetOrCreateFolder_(DriveApp.getRootFolder(),'SIMS-Doctor');
+  var folder=sbmDoctorGetOrCreateFolder_(root,'Requests');
+  var stamp=Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss');
+  var safeArticle=String(payload.article.article_id||'ARTICLE').replace(/[^A-Za-z0-9_-]/g,'_');
+  var name=stamp+'-'+safeArticle+'-'+payload.request.request_id+'.json';
+  var blob=Utilities.newBlob(JSON.stringify(payload,null,2),'application/json',name);
+  var file=folder.createFile(blob);
+  return {fileId:file.getId(),fileUrl:file.getUrl(),fileName:name};
 }
 
-function sbmDoctorIsoDateTime_(date) {
-  return Utilities.formatDate(date, SBM_DEFAULTS.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+function sbmDoctorGetOrCreateFolder_(parent,name) {
+  var it=parent.getFoldersByName(name);
+  return it.hasNext()?it.next():parent.createFolder(name);
 }
 
-function sbmDoctorCompactTimestamp_() {
-  return Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
-}
-
-function sbmDoctorDetectPlatform_(blogUrl) {
-  var u = String(blogUrl || '').toLowerCase();
-  if (u.indexOf('hatenablog.') >= 0 || u.indexOf('hatenadiary.') >= 0) return 'HATENA_BLOG';
-  return 'OTHER';
-}
-
-function sbmDoctorGetOrCreateExportFolder_() {
-  var it = DriveApp.getFoldersByName('SIMS-Doctor-Exports');
-  return it.hasNext() ? it.next() : DriveApp.createFolder('SIMS-Doctor-Exports');
-}
-
-function sbmDoctorShowExportComplete_(file, payload) {
-  var html = HtmlService.createHtmlOutput(
-    '<!doctype html><html><head><base target="_blank"><style>' +
-    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124}' +
-    'h2{margin-top:0;color:#0b8043}.box{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:14px}' +
-    'a{display:inline-block;margin-top:14px;background:#1a73e8;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:700}' +
-    '.note{font-size:12px;color:#5f6368;margin-top:14px}</style></head><body>' +
-    '<h2>Doctor用記事カタログを出力しました</h2><div class="box">' +
-    '<div>全記事：<b>' + payload.catalog.article_count + '件</b></div>' +
-    '<div>診断対象：<b>' + payload.catalog.eligible_article_count + '件</b></div>' +
-    '<div>処置中・観察中などの対象外：<b>' + payload.catalog.excluded_article_count + '件</b></div>' +
-    '<div>CatalogID：' + payload.catalog.catalog_id + '</div></div>' +
-    '<a href="' + file.getUrl() + '">JSONファイルを開く</a>' +
-    '<div class="note">この操作は記事管理を読み取るだけで、日次処理・改善候補・経過観察データを変更しません。</div>' +
-    '</body></html>'
-  ).setWidth(560).setHeight(380);
-  SpreadsheetApp.getUi().showModalDialog(html, 'SIMS Doctor連携');
+function sbmDoctorRememberLastRequest_(payload,saved) {
+  sbmSetSetting_('DoctorLastRequestId',payload.request.request_id,'最後に生成したDoctor外来診療RequestID');
+  sbmSetSetting_('DoctorLastRequestArticleId',payload.article.article_id,'最後にDoctor診断を依頼したArticleID');
+  sbmSetSetting_('DoctorLastRequestAt',payload.generated_at,'最後にDoctor外来診療依頼を生成した日時');
+  sbmSetSetting_('DoctorLastRequestFileUrl',saved.fileUrl,'最後に生成したDoctor外来診療依頼JSON');
 }
 
 function sbmDoctorShowIntegrationStatus() {
-  var catalogId = String(sbmGetSetting_('DoctorLastCatalogId', '') || '未出力');
-  var exportedAt = String(sbmGetSetting_('DoctorLastCatalogAt', '') || '未出力');
-  var count = String(sbmGetSetting_('DoctorLastCatalogArticleCount', '') || '0');
-  var url = String(sbmGetSetting_('DoctorLastCatalogFileUrl', '') || '');
-  var daily = sbmGetDailyRuntimeState_();
-  var message = 'Doctor連携は手動実行専用です。日次処理から自動起動しません。\n\n' +
-    '最終CatalogID：' + catalogId + '\n' +
-    '最終出力日時：' + exportedAt + '\n' +
-    '記事数：' + count + '件\n' +
-    '日次処理：' + (daily.running ? '実行中（Doctor出力は停止）' : '停止中') +
-    (url ? '\nファイル：' + url : '');
-  sbmAlert_('SIMS Doctor連携状態', message);
-  return {catalogId:catalogId, exportedAt:exportedAt, articleCount:Number(count||0), fileUrl:url, dailyRunning:!!daily.running};
+  var id=String(sbmGetSetting_('DoctorLastRequestId','')||'').trim();
+  var articleId=String(sbmGetSetting_('DoctorLastRequestArticleId','')||'').trim();
+  var at=String(sbmGetSetting_('DoctorLastRequestAt','')||'').trim();
+  var url=String(sbmGetSetting_('DoctorLastRequestFileUrl','')||'').trim();
+  var msg='連携方式：手動JSON連携（独立製品）\n自動診断：行いません\n日次処理からの呼出し：ありません\n\n';
+  msg+=id?('最終RequestID：'+id+'\nArticleID：'+articleId+'\n生成日時：'+at+'\n保存先：'+url):'外来診療依頼はまだ生成されていません。';
+  sbmAlert_('SIMS Doctor 連携状態',msg);
+}
+
+function sbmDoctorRankCode_(value) {
+  var s=String(value||'');
+  if (s.indexOf('エース')>=0) return 'ACE';
+  if (s.indexOf('安定')>=0) return 'STABLE';
+  if (s.indexOf('成長')>=0) return 'GROWTH';
+  if (s.indexOf('育成')>=0) return 'NURTURE';
+  if (s.indexOf('低迷')>=0) return 'LOW';
+  return 'UNMEASURED';
+}
+function sbmDoctorWorkflowCode_(value) {
+  var s=String(value||'').trim();
+  if (s.indexOf('モニター')>=0) return 'SBM_MONITORING';
+  if (s.indexOf('改善中')>=0 || s.indexOf('今日の改善')>=0) return 'SBM_IMPROVEMENT_IN_PROGRESS';
+  if (s.indexOf('保留')>=0) return 'MANUAL_HOLD';
+  if (s.indexOf('削除')>=0) return 'DELETED';
+  if (s.indexOf('アーカイブ')>=0) return 'ARCHIVED';
+  return 'AVAILABLE';
+}
+function sbmDoctorTriggerCode_(sourceType,judgement) {
+  var s=String(judgement||'');
+  if (sourceType!=='IMPROVEMENT_EFFECT') return 'SBM_MANUAL_REQUEST';
+  if (s.indexOf('悪化')>=0) return 'SBM_WORSENING_DETECTED';
+  if (s.indexOf('変化')>=0 || s.indexOf('維持')>=0) return 'SBM_NO_CHANGE_DETECTED';
+  return 'SBM_MONITORING_REVIEW';
+}
+function sbmDoctorChiefComplaint_(sourceType,judgement) {
+  if (sourceType==='IMPROVEMENT_EFFECT') return judgement?('改善の推移が「'+judgement+'」のため、原因と次の対応を診断したい。'):'改善後の推移について原因と次の対応を診断したい。';
+  return 'この記事の現在の状態、低迷・重複・検索意図・今後の処置を個別診断したい。';
+}
+function sbmDoctorJudgementCode_(value) {
+  var s=String(value||'');
+  if (s.indexOf('大幅')>=0 || s.indexOf('顕著')>=0) return 'SIGNIFICANTLY_IMPROVED';
+  if (s.indexOf('改善')>=0) return 'IMPROVING';
+  if (s.indexOf('悪化')>=0) return 'WORSENED';
+  if (s.indexOf('変化')>=0 || s.indexOf('維持')>=0) return 'NO_MEANINGFUL_CHANGE';
+  if (s.indexOf('待')>=0 || s.indexOf('測定')>=0) return 'MEASUREMENT_WAITING';
+  return 'UNKNOWN';
+}
+function sbmDoctorChangedSections_(history) {
+  var raw=history?history['変更箇所']:'';
+  if (Array.isArray(raw)) return raw;
+  return String(raw||'').split(/[、,\/]/).map(function(v){return String(v||'').trim();}).filter(function(v){return !!v;});
+}
+function sbmDoctorDataQuality_(impressions) {
+  if (impressions===null) return 'MISSING';
+  if (Number(impressions)<50) return 'LOW_SAMPLE';
+  return 'SUFFICIENT';
+}
+function sbmDoctorNumberOrNull_(value) {
+  if (value===null || value===undefined || value==='') return null;
+  if (typeof value==='string') value=value.replace(/,/g,'').replace(/%/g,'').trim();
+  var n=Number(value); return isFinite(n)?n:null;
+}
+function sbmDoctorCtrValue_(value) {
+  if (value===null || value===undefined || value==='') return null;
+  if (typeof value==='string' && value.indexOf('%')>=0) {
+    var p=Number(value.replace(/%/g,'').replace(/,/g,'').trim()); return isFinite(p)?p/100:null;
+  }
+  var n=Number(value); return isFinite(n)?n:null;
+}
+function sbmDoctorSubtract_(a,b) { return (a===null || b===null)?null:Number((a-b).toFixed(6)); }
+function sbmDoctorIso_(date) { return Utilities.formatDate(date,SBM_DEFAULTS.TIMEZONE,"yyyy-MM-dd'T'HH:mm:ssXXX"); }
+function sbmDoctorDateOrNull_(value) {
+  if (!value) return null;
+  var d=value instanceof Date?value:new Date(value);
+  return isNaN(d.getTime())?null:sbmDoctorIso_(d);
+}
+function sbmDoctorDateOnlyOrNull_(value) {
+  if (!value) return null;
+  var d=value instanceof Date?value:new Date(value);
+  return isNaN(d.getTime())?null:Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');
 }
