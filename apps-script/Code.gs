@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.7.0 RC1
+ * SIMS-Blog-Manager Product 5.7.0 RC2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.0-rc.1';
+const SBM_VERSION = '5.7.0-rc.2';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7976,7 +7976,7 @@ function onOpen() {
 
 
 /**
- * Product 5.7.0 RC1: SIMS Doctor 外来診療 Sprint 1
+ * Product 5.7.0 RC2: SIMS Doctor 外来診療 Sprint 1
  *
  * 安全境界:
  * - 日次処理、記事ランク、改善候補、改善履歴を変更しません。
@@ -8016,15 +8016,10 @@ function sbmDoctorCreateAndSaveRequest_(sourceType, sourceSheet, sourceRow) {
     var payload = sbmDoctorBuildSingleCaseRequest_(context);
     var validation = sbmDoctorValidateSingleCaseRequest_(payload);
     if (!validation.valid) throw new Error(validation.errors.join('\n'));
-    var saved = sbmDoctorSaveRequestJson_(payload);
-    sbmDoctorRememberLastRequest_(payload, saved);
-    sbmAlert_('SIMS Doctor 外来診療依頼を作成しました',
-      '記事：' + payload.article.title + '\n' +
-      'ArticleID：' + payload.article.article_id + '\n' +
-      'RequestID：' + payload.request.request_id + '\n\n' +
-      'Google Driveの「SIMS-Doctor/Requests」にJSONを保存しました。\n' +
-      '記事データ、記事ランク、改善履歴、作業状態は変更していません。');
-    return {ok:true, fileId:saved.fileId, fileUrl:saved.fileUrl, requestId:payload.request.request_id};
+    var jsonText = JSON.stringify(payload, null, 2);
+    sbmDoctorRememberLastRequest_(payload);
+    sbmDoctorShowCopyDialog_(payload, jsonText);
+    return {ok:true, requestId:payload.request.request_id};
   } catch (e) {
     try { sbmLog_('DoctorSingleCaseRequest', 'Error', String(e)); } catch (ignore) {}
     sbmAlert_('SIMS Doctor 外来診療依頼を作成できません', String(e && e.message ? e.message : e));
@@ -8232,36 +8227,49 @@ function sbmDoctorValidateSingleCaseRequest_(p) {
   return {valid:errors.length===0,errors:errors};
 }
 
-function sbmDoctorSaveRequestJson_(payload) {
-  var root=sbmDoctorGetOrCreateFolder_(DriveApp.getRootFolder(),'SIMS-Doctor');
-  var folder=sbmDoctorGetOrCreateFolder_(root,'Requests');
-  var stamp=Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss');
-  var safeArticle=String(payload.article.article_id||'ARTICLE').replace(/[^A-Za-z0-9_-]/g,'_');
-  var name=stamp+'-'+safeArticle+'-'+payload.request.request_id+'.json';
-  var blob=Utilities.newBlob(JSON.stringify(payload,null,2),'application/json',name);
-  var file=folder.createFile(blob);
-  return {fileId:file.getId(),fileUrl:file.getUrl(),fileName:name};
+function sbmDoctorShowCopyDialog_(payload, jsonText) {
+  var title = sbmDoctorEscapeHtml_(payload.article.title || '選択記事');
+  var articleId = sbmDoctorEscapeHtml_(payload.article.article_id || '');
+  var requestId = sbmDoctorEscapeHtml_(payload.request.request_id || '');
+  var encodedJson = Utilities.base64EncodeWebSafe(jsonText, Utilities.Charset.UTF_8);
+  var html = '<!doctype html><html><head><base target="_top"><meta charset="UTF-8">' +
+    '<style>body{font-family:Arial,sans-serif;margin:0;padding:18px;color:#202124}' +
+    'h2{font-size:19px;margin:0 0 10px}.meta{font-size:13px;line-height:1.6;margin-bottom:12px}' +
+    'textarea{box-sizing:border-box;width:100%;height:360px;padding:10px;font:12px/1.45 monospace;white-space:pre;resize:vertical}' +
+    '.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}' +
+    'button{border:1px solid #dadce0;border-radius:18px;padding:8px 18px;background:#fff;cursor:pointer}' +
+    'button.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}.status{font-size:13px;color:#188038;min-height:20px;margin-top:8px}' +
+    '</style></head><body><h2>SIMS Doctor 外来診療依頼</h2>' +
+    '<div class="meta"><b>記事：</b>' + title + '<br><b>ArticleID：</b>' + articleId + '<br><b>RequestID：</b>' + requestId +
+    '<br>下のJSONをコピーし、SIMS Doctorへ貼り付けてください。記事データや作業状態は変更していません。</div>' +
+    '<textarea id="json" readonly></textarea><div id="status" class="status"></div>' +
+    '<div class="actions"><button onclick="google.script.host.close()">閉じる</button><button class="primary" onclick="copyJson()">JSONをコピー</button></div>' +
+    '<script>const encoded=' + JSON.stringify(encodedJson) + ';' +
+    'function decodeBase64Url(v){v=v.replace(/-/g,"+").replace(/_/g,"/");while(v.length%4)v+="=";const b=atob(v);const a=Uint8Array.from(b,c=>c.charCodeAt(0));return new TextDecoder("utf-8").decode(a)}' +
+    'const text=decodeBase64Url(encoded);document.getElementById("json").value=text;' +
+    'async function copyJson(){const t=document.getElementById("json");let ok=false;try{await navigator.clipboard.writeText(t.value);ok=true}catch(e){t.focus();t.select();ok=document.execCommand("copy")}document.getElementById("status").textContent=ok?"JSONをコピーしました。SIMS Doctorへ貼り付けてください。":"コピーできませんでした。テキスト欄を選択して手動でコピーしてください。"}' +
+    '</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(760).setHeight(610), 'SIMS Doctor 外来診療依頼');
 }
 
-function sbmDoctorGetOrCreateFolder_(parent,name) {
-  var it=parent.getFoldersByName(name);
-  return it.hasNext()?it.next():parent.createFolder(name);
+function sbmDoctorEscapeHtml_(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-function sbmDoctorRememberLastRequest_(payload,saved) {
+function sbmDoctorRememberLastRequest_(payload) {
   sbmSetSetting_('DoctorLastRequestId',payload.request.request_id,'最後に生成したDoctor外来診療RequestID');
   sbmSetSetting_('DoctorLastRequestArticleId',payload.article.article_id,'最後にDoctor診断を依頼したArticleID');
   sbmSetSetting_('DoctorLastRequestAt',payload.generated_at,'最後にDoctor外来診療依頼を生成した日時');
-  sbmSetSetting_('DoctorLastRequestFileUrl',saved.fileUrl,'最後に生成したDoctor外来診療依頼JSON');
 }
 
 function sbmDoctorShowIntegrationStatus() {
   var id=String(sbmGetSetting_('DoctorLastRequestId','')||'').trim();
   var articleId=String(sbmGetSetting_('DoctorLastRequestArticleId','')||'').trim();
   var at=String(sbmGetSetting_('DoctorLastRequestAt','')||'').trim();
-  var url=String(sbmGetSetting_('DoctorLastRequestFileUrl','')||'').trim();
-  var msg='連携方式：手動JSON連携（独立製品）\n自動診断：行いません\n日次処理からの呼出し：ありません\n\n';
-  msg+=id?('最終RequestID：'+id+'\nArticleID：'+articleId+'\n生成日時：'+at+'\n保存先：'+url):'外来診療依頼はまだ生成されていません。';
+  var msg='連携方式：コピー＆ペースト（独立製品）\nDrive保存：行いません\n自動診断：行いません\n日次処理からの呼出し：ありません\n\n';
+  msg+=id?('最終RequestID：'+id+'\nArticleID：'+articleId+'\n生成日時：'+at):'外来診療依頼はまだ生成されていません。';
   sbmAlert_('SIMS Doctor 連携状態',msg);
 }
 
