@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.12';
+const SBM_VERSION = '5.6.13';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7919,6 +7919,13 @@ function onOpen() {
     .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
     .addToUi();
 
+
+  // Doctorは数か月ごとの明示操作だけで使用します。日次処理・onOpenではデータ取得を行いません。
+  ui.createMenu('SIMS Doctor連携')
+    .addItem('Doctor用記事カタログを出力','sbmDoctorGenerateArticleCatalogManual')
+    .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
+    .addToUi();
+
   // 改善中の記事と4週間の測定状況をここへ統合します。
   ui.createMenu('推移確認')
     .addItem('改善の推移を開く','sbmOpenImprovementStatus')
@@ -7964,3 +7971,245 @@ function onOpen() {
   try { sbmEnsureTodayRecommendations_('open'); } catch (eToday) {}
 }
 
+
+
+/**
+ * Product 5.6.13 - SIMS Doctor integration vertical slice.
+ *
+ * Safety boundary:
+ * - This path is manual-only and never runs from onOpen or daily processing.
+ * - It reads the existing Article DB but does not mutate article/workflow rows.
+ * - It creates no time-driven triggers and performs no Search Console request.
+ */
+const SBM_DOCTOR_CATALOG_FORMAT = 'SIMS_DOCTOR_ARTICLE_CATALOG_V1';
+const SBM_DOCTOR_CONTRACT_VERSION = '1.0';
+
+function sbmDoctorGenerateArticleCatalogManual() {
+  var runtime = sbmGetDailyRuntimeState_();
+  if (runtime && runtime.running) {
+    throw new Error('日次処理の実行中はDoctor用記事カタログを出力できません。日次処理の完了後に実行してください。');
+  }
+
+  var payload = sbmDoctorBuildArticleCatalog_();
+  var jsonText = JSON.stringify(payload, null, 2);
+  var fileName = 'SIMS-Doctor-Article-Catalog-' + payload.site.site_id + '-' + sbmDoctorCompactTimestamp_() + '.json';
+  var folder = sbmDoctorGetOrCreateExportFolder_();
+  var file = folder.createFile(fileName, jsonText, MimeType.PLAIN_TEXT);
+
+  sbmSetSetting_('DoctorLastCatalogId', payload.catalog.catalog_id, 'Doctorへ出力した最新記事カタログID');
+  sbmSetSetting_('DoctorLastCatalogMessageId', payload.message_id, 'Doctorへ出力した最新メッセージID');
+  sbmSetSetting_('DoctorLastCatalogAt', sbmNowText_(), 'Doctor用記事カタログの最終出力日時');
+  sbmSetSetting_('DoctorLastCatalogArticleCount', String(payload.catalog.article_count), 'Doctor用記事カタログの記事数');
+  sbmSetSetting_('DoctorLastCatalogFileUrl', file.getUrl(), 'Doctor用記事カタログファイルURL');
+
+  sbmDoctorShowExportComplete_(file, payload);
+  return {
+    success: true,
+    catalogId: payload.catalog.catalog_id,
+    messageId: payload.message_id,
+    articleCount: payload.catalog.article_count,
+    eligibleCount: payload.catalog.eligible_article_count,
+    excludedCount: payload.catalog.excluded_article_count,
+    fileUrl: file.getUrl()
+  };
+}
+
+function sbmDoctorBuildArticleCatalog_() {
+  var siteId = String(sbmGetSetting_('SiteID', '') || '').trim();
+  var siteName = String(sbmGetSetting_('SiteName', '') || sbmGetSetting_('BlogName', '') || '').trim();
+  var blogUrl = String(sbmGetSetting_('BlogUrl', '') || '').trim();
+  var property = String(sbmGetSetting_('SearchConsoleProperty', '') || '').trim();
+  if (!siteId) throw new Error('SiteIDが設定されていません。先にブログ情報を確認してください。');
+  if (!siteName) throw new Error('SiteNameまたはブログ名が設定されていません。');
+  if (!blogUrl) throw new Error('ブログURLが設定されていません。');
+  if (!property) throw new Error('Search Consoleプロパティが設定されていません。');
+
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB);
+  var articleIds = {};
+  var articles = [];
+  var eligibleCount = 0;
+  var excludedCount = 0;
+
+  rows.forEach(function(row) {
+    var articleId = String(row['ArticleID'] || '').trim();
+    var url = String(row['記事URL'] || '').trim();
+    if (!articleId && !url) return;
+    if (!articleId) throw new Error('ArticleIDが空の記事があります: ' + url);
+    if (!url) throw new Error('記事URLが空の記事があります: ' + articleId);
+    if (articleIds[articleId]) throw new Error('ArticleIDが重複しています: ' + articleId);
+    articleIds[articleId] = true;
+
+    var workflowStatus = sbmDoctorMapWorkflowStatus_(row['作業状態']);
+    var articleStatus = sbmDoctorMapArticleStatus_(row['記事ステータス'], row['管理フラグ']);
+    var exclusion = sbmDoctorExclusionReason_(workflowStatus, articleStatus);
+    var eligible = !exclusion;
+    if (eligible) eligibleCount++; else excludedCount++;
+
+    articles.push({
+      article_id: articleId,
+      url: url,
+      canonical_url: url,
+      title: String(row['記事タイトル'] || row['H1タイトル'] || '').trim(),
+      seo_title: String(row['SEOタイトル'] || '').trim() || null,
+      main_query: String(row['メインクエリ'] || '').trim() || null,
+      h1: String(row['H1タイトル'] || '').trim() || null,
+      published_at: null,
+      updated_at: sbmDoctorToIsoOrNull_(row['最終確認日'] || row['データ更新日'] || row['最終取得日時']),
+      article_status: articleStatus,
+      workflow_status: workflowStatus,
+      article_rank: String(row['記事ランク'] || '').trim() || null,
+      category: null,
+      tags: [],
+      latest_performance: {
+        period_days: Number(sbmGetSetting_('SearchDays', SBM_DEFAULTS.SEARCH_DAYS) || SBM_DEFAULTS.SEARCH_DAYS),
+        clicks: sbmDoctorNumberOrZero_(row['クリック数']),
+        impressions: sbmDoctorNumberOrZero_(row['表示回数']),
+        ctr: sbmDoctorCtrDecimal_(row['CTR']),
+        position: sbmDoctorNumberOrNull_(row['掲載順位'])
+      },
+      improvement: {
+        last_improved_at: null,
+        monitoring_until: workflowStatus === 'SBM_MONITORING' ? null : null,
+        active_improvement_id: null,
+        active_case_id: null
+      },
+      diagnosis_control: {
+        doctor_eligible: eligible,
+        exclusion_reason: exclusion,
+        manual_hold: workflowStatus === 'MANUAL_HOLD'
+      }
+    });
+  });
+
+  var now = new Date();
+  var stamp = Utilities.formatDate(now, SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
+  return {
+    format: SBM_DOCTOR_CATALOG_FORMAT,
+    contract_version: SBM_DOCTOR_CONTRACT_VERSION,
+    schema_version: '1.0.0',
+    source_system: 'SIMS_BLOG_MANAGER',
+    target_system: 'SIMS_DOCTOR',
+    message_id: 'MSG-SBM-' + stamp,
+    generated_at: sbmDoctorIsoDateTime_(now),
+    timezone: SBM_DEFAULTS.TIMEZONE,
+    site: {
+      site_id: siteId,
+      site_name: siteName,
+      blog_url: blogUrl,
+      search_console_property: property,
+      platform: sbmDoctorDetectPlatform_(blogUrl)
+    },
+    catalog: {
+      catalog_id: 'CAT-' + siteId + '-' + stamp,
+      article_count: articles.length,
+      eligible_article_count: eligibleCount,
+      excluded_article_count: excludedCount,
+      generated_from: 'ARTICLE_DATABASE',
+      is_full_snapshot: true
+    },
+    articles: articles
+  };
+}
+
+function sbmDoctorMapWorkflowStatus_(value) {
+  var text = String(value || '').trim();
+  if (text.indexOf('今日の改善') >= 0) return 'SBM_IMPROVEMENT_PENDING';
+  if (text.indexOf('改善中') >= 0) return 'SBM_IMPROVEMENT_IN_PROGRESS';
+  if (text.indexOf('モニター') >= 0 || text.indexOf('経過観察') >= 0) return 'SBM_MONITORING';
+  if (text.indexOf('保留') >= 0) return 'MANUAL_HOLD';
+  return 'AVAILABLE';
+}
+
+function sbmDoctorMapArticleStatus_(statusValue, flagValue) {
+  var text = (String(statusValue || '') + ' ' + String(flagValue || '')).toLowerCase();
+  if (text.indexOf('削除') >= 0 || text.indexOf('deleted') >= 0) return 'DELETED';
+  if (text.indexOf('アーカイブ') >= 0 || text.indexOf('archive') >= 0) return 'ARCHIVED';
+  return 'ACTIVE';
+}
+
+function sbmDoctorExclusionReason_(workflowStatus, articleStatus) {
+  if (articleStatus === 'DELETED') return 'DELETED';
+  if (articleStatus === 'ARCHIVED') return 'ARCHIVED';
+  if (workflowStatus === 'SBM_IMPROVEMENT_PENDING') return 'SBM_IMPROVEMENT_PENDING';
+  if (workflowStatus === 'SBM_IMPROVEMENT_IN_PROGRESS') return 'SBM_IMPROVEMENT_IN_PROGRESS';
+  if (workflowStatus === 'SBM_MONITORING') return 'SBM_MONITORING';
+  if (workflowStatus === 'MANUAL_HOLD') return 'MANUAL_HOLD';
+  return null;
+}
+
+function sbmDoctorNumberOrZero_(value) {
+  var n = Number(value);
+  return isFinite(n) ? n : 0;
+}
+
+function sbmDoctorNumberOrNull_(value) {
+  var n = Number(value);
+  return isFinite(n) && String(value || '').trim() !== '' ? n : null;
+}
+
+function sbmDoctorCtrDecimal_(value) {
+  var n = Number(value);
+  if (!isFinite(n)) return 0;
+  return n > 1 ? n / 100 : n;
+}
+
+function sbmDoctorToIsoOrNull_(value) {
+  if (!value) return null;
+  var d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return sbmDoctorIsoDateTime_(d);
+}
+
+function sbmDoctorIsoDateTime_(date) {
+  return Utilities.formatDate(date, SBM_DEFAULTS.TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssXXX");
+}
+
+function sbmDoctorCompactTimestamp_() {
+  return Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
+}
+
+function sbmDoctorDetectPlatform_(blogUrl) {
+  var u = String(blogUrl || '').toLowerCase();
+  if (u.indexOf('hatenablog.') >= 0 || u.indexOf('hatenadiary.') >= 0) return 'HATENA_BLOG';
+  return 'OTHER';
+}
+
+function sbmDoctorGetOrCreateExportFolder_() {
+  var it = DriveApp.getFoldersByName('SIMS-Doctor-Exports');
+  return it.hasNext() ? it.next() : DriveApp.createFolder('SIMS-Doctor-Exports');
+}
+
+function sbmDoctorShowExportComplete_(file, payload) {
+  var html = HtmlService.createHtmlOutput(
+    '<!doctype html><html><head><base target="_blank"><style>' +
+    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124}' +
+    'h2{margin-top:0;color:#0b8043}.box{background:#f8f9fa;border:1px solid #dadce0;border-radius:8px;padding:14px}' +
+    'a{display:inline-block;margin-top:14px;background:#1a73e8;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:700}' +
+    '.note{font-size:12px;color:#5f6368;margin-top:14px}</style></head><body>' +
+    '<h2>Doctor用記事カタログを出力しました</h2><div class="box">' +
+    '<div>全記事：<b>' + payload.catalog.article_count + '件</b></div>' +
+    '<div>診断対象：<b>' + payload.catalog.eligible_article_count + '件</b></div>' +
+    '<div>処置中・観察中などの対象外：<b>' + payload.catalog.excluded_article_count + '件</b></div>' +
+    '<div>CatalogID：' + payload.catalog.catalog_id + '</div></div>' +
+    '<a href="' + file.getUrl() + '">JSONファイルを開く</a>' +
+    '<div class="note">この操作は記事管理を読み取るだけで、日次処理・改善候補・経過観察データを変更しません。</div>' +
+    '</body></html>'
+  ).setWidth(560).setHeight(380);
+  SpreadsheetApp.getUi().showModalDialog(html, 'SIMS Doctor連携');
+}
+
+function sbmDoctorShowIntegrationStatus() {
+  var catalogId = String(sbmGetSetting_('DoctorLastCatalogId', '') || '未出力');
+  var exportedAt = String(sbmGetSetting_('DoctorLastCatalogAt', '') || '未出力');
+  var count = String(sbmGetSetting_('DoctorLastCatalogArticleCount', '') || '0');
+  var url = String(sbmGetSetting_('DoctorLastCatalogFileUrl', '') || '');
+  var daily = sbmGetDailyRuntimeState_();
+  var message = 'Doctor連携は手動実行専用です。日次処理から自動起動しません。\n\n' +
+    '最終CatalogID：' + catalogId + '\n' +
+    '最終出力日時：' + exportedAt + '\n' +
+    '記事数：' + count + '件\n' +
+    '日次処理：' + (daily.running ? '実行中（Doctor出力は停止）' : '停止中') +
+    (url ? '\nファイル：' + url : '');
+  sbmAlert_('SIMS Doctor連携状態', message);
+  return {catalogId:catalogId, exportedAt:exportedAt, articleCount:Number(count||0), fileUrl:url, dailyRunning:!!daily.running};
+}
