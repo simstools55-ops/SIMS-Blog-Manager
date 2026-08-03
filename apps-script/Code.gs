@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.6.14';
+const SBM_VERSION = '5.6.15';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -3988,12 +3988,23 @@ function sbmGuardMassNurtureRankResult_(map, previousRankByUrl) {
   return true;
 }
 
-function sbmApplyArticleRanksToObjectMap_(map) {
+function sbmGetSafeMinImpressions_() {
+  var configured = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS));
+  if (!isFinite(configured) || configured < 1 || configured > 1000) {
+    sbmLog_('RankThresholdGuard', 'Fallback', 'MinImpressionsの異常値を検出したため既定値へ戻します: ' + configured);
+    return SBM_DEFAULTS.MIN_IMPRESSIONS;
+  }
+  return configured;
+}
+
+function sbmApplyArticleRanksToObjectMap_(map, minImpressionsOverride) {
   var keys = Object.keys(map || {});
   var rows = keys.map(function(k){ return map[k]; }).filter(function(r){ return r && r['記事URL']; });
   var clickVals = rows.map(function(r){ return sbmNumber_(r['クリック数'] || 0); }).sort(function(a,b){return a-b;});
   var impVals = rows.map(function(r){ return sbmNumber_(r['表示回数'] || 0); }).sort(function(a,b){return a-b;});
-  var minImps = sbmNumber_(sbmGetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS)) || SBM_DEFAULTS.MIN_IMPRESSIONS;
+  var minImps = minImpressionsOverride !== undefined && minImpressionsOverride !== null
+    ? Math.max(1, sbmNumber_(minImpressionsOverride) || SBM_DEFAULTS.MIN_IMPRESSIONS)
+    : sbmGetSafeMinImpressions_();
   rows.forEach(function(r){
     if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
     var clicks = sbmNumber_(r['クリック数'] || 0);
@@ -4027,19 +4038,28 @@ function sbmUpdateArticleRankManual() {
       if (!r['作業状態']) r['作業状態'] = sbmLegacyStatusToWorkState_(r['記事ステータス'] || '');
       map[url] = r;
     });
-    sbmApplyArticleRanksToObjectMap_(map);
-    var out = Object.keys(map).map(function(url){
+
+    // Product 5.6.15: 復旧操作では既定の最低表示回数50を明示使用し、設定値異常の影響を受けません。
+    sbmApplyArticleRanksToObjectMap_(map, SBM_DEFAULTS.MIN_IMPRESSIONS);
+    var keys = Object.keys(map);
+    var nurtureCount = keys.filter(function(url){ return String(map[url]['記事ランク'] || '') === '🌱 育成'; }).length;
+    if (keys.length >= 20 && nurtureCount >= Math.ceil(keys.length * 0.90)) {
+      throw new Error('再計算結果の90%以上が「育成」になるため保存を中止しました。\n表示回数の列または記事ランク計算条件を確認してください。');
+    }
+
+    var out = keys.map(function(url){
       var r = map[url];
       r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
-    return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
+      return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
     });
     sbmWriteArticleDb_(out);
+    sbmSetSetting_('MinImpressions', SBM_DEFAULTS.MIN_IMPRESSIONS, '最低表示回数。Product 5.6.15で既定値へ復旧');
     sbmUpdateHomeArticleDbCounts_(out);
     var sec = sbmSecondsSince_(started);
-    sbmProcessLog_('記事ランク再判定', '完了', out.length, out.length, sec, '外部アクセスなし。作業状態は維持。', startedText, sbmNowText_());
-    sbmAlert_('記事ランク再判定完了', out.length + '件の記事ランクを更新しました。\n作業状態は変更していません。');
+    sbmProcessLog_('記事ランク復旧・再計算', '完了', out.length, out.length, sec, '外部アクセスなし。最低表示回数50で再計算。作業状態は維持。', startedText, sbmNowText_());
+    sbmAlert_('記事ランク復旧・再計算完了', out.length + '件の記事ランクを再計算しました。\nクリック数・表示回数などのデータと作業状態は変更していません。');
   } catch(e) {
-    sbmAlert_('記事ランク再判定エラー', String(e));
+    sbmAlert_('記事ランク復旧・再計算エラー', String(e));
   }
 }
 
@@ -7994,6 +8014,8 @@ function onOpen() {
     .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
     .addItem('選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
     .addItem('選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
+    .addSeparator()
+    .addItem('記事ランクを復旧・再計算','sbmUpdateArticleRankManual')
     .addSeparator()
     .addItem('記事ランク順','sbmSortArticlesByRank')
     .addItem('改善状態順','sbmSortArticlesByWork')
