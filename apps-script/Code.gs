@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.1-rc.3';
+const SBM_VERSION = '5.7.1-rc.4';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7967,6 +7967,8 @@ function onOpen() {
     .addItem('改善の推移の選択記事を診断依頼','sbmDoctorCreateRequestFromEffect')
     .addSeparator()
     .addItem('ブログ全体の健康診断を実行','sbmDoctorRunHealthCheck')
+    .addItem('ブログ健康診断書を見る','sbmDoctorOpenHealthReport')
+    .addItem('精密診断候補を見る','sbmDoctorOpenDetailedCandidates')
     .addItem('健康診断の進み具合を見る','sbmDoctorShowHealthCheckStatus')
     .addSeparator()
     .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
@@ -8214,15 +8216,16 @@ function sbmDoctorRunScreening_() {
     }
   });
   sh.getRange(2,1,vals.length,vals[0].length).setValues(vals);
-  run.statusCode='COMPLETED'; run.phase='完了'; run.nextStep='Doctorによる詳しい診断'; run.processedCount=eligible; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  run.statusCode='COMPLETED'; run.phase='完了'; run.nextStep='健康診断書を確認し、必要な記事だけ精密診断'; run.processedCount=eligible; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  sbmDoctorBuildHealthReportSheets_(run.healthCheckId, run, {excluded:excluded,eligible:eligible,selected:selected,lowSample:lowSample,healthy:healthy});
   sbmAlert_('ブログ全体の一次検査が完了しました',
     '登録記事：'+run.targetCount+'件\n'+
     'SBMで対応中のため対象外：'+excluded+'件\n'+
     'Doctorが一次検査した記事：'+eligible+'件\n'+
     '詳しい診断が必要な記事：'+selected+'件\n'+
-    'データ不足で経過観察：'+lowSample+'件\n'+
+    'データが少ないため経過を見る記事：'+lowSample+'件\n'+
     '大きな問題が見つからなかった記事：'+healthy+'件\n\n'+
-    '次は、優先順位の高い記事からDoctorが詳しく診断します。');
+    '健康診断書と、詳しく診断する記事の一覧を作成しました。\nまず健康診断書を確認してください。');
 }
 
 function sbmDoctorSelectionContext_(){
@@ -8752,4 +8755,76 @@ function sbmDoctorDateOnlyOrNull_(value) {
   if (!value) return null;
   var d=value instanceof Date?value:new Date(value);
   return isNaN(d.getTime())?null:Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');
+}
+
+
+/**
+ * Product 5.7.1 RC4: ブログ健康診断書と精密診断候補一覧
+ * 利用者向け表示は分かりやすい日本語に統一します。
+ */
+function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var snap = sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+  var hm = sbmHeaderMap_(snap);
+  var rows = snap.getLastRow() > 1 ? snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues() : [];
+  var current = rows.filter(function(r){ return String(r[hm['健康診断ID']-1]) === healthCheckId; });
+  var scoreTotal = 0, scoreCount = 0;
+  current.forEach(function(r){
+    if (String(r[hm['Doctor診断対象']-1]) !== '対象') return;
+    var code=String(r[hm['一次検査コード']-1]||''), pri=String(r[hm['優先度']-1]||'低');
+    var score = code === 'HEALTHY' ? 100 : code === 'LOW_SAMPLE' ? 70 : pri === '高' ? 30 : pri === '中' ? 50 : 65;
+    scoreTotal += score; scoreCount++;
+  });
+  var healthScore = scoreCount ? Math.round(scoreTotal / scoreCount) : 0;
+  var overall = healthScore >= 85 ? '全体として良好です' : healthScore >= 70 ? '一部の記事は経過観察が必要です' : healthScore >= 55 ? '改善が必要な記事があります' : '優先して確認したい記事があります';
+
+  var reportName='Doctor_健康診断書';
+  var report=ss.getSheetByName(reportName)||ss.insertSheet(reportName);
+  report.clear(); report.showSheet();
+  report.getRange('A1:F1').merge().setValue('SIMS Doctor　ブログ健康診断書').setFontSize(18).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
+  report.getRange('A3:B3').setValues([['ブログ名',sbmGetSetting_('SiteName','')]]);
+  report.getRange('A4:B4').setValues([['健康診断ID',healthCheckId]]);
+  report.getRange('A5:B5').setValues([['対象期間',run.startDate+' ～ '+run.endDate]]);
+  report.getRange('A7:B7').setValues([['ブログ健康度（一次検査の参考値）',healthScore+'点']]).setFontWeight('bold');
+  report.getRange('A8:B8').setValues([['Doctor所見',overall]]);
+  report.getRange('A10:B15').setValues([
+    ['検査した登録記事',Number(run.targetCount||0)+'件'],
+    ['SBMで対応中のため対象外',Number(counts.excluded||0)+'件'],
+    ['Doctorが一次検査した記事',Number(counts.eligible||0)+'件'],
+    ['大きな問題が見つからなかった記事',Number(counts.healthy||0)+'件'],
+    ['データが少ないため経過を見る記事',Number(counts.lowSample||0)+'件'],
+    ['詳しい診断が必要な記事',Number(counts.selected||0)+'件']
+  ]);
+  report.getRange('A17:F17').merge().setValue('次の対応').setFontWeight('bold').setBackground('#d9ead3');
+  report.getRange('A18:F19').merge().setValue(Number(counts.selected||0) > 0 ? '「Doctor_精密診断候補」を開き、選ばれた理由を確認してください。納得した記事だけをClaude版Doctorへ送ります。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続けてください。').setWrap(true);
+  report.setColumnWidth(1,260); report.setColumnWidth(2,420);
+  report.setFrozenRows(1);
+  report.getRange('A3:B18').setVerticalAlignment('middle');
+
+  var candName='Doctor_精密診断候補';
+  var cand=ss.getSheetByName(candName)||ss.insertSheet(candName);
+  cand.clear(); cand.showSheet();
+  var headers=['優先順位','記事ID','記事タイトル','記事URL','優先度','選ばれた理由','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
+  cand.getRange(1,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
+  var selectedRows=current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  var out=selectedRows.map(function(r){return [
+    Number(r[hm['精密診断順位']-1]||0), String(r[hm['記事ID']-1]||''), String(r[hm['記事タイトル']-1]||''), String(r[hm['記事URL']-1]||''), String(r[hm['優先度']-1]||''), String(r[hm['診断の根拠']-1]||''), Number(r[hm['180日表示']-1]||0), Number(r[hm['180日クリック']-1]||0), Number(r[hm['180日CTR']-1]||0), Number(r[hm['180日平均順位']-1]||0)
+  ];});
+  if(out.length) cand.getRange(2,1,out.length,out[0].length).setValues(out);
+  else cand.getRange('A2:F2').merge().setValue('今回、精密診断を優先する記事はありません。');
+  cand.setFrozenRows(1); cand.autoResizeColumns(1,headers.length); cand.setColumnWidth(3,360); cand.setColumnWidth(4,360); cand.setColumnWidth(6,520);
+  if(out.length){cand.getRange(2,9,out.length,1).setNumberFormat('0.0%'); cand.getRange(2,10,out.length,1).setNumberFormat('0.0');}
+  cand.getDataRange().setWrap(true).setVerticalAlignment('middle');
+}
+
+function sbmDoctorOpenHealthReport(){
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_健康診断書');
+  if(!sh) return sbmAlert_('ブログ健康診断書','まだ健康診断書は作成されていません。先にブログ全体の健康診断を実行してください。');
+  sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); sh.activate();
+}
+
+function sbmDoctorOpenDetailedCandidates(){
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_精密診断候補');
+  if(!sh) return sbmAlert_('精密診断候補','まだ精密診断候補は作成されていません。先にブログ全体の健康診断を実行してください。');
+  sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); sh.activate();
 }

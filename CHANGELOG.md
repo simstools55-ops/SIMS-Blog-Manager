@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.7.1 RC4
+
+- Added a Japanese blog health report sheet.
+- Added a reasoned detailed-diagnosis candidate list.
+- Separated whole-blog screening from Claude detailed diagnosis.
+- Added menu commands to open both result sheets.
+- Verified repository text files as UTF-8.
+
+
 ## 5.7.1-rc.3
 
 - Doctor半年健康診断を記事管理の登録URLだけに限定し、未登録URLが件数へ混入する問題を修正。
