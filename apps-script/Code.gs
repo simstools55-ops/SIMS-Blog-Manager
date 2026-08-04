@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.1-rc.6';
+const SBM_VERSION = '5.7.1-rc.8';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -8394,9 +8394,11 @@ function sbmDoctorShowHealthCheckStatus(){sbmDoctorEnsureMedicalSheets_();var r=
  * - 利用者がメニューを実行した時だけJSONを生成します。
  * - Doctor、Writer、時間主導トリガーを自動起動しません。
  */
-const SBM_DOCTOR_SINGLE_CASE_FORMAT = 'SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1';
-const SBM_DOCTOR_CONTRACT_VERSION = '1.0';
-const SBM_DOCTOR_SCHEMA_VERSION = '1.0.0';
+const SBM_DOCTOR_SINGLE_CASE_FORMAT = 'SIMS_DOCTOR_SINGLE_CASE_REQUEST_V2';
+const SBM_DOCTOR_CONTRACT_VERSION = '2.0';
+const SBM_DOCTOR_SCHEMA_VERSION = '2.0.0';
+const SBM_DOCTOR_EVIDENCE_DAYS = 180;
+const SBM_DOCTOR_QUERY_LIMIT = 200;
 
 function sbmDoctorCreateRequestFromArticleList() {
   var sh = SpreadsheetApp.getActiveSheet();
@@ -8624,6 +8626,10 @@ function sbmDoctorBuildSingleCaseRequest_(ctx) {
       return_to:'SIMS_BLOG_MANAGER'
     }
   };
+  payload.evidence_package = sbmDoctorBuildEvidencePackage_(ctx, payload);
+  payload.attachments.article_body_included = !!(payload.evidence_package.article_source && payload.evidence_package.article_source.available);
+  payload.attachments.article_body = payload.evidence_package.article_source && payload.evidence_package.article_source.available ? payload.evidence_package.article_source.data : null;
+  payload.attachments.sbm_history_included = !!(payload.evidence_package.sbm_history && payload.evidence_package.sbm_history.records && payload.evidence_package.sbm_history.records.length);
   return payload;
 }
 
@@ -8635,6 +8641,7 @@ function sbmDoctorValidateSingleCaseRequest_(p) {
   if (!p || !p.article || !p.article.article_id) errors.push('article.article_idがありません。');
   if (!p || !p.article || !p.article.url) errors.push('article.urlがありません。');
   if (!p || !p.request || !p.request.request_id) errors.push('request.request_idがありません。');
+  if (!p || !p.evidence_package || !Array.isArray(p.evidence_package.evidence_index)) errors.push('evidence_package.evidence_indexがありません。');
   return {valid:errors.length===0,errors:errors};
 }
 
@@ -8757,6 +8764,215 @@ function sbmDoctorDateOnlyOrNull_(value) {
   return isNaN(d.getTime())?null:Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');
 }
 
+
+
+
+/**
+ * Product 5.7.1 RC7: Doctor Evidence Package v1.0
+ * 個別診断時だけ対象記事の証拠を可能な限り収集します。
+ */
+function sbmDoctorBuildEvidencePackage_(ctx, payload) {
+  var url = payload.article.url;
+  var articleId = payload.article.article_id;
+  var collectedAt = sbmDoctorIso_(new Date());
+  var source = sbmFetchArticleSource_(url);
+  var performance = sbmDoctorFetchLongTermPerformance_(url, SBM_DOCTOR_EVIDENCE_DAYS);
+  var queries = sbmDoctorFetchLongTermQueries_(url, SBM_DOCTOR_EVIDENCE_DAYS, SBM_DOCTOR_QUERY_LIMIT);
+  var health = sbmDoctorLatestHealthSnapshot_(articleId, url);
+  var sbmHistory = sbmDoctorAllImprovementHistory_(articleId, url);
+  var doctorHistory = sbmDoctorExistingMedicalHistory_(articleId, url);
+  var internalLinks = sbmDoctorInternalLinkEvidence_(ctx.article, queries.rows || []);
+  var comparison = sbmDoctorComparisonWindow_(payload.improvement_context, performance);
+
+  var quality = sbmDoctorValidateEvidencePackage_({
+    article_source:source,
+    daily_performance:performance,
+    query_performance:queries,
+    health_snapshot:health,
+    improvement_history:sbmHistory,
+    doctor_history:doctorHistory,
+    internal_links:internalLinks
+  });
+  var evidenceIndex = quality.evidence_index;
+
+  return {
+    package_format:'SIMS_DOCTOR_EVIDENCE_PACKAGE_V1',
+    package_version:'1.1.0',
+    collected_at:collectedAt,
+    article_id:articleId,
+    article_url:url,
+    evidence_index:evidenceIndex,
+    evidence_validation:quality.validation_report,
+    doctor_readiness:quality.doctor_readiness,
+    article_source:{available:!!source.ok, status:source.ok?'取得済み':'取得できませんでした', message:source.message||null, data:source.ok?source.data:null},
+    search_console:{
+      period_days:SBM_DOCTOR_EVIDENCE_DAYS,
+      daily_performance:performance,
+      query_performance:queries,
+      comparison_window:comparison
+    },
+    health_snapshot:health,
+    improvement_history:{count:sbmHistory.length,records:sbmHistory},
+    sbm_history:{count:sbmHistory.length,records:sbmHistory},
+    doctor_history:{count:doctorHistory.length,records:doctorHistory},
+    internal_links:internalLinks,
+    missing_evidence:evidenceIndex.filter(function(e){return e.quality==='MISSING'||e.quality==='ERROR';}).map(function(e){return e.label;}),
+    diagnostic_instruction:'最初にevidence_validationとdoctor_readinessを確認してください。再取得が必要な場合は確定診断を行わず、利用者には分かりやすい日本語で再取得を案内してください。個別診断では有効な証拠をすべて確認し、証拠不足の検査は未評価と明記してください。英語の内部コードは利用者向け本文に表示しないでください。'
+  };
+}
+
+function sbmDoctorEvidenceItem_(id,label,quality,note,details) {
+  var labels={VALID:'正常',WARNING:'注意',ERROR:'取得エラー',EMPTY:'データなし',NOT_SUPPORTED:'SBMでは未対応',MISSING:'未取得'};
+  return {evidence_id:id,label:label,available:quality==='VALID'||quality==='WARNING'||quality==='EMPTY',quality:quality,status:labels[quality]||quality,note:String(note||''),details:details||null};
+}
+
+function sbmDoctorMetricDifference_(a,b) {
+  a=a||{}; b=b||{};
+  return {clicks:Math.abs(Number(a.clicks||0)-Number(b.clicks||0)),impressions:Math.abs(Number(a.impressions||0)-Number(b.impressions||0)),position:Math.abs(Number(a.position||0)-Number(b.position||0))};
+}
+
+function sbmDoctorValidateEvidencePackage_(e) {
+  var healthFull=e.health_snapshot&&e.health_snapshot.metrics?e.health_snapshot.metrics.full_180_days:null;
+  var dailyFull=e.daily_performance&&e.daily_performance.summary?e.daily_performance.summary.full_180_days:null;
+  var healthImp=healthFull?Number(healthFull.impressions||0):0;
+  var dailyImp=dailyFull?Number(dailyFull.impressions||0):0;
+  var items=[];
+
+  var bodyChars=e.article_source&&e.article_source.data?Number(e.article_source.data.character_count||0):0;
+  if(!e.article_source||!e.article_source.ok) items.push(sbmDoctorEvidenceItem_('E001','記事本文','ERROR',e.article_source&&e.article_source.message||'記事本文を取得できませんでした。'));
+  else if(bodyChars<300) items.push(sbmDoctorEvidenceItem_('E001','記事本文','WARNING','本文は取得できましたが、文字数が少ないため内容確認が必要です。',{character_count:bodyChars}));
+  else items.push(sbmDoctorEvidenceItem_('E001','記事本文','VALID','記事本文を正常に取得しました。',{character_count:bodyChars}));
+
+  if(!e.daily_performance||!e.daily_performance.ok) {
+    items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','ERROR',e.daily_performance&&e.daily_performance.message||'180日の日別推移を取得できませんでした。'));
+  } else if(healthImp>0 && dailyImp===0) {
+    items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','ERROR','半年健康診断には実績がありますが、日別推移が全て0です。Search Consoleデータの再取得が必要です。',{code:'SUMMARY_ROWS_MISMATCH',health_snapshot:healthFull,daily_summary:dailyFull}));
+  } else if(healthFull&&dailyFull) {
+    var diff=sbmDoctorMetricDifference_(healthFull,dailyFull);
+    var allowed=Math.max(2,Math.round(healthImp*0.05));
+    if(diff.impressions>allowed) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','WARNING','半年健康診断の集計値と日別推移の合計に差があります。期間のずれを考慮して診断してください。',{code:'SUMMARY_ROWS_DIFFERENCE',difference:diff,health_snapshot:healthFull,daily_summary:dailyFull}));
+    else if(dailyImp===0) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','EMPTY','対象期間にSearch Consoleの表示実績がありません。',{row_count:e.daily_performance.row_count||0}));
+    else items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','VALID','180日の日別推移と半年健康診断の集計値は整合しています。',{row_count:e.daily_performance.row_count||0,summary:dailyFull}));
+  } else if(dailyImp===0) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','EMPTY','対象期間にSearch Consoleの表示実績がありません。',{row_count:e.daily_performance.row_count||0}));
+  else items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','VALID','180日の日別推移を取得しました。',{row_count:e.daily_performance.row_count||0,summary:dailyFull}));
+
+  var queryCount=e.query_performance&&Array.isArray(e.query_performance.rows)?e.query_performance.rows.length:0;
+  if(!e.query_performance||!e.query_performance.ok) items.push(sbmDoctorEvidenceItem_('E003','180日の上位クエリ','ERROR',e.query_performance&&e.query_performance.message||'クエリデータを取得できませんでした。'));
+  else if(queryCount===0&&healthImp>0) items.push(sbmDoctorEvidenceItem_('E003','180日の上位クエリ','WARNING','記事には表示実績がありますが、クエリ明細が0件です。匿名化制限またはURL一致の問題が考えられます。',{code:'QUERY_EMPTY_WITH_IMPRESSIONS',health_impressions:healthImp}));
+  else if(queryCount===0) items.push(sbmDoctorEvidenceItem_('E003','180日の上位クエリ','EMPTY','対象期間に取得できるクエリ明細がありません。'));
+  else items.push(sbmDoctorEvidenceItem_('E003','180日の上位クエリ','VALID',queryCount+'件のクエリ推移を取得しました。',{row_count:queryCount}));
+
+  items.push(e.health_snapshot?sbmDoctorEvidenceItem_('E004','半年健康診断結果','VALID','最新の半年健康診断結果を添付しました。'):sbmDoctorEvidenceItem_('E004','半年健康診断結果','EMPTY','半年健康診断結果はまだありません。'));
+  items.push((e.improvement_history||[]).length?sbmDoctorEvidenceItem_('E005','改善・モニタリング履歴','VALID',(e.improvement_history||[]).length+'件の履歴を添付しました。'):sbmDoctorEvidenceItem_('E005','改善・モニタリング履歴','EMPTY','改善・モニタリング履歴はありません。'));
+  items.push((e.doctor_history||[]).length?sbmDoctorEvidenceItem_('E006','過去のDoctor診断','VALID',(e.doctor_history||[]).length+'件の診断履歴を添付しました。'):sbmDoctorEvidenceItem_('E006','過去のDoctor診断','EMPTY','過去のDoctor診断はありません。'));
+  if(!e.internal_links||e.internal_links.available===false) items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','ERROR',e.internal_links&&e.internal_links.message||'内部リンク候補を取得できませんでした。'));
+  else if((e.internal_links.candidates||[]).length===0) items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','EMPTY','適合する内部リンク候補はありません。'));
+  else items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','VALID',(e.internal_links.candidates||[]).length+'件の候補を添付しました。'));
+  items.push(sbmDoctorEvidenceItem_('E008','SERP比較','NOT_SUPPORTED','SBMでは自動取得していません。Claude版Doctorで必要に応じて確認してください。'));
+  if(queryCount>0) items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','VALID','クエリデータを基にDoctorがカニバリ候補を判定できます。'));
+  else if(healthImp>0) items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','WARNING','クエリ明細がないため、カニバリ候補を十分に判定できません。'));
+  else items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','EMPTY','表示実績がないため、カニバリ判定の対象データがありません。'));
+
+  var counts={VALID:0,WARNING:0,ERROR:0,EMPTY:0,NOT_SUPPORTED:0,MISSING:0};
+  items.forEach(function(x){counts[x.quality]=(counts[x.quality]||0)+1;});
+  var score=100-counts.ERROR*30-counts.WARNING*10;
+  if(score<0)score=0;
+  var criticalError=items.some(function(x){return x.evidence_id==='E002'&&x.quality==='ERROR';});
+  var readiness,readinessLabel,action;
+  if(criticalError||score<70){readiness='REFETCH_REQUIRED';readinessLabel='再取得が必要';action='Search Consoleの180日データを再取得してから診断してください。';}
+  else if(counts.ERROR>0||score<85){readiness='LIMITED_DIAGNOSIS';readinessLabel='限定的な診断が可能';action='不足・不整合のある証拠を除外し、確定診断を避けてください。';}
+  else {readiness='READY';readinessLabel='診断可能';action='通常の個別診断を進められます。';}
+  var overall=counts.ERROR>0?'ERROR':counts.WARNING>0?'WARNING':'VALID';
+  var overallLabel=overall==='ERROR'?'再取得が必要':overall==='WARNING'?'注意事項あり':'良好';
+  return {
+    evidence_index:items,
+    validation_report:{overall:overall,overall_label:overallLabel,evidence_score:score,counts:counts,checks:items.filter(function(x){return x.quality==='ERROR'||x.quality==='WARNING';}).map(function(x){return {evidence_id:x.evidence_id,result:x.quality,code:x.details&&x.details.code||null,message:x.note};})},
+    doctor_readiness:{status:readiness,label:readinessLabel,recommended_action:action,diagnosis_allowed:readiness!=='REFETCH_REQUIRED'}
+  };
+}
+
+function sbmDoctorEvidenceRange_(days){
+  var end=new Date(); end.setDate(end.getDate()-SBM_DEFAULTS.GSC_DELAY_DAYS);
+  var start=new Date(end); start.setDate(start.getDate()-Number(days||180)+1);
+  return {startDate:sbmDateText_(start),endDate:sbmDateText_(end)};
+}
+function sbmDoctorUrlCandidates_(url){
+  var s=String(url||'').trim(), out=[];
+  function add(v){if(v&&out.indexOf(v)<0)out.push(v);}
+  add(s);
+  if(s.slice(-1)==='/')add(s.slice(0,-1));else add(s+'/');
+  return out;
+}
+function sbmDoctorSearchConsoleForUrl_(property,baseBody,url){
+  var candidates=sbmDoctorUrlCandidates_(url), last={};
+  for(var i=0;i<candidates.length;i++){
+    var body=JSON.parse(JSON.stringify(baseBody||{}));
+    body.dimensionFilterGroups=[{filters:[{dimension:'page',operator:'equals',expression:candidates[i]}]}];
+    last=sbmSearchConsoleApiRequest_(property,body)||{};
+    if(last.rows&&last.rows.length){last.matched_url=candidates[i];return last;}
+  }
+  last.matched_url=candidates[0]||url;
+  return last;
+}
+function sbmDoctorFetchLongTermPerformance_(url,days){
+  var range=sbmDoctorEvidenceRange_(days), property=sbmGetSetting_('SearchConsoleProperty','');
+  try{
+    var data=sbmDoctorSearchConsoleForUrl_(property,{startDate:range.startDate,endDate:range.endDate,dimensions:['date'],rowLimit:25000},url);
+    var rows=(data.rows||[]).map(function(r){return {date:String(r.keys&&r.keys[0]||''),clicks:Number(r.clicks||0),impressions:Number(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)};});
+    var summary=sbmDoctorSummarizeDailyMetrics_(rows,range);
+    return {ok:true,message:rows.length+'日分のデータを取得しました。',start_date:range.startDate,end_date:range.endDate,row_count:rows.length,matched_url:data.matched_url||url,summary:summary,rows:rows};
+  }catch(e){return {ok:false,message:'180日の日別推移を取得できませんでした：'+String(e&&e.message||e),start_date:range.startDate,end_date:range.endDate,row_count:0,matched_url:null,summary:null,rows:[]};}
+}
+function sbmDoctorSummarizeDailyMetrics_(rows,range){
+  function aggregate(list){var c=0,i=0,posNum=0,posDen=0;list.forEach(function(r){c+=Number(r.clicks||0);i+=Number(r.impressions||0);posNum+=Number(r.position||0)*Number(r.impressions||0);posDen+=Number(r.impressions||0);});return {clicks:c,impressions:i,ctr:i?c/i:0,position:posDen?posNum/posDen:0};}
+  function addDays(text,n){var d=new Date(text+'T00:00:00+09:00');d.setDate(d.getDate()+n);return Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');}
+  function between(a,b){return rows.filter(function(r){var d=String(r.date||'');return d>=a&&d<=b;});}
+  var firstEnd=addDays(range.startDate,89), lastStart=addDays(firstEnd,1), recentStart=addDays(range.endDate,-27), previousEnd=addDays(recentStart,-1), previousStart=addDays(previousEnd,-27);
+  return {full_180_days:aggregate(between(range.startDate,range.endDate)),first_90_days:aggregate(between(range.startDate,firstEnd)),last_90_days:aggregate(between(lastStart,range.endDate)),recent_28_days:aggregate(between(recentStart,range.endDate)),previous_28_days:aggregate(between(previousStart,previousEnd))};
+}
+function sbmDoctorFetchLongTermQueries_(url,days,limit){
+  var full=sbmDoctorEvidenceRange_(days), property=sbmGetSetting_('SearchConsoleProperty','');
+  function addDays(text,n){var d=new Date(text+'T00:00:00+09:00');d.setDate(d.getDate()+n);return Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');}
+  var firstEnd=addDays(full.startDate,89), lastStart=addDays(firstEnd,1), recentStart=addDays(full.endDate,-27), previousEnd=addDays(recentStart,-1), previousStart=addDays(previousEnd,-27);
+  var periods={full_180_days:full,first_90_days:{startDate:full.startDate,endDate:firstEnd},last_90_days:{startDate:lastStart,endDate:full.endDate},recent_28_days:{startDate:recentStart,endDate:full.endDate},previous_28_days:{startDate:previousStart,endDate:previousEnd}};
+  try{
+    var merged={},matchedUrls={};
+    Object.keys(periods).forEach(function(key){
+      var pr=periods[key], data=sbmDoctorSearchConsoleForUrl_(property,{startDate:pr.startDate,endDate:pr.endDate,dimensions:['query'],rowLimit:Number(limit||200)},url);
+      matchedUrls[key]=data.matched_url||url;
+      (data.rows||[]).forEach(function(r){var q=String(r.keys&&r.keys[0]||'');if(!q)return;var item=merged[q]||(merged[q]={query:q});item[key]={clicks:Number(r.clicks||0),impressions:Number(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)};});
+    });
+    var rows=Object.keys(merged).map(function(q){var item=merged[q];Object.keys(periods).forEach(function(k){if(!item[k])item[k]={clicks:0,impressions:0,ctr:0,position:0};});return item;}).sort(function(a,b){return (b.full_180_days.clicks-a.full_180_days.clicks)||(b.full_180_days.impressions-a.full_180_days.impressions);}).slice(0,Number(limit||200));
+    return {ok:true,message:rows.length+'件のクエリと期間別推移を取得しました。',start_date:full.startDate,end_date:full.endDate,row_count:rows.length,limit:Number(limit||200),matched_urls:matchedUrls,periods:periods,rows:rows};
+  }catch(e){return {ok:false,message:'180日のクエリ推移を取得できませんでした：'+String(e&&e.message||e),start_date:full.startDate,end_date:full.endDate,row_count:0,limit:Number(limit||200),matched_urls:{},periods:periods,rows:[]};}
+}
+function sbmDoctorLatestHealthSnapshot_(articleId,url){
+  var rows=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT)||[], normalized=sbmNormalizeUrl_(url), found=null;
+  rows.forEach(function(r){if((articleId&&String(r['記事ID']||'')===articleId)||sbmNormalizeUrl_(r['記事URL']||'')===normalized)found=r;});
+  if(!found)return null;
+  return {health_check_id:String(found['健康診断ID']||''),screening_result:String(found['一次検査結果']||''),screening_code:String(found['一次検査コード']||''),priority:String(found['優先度']||''),reason:String(found['診断の根拠']||''),detailed_examination:String(found['詳細検査']||''),rank:sbmDoctorNumberOrNull_(found['精密診断順位']),period:{start:sbmDoctorDateOnlyOrNull_(found['対象期間開始']),end:sbmDoctorDateOnlyOrNull_(found['対象期間終了']),days:sbmDoctorNumberOrNull_(found['対象日数'])},metrics:{full_180_days:sbmDoctorMetricFromSnapshot_(found,'180日'),first_90_days:sbmDoctorMetricFromSnapshot_(found,'前半90日'),last_90_days:sbmDoctorMetricFromSnapshot_(found,'後半90日'),recent_28_days:sbmDoctorMetricFromSnapshot_(found,'直近28日'),previous_28_days:sbmDoctorMetricFromSnapshot_(found,'前28日')}};
+}
+function sbmDoctorMetricFromSnapshot_(r,prefix){return {clicks:sbmDoctorNumberOrNull_(r[prefix+'クリック']),impressions:sbmDoctorNumberOrNull_(r[prefix+'表示']),ctr:sbmDoctorCtrValue_(r[prefix+'CTR']),position:sbmDoctorNumberOrNull_(r[prefix+'平均順位'])};}
+function sbmDoctorAllImprovementHistory_(articleId,url){
+  var normalized=sbmNormalizeUrl_(url), rows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[];
+  return rows.filter(function(r){return (articleId&&String(r['ArticleID']||'').trim()===articleId)||sbmNormalizeUrl_(r['記事URL']||'')===normalized;}).map(function(r){return sbmDoctorPlainRecord_(r);});
+}
+function sbmDoctorExistingMedicalHistory_(articleId,url){
+  var normalized=sbmNormalizeUrl_(url), rows=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_HEALTH_RECORD)||[];
+  return rows.filter(function(r){return (articleId&&String(r['記事ID']||'').trim()===articleId)||sbmNormalizeUrl_(r['記事URL']||'')===normalized;}).map(function(r){return sbmDoctorPlainRecord_(r);});
+}
+function sbmDoctorPlainRecord_(record){var out={};Object.keys(record||{}).forEach(function(k){var v=record[k];if(v instanceof Date)out[k]=sbmDoctorIso_(v);else out[k]=v;});return out;}
+function sbmDoctorInternalLinkEvidence_(article,queryRows){
+  try{var candidates=sbmFindInternalLinkCandidates_(article,3,8,(queryRows||[]).map(function(q){return q.query;}));return {available:true,candidates:candidates||[]};}
+  catch(e){return {available:false,message:String(e&&e.message||e),candidates:[]};}
+}
+function sbmDoctorComparisonWindow_(improvement,performance){
+  var elapsed=improvement&&improvement.elapsed_days!==null?Number(improvement.elapsed_days):null;
+  var period=28, complete=elapsed===null?null:elapsed>=period;
+  var nextDate=null;
+  if(improvement&&improvement.improvement_date){var d=new Date(improvement.improvement_date+'T00:00:00+09:00');if(!isNaN(d.getTime())){d.setDate(d.getDate()+period);nextDate=Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');}}
+  return {comparison_period_days:period,post_change_days:elapsed,comparison_window_complete:complete,comparison_period_valid:elapsed===null?null:complete===true,next_measurement_date:nextDate,note:elapsed===null?'改善履歴がないため、改善前後比較は対象外です。':complete===false?'改善後28日に達していないため、直近28日値には改善前データが混在する可能性があります。正式な改善前後判定を保留してください。':'同じ長さの比較期間として評価できます。'};
+}
 
 /**
  * Product 5.7.1 RC6: 結合セルを使わないDoctor診断書レイアウト

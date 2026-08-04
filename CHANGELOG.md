@@ -1,3 +1,10 @@
+## 5.7.1-rc.8
+
+- Doctor Evidence Validation Engineを追加
+- Evidence ScoreとDoctor Readinessを追加
+- Search Consoleの日別集計不整合とクエリ0件を検出
+- URL末尾スラッシュ差異へのフォールバックを追加
+
 ## 5.7.1 RC6
 
 - Doctor健康診断書と精密診断紹介状から結合セルを全面廃止
@@ -751,3 +758,11 @@
 
 ## 5.6.11
 - 改善推移の経過日数順・収益重視判定・復元確認・今日の改善表示件数設定を追加。
+
+## 5.7.1 RC7
+
+- Doctor個別診断依頼をContract V2へ更新
+- Evidence Package v1.0を追加
+- 記事本文、180日の日別推移、上位200クエリの期間別推移を添付
+- 半年健康診断、改善履歴、Doctor履歴、内部リンク候補を添付
+- Evidence Indexと比較期間保護を追加
