@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.1-rc.5';
+const SBM_VERSION = '5.7.1-rc.6';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -8759,7 +8759,7 @@ function sbmDoctorDateOnlyOrNull_(value) {
 
 
 /**
- * Product 5.7.1 RC5: ブログ健康診断書＋精密診断紹介状
+ * Product 5.7.1 RC6: 結合セルを使わないDoctor診断書レイアウト
  * 利用者にはブログ全体の状態、Doctor所見、精密診断の目的を日本語で表示します。
  */
 function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
@@ -8785,19 +8785,28 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
 
   var reportName='Doctor_健康診断書';
   var report=ss.getSheetByName(reportName)||ss.insertSheet(reportName);
+  report.setFrozenRows(0); report.setFrozenColumns(0);
+  try { report.getRange(1,1,Math.min(report.getMaxRows(),100),Math.min(report.getMaxColumns(),20)).breakApart(); } catch(e) {}
   report.clear(); report.showSheet();
   report.setHiddenGridlines(true);
-  report.getRange('A1:F2').merge().setValue('SIMS Doctor\nブログ健康診断書').setFontSize(19).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#0b5d3b').setFontColor('#ffffff');
+
+  report.getRange('A1:F2').setBackground('#0b5d3b').setFontColor('#ffffff').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  report.getRange('A1').setValue('SIMS Doctor').setFontSize(19).setFontWeight('bold');
+  report.getRange('A2').setValue('ブログ健康診断書').setFontSize(16).setFontWeight('bold');
   report.getRange('A4:B7').setValues([
     ['ブログ名',sbmGetSetting_('SiteName','')],
     ['診断日',Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyy年M月d日')],
     ['対象期間',run.startDate+' ～ '+run.endDate],
     ['健康診断ID',healthCheckId]
   ]);
-  report.getRange('A9:F9').merge().setValue('ブログ健康度').setFontWeight('bold').setBackground('#d9ead3').setHorizontalAlignment('center');
-  report.getRange('A10:F11').merge().setValue(healthScore+'点').setFontSize(30).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
-  report.getRange('A13:F13').merge().setValue('Doctor所見').setFontWeight('bold').setBackground('#d9ead3');
-  report.getRange('A14:F16').merge().setValue(overall).setWrap(true).setVerticalAlignment('middle');
+  report.getRange('A9:F9').setBackground('#d9ead3').setHorizontalAlignment('center');
+  report.getRange('A9').setValue('ブログ健康度').setFontWeight('bold');
+  report.getRange('A10:F11').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  report.getRange('A10').setValue(healthScore+'点').setFontSize(30).setFontWeight('bold');
+  report.getRange('A13:F13').setBackground('#d9ead3');
+  report.getRange('A13').setValue('Doctor所見').setFontWeight('bold');
+  report.getRange('A14:F16').setWrap(true).setVerticalAlignment('middle');
+  report.getRange('A14').setValue(overall);
   report.getRange('A18:B23').setValues([
     ['検査した登録記事',Number(run.targetCount||0)+'件'],
     ['SBMで対応中のため今回対象外',Number(counts.excluded||0)+'件'],
@@ -8806,25 +8815,35 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
     ['今後の経過を確認する記事',observationCount+'件'],
     ['詳しい診断を優先する記事',Number(counts.selected||0)+'件']
   ]);
-  report.getRange('D18:F18').merge().setValue('今回多く見られた傾向').setFontWeight('bold').setBackground('#d9ead3');
+  report.getRange('D18:F18').setBackground('#d9ead3');
+  report.getRange('D18').setValue('今回多く見られた傾向').setFontWeight('bold');
   var trends=sbmDoctorTrendMessages_(issueCounts);
-  report.getRange('D19:F23').merge().setValue(trends.length?trends.map(function(v){return '・'+v;}).join('\n'):'・半年間の主要指標に共通した大きな異常はありませんでした。').setWrap(true).setVerticalAlignment('top');
-  report.getRange('A25:F25').merge().setValue('次に行うこと').setFontWeight('bold').setBackground('#d9ead3');
-  report.getRange('A26:F28').merge().setValue(Number(counts.selected||0)>0 ? '「Doctor_精密診断紹介状」を開き、詳しく診断する記事と診断予定を確認してください。\n内容を確認した後、Claude版Doctorへ診断依頼を送ります。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続け、次回の健康診断で推移を確認してください。').setWrap(true).setVerticalAlignment('middle');
+  report.getRange('D19:F23').setWrap(true).setVerticalAlignment('top');
+  report.getRange('D19').setValue(trends.length?trends.map(function(v){return '・'+v;}).join('\n'):'・半年間の主要指標に共通した大きな異常はありませんでした。');
+  report.getRange('A25:F25').setBackground('#d9ead3');
+  report.getRange('A25').setValue('次に行うこと').setFontWeight('bold');
+  report.getRange('A26:F28').setWrap(true).setVerticalAlignment('middle');
+  report.getRange('A26').setValue(Number(counts.selected||0)>0 ? '「Doctor_精密診断紹介状」を開き、詳しく診断する記事と診断予定を確認してください。\n内容を確認した後、Claude版Doctorへ診断依頼を送ります。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続け、次回の健康診断で推移を確認してください。');
   report.setColumnWidth(1,230); report.setColumnWidth(2,310); report.setColumnWidth(3,30); report.setColumnWidth(4,180); report.setColumnWidth(5,180); report.setColumnWidth(6,180);
   report.setRowHeights(1,2,34); report.setRowHeights(14,3,30); report.setRowHeights(26,3,30);
-  report.setFrozenRows(2);
   report.getRange('A4:F28').setVerticalAlignment('middle');
   report.getRange('A1:F28').setFontFamily('Arial');
+  report.getRange('A4:A7').setFontWeight('bold').setBackground('#f3f6f4');
+  report.getRange('A18:A23').setFontWeight('bold').setBackground('#f3f6f4');
 
   var candName='Doctor_精密診断紹介状';
   var old=ss.getSheetByName('Doctor_精密診断候補');
   var cand=ss.getSheetByName(candName);
   if(!cand && old){ old.setName(candName); cand=old; }
   if(!cand) cand=ss.insertSheet(candName);
+  cand.setFrozenRows(0); cand.setFrozenColumns(0);
+  try { cand.getRange(1,1,Math.min(cand.getMaxRows(),100),Math.min(cand.getMaxColumns(),20)).breakApart(); } catch(e) {}
   cand.clear(); cand.showSheet(); cand.setHiddenGridlines(true);
-  cand.getRange('A1:K2').merge().setValue('SIMS Doctor　精密診断紹介状').setFontSize(18).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#0b5d3b').setFontColor('#ffffff');
-  cand.getRange('A4:K4').merge().setValue('健康診断の結果、次の記事を優先して詳しく診断します。選ばれた理由と診断予定を確認してください。').setWrap(true).setBackground('#eef5ee');
+  cand.getRange('A1:K2').setBackground('#0b5d3b').setFontColor('#ffffff').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  cand.getRange('A1').setValue('SIMS Doctor').setFontSize(18).setFontWeight('bold');
+  cand.getRange('A2').setValue('精密診断紹介状').setFontSize(15).setFontWeight('bold');
+  cand.getRange('A4:K4').setWrap(true).setBackground('#eef5ee');
+  cand.getRange('A4').setValue('健康診断の結果、次の記事を優先して詳しく診断します。選ばれた理由と診断予定を確認してください。');
   var headers=['優先順位','記事ID','記事タイトル','記事URL','優先度','診断予定','選ばれた理由','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
   var selectedRows=current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
@@ -8835,14 +8854,16 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
     ];
   });
   if(out.length) cand.getRange(7,1,out.length,out[0].length).setValues(out);
-  else cand.getRange('A7:K8').merge().setValue('今回、精密診断を優先する記事はありません。').setHorizontalAlignment('center');
+  else {
+    cand.getRange('A7:K8').setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#f7f7f7');
+    cand.getRange('A7').setValue('今回、精密診断を優先する記事はありません。');
+  }
   cand.setFrozenRows(6);
   cand.setColumnWidth(1,75); cand.setColumnWidth(2,100); cand.setColumnWidth(3,360); cand.setColumnWidth(4,360); cand.setColumnWidth(5,95); cand.setColumnWidth(6,190); cand.setColumnWidth(7,520);
   for(var ci=8;ci<=11;ci++) cand.setColumnWidth(ci,105);
   if(out.length){cand.getRange(7,10,out.length,1).setNumberFormat('0.0%'); cand.getRange(7,11,out.length,1).setNumberFormat('0.0');}
   cand.getDataRange().setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
 }
-
 function sbmDoctorOverallComment_(score, issues, selected) {
   var intro=score>=85?'ブログ全体はおおむね良好です。':score>=70?'ブログ全体は概ね安定していますが、一部の記事は継続確認が必要です。':score>=55?'ブログ全体に改善余地が見られます。':'検索流入が弱くなっている記事が複数あり、優先的な確認が必要です。';
   var trends=sbmDoctorTrendMessages_(issues);
