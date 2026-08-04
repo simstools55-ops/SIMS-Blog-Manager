@@ -8776,8 +8776,9 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
   var articleId = payload.article.article_id;
   var collectedAt = sbmDoctorIso_(new Date());
   var source = sbmFetchArticleSource_(url);
-  var performance = sbmDoctorFetchLongTermPerformance_(url, SBM_DOCTOR_EVIDENCE_DAYS);
   var queries = sbmDoctorFetchLongTermQueries_(url, SBM_DOCTOR_EVIDENCE_DAYS, SBM_DOCTOR_QUERY_LIMIT);
+  var preferredDailyUrl = queries && queries.matched_urls ? queries.matched_urls.full_180_days : null;
+  var performance = sbmDoctorFetchLongTermPerformance_(url, SBM_DOCTOR_EVIDENCE_DAYS, preferredDailyUrl);
   var health = sbmDoctorLatestHealthSnapshot_(articleId, url);
   var sbmHistory = sbmDoctorAllImprovementHistory_(articleId, url);
   var doctorHistory = sbmDoctorExistingMedicalHistory_(articleId, url);
@@ -8903,25 +8904,35 @@ function sbmDoctorUrlCandidates_(url){
   if(s.slice(-1)==='/')add(s.slice(0,-1));else add(s+'/');
   return out;
 }
-function sbmDoctorSearchConsoleForUrl_(property,baseBody,url){
-  var candidates=sbmDoctorUrlCandidates_(url), last={};
+function sbmDoctorSearchConsoleForUrl_(property,baseBody,url,preferredUrl){
+  var candidates=[], trace=[], last={};
+  function add(v){v=String(v||'').trim();if(v&&candidates.indexOf(v)<0)candidates.push(v);}
+  add(preferredUrl);
+  sbmDoctorUrlCandidates_(url).forEach(add);
   for(var i=0;i<candidates.length;i++){
     var body=JSON.parse(JSON.stringify(baseBody||{}));
     body.dimensionFilterGroups=[{filters:[{dimension:'page',operator:'equals',expression:candidates[i]}]}];
     last=sbmSearchConsoleApiRequest_(property,body)||{};
-    if(last.rows&&last.rows.length){last.matched_url=candidates[i];return last;}
+    var rows=last.rows||[], clicks=0, impressions=0;
+    rows.forEach(function(r){clicks+=Number(r.clicks||0);impressions+=Number(r.impressions||0);});
+    trace.push({url:candidates[i],row_count:rows.length,clicks:clicks,impressions:impressions,has_metrics:(clicks>0||impressions>0)});
+    // Search Console may return zero-filled date rows. Do not treat them as a successful match.
+    if(rows.length&&(clicks>0||impressions>0)){
+      last.matched_url=candidates[i];last.candidate_trace=trace;return last;
+    }
   }
-  last.matched_url=candidates[0]||url;
+  last.matched_url=null;last.candidate_trace=trace;
   return last;
 }
-function sbmDoctorFetchLongTermPerformance_(url,days){
+function sbmDoctorFetchLongTermPerformance_(url,days,preferredUrl){
   var range=sbmDoctorEvidenceRange_(days), property=sbmGetSetting_('SearchConsoleProperty','');
   try{
-    var data=sbmDoctorSearchConsoleForUrl_(property,{startDate:range.startDate,endDate:range.endDate,dimensions:['date'],rowLimit:25000},url);
+    var data=sbmDoctorSearchConsoleForUrl_(property,{startDate:range.startDate,endDate:range.endDate,dimensions:['date'],rowLimit:25000},url,preferredUrl);
     var rows=(data.rows||[]).map(function(r){return {date:String(r.keys&&r.keys[0]||''),clicks:Number(r.clicks||0),impressions:Number(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)};});
     var summary=sbmDoctorSummarizeDailyMetrics_(rows,range);
-    return {ok:true,message:rows.length+'日分のデータを取得しました。',start_date:range.startDate,end_date:range.endDate,row_count:rows.length,matched_url:data.matched_url||url,summary:summary,rows:rows};
-  }catch(e){return {ok:false,message:'180日の日別推移を取得できませんでした：'+String(e&&e.message||e),start_date:range.startDate,end_date:range.endDate,row_count:0,matched_url:null,summary:null,rows:[]};}
+    var hasMetrics=summary&&summary.full_180_days&&(Number(summary.full_180_days.clicks||0)>0||Number(summary.full_180_days.impressions||0)>0);
+    return {ok:!!hasMetrics,message:hasMetrics?(rows.length+'日分のデータを取得しました。'):'URL候補を確認しましたが、180日の日別実績を取得できませんでした。',start_date:range.startDate,end_date:range.endDate,row_count:rows.length,matched_url:data.matched_url||null,candidate_trace:data.candidate_trace||[],summary:summary,rows:rows};
+  }catch(e){return {ok:false,message:'180日の日別推移を取得できませんでした：'+String(e&&e.message||e),start_date:range.startDate,end_date:range.endDate,row_count:0,matched_url:null,candidate_trace:[],summary:null,rows:[]};}
 }
 function sbmDoctorSummarizeDailyMetrics_(rows,range){
   function aggregate(list){var c=0,i=0,posNum=0,posDen=0;list.forEach(function(r){c+=Number(r.clicks||0);i+=Number(r.impressions||0);posNum+=Number(r.position||0)*Number(r.impressions||0);posDen+=Number(r.impressions||0);});return {clicks:c,impressions:i,ctr:i?c/i:0,position:posDen?posNum/posDen:0};}

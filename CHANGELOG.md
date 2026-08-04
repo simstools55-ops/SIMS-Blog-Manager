@@ -1,3 +1,11 @@
+# Changelog
+
+## 5.7.1 RC9
+
+- Doctor個別診断の180日日別Search Console取得で、ゼロ埋め行を取得成功と誤認する不具合を修正。
+- クエリ取得で確認済みの実績URLを日別取得へ引き継ぐよう改善。
+- URL候補ごとの取得結果をEvidence Packageへ記録。
+
 ## 5.7.1-rc.8
 
 - Doctor Evidence Validation Engineを追加
