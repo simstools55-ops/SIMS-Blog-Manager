@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.7.1 RC5
+
+- Refined the Doctor health report into a Japanese executive summary.
+- Renamed the detailed diagnosis candidate sheet to a referral sheet.
+- Added planned examination, user-friendly priorities, and explanatory reasons.
+- Preserved compatibility with the previous candidate sheet name.
+- Verified repository text files as UTF-8.
+
+
 ## 5.7.1 RC4
 
 - Added a Japanese blog health report sheet.

@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.1-rc.1';
+const SBM_VERSION = '5.7.1-rc.5';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -48,7 +48,7 @@ const SBM_HEADERS = Object.freeze({
   PROCESS_LOG: ['日時','処理','状態','対象件数','処理件数','所要秒','詳細'],
   PROFILE_LOG: ['日時','RunId','処理','工程','開始','終了','所要秒','対象件数','処理件数','詳細'],
   IN_PROGRESS: ['改善日','記事タイトル','経過日数','状態','SIMS評価','次のアクション','詳細','URL','修正内容','改善内容'],
-  DOCTOR_HEALTH_SNAPSHOT: ['健康診断ID','サイトID','記事ID','記事URL','記事タイトル','対象期間開始','対象期間終了','対象日数','180日クリック','180日表示','180日CTR','180日平均順位','前半90日クリック','前半90日表示','前半90日CTR','前半90日平均順位','後半90日クリック','後半90日表示','後半90日CTR','後半90日平均順位','直近28日クリック','直近28日表示','直近28日CTR','直近28日平均順位','前28日クリック','前28日表示','前28日CTR','前28日平均順位','一次検査コード','一次検査結果','詳細検査','優先度','診断の根拠','データ品質','取得状態','取得日時'],
+  DOCTOR_HEALTH_SNAPSHOT: ['健康診断ID','サイトID','記事ID','記事URL','記事タイトル','SBM作業状態','管理フラグ','Doctor診断対象','対象外理由','精密診断順位','対象期間開始','対象期間終了','対象日数','180日クリック','180日表示','180日CTR','180日平均順位','前半90日クリック','前半90日表示','前半90日CTR','前半90日平均順位','後半90日クリック','後半90日表示','後半90日CTR','後半90日平均順位','直近28日クリック','直近28日表示','直近28日CTR','直近28日平均順位','前28日クリック','前28日表示','前28日CTR','前28日平均順位','一次検査コード','一次検査結果','詳細検査','優先度','診断の根拠','データ品質','取得状態','取得日時'],
   DOCTOR_HEALTH_RECORD: ['診断記録ID','健康診断ID','診断依頼ID','サイトID','記事ID','記事URL','記事タイトル','診断日','診断種別','内部診断コード','総合診断','記事の健康度','優先度','診断の確かさ','診断の根拠','おすすめの対応','再診予定日','紹介先','原文JSON'],
   DOCTOR_TREATMENT_QUEUE: ['優先順位','記事タイトル','記事URL','総合診断','おすすめの対応','紹介先','処置状態','再診予定日','診断日','記事ID','診断記録ID','内部優先度','内部紹介先','更新日時'],
   DOCTOR_HEALTH_RUN: ['健康診断ID','状態コード','現在の工程','対象期間開始','対象期間終了','対象記事数','処理済み件数','次の処理','最終成功日時','再試行回数','最終エラー','作成日時','更新日時'],
@@ -7966,8 +7966,9 @@ function onOpen() {
     .addItem('記事一覧の選択記事を診断依頼','sbmDoctorCreateRequestFromArticleList')
     .addItem('改善の推移の選択記事を診断依頼','sbmDoctorCreateRequestFromEffect')
     .addSeparator()
-    .addItem('ブログ全体の健康診断を始める','sbmDoctorStartHealthCheck')
-    .addItem('次の処理を再開する','sbmDoctorResumeHealthCheck')
+    .addItem('ブログ全体の健康診断を実行','sbmDoctorRunHealthCheck')
+    .addItem('ブログ健康診断書を見る','sbmDoctorOpenHealthReport')
+    .addItem('精密診断紹介状を見る','sbmDoctorOpenDetailedCandidates')
     .addItem('健康診断の進み具合を見る','sbmDoctorShowHealthCheckStatus')
     .addSeparator()
     .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
@@ -8009,57 +8010,86 @@ function sbmDoctorEnsureMedicalSheets_() {
   ];
   names.forEach(function(pair){
     var sh = sbmGetOrCreateSheet_(pair[1]);
+    if (pair[0] === 'DOCTOR_HEALTH_SNAPSHOT' && sh.getLastRow() > 1) {
+      var oldHeads = sh.getRange(1,1,1,Math.max(1,sh.getLastColumn())).getDisplayValues()[0].map(String);
+      if (oldHeads.indexOf('Doctor診断対象') < 0) sh.clearContents();
+    }
     sbmEnsureHeaders_(sh, SBM_HEADERS[pair[0]]);
     sbmStyleDataSheet_(sh);
     if (pair[0] !== 'DOCTOR_TREATMENT_QUEUE') { try { sh.hideSheet(); } catch(e) {} }
   });
 }
 
-function sbmDoctorStartHealthCheck() {
+function sbmDoctorRunHealthCheck() {
   try {
     sbmDoctorAssertSafeToExport_();
     if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') {
       return sbmAlert_('ブログ全体の健康診断を始められません', '初回セットアップとSearch Console接続を完了してください。');
     }
     sbmDoctorEnsureMedicalSheets_();
-    var active = sbmDoctorGetHealthRun_();
-    if (active && active.statusCode && active.statusCode !== 'COMPLETED') {
-      return sbmAlert_('健康診断はすでに進行中です', '「次の処理を再開する」または「健康診断の進み具合を見る」を使用してください。');
+    var run = sbmDoctorGetHealthRun_();
+    // RC1の日付変換不具合で0件のまま進んだ実行は、180日取得から自動的にやり直します。
+    if (run && run.healthCheckId && run.statusCode !== 'PREPARING' && run.statusCode !== 'COMPLETED' && sbmDoctorSnapshotCountForRun_(run.healthCheckId) === 0) {
+      run.statusCode = 'PREPARING';
+      run.phase = '180日集計を再取得します';
+      run.processedCount = 0;
+      run.nextStep = '180日集計を取得';
+      run.lastError = '';
+      run.updatedAt = sbmNowText_();
+      sbmDoctorSaveHealthRun_(run);
     }
-    var period = sbmDoctorHealthPeriod_();
-    var articleCount = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB).length;
-    var ui = SpreadsheetApp.getUi();
-    var answer = ui.alert('ブログ全体の健康診断を始めます',
-      'Search Consoleの180日分を5区間に分けて取得します。\n\n対象期間：' + period.full.startDate + ' ～ ' + period.full.endDate +
-      '\n記事数：約' + articleCount + '件\n\n1回の操作では1区間だけ処理し、途中位置を保存します。日次処理とは別に動作します。',
-      ui.ButtonSet.OK_CANCEL);
-    if (answer !== ui.Button.OK) return;
-    var id = 'HC-' + Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
-    var run = {
-      healthCheckId:id, statusCode:'PREPARING', phase:'準備中',
-      startDate:period.full.startDate, endDate:period.full.endDate,
-      targetCount:articleCount, processedCount:0, nextStep:'180日集計を取得',
-      lastSuccessAt:'', retryCount:0, lastError:'', createdAt:sbmNowText_(), updatedAt:sbmNowText_()
-    };
-    sbmDoctorSaveHealthRun_(run);
-    sbmDoctorClearSnapshotForRun_(id);
-    sbmAlert_('健康診断の準備ができました', '健康診断ID：' + id + '\n\n続けて「次の処理を再開する」を実行してください。');
+    if (!run || !run.healthCheckId || run.statusCode === 'COMPLETED') {
+      var period = sbmDoctorHealthPeriod_();
+      var articleCount = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB).length;
+      var ui = SpreadsheetApp.getUi();
+      var answer = ui.alert('ブログ全体の健康診断を実行します',
+        'Search Consoleの180日分を取得し、半年の前半・後半、直近28日、その前28日を比較して一次検査まで自動で進めます。\n\n対象期間：' + period.full.startDate + ' ～ ' + period.full.endDate +
+        '\n登録記事数：' + articleCount + '件\n\n処理中はスプレッドシートを閉じずにお待ちください。',
+        ui.ButtonSet.OK_CANCEL);
+      if (answer !== ui.Button.OK) return;
+      var id = 'HC-' + Utilities.formatDate(new Date(), SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss');
+      run = {
+        healthCheckId:id, statusCode:'PREPARING', phase:'準備中',
+        startDate:period.full.startDate, endDate:period.full.endDate,
+        targetCount:articleCount, processedCount:0, nextStep:'180日集計を取得',
+        lastSuccessAt:'', retryCount:0, lastError:'', createdAt:sbmNowText_(), updatedAt:sbmNowText_()
+      };
+      sbmDoctorSaveHealthRun_(run);
+      sbmDoctorClearSnapshotForRun_(id);
+    }
+    sbmDoctorExecuteHealthCheckToCompletion_();
   } catch(e) {
-    sbmAlert_('健康診断を開始できません', String(e && e.message ? e.message : e));
+    var runErr = sbmDoctorGetHealthRun_() || {};
+    if (runErr.healthCheckId) {
+      runErr.statusCode = 'RETRYABLE_ERROR';
+      runErr.phase = 'エラー（再実行可能）';
+      runErr.retryCount = Number(runErr.retryCount || 0) + 1;
+      runErr.lastError = String(e && e.message ? e.message : e);
+      runErr.updatedAt = sbmNowText_();
+      sbmDoctorSaveHealthRun_(runErr);
+    }
+    sbmAlert_('健康診断でエラーが発生しました', String(e && e.message ? e.message : e) + '\n\n同じ「ブログ全体の健康診断を実行」を選ぶと、続きから再実行できます。');
   }
 }
 
-function sbmDoctorResumeHealthCheck() {
-  try {
-    sbmDoctorAssertSafeToExport_();
-    sbmDoctorEnsureMedicalSheets_();
+// 旧メニュー・既存参照との互換性を維持します。
+function sbmDoctorStartHealthCheck() { return sbmDoctorRunHealthCheck(); }
+function sbmDoctorResumeHealthCheck() { return sbmDoctorRunHealthCheck(); }
+
+function sbmDoctorExecuteHealthCheckToCompletion_() {
+  var started = Date.now();
+  var maxMillis = 270000;
+  while (Date.now() - started < maxMillis) {
     var run = sbmDoctorGetHealthRun_();
-    if (!run || !run.healthCheckId) return sbmAlert_('再開する健康診断がありません', '先に「ブログ全体の健康診断を始める」を実行してください。');
-    if (run.statusCode === 'COMPLETED') return sbmAlert_('健康診断は完了しています', '健康診断ID：' + run.healthCheckId);
-    if (run.statusCode === 'PREVIOUS_DONE') return sbmDoctorRunScreening_();
+    if (!run || !run.healthCheckId) throw new Error('健康診断の実行情報がありません。');
+    if (run.statusCode === 'COMPLETED') return;
+    if (run.statusCode === 'PREVIOUS_DONE') {
+      sbmDoctorRunScreening_();
+      return;
+    }
     var period = sbmDoctorHealthPeriodFromRun_(run);
     var step = sbmDoctorNextHealthStep_(run.statusCode);
-    if (!step) return sbmAlert_('再開できません', '現在の状態：' + sbmDoctorHealthStatusJa_(run.statusCode));
+    if (!step) throw new Error('現在の状態から処理を続行できません：' + sbmDoctorHealthStatusJa_(run.statusCode));
     run.statusCode = step.runningCode;
     run.phase = step.runningLabel;
     run.nextStep = step.label;
@@ -8070,22 +8100,24 @@ function sbmDoctorResumeHealthCheck() {
     run.statusCode = step.doneCode;
     run.phase = step.doneLabel;
     run.nextStep = step.nextLabel;
-    run.processedCount = rows.length;
+    run.processedCount = sbmDoctorSnapshotCountForRun_(run.healthCheckId);
     run.lastSuccessAt = sbmNowText_();
     run.lastError = '';
     run.updatedAt = sbmNowText_();
     sbmDoctorSaveHealthRun_(run);
-    sbmAlert_('健康診断を進めました', step.label + 'が完了しました。\n取得記事数：' + rows.length + '件\n\n次の処理：' + step.nextLabel);
-  } catch(e) {
-    var runErr = sbmDoctorGetHealthRun_() || {};
-    runErr.statusCode = 'RETRYABLE_ERROR';
-    runErr.phase = 'エラー（再開可能）';
-    runErr.retryCount = Number(runErr.retryCount || 0) + 1;
-    runErr.lastError = String(e && e.message ? e.message : e);
-    runErr.updatedAt = sbmNowText_();
-    if (runErr.healthCheckId) sbmDoctorSaveHealthRun_(runErr);
-    sbmAlert_('健康診断でエラーが発生しました', '途中位置は保存されています。\n\n' + runErr.lastError + '\n\n原因を確認後、「次の処理を再開する」を実行してください。');
   }
+  var paused = sbmDoctorGetHealthRun_();
+  sbmAlert_('健康診断を一時保存しました', '処理時間の上限が近いため、安全に一時保存しました。\n\n同じ「ブログ全体の健康診断を実行」をもう一度選ぶと、続きから進みます。\n現在の工程：' + (paused ? paused.phase : '確認中'));
+}
+
+function sbmDoctorSnapshotCountForRun_(healthCheckId) {
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+  if (sh.getLastRow() < 2) return 0;
+  var hm = sbmHeaderMap_(sh);
+  var vals = sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
+  var n = 0;
+  vals.forEach(function(row){ if (String(row[hm['健康診断ID']-1]) === healthCheckId) n++; });
+  return n;
 }
 
 function sbmDoctorNextHealthStep_(status) {
@@ -8117,14 +8149,39 @@ function sbmDoctorNextHealthStep_(status) {
 function sbmDoctorRunScreening_() {
   var run = sbmDoctorGetHealthRun_();
   if (!run || !run.healthCheckId) throw new Error('健康診断の実行情報がありません。');
-  run.statusCode='SCREENING'; run.phase='一次検査中'; run.nextStep='候補記事を判定'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  run.statusCode='SCREENING'; run.phase='一次検査中'; run.nextStep='診断対象を選定'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
   var hm=sbmHeaderMap_(sh), last=sh.getLastRow();
   if (last<2) throw new Error('一次検査の対象データがありません。');
   var vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
-  var detailed=0;
-  vals.forEach(function(row){
+  var context=sbmDoctorSelectionContext_();
+  var candidates=[], excluded=0, eligible=0, healthy=0, lowSample=0;
+  vals.forEach(function(row, idx){
     if (String(row[hm['健康診断ID']-1]) !== run.healthCheckId) return;
+    var url=sbmNormalizeUrl_(row[hm['記事URL']-1]);
+    var a=context.articleByUrl[url]||{};
+    var work=String(a['作業状態']||'未着手');
+    var flag=String(a['管理フラグ']||'');
+    row[hm['SBM作業状態']-1]=work;
+    row[hm['管理フラグ']-1]=flag;
+    var exclusion=sbmDoctorSelectionExclusion_(url,a,context);
+    if(exclusion){
+      row[hm['Doctor診断対象']-1]='対象外';
+      row[hm['対象外理由']-1]=exclusion;
+      row[hm['精密診断順位']-1]='';
+      row[hm['一次検査コード']-1]='SBM_MANAGED';
+      row[hm['一次検査結果']-1]='SBMで対応中のため、今回の健康診断では対象外です';
+      row[hm['詳細検査']-1]='対象外';
+      row[hm['優先度']-1]='－';
+      row[hm['診断の根拠']-1]=exclusion;
+      row[hm['データ品質']-1]='確認不要';
+      row[hm['取得状態']-1]='一次検査完了';
+      excluded++;
+      return;
+    }
+    eligible++;
+    row[hm['Doctor診断対象']-1]='対象';
+    row[hm['対象外理由']-1]='';
     var m={
       full:{c:Number(row[hm['180日クリック']-1]||0),i:Number(row[hm['180日表示']-1]||0),ctr:Number(row[hm['180日CTR']-1]||0),p:Number(row[hm['180日平均順位']-1]||0)},
       first:{c:Number(row[hm['前半90日クリック']-1]||0),i:Number(row[hm['前半90日表示']-1]||0),ctr:Number(row[hm['前半90日CTR']-1]||0),p:Number(row[hm['前半90日平均順位']-1]||0)},
@@ -8132,19 +8189,74 @@ function sbmDoctorRunScreening_() {
       recent:{c:Number(row[hm['直近28日クリック']-1]||0),i:Number(row[hm['直近28日表示']-1]||0),ctr:Number(row[hm['直近28日CTR']-1]||0),p:Number(row[hm['直近28日平均順位']-1]||0)},
       previous:{c:Number(row[hm['前28日クリック']-1]||0),i:Number(row[hm['前28日表示']-1]||0),ctr:Number(row[hm['前28日CTR']-1]||0),p:Number(row[hm['前28日平均順位']-1]||0)}
     };
-    var s=sbmDoctorScreenMetrics_(m);
-    row[hm['一次検査コード']-1]=s.code;
-    row[hm['一次検査結果']-1]=s.label;
-    row[hm['詳細検査']-1]=s.needsDetail?'必要':'不要';
-    row[hm['優先度']-1]=s.priorityJa;
-    row[hm['診断の根拠']-1]=s.reasons.join('／');
-    row[hm['データ品質']-1]=s.quality;
+    var sc=sbmDoctorScreenMetrics_(m);
+    row[hm['一次検査コード']-1]=sc.code;
+    row[hm['一次検査結果']-1]=sc.label;
+    row[hm['詳細検査']-1]=sc.needsDetail?'候補':'不要';
+    row[hm['優先度']-1]=sc.priorityJa;
+    row[hm['診断の根拠']-1]=sc.reasons.join('／');
+    row[hm['データ品質']-1]=sc.quality;
     row[hm['取得状態']-1]='一次検査完了';
-    if(s.needsDetail) detailed++;
+    row[hm['精密診断順位']-1]='';
+    if(sc.code==='LOW_SAMPLE') lowSample++;
+    else if(!sc.needsDetail) healthy++;
+    if(sc.needsDetail) candidates.push({idx:idx,score:sbmDoctorCandidateScore_(sc,m),impressions:m.full.i,clicks:m.full.c});
+  });
+  candidates.sort(function(a,b){return b.score-a.score || b.impressions-a.impressions || b.clicks-a.clicks;});
+  var limit=Math.max(1,Math.min(20,Number(sbmGetSetting_('DoctorDetailedDiagnosisLimit','10')||10)));
+  var selected=Math.min(limit,candidates.length);
+  candidates.forEach(function(c,i){
+    var row=vals[c.idx];
+    if(i<limit){
+      row[hm['詳細検査']-1]='精密診断候補';
+      row[hm['精密診断順位']-1]=i+1;
+    }else{
+      row[hm['詳細検査']-1]='今回は見送り';
+      row[hm['診断の根拠']-1]=String(row[hm['診断の根拠']-1]||'')+'／優先順位上位'+limit+'件を先に診断します';
+    }
   });
   sh.getRange(2,1,vals.length,vals[0].length).setValues(vals);
-  run.statusCode='COMPLETED'; run.phase='完了'; run.nextStep='精密診断用データの作成（次期実装）'; run.processedCount=vals.length; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
-  sbmAlert_('ブログ全体の一次検査が完了しました','健康診断ID：'+run.healthCheckId+'\n対象記事：'+vals.length+'件\n精密診断候補：'+detailed+'件\n\n今回のRCでは、180日データ保存と一次検査まで実装しています。');
+  run.statusCode='COMPLETED'; run.phase='完了'; run.nextStep='健康診断書を確認し、必要な記事だけ精密診断'; run.processedCount=eligible; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  sbmDoctorBuildHealthReportSheets_(run.healthCheckId, run, {excluded:excluded,eligible:eligible,selected:selected,candidateTotal:candidates.length,lowSample:lowSample,healthy:healthy});
+  sbmAlert_('ブログ全体の一次検査が完了しました',
+    '登録記事：'+run.targetCount+'件\n'+
+    'SBMで対応中のため対象外：'+excluded+'件\n'+
+    'Doctorが一次検査した記事：'+eligible+'件\n'+
+    '詳しい診断が必要な記事：'+selected+'件\n'+
+    'データが少ないため経過を見る記事：'+lowSample+'件\n'+
+    '大きな問題が見つからなかった記事：'+healthy+'件\n\n'+
+    '健康診断書と、詳しく診断する記事の一覧を作成しました。\nまず健康診断書を確認してください。');
+}
+
+function sbmDoctorSelectionContext_(){
+  var rows=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB), byUrl={};
+  rows.forEach(function(a){var u=sbmNormalizeUrl_(a['記事URL']); if(u)byUrl[u]=a;});
+  var candidateUrls={};
+  try{
+    var saved=JSON.parse(String(sbmGetSetting_('TodayRecommendationJson','[]')||'[]'));
+    (saved||[]).forEach(function(x){var u=sbmNormalizeUrl_(x.url||x['記事URL']||''); if(u)candidateUrls[u]=true;});
+  }catch(e){}
+  return {articleByUrl:byUrl,candidateUrls:candidateUrls};
+}
+
+function sbmDoctorSelectionExclusion_(url,a,ctx){
+  if(!a || !Object.keys(a).length) return '記事管理に登録されていないURLです';
+  var work=String(a['作業状態']||'');
+  var flag=String(a['管理フラグ']||'');
+  if(work.indexOf('モニター中')>=0) return '改善後の効果をモニター中です';
+  if(work.indexOf('今日の改善')>=0) return '今日の改善対象として対応予定です';
+  if(work.indexOf('改善中')>=0) return '現在改善作業中です';
+  if(work.indexOf('改善候補')>=0 || ctx.candidateUrls[url]) return 'SBMの改善候補として管理中です';
+  if(flag==='要確認') return 'SBMで利用者確認待ちです';
+  if(/管理対象外|削除済み|URL変更|データ未取得/.test(flag)) return 'SBMの管理対象外またはデータ未取得です';
+  return '';
+}
+
+function sbmDoctorCandidateScore_(s,m){
+  var p={'高':300,'中':200,'低':100}[s.priorityJa]||0;
+  var code={'RECENT_DROP':80,'LONG_TERM_DECLINE':70,'CTR_OPPORTUNITY':60,'POSITION_OPPORTUNITY':50,'LONG_TERM_STAGNATION':40}[s.code]||0;
+  var volume=Math.min(99,Math.log(Math.max(1,m.full.i))*10);
+  return p+code+volume;
 }
 
 function sbmDoctorScreenMetrics_(m) {
@@ -8182,19 +8294,22 @@ function sbmDoctorMergeSnapshotMetrics_(healthCheckId, period, prefix, metrics) 
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT); sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT);
   var hm=sbmHeaderMap_(sh), articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB), artByUrl={};
   articles.forEach(function(a){var u=sbmNormalizeUrl_(a['記事URL']); if(u) artByUrl[u]=a;});
-  var existing=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues():[], rowByUrl={};
-  existing.forEach(function(row,idx){if(String(row[hm['健康診断ID']-1])===healthCheckId) rowByUrl[sbmNormalizeUrl_(row[hm['記事URL']-1])]=idx;});
+  var existing=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues():[];
   if(prefix==='full') {
-    metrics.forEach(function(m){
-      var a=artByUrl[m.url]||{}; var row=new Array(SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).fill('');
+    existing=existing.filter(function(row){return String(row[hm['健康診断ID']-1])!==healthCheckId;});
+    var mm={}; metrics.forEach(function(m){mm[sbmNormalizeUrl_(m.url)]=m;});
+    Object.keys(artByUrl).forEach(function(url){
+      var a=artByUrl[url]||{}, m=mm[url]||{url:url,clicks:0,impressions:0,ctr:0,position:0};
+      var row=new Array(SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).fill('');
       row[hm['健康診断ID']-1]=healthCheckId; row[hm['サイトID']-1]=sbmGetSetting_('SiteID',''); row[hm['記事ID']-1]=a['ArticleID']||'';
-      row[hm['記事URL']-1]=m.url; row[hm['記事タイトル']-1]=a['H1タイトル']||a['記事タイトル']||'';
+      row[hm['記事URL']-1]=url; row[hm['記事タイトル']-1]=a['H1タイトル']||a['記事タイトル']||'';
+      row[hm['SBM作業状態']-1]=a['作業状態']||'未着手'; row[hm['管理フラグ']-1]=a['管理フラグ']||'';
       row[hm['対象期間開始']-1]=period.full.startDate; row[hm['対象期間終了']-1]=period.full.endDate; row[hm['対象日数']-1]=SBM_DOCTOR_HEALTH_DAYS;
       sbmDoctorPutMetric_(row,hm,'180日',m); row[hm['取得状態']-1]='180日集計完了'; row[hm['取得日時']-1]=sbmNowText_(); existing.push(row);
     });
   } else {
-    var mm={}; metrics.forEach(function(m){mm[m.url]=m;});
-    existing.forEach(function(row){if(String(row[hm['健康診断ID']-1])!==healthCheckId)return; var u=sbmNormalizeUrl_(row[hm['記事URL']-1]); sbmDoctorPutMetric_(row,hm,prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'前28日',mm[u]||{clicks:0,impressions:0,ctr:0,position:0}); row[hm['取得状態']-1]=(prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'比較期間')+'集計完了'; row[hm['取得日時']-1]=sbmNowText_();});
+    var mm2={}; metrics.forEach(function(m){mm2[sbmNormalizeUrl_(m.url)]=m;});
+    existing.forEach(function(row){if(String(row[hm['健康診断ID']-1])!==healthCheckId)return; var u=sbmNormalizeUrl_(row[hm['記事URL']-1]); sbmDoctorPutMetric_(row,hm,prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'前28日',mm2[u]||{clicks:0,impressions:0,ctr:0,position:0}); row[hm['取得状態']-1]=(prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'比較期間')+'集計完了'; row[hm['取得日時']-1]=sbmNowText_();});
   }
   sh.clearContents(); sh.getRange(1,1,1,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues([SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT]);
   if(existing.length) sh.getRange(2,1,existing.length,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues(existing);
@@ -8216,8 +8331,20 @@ function sbmDoctorHealthPeriod_() {
   function r(a,b){return {startDate:sbmDateText_(a),endDate:sbmDateText_(b)};}
   return {full:r(fullStart,end),first:r(fullStart,firstEnd),second:r(secondStart,end),recent:r(recentStart,end),previous:r(previousStart,previousEnd)};
 }
+function sbmDoctorDateValue_(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) return new Date(value.getTime());
+  var text = String(value || '').trim();
+  var m = text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return new Date(Number(m[1]), Number(m[2])-1, Number(m[3]));
+  var parsed = new Date(text);
+  if (!isNaN(parsed.getTime())) return parsed;
+  throw new Error('健康診断の対象日付を読み取れません：' + text);
+}
+function sbmDoctorDateTextFromValue_(value) {
+  return Utilities.formatDate(sbmDoctorDateValue_(value), SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd');
+}
 function sbmDoctorHealthPeriodFromRun_(run){
-  var start=new Date(run.startDate+'T00:00:00+09:00'), end=new Date(run.endDate+'T00:00:00+09:00');
+  var start=sbmDoctorDateValue_(run.startDate), end=sbmDoctorDateValue_(run.endDate);
   var firstEnd=new Date(start); firstEnd.setDate(firstEnd.getDate()+89); var secondStart=new Date(firstEnd); secondStart.setDate(secondStart.getDate()+1);
   var recentStart=new Date(end); recentStart.setDate(recentStart.getDate()-27); var previousEnd=new Date(recentStart); previousEnd.setDate(previousEnd.getDate()-1); var previousStart=new Date(previousEnd); previousStart.setDate(previousStart.getDate()-27);
   function r(a,b){return {startDate:sbmDateText_(a),endDate:sbmDateText_(b)};}
@@ -8235,12 +8362,29 @@ function sbmDoctorSaveHealthRun_(run) {
 }
 function sbmDoctorGetHealthRun_() {
   var id=String(sbmGetSetting_('DoctorActiveHealthCheckId','')||''); if(!id)return null;
-  var rows=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_HEALTH_RUN); for(var i=rows.length-1;i>=0;i--){var r=rows[i]; if(String(r['健康診断ID'])===id)return {healthCheckId:id,statusCode:String(r['状態コード']||''),phase:String(r['現在の工程']||''),startDate:String(r['対象期間開始']||''),endDate:String(r['対象期間終了']||''),targetCount:Number(r['対象記事数']||0),processedCount:Number(r['処理済み件数']||0),nextStep:String(r['次の処理']||''),lastSuccessAt:String(r['最終成功日時']||''),retryCount:Number(r['再試行回数']||0),lastError:String(r['最終エラー']||''),createdAt:String(r['作成日時']||''),updatedAt:String(r['更新日時']||'')};}
+  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_RUN);
+  if (sh.getLastRow() < 2) return null;
+  var hm=sbmHeaderMap_(sh), vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
+  for(var i=vals.length-1;i>=0;i--){
+    var r=vals[i]; if(String(r[hm['健康診断ID']-1])!==id) continue;
+    return {
+      healthCheckId:id,
+      statusCode:String(r[hm['状態コード']-1]||''),
+      phase:String(r[hm['現在の工程']-1]||''),
+      startDate:sbmDoctorDateTextFromValue_(r[hm['対象期間開始']-1]),
+      endDate:sbmDoctorDateTextFromValue_(r[hm['対象期間終了']-1]),
+      targetCount:Number(r[hm['対象記事数']-1]||0), processedCount:Number(r[hm['処理済み件数']-1]||0),
+      nextStep:String(r[hm['次の処理']-1]||''), lastSuccessAt:String(r[hm['最終成功日時']-1]||''),
+      retryCount:Number(r[hm['再試行回数']-1]||0), lastError:String(r[hm['最終エラー']-1]||''),
+      createdAt:String(r[hm['作成日時']-1]||''), updatedAt:String(r[hm['更新日時']-1]||'')
+    };
+  }
   return null;
 }
+
 function sbmDoctorClearSnapshotForRun_(id){var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT); sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT); if(sh.getLastRow()<2)return; var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues(), hm=sbmHeaderMap_(sh), keep=vals.filter(function(r){return String(r[hm['健康診断ID']-1])!==id;}); sh.clearContents(); sh.getRange(1,1,1,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues([SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT]); if(keep.length)sh.getRange(2,1,keep.length,keep[0].length).setValues(keep);}
 function sbmDoctorHealthStatusJa_(code){var m={PREPARING:'準備中',FETCHING_FULL:'180日集計を取得中',FULL_DONE:'180日集計完了',FETCHING_FIRST:'前半90日集計を取得中',FIRST_DONE:'前半90日集計完了',FETCHING_SECOND:'後半90日集計を取得中',SECOND_DONE:'後半90日集計完了',FETCHING_RECENT:'直近28日集計を取得中',RECENT_DONE:'直近28日集計完了',FETCHING_PREVIOUS:'比較期間を取得中',PREVIOUS_DONE:'比較データ取得完了',SCREENING:'一次検査中',COMPLETED:'完了',RETRYABLE_ERROR:'エラー（再開可能）'};return m[code]||code||'未開始';}
-function sbmDoctorShowHealthCheckStatus(){sbmDoctorEnsureMedicalSheets_();var r=sbmDoctorGetHealthRun_();if(!r)return sbmAlert_('健康診断の進み具合','まだ健康診断は開始されていません。');sbmAlert_('健康診断の進み具合','健康診断ID：'+r.healthCheckId+'\n状態：'+sbmDoctorHealthStatusJa_(r.statusCode)+'\n現在の工程：'+r.phase+'\n対象期間：'+r.startDate+' ～ '+r.endDate+'\n取得・処理件数：'+r.processedCount+'件\n次の処理：'+r.nextStep+'\n最終成功：'+(r.lastSuccessAt||'－')+(r.lastError?'\n\n最後のエラー：'+r.lastError:''));}
+function sbmDoctorShowHealthCheckStatus(){sbmDoctorEnsureMedicalSheets_();var r=sbmDoctorGetHealthRun_();if(!r)return sbmAlert_('健康診断の進み具合','まだ健康診断は開始されていません。');sbmAlert_('健康診断の進み具合','健康診断ID：'+r.healthCheckId+'\n状態：'+sbmDoctorHealthStatusJa_(r.statusCode)+'\n現在の工程：'+r.phase+'\n対象期間：'+r.startDate+' ～ '+r.endDate+'\n保存済み記事数：'+r.processedCount+'件（登録記事 '+r.targetCount+'件）\n次の処理：'+r.nextStep+'\n最終成功：'+(r.lastSuccessAt||'－')+(r.lastError?'\n\n最後のエラー：'+r.lastError:''));}
 
 /**
  * Product 5.7.0 RC2: SIMS Doctor 外来診療 Sprint 1
@@ -8612,3 +8756,147 @@ function sbmDoctorDateOnlyOrNull_(value) {
   var d=value instanceof Date?value:new Date(value);
   return isNaN(d.getTime())?null:Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');
 }
+
+
+/**
+ * Product 5.7.1 RC5: ブログ健康診断書＋精密診断紹介状
+ * 利用者にはブログ全体の状態、Doctor所見、精密診断の目的を日本語で表示します。
+ */
+function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var snap = sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+  var hm = sbmHeaderMap_(snap);
+  var rows = snap.getLastRow() > 1 ? snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues() : [];
+  var current = rows.filter(function(r){ return String(r[hm['健康診断ID']-1]) === healthCheckId; });
+
+  var scoreTotal = 0, scoreCount = 0;
+  var issueCounts = {LONG_TERM_DECLINE:0,RECENT_DROP:0,POSITION_OPPORTUNITY:0,CTR_OPPORTUNITY:0,LONG_TERM_STAGNATION:0};
+  current.forEach(function(r){
+    if (String(r[hm['Doctor診断対象']-1]) !== '対象') return;
+    var code=String(r[hm['一次検査コード']-1]||''), pri=String(r[hm['優先度']-1]||'低');
+    if (issueCounts.hasOwnProperty(code)) issueCounts[code]++;
+    var score = code === 'HEALTHY' ? 100 : code === 'LOW_SAMPLE' ? 72 : pri === '高' ? 42 : pri === '中' ? 62 : 78;
+    scoreTotal += score; scoreCount++;
+  });
+  var healthScore = scoreCount ? Math.round(scoreTotal / scoreCount) : 0;
+  var candidateTotal = Number(counts.candidateTotal||counts.selected||0);
+  var observationCount = Number(counts.lowSample||0) + Math.max(0,candidateTotal-Number(counts.selected||0));
+  var overall = sbmDoctorOverallComment_(healthScore, issueCounts, Number(counts.selected||0));
+
+  var reportName='Doctor_健康診断書';
+  var report=ss.getSheetByName(reportName)||ss.insertSheet(reportName);
+  report.clear(); report.showSheet();
+  report.setHiddenGridlines(true);
+  report.getRange('A1:F2').merge().setValue('SIMS Doctor\nブログ健康診断書').setFontSize(19).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#0b5d3b').setFontColor('#ffffff');
+  report.getRange('A4:B7').setValues([
+    ['ブログ名',sbmGetSetting_('SiteName','')],
+    ['診断日',Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyy年M月d日')],
+    ['対象期間',run.startDate+' ～ '+run.endDate],
+    ['健康診断ID',healthCheckId]
+  ]);
+  report.getRange('A9:F9').merge().setValue('ブログ健康度').setFontWeight('bold').setBackground('#d9ead3').setHorizontalAlignment('center');
+  report.getRange('A10:F11').merge().setValue(healthScore+'点').setFontSize(30).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle');
+  report.getRange('A13:F13').merge().setValue('Doctor所見').setFontWeight('bold').setBackground('#d9ead3');
+  report.getRange('A14:F16').merge().setValue(overall).setWrap(true).setVerticalAlignment('middle');
+  report.getRange('A18:B23').setValues([
+    ['検査した登録記事',Number(run.targetCount||0)+'件'],
+    ['SBMで対応中のため今回対象外',Number(counts.excluded||0)+'件'],
+    ['大きな問題が見つからなかった記事',Number(counts.healthy||0)+'件'],
+    ['データが少ないため経過を見る記事',Number(counts.lowSample||0)+'件'],
+    ['今後の経過を確認する記事',observationCount+'件'],
+    ['詳しい診断を優先する記事',Number(counts.selected||0)+'件']
+  ]);
+  report.getRange('D18:F18').merge().setValue('今回多く見られた傾向').setFontWeight('bold').setBackground('#d9ead3');
+  var trends=sbmDoctorTrendMessages_(issueCounts);
+  report.getRange('D19:F23').merge().setValue(trends.length?trends.map(function(v){return '・'+v;}).join('\n'):'・半年間の主要指標に共通した大きな異常はありませんでした。').setWrap(true).setVerticalAlignment('top');
+  report.getRange('A25:F25').merge().setValue('次に行うこと').setFontWeight('bold').setBackground('#d9ead3');
+  report.getRange('A26:F28').merge().setValue(Number(counts.selected||0)>0 ? '「Doctor_精密診断紹介状」を開き、詳しく診断する記事と診断予定を確認してください。\n内容を確認した後、Claude版Doctorへ診断依頼を送ります。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続け、次回の健康診断で推移を確認してください。').setWrap(true).setVerticalAlignment('middle');
+  report.setColumnWidth(1,230); report.setColumnWidth(2,310); report.setColumnWidth(3,30); report.setColumnWidth(4,180); report.setColumnWidth(5,180); report.setColumnWidth(6,180);
+  report.setRowHeights(1,2,34); report.setRowHeights(14,3,30); report.setRowHeights(26,3,30);
+  report.setFrozenRows(2);
+  report.getRange('A4:F28').setVerticalAlignment('middle');
+  report.getRange('A1:F28').setFontFamily('Arial');
+
+  var candName='Doctor_精密診断紹介状';
+  var old=ss.getSheetByName('Doctor_精密診断候補');
+  var cand=ss.getSheetByName(candName);
+  if(!cand && old){ old.setName(candName); cand=old; }
+  if(!cand) cand=ss.insertSheet(candName);
+  cand.clear(); cand.showSheet(); cand.setHiddenGridlines(true);
+  cand.getRange('A1:K2').merge().setValue('SIMS Doctor　精密診断紹介状').setFontSize(18).setFontWeight('bold').setHorizontalAlignment('center').setVerticalAlignment('middle').setBackground('#0b5d3b').setFontColor('#ffffff');
+  cand.getRange('A4:K4').merge().setValue('健康診断の結果、次の記事を優先して詳しく診断します。選ばれた理由と診断予定を確認してください。').setWrap(true).setBackground('#eef5ee');
+  var headers=['優先順位','記事ID','記事タイトル','記事URL','優先度','診断予定','選ばれた理由','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
+  cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
+  var selectedRows=current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  var out=selectedRows.map(function(r){
+    var code=String(r[hm['一次検査コード']-1]||'');
+    return [
+      Number(r[hm['精密診断順位']-1]||0), String(r[hm['記事ID']-1]||''), String(r[hm['記事タイトル']-1]||''), String(r[hm['記事URL']-1]||''), sbmDoctorPriorityDisplay_(String(r[hm['優先度']-1]||'')), sbmDoctorPlannedExamination_(code), sbmDoctorReasonForUser_(code,String(r[hm['診断の根拠']-1]||'')), Number(r[hm['180日表示']-1]||0), Number(r[hm['180日クリック']-1]||0), Number(r[hm['180日CTR']-1]||0), Number(r[hm['180日平均順位']-1]||0)
+    ];
+  });
+  if(out.length) cand.getRange(7,1,out.length,out[0].length).setValues(out);
+  else cand.getRange('A7:K8').merge().setValue('今回、精密診断を優先する記事はありません。').setHorizontalAlignment('center');
+  cand.setFrozenRows(6);
+  cand.setColumnWidth(1,75); cand.setColumnWidth(2,100); cand.setColumnWidth(3,360); cand.setColumnWidth(4,360); cand.setColumnWidth(5,95); cand.setColumnWidth(6,190); cand.setColumnWidth(7,520);
+  for(var ci=8;ci<=11;ci++) cand.setColumnWidth(ci,105);
+  if(out.length){cand.getRange(7,10,out.length,1).setNumberFormat('0.0%'); cand.getRange(7,11,out.length,1).setNumberFormat('0.0');}
+  cand.getDataRange().setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
+}
+
+function sbmDoctorOverallComment_(score, issues, selected) {
+  var intro=score>=85?'ブログ全体はおおむね良好です。':score>=70?'ブログ全体は概ね安定していますが、一部の記事は継続確認が必要です。':score>=55?'ブログ全体に改善余地が見られます。':'検索流入が弱くなっている記事が複数あり、優先的な確認が必要です。';
+  var trends=sbmDoctorTrendMessages_(issues);
+  var middle=trends.length?' 特に、'+trends.slice(0,2).join('また、')+'。':'';
+  var end=selected>0?' 今回は'+selected+'記事を優先して詳しく診断します。':' 今回は精密診断を優先する記事はありません。';
+  return intro+middle+end;
+}
+function sbmDoctorTrendMessages_(issues){
+  var a=[];
+  if(Number(issues.RECENT_DROP||0)>0)a.push('直近で検索される機会が急に減った記事があります');
+  if(Number(issues.LONG_TERM_DECLINE||0)>0)a.push('半年の後半に検索流入が弱くなった記事があります');
+  if(Number(issues.POSITION_OPPORTUNITY||0)>0)a.push('検索順位を少し上げると成果が期待できる記事があります');
+  if(Number(issues.CTR_OPPORTUNITY||0)>0)a.push('表示されているのにクリックされにくい記事があります');
+  if(Number(issues.LONG_TERM_STAGNATION||0)>0)a.push('長期間ほぼ横ばいの記事があります');
+  return a;
+}
+function sbmDoctorPriorityDisplay_(priority){
+  if(priority==='高')return '最優先';
+  if(priority==='中')return '優先';
+  if(priority==='低')return '通常';
+  return '確認';
+}
+function sbmDoctorPlannedExamination_(code){
+  var map={
+    'RECENT_DROP':'直近の流入減少を確認',
+    'LONG_TERM_DECLINE':'長期的な低下原因を確認',
+    'POSITION_OPPORTUNITY':'順位停滞と改善余地を確認',
+    'CTR_OPPORTUNITY':'クリック率と検索意図を確認',
+    'LONG_TERM_STAGNATION':'長期停滞の原因を確認',
+    'LOW_SAMPLE':'データが増えるまで経過観察'
+  };
+  return map[code]||'記事の状態と今後の対応を確認';
+}
+function sbmDoctorReasonForUser_(code, reason){
+  var map={
+    'RECENT_DROP':'検索される機会が直近で急に減っています。季節変動、検索需要、順位変化などを詳しく確認します。',
+    'LONG_TERM_DECLINE':'半年の前半より後半の検索流入が大きく減っています。長期的な低下の原因を確認します。',
+    'POSITION_OPPORTUNITY':'検索結果の2ページ目前後にあり、内容を整えることで順位上昇が期待できます。',
+    'CTR_OPPORTUNITY':'検索結果には表示されていますが、クリックされる割合が低めです。タイトルと検索意図の一致を確認します。',
+    'LONG_TERM_STAGNATION':'長期間ほぼ同じ状態が続いています。記事の役割や改善余地を確認します。'
+  };
+  return map[code]||reason||'詳しい診断が必要と判断されました。';
+}
+
+function sbmDoctorOpenHealthReport(){
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_健康診断書');
+  if(!sh) return sbmAlert_('ブログ健康診断書','まだ健康診断書は作成されていません。先にブログ全体の健康診断を実行してください。');
+  sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); sh.activate();
+}
+
+function sbmDoctorOpenDetailedCandidates(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName('Doctor_精密診断紹介状')||ss.getSheetByName('Doctor_精密診断候補');
+  if(!sh) return sbmAlert_('精密診断紹介状','まだ精密診断紹介状は作成されていません。先にブログ全体の健康診断を実行してください。');
+  sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
+}
+
