@@ -1,406 +1,112 @@
-# SIMS Doctor v1.0
+> Current release: SIMS-Blog-Manager Product 5.8.0 RC2
 
-SIMS Doctor is the independent diagnosis product in the SIMS Editorial Platform.
-It receives a case request from SIMS Blog Manager, maintains the medical record as the diagnostic SSOT, and later produces diagnosis and referral contracts. It does not rewrite articles.
+## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
-## Current release
+- 改善の推移はクリック数と表示回数を比較表示します。
+- Homeにモニター中の記事の判定別件数をコンパクトに表示します。
+- Homeの高さは従来どおり24行に維持します。
 
-`1.0.0-RC12`
+## Product 5.6.11 — 運用改善
 
-Sprint2-2 implements the reception foundation:
+- 改善の推移を経過日数の多い順に表示
+- クリック重視・経過日数考慮の段階判定へ更新
+- 保存済みBefore／Afterの「修正前を確認」を追加
+- 今日の改善は候補10件を保持し、初期5件・1～10件で表示設定
 
-1. Receive `SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1`
-2. Validate and normalize the request
-3. Generate Request ID
-4. Create or reuse an active Case
-5. Create or update `SIMS_DOCTOR_MEDICAL_RECORD_V1`
-6. Return `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`
+## Product 5.6.10 — Search Console列マッピング緊急修正
 
-365-day data collection, SERP comparison, diagnosis, and referral generation remain outside this release.
+Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
+# SIMS-Blog-Manager Product 5.6.8 Official
 
-## RC12 SBM orchestration
+Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
-RC12 accepts SBM Evidence Package V2 requests, preserves SBM-issued CaseID, and returns `SIMS_DOCTOR_CASE_RESULT_V2` to SBM. Treatment execution is orchestrated by SBM; direct Doctor-to-Writer/Creator/Merge invocation is deprecated.
+## 正式バージョン
 
-## Repository structure
+`5.6.8`
 
-```text
-contracts/   JSON interface contracts and registries
-docs/        architecture and compatibility documentation
-integration/ SBM safety boundary documents
-knowledge/   Doctor-specific diagnostic knowledge
-product/     product definition and sprint specifications
-runtime/     existing runtime assets and validators
-src/doctor/  Sprint2-2 implementation
-tests/       unit, contract and integration tests
-```
+## 毎日の基本操作
 
-## Run tests
+上部メニューは、左から次の順に並びます。
 
-```bash
-python -m pip install pytest jsonschema
-pytest -q
-python tests/contract/validate_fixtures.py
-```
+1. **SIMS-Blog-Manager**：Home、日次処理、セットアップ、修復、設定
+2. **記事改善スタート**：今日改善する記事の選択と改善詳細の確認
+3. **結果登録**：改善結果JSONの登録
+4. **推移確認**：改善中の記事と4週間の測定状況の確認
+5. **記事一覧**：全記事の確認と並び替え
+6. **改善履歴**：終了済みの改善履歴と詳細の確認
 
-## Compatibility warning
+## 利用者向け配布物
 
-The single-case schemas remain provisional until compared with one real JSON copied from the current SBM Doctor dialog. Do not change SBM output silently to fit the schema. Contract incompatibility requires an explicit contract revision.
+`distribution/`には、利用開始に必要なファイルだけを収録しています。
 
-## Architectural principles
+- `コード.gs`
+- `appsscript.json`
+- `SIMS-Blog-Manager-template-Product5.3-Official.xlsx`
+- `はじめにお読みください.md`
 
-- SBM contains no Doctor diagnosis logic.
-- JSON contracts are the only system-to-system interface.
-- SBM owns the platform Case lifecycle; the Medical Record remains Doctor's diagnostic record.
-- User-facing messages and system-facing contracts are separated.
-- Diagnosis and referral are separate artifacts.
-- Observation and diagnosis do not read the raw SBM request directly.
+## 初回導入
 
+1. テンプレートをGoogleドライブへアップロードし、Googleスプレッドシートとして開きます。
+2. Apps Scriptの`コード.gs`を配布版の内容で全置換します。
+3. `appsscript.json`を設定します。
+4. スプレッドシートを再読み込みします。
+5. **SIMS-Blog-Manager → シートの作成・修復**を1回実行します。
+6. **SIMS-Blog-Manager → 初回セットアップ**から接続設定を進めます。
 
-## Sprint3.1 Clinical Knowledge Base
+## 既存スプレッドシートの更新
 
-Doctor now includes a declarative Clinical Knowledge Base for:
+既存データはそのまま継続利用できます。`コード.gs`を更新して再読み込みし、**シートの作成・修復**を1回実行してください。
 
-- Observation types
-- Evidence codes
-- Vital Signs and normal ranges
-- Findings and severity
-- Medical-record event types
+## リポジトリ構成
 
-Runtime loading is implemented in `src/doctor/knowledge/`.
-Scoring, diagnosis, and referral decisions remain intentionally unimplemented.
+- `apps-script/`：開発・管理用Apps Script
+- `distribution/`：利用者向け配布元ファイル
+- `docs/`：GitHub Pagesマニュアル
+- `product/`：製品仕様・設計資料
+- `spreadsheet/`：テンプレートとシート仕様
+- `tests/`：テスト手順
 
 
-## Sprint3.2 Observation Event Log
+## Product 5.6.9 — 改善の推移の表示強化
 
-- Append-only Medical Record event log
-- Event sequencing and payload-integrity verification
-- Idempotent Observation replay
-- 28/90/365-day Search Console input contract
-- Search Console Observation recording into the medical record
+- 現在順位と改善前順位を小数第1位で表示
+- 判定をステータス別に色分けして視認性を改善
+- シートを開くたびに書式を再適用
 
-Live Search Console retrieval remains outside this release.
 
+## Product 5.6.8 — 記事一覧H1表示・改善の推移表示修正
 
-## Sprint3.3 Evidence Engine
+- 記事一覧で、保存済みH1タイトルをメインクエリとクリック数の間に表示
+- 改善の推移で現在順位と判定まで必ず表示
+- 日次処理や外部取得処理は変更なし
 
-Doctor can now extract and store traceable Evidence from Observation data.
+## Product 5.6.7 — SIMS Writer Contract v4.2対応
 
-Initial Evidence codes:
+改善結果登録は `publication_result.public_ok_changes` を最優先で解析し、存在しない場合のみ旧 `changes` を利用します。`publication_result.user_decision_changes` と `publication_result.change_summary` は改善履歴へ保存します。過去のWriter JSONとの後方互換性を維持しています。
 
-- CTR_BELOW_POSITION_EXPECTATION
-- POSITION_DECLINE_OBSERVED
-- VISIBILITY_DECLINE_OBSERVED
-- LONG_TIME_SINCE_UPDATE
+## Product 5.4.3 — changes配列対応
 
-Thresholds remain versioned in the Clinical Knowledge Base.
-LOW_SAMPLE Evidence is retained and flagged.
+SIMS Writer v1.0.0以降の `changes: []` 配列形式と、従来の `changes: {}` オブジェクト形式の両方を登録できます。`change_flags` と未知フィールドも許容し、元JSONを改善履歴へ保持します。
 
+## Product 5.3.1の改善ナビ
 
-## Sprint3.4 Vital Signs and Vital Profile
+改善ナビは、Search Console上位20クエリ、改善優先順位、記事ランク、変更方針、本文JSON、内部リンク候補をまとめてSIMS-Core向け依頼文へ出力します。内部リンク候補には推奨アンカーテキスト、関連クエリ、関連度が付きます。
 
-Doctor now creates a seven-sign Vital Profile.
+改善ナビを開くたびに、選択した記事URLを指定してSearch Consoleから最新クエリを取得します。通常は数秒で完了し、取得した上位20件を依頼文と内部リンク候補の再計算に使用します。
 
-Available now:
+SIMS-Coreは候補を採用・保留・不採用に分類し、テキストリンクはHTMLを埋め込んだコピペ可能な完成形で返します。
 
-- Visibility
-- Traffic
-- CTR Health
-- Ranking Stability
-- Freshness
 
-Unavailable until later Observation layers:
+## Product 5.3.1 — SIMS Feedback Forward Compatibility
 
-- Competition Resilience
-- Content Integrity
+改善結果登録は `SIMS_FEEDBACK_V1`、`SIMS_FEEDBACK_V2` および将来の `SIMS_FEEDBACK_V数字` を受け入れます。SBMが利用する必須項目だけを検証し、`learning`、`swls`、`diagnostics`、`reason_codes`、`warning_codes`、`version_candidate` などの未知フィールドはエラーにしません。
 
+改善履歴には内部管理情報として `Feedback Format` と `Writer Version` を保存します。既存データは「シートの作成・修復」で新しい列構成へ移行できます。
 
-## Sprint4.1 Findings Engine
+Product 5.3.1では、Writer依頼文のサイト情報を `SiteID / SiteName / SiteURL` に統一しました。また、「シートの作成・修復」の完了後はHomeを更新し、Homeへ戻ります。
 
-Doctor now creates severity-bearing Findings from Evidence and the latest Vital Profile.
 
-Initial Findings:
+## SIMS Doctor 外来診療連携（5.7.0 RC2）
 
-- CTR_UNDERPERFORMING
-- POSITION_DECLINING
-- LOW_VISIBILITY
-- CONTENT_OUTDATED
-- HIGH_VISIBILITY_LOW_CLICK
-- INSUFFICIENT_EVIDENCE
-
-Findings remain distinct from Diagnosis.
-
-
-## Sprint4.2 Differential Diagnosis
-
-Doctor now produces ranked diagnostic hypotheses with confidence, support, contradiction,
-and full traceability.
-
-Initial candidates:
-
-- LOW_CTR_WITH_STRONG_POSITION
-- LONG_TERM_DECLINE
-- CONTENT_STALE
-- UPDATE_FAILURE
-- INSUFFICIENT_DATA
-
-These candidates are not yet Final Diagnoses.
-
-
-## Sprint4.3 Final Diagnosis
-
-Doctor now records CONFIRMED or DEFERRED final diagnosis outcomes.
-
-
-## Sprint5.1 Treatment Recommendation and Referral
-
-Doctor now converts the latest Final Diagnosis into a separate treatment direction and referral.
-
-Active routing:
-
-- confirmed CTR, decline, stale-content, and update-failure diagnoses → Writer
-- deferred diagnoses → Observation / follow-up
-
-Creator, Merge, noindex, and delete routing remain reserved for later diagnosis expansion.
-
-
-## Sprint6.1 Search Console 365-Day Acquisition
-
-Doctor now contains a provider-neutral acquisition service and Google API adapter for:
-
-- 28-day aggregate metrics
-- 90-day aggregate metrics
-- 365-day aggregate metrics
-- paged query-level metrics
-- retry and partial-failure reporting
-- conversion into the existing Search Console Observation contract
-
-Credentials and OAuth UI are intentionally excluded.
-
-
-## Sprint6.2 SERP Observation
-
-Doctor now supports provider-neutral SERP acquisition and Medical Record snapshots.
-
-Recorded data includes:
-
-- top results
-- search intent
-- SERP features
-- competition strength
-- changes from the previous SERP snapshot
-
-SERP data now enables the Competition Resilience Vital Sign.
-
-
-## Sprint6.3 Article Snapshot Observation
-
-Doctor now records article structure and content metadata as an immutable snapshot.
-
-This enables the final previously unavailable Vital Sign:
-
-- Content Integrity
-
-All seven Vital Signs can now be represented when the required observations exist.
-
-
-## Sprint6.4 Clinical Pipeline
-
-Doctor now includes an end-to-end orchestrator that coordinates:
-
-Observation → Evidence → Vital Signs → Findings → Differential Diagnosis →
-Final Diagnosis → Treatment Recommendation → Referral.
-
-Each component remains independent and idempotent.
-
-
-## Sprint6.5 Diagnosis Report and Output
-
-Doctor now produces:
-
-- a plain-language user diagnosis report
-- `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`
-- `SIMS_DOCTOR_WRITER_REQUEST_V1` for confirmed Writer referrals
-
-The Medical Record, diagnosis report, and referral request remain separate artifacts.
-
-
-## Sprint7.1 Cross-Article Diagnosis
-
-Doctor can now compare articles within the same site and diagnose:
-
-- Cannibalization
-- Article Merge Required
-- New Article Needed
-
-This activates Creator and Merge as real referral targets.
-
-
-## Sprint7.2 Long-Term Decline Diagnosis
-
-Doctor now analyzes repeated 28-day windows over 365 days and distinguishes:
-
-- Long-Term Decay
-- Seasonal Decline
-- Recovery in Progress
-
-Confirmed long-term decay routes to Writer.
-Seasonal and recovery cases route to Observation.
-
-
-## Sprint7.3 Improvement History Comparison
-
-Doctor now compares pre-treatment metrics with 7, 14, and 28-day checkpoints and distinguishes:
-
-- Treatment Success
-- Improvement Failure
-- Post-Improvement Worsening
-- Mixed Treatment Response
-- Follow-Up Required
-
-Worsening and ineffective treatment route to Writer. Doctor never rolls back an article automatically.
-
-
-## Sprint7.4 Longitudinal Medical Record
-
-Doctor now analyzes repeated diagnoses and treatment responses for the same article.
-
-It can identify recurrent or chronic problems, treatment responsiveness or resistance,
-recovery patterns, and follow-up priority.
-
-
-## Sprint8.1 Batch Doctor Foundation
-
-Doctor can now accept many articles in one request, prioritize them, execute each article
-as an isolated Case, continue after individual failures, and resume a previous batch.
-
-Persistent scheduling and worker infrastructure are not included yet.
-
-
-## Sprint8.2 Persistent Batch Queue
-
-Doctor now contains a storage-neutral persistent queue and nightly worker foundation.
-
-It supports durable checkpoints, lease locks, retries, pause/resume, incomplete-batch discovery,
-and completion events. Production database and scheduler adapters remain deployment tasks.
-
-
-## Sprint8.3 Production Queue and Scheduler
-
-Doctor now includes a durable SQLite queue adapter and an automation-friendly scheduler CLI.
-A paused batch can survive process restart and resume from its saved checkpoint.
-
-
-## Sprint8.4 SBM Batch Integration
-
-Doctor now defines the complete JSON-contract flow for SBM batch submission, acceptance,
-progress polling, terminal result export, and idempotent result import acknowledgement.
-
-The integration does not expose Doctor Medical Records or internal diagnosis rules.
-
-
-## Sprint8.5 SBM–Doctor Transport API
-
-Doctor now provides an authenticated transport layer for SBM batch submission, status polling,
-and result retrieval.
-
-Requests use HMAC-SHA256 signatures, timestamps, nonces, per-client rate limits, and
-idempotency keys. A WSGI adapter is included for deployment integration.
-
-
-## Sprint8.6 Production Security Persistence
-
-Doctor now persists nonce replay protection, API idempotency responses, and audit logs in SQLite.
-
-A production application factory loads secrets from environment variables and exposes liveness
-and readiness endpoints. Real secrets are never stored in the repository.
-
-
-## Sprint9.1 Diagnostic Rule Engine
-
-Doctor now supports declarative, explainable diagnostic rules.
-
-Rules can evaluate Evidence, Findings, Vital Signs, Observations, Longitudinal Profiles,
-Treatment History, and case context, then produce prioritized diagnosis candidates without
-directly creating treatment or referral instructions.
-
-
-## Sprint9.2 Vital Score Engine
-
-Doctor now calculates a 0–100 article health score from the seven Vital Signs.
-
-The score supports missing-sign reweighting, LOW_SAMPLE and serious-Finding adjustments,
-health bands, and explainable positive and negative factors.
-
-
-## Sprint9.3 Improvement Failure Diagnosis
-
-Doctor now integrates treatment history, Vital Score changes, metric deterioration,
-recurrence, and LOW_SAMPLE safeguards to distinguish no effect, worsening, possible
-wrong treatment direction, recurrent failure, and insufficient follow-up.
-
-
-## Sprint9.4 Long-Term Degradation Diagnosis
-
-Doctor now integrates 365-day trend data, Vital Score changes, recurrence, seasonality,
-recovery, and LOW_SAMPLE safeguards to distinguish chronic degradation, sharp degradation,
-CTR degradation, position degradation, seasonal variation, and recovery.
-
-
-## Sprint9.5 CTR Opportunity Diagnosis
-
-順位別期待CTR、Winner Query保護、直近タイトル変更、LOW_SAMPLEを統合しました。
-
-
-## Sprint9.6 Position Opportunity Diagnosis
-
-Doctor now identifies articles with meaningful impressions that remain near page one,
-including high opportunity, query-focused opportunity, Winner Query protection,
-and low-visibility or intent-misalignment cases.
-
-
-## Sprint9.7 Intent Drift Diagnosis
-
-Doctor now compares current query demand with article identity through query clusters,
-intent shares, entropy, title overlap, emerging-intent growth, and Winner Query protection.
-
-
-## Sprint9.8 Freshness Decay Diagnosis
-
-Doctor now distinguishes local factual decay from severe article-wide freshness decay,
-while protecting Winner Queries and recently updated articles.
-
-
-## Sprint9.9 Cannibalization Diagnosis
-
-記事間の共通クエリ、SERP、検索意図、流入差から統合候補と役割分担を診断します。
-
-
-## Sprint10.0 Composite Diagnosis
-
-Doctor now integrates all specialist assessments into one final diagnosis.
-
-Safety rules for LOW_SAMPLE, recent changes, Winner Queries, Merge candidates, and role
-separation take precedence over weighted scoring.
-
-
-## Sprint10.1 Treatment Recommendation
-
-Doctor now converts Composite Diagnosis into target-specific referrals for Writer, Creator,
-Merge, observation, or follow-up while preserving treatment safety boundaries.
-
-
-## Sprint10.2 Doctor Report Generator
-
-利用者向け診断書とシステム向け構造化レポートを分離しました。
-
-
-## Sprint10.3 Explainable Diagnosis
-
-Doctor now records a user-facing decision path and a separate system audit trail.
-
-
-## v1.0.0-RC1
-
-The complete Doctor workflow is frozen as a release candidate for end-to-end acceptance testing.
+選択した1記事について、独立製品SIMS Doctor向けの診断依頼JSONを手動生成できます。日次処理や記事ランクには接続していません。

@@ -1,25 +1,64 @@
-## Product 5.0 Official — 2026年7月13日
+# SIMS-Blog-Manager Product 5.6.7
 
-正式バージョン：`5.0.0`
+- SIMS Writer Contract v4.2 `publication_result.public_ok_changes` に対応
+- `user_decision_changes` と `change_summary` を改善履歴へ保存
+- 旧 `changes` の後方互換を維持
+- 改善依頼文の出力例をContract v4.2へ更新
 
-### 主な機能
+# SIMS-Blog-Manager Product 5.4.3 Maintenance
 
-- Google Search Consoleデータの日次取得
-- 優先度に基づく「今日の改善」表示
-- 記事管理と改善ナビ
-- 改善計画・実施内容・改善効果を統合した詳細表示
-- 7日・14日・21日・28日の4週間効果測定
-- Home画面の処理状況表示
-- 初心者向けセットアップウィザード
+SIMS Writer v1.0.0以降の `changes` 配列形式を登録できるようにし、V1オブジェクト形式との後方互換を維持しました。`change_flags` と未知フィールドも許容します。
 
-### 正式版での整理
+- SiteURL命名統一と、シート修復後のHome自動復帰を追加。
+# Product 5.3.1
 
-- RC3 Performance実機テスト合格版を正式版として確定
-- バージョン表記を `5.0.0` に統一
-- Apps Script配布を `コード.gs` 1ファイルに統一
-- 過去版テンプレートと開発用RC資料を利用者向け配布物から除外
-- GitHub Pagesマニュアルを正式版の画面と運用に更新
+SIMS Feedback Protocolを前方互換化しました。V1・V2・将来のV数字形式を受け入れ、未知フィールドは元JSONに保持したまま正常登録します。
 
-### RC3 Performanceからの更新
+## Product 5.2.10 Official
 
-既存スプレッドシートを継続利用できます。正式版の `コード.gs` へ全置換後、スプレッドシートを再読み込みしてください。「シートの作成・修復」は不要です。
+- 復元不能な改善履歴の孤立行をバックアップ後に削除
+- 改善履歴IDの重複と同一履歴の重複を整理
+- 新規履歴登録時にArticleIDまたは記事URLを必須化
+
+記事管理への列追加後に発生した詳細画面・改善履歴の列参照不整合を修正しました。既存データを保持するヘッダー名基準の書き込みへ変更し、不完全な改善履歴行の安全な修復を追加しています。
+
+# SIMS-Blog-Manager Product 5.2.7
+
+- 改善ナビ起動時に対象URLの最新クエリを毎回取得
+- 上位20クエリと内部リンク候補へ即時反映
+- 取得状態の明確化と保存済みクエリへのフォールバック
+
+# SIMS-Blog-Manager Product 5.2.1 Official
+
+Product 5.2.1 adds automatic internal-link candidate collection to the Improvement Navigator. Candidates are selected from the article database and Search Console queries and are included in the AI improvement request with URLs and relevance reasons.
+
+# SIMS-Blog-Manager Product 5.1.3 Official
+
+Product 5.1系の正式基準版です。Homeと上部メニューを毎日の作業フローに合わせて再設計し、改善履歴の再構築と書式反映を安定化しました。
+
+## 主な変更
+
+- Homeに記事ランク、今日のメッセージ、改善状況、今週の取り組み、今週のアドバイスを表示
+- 上部メニューを「SIMS-Blog-Manager／記事改善スタート／結果登録／推移確認／記事一覧／改善履歴」に統一
+- 改善候補は最大10件、今日の改善は初期2件・最大6件
+- 効果確認は改善後7日・14日・21日・28日の4回
+- 改善履歴を開く際に一覧、書式、チェックボックスを再反映
+- 未取得記事を記事DBから自動削除せず、安全に管理
+- 配布版から開発者用メニューを除外
+- マニュアルサイトと配布版をProduct 5.1.3へ同期
+
+## 更新方法
+
+1. `コード.gs`を全置換して保存
+2. スプレッドシートを再読み込み
+3. **SIMS-Blog-Manager → シートの作成・修復**を1回実行
+4. バージョン情報が`5.1.3`であることを確認
+
+既存スプレッドシートは継続利用できます。
+
+## Product 5.2.7
+
+改善ナビのクエリ取得時に発生するタイムアウトを抑止しました。取得上限とフォールバック処理を軽量化し、取得結果を画面と内部リンク候補へ直接渡します。改善の推移では次回測定予定日を中央揃えに統一しました。
+
+## Product 5.4.3
+日次処理のタイムアウト再発防止として、フェーズ処理とチェックポイントを維持し、安全時間に達した場合は「続きを実行」で再開する方式へ変更しました。処理中はダイアログにスピナーと進捗を表示します。
