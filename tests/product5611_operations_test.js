@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs','utf8');
 function assert(cond,msg){ if(!cond){ console.error('FAIL:',msg); process.exitCode=1; } else console.log('PASS:',msg); }
-assert(code.includes("const SBM_VERSION = '5.7.1-rc.10'"),'version 5.7.1-rc.10');
+assert(code.includes("const SBM_VERSION = '5.7.1-rc.11'"),'version 5.7.1-rc.11');
 assert(code.includes('TODAY_INITIAL_DISPLAY: 5'),'today default is 5');
 assert(code.includes('TODAY_MAX_DISPLAY: 10'),'today candidate display max is 10');
 assert(code.includes(".addItem('表示件数を設定','sbmSetTodayDisplayCount')"),'display count menu');

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const checks = [
-  ['version', "const SBM_VERSION = '5.7.1-rc.10';"],
+  ['version', "const SBM_VERSION = '5.7.1-rc.11';"],
   ['publication result', "obj.publication_result"],
   ['public ok priority', "hasPublicOkChanges ? publicationResult.public_ok_changes : obj.changes"],
   ['user decision save', "'利用者判断変更JSON'"],

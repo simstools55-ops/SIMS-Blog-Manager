@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.7.1 RC10
+ * SIMS-Blog-Manager Product 5.7.1 RC11
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.7.1-rc.10';
+const SBM_VERSION = '5.7.1-rc.11';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -4349,6 +4349,15 @@ function sbmDecodeHtmlEntities_(s) {
     .replace(/&#x([0-9a-f]+);/gi, function(_, n){ try { return String.fromCharCode(parseInt(n,16)); } catch(e) { return _; } });
 }
 
+function sbmExtractArticleLinksFromHtml_(html,baseUrl){
+  html=String(html||'');var out=[],seen={};var re=/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,m;
+  while((m=re.exec(html))!==null){var href=String(m[1]||'').trim();if(!href||/^(#|javascript:|mailto:|tel:)/i.test(href))continue;
+    try{if(/^\//.test(href)){var bm=String(baseUrl||'').match(/^(https?:)\/\/([^\/]+)/i);if(bm)href=bm[1]+'//'+bm[2]+href;}else if(/^\//.test(href)===false&&!/^https?:\/\//i.test(href)){var base=String(baseUrl||'').replace(/[#?].*$/,'');href=base.replace(/\/[^\/]*$/,'/')+href;}}catch(e){}
+    href=sbmNormalizeUrl_(href);if(!/^https?:\/\//i.test(href)||seen[href])continue;seen[href]=true;
+    var anchor=sbmDecodeHtmlEntities_(String(m[2]||'').replace(/<[^>]+>/g,' ')).replace(/\s+/g,' ').trim();out.push({url:href,anchor_text:anchor});
+  }return out;
+}
+
 function sbmArticleTextFromHtml_(html) {
   html = String(html || '');
   if (!html) return '';
@@ -4429,9 +4438,12 @@ function sbmFetchArticleSource_(url) {
     var headers = res.getAllHeaders ? res.getAllHeaders() : {};
     var contentType = String(headers['Content-Type'] || headers['content-type'] || '');
     if (contentType && contentType.toLowerCase().indexOf('text/html') < 0) return {ok:false, message:'HTML記事ではないため本文を取得できませんでした。'};
-    var text = sbmArticleTextFromHtml_(res.getContentText() || '');
+    var html = res.getContentText() || '';
+    var text = sbmArticleTextFromHtml_(html);
     if (text.length < 200) return {ok:false, message:'本文として十分な文章を抽出できませんでした。'};
-    return sbmStructureArticleText_(text, 'url');
+    var structured=sbmStructureArticleText_(text, 'url');
+    if(structured.ok) structured.data.outbound_links=sbmExtractArticleLinksFromHtml_(html,url);
+    return structured;
   } catch(e) {
     return {ok:false, message:'URLから本文を取得できませんでした。\n'+String(e && e.message || e)};
   }
@@ -4452,7 +4464,7 @@ function sbmInternalLinkNormalizeText_(value) {
 }
 function sbmInternalLinkTokens_(value) {
   var text=sbmInternalLinkNormalizeText_(value), out={}; if(!text)return [];
-  var stop={'について':1,'とは':1,'方法':1,'やり方':1,'使い方':1,'原因':1,'対処法':1,'解決':1,'おすすめ':1,'まとめ':1,'最新版':1,'完全版':1,'記事':1,'ブログ':1,'できない':1,'する':1,'した':1,'して':1,'から':1,'まで':1,'ため':1,'場合':1,'how':1,'what':1,'the':1,'and':1,'for':1,'with':1};
+  var stop={'について':1,'とは':1,'方法':1,'やり方':1,'使い方':1,'原因':1,'対処法':1,'解決':1,'おすすめ':1,'まとめ':1,'最新版':1,'完全版':1,'記事':1,'ブログ':1,'できない':1,'する':1,'した':1,'して':1,'から':1,'まで':1,'ため':1,'場合':1,'how':1,'what':1,'the':1,'and':1,'for':1,'with':1,'インスタ':1,'インスタグラム':1,'instagram':1,'2025':1,'2026':1,'最新':1};
   (text.match(/[a-z0-9][a-z0-9+._-]*|[ぁ-んァ-ヶー一-龠々]{2,}/g)||[]).forEach(function(word){
     word=word.replace(/^[-_.]+|[-_.]+$/g,''); if(!word||stop[word])return;
     if(/^[ぁ-んァ-ヶー一-龠々]+$/.test(word)&&word.length>=4){for(var n=2;n<=Math.min(4,word.length);n++){for(var i=0;i<=word.length-n;i++){var gram=word.substring(i,i+n);if(!stop[gram])out[gram]=true;}}}
@@ -8768,7 +8780,7 @@ function sbmDoctorDateOnlyOrNull_(value) {
 
 
 /**
- * Product 5.7.1 RC10: Doctor Evidence Package v2.0
+ * Product 5.7.1 RC11: Doctor Evidence Package v2.1
  * 個別診断時だけ対象記事の証拠を可能な限り収集します。
  */
 function sbmDoctorBuildEvidencePackage_(ctx, payload) {
@@ -8779,26 +8791,30 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
   var queries = sbmDoctorFetchLongTermQueries_(url, SBM_DOCTOR_EVIDENCE_DAYS, SBM_DOCTOR_QUERY_LIMIT);
   var preferredDailyUrl = queries && queries.matched_urls ? queries.matched_urls.full_180_days : null;
   var performance = sbmDoctorFetchLongTermPerformance_(url, SBM_DOCTOR_EVIDENCE_DAYS, preferredDailyUrl);
+  var pageSummary = sbmDoctorFetchLongTermPageSummary_(url, SBM_DOCTOR_EVIDENCE_DAYS, performance&&performance.matched_url||preferredDailyUrl);
   var health = sbmDoctorLatestHealthSnapshot_(articleId, url);
   var sbmHistory = sbmDoctorAllImprovementHistory_(articleId, url);
   var doctorHistory = sbmDoctorExistingMedicalHistory_(articleId, url);
-  var internalLinks = sbmDoctorInternalLinkEvidence_(ctx.article, queries.rows || []);
+  var internalLinks = sbmDoctorInternalLinkEvidence_(ctx.article, queries.rows || [], source);
   var comparison = sbmDoctorComparisonWindow_(payload.improvement_context, performance);
 
   var quality = sbmDoctorValidateEvidencePackage_({
     article_source:source,
     daily_performance:performance,
+    page_summary:pageSummary,
     query_performance:queries,
     health_snapshot:health,
     improvement_history:sbmHistory,
     doctor_history:doctorHistory,
-    internal_links:internalLinks
+    internal_links:internalLinks,
+    main_query:payload.article&&payload.article.main_query||null,
+    article_title:payload.article&&payload.article.title||null
   });
   var evidenceIndex = quality.evidence_index;
 
   return {
     package_format:'SIMS_DOCTOR_EVIDENCE_PACKAGE_V2',
-    package_version:'2.0.0',
+    package_version:'2.1.0',
     compatible_with:['SIMS_DOCTOR_EVIDENCE_PACKAGE_V1'],
     collected_at:collectedAt,
     request_id:payload.request&&payload.request.request_id||null,
@@ -8817,6 +8833,7 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
     search_console:{
       period_days:SBM_DOCTOR_EVIDENCE_DAYS,
       daily_performance:performance,
+      page_summary:pageSummary,
       query_performance:queries,
       comparison_window:comparison
     },
@@ -8842,8 +8859,10 @@ function sbmDoctorMetricDifference_(a,b) {
 
 function sbmDoctorValidateEvidencePackage_(e) {
   var healthFull=e.health_snapshot&&e.health_snapshot.metrics?e.health_snapshot.metrics.full_180_days:null;
+  var pageFull=e.page_summary&&e.page_summary.summary?e.page_summary.summary:null;
   var dailyFull=e.daily_performance&&e.daily_performance.summary?e.daily_performance.summary.full_180_days:null;
   var healthImp=healthFull?Number(healthFull.impressions||0):0;
+  var pageImp=pageFull?Number(pageFull.impressions||0):0;
   var dailyImp=dailyFull?Number(dailyFull.impressions||0):0;
   var items=[];
 
@@ -8854,17 +8873,19 @@ function sbmDoctorValidateEvidencePackage_(e) {
 
   if(!e.daily_performance||!e.daily_performance.ok) {
     items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','ERROR',e.daily_performance&&e.daily_performance.message||'180日の日別推移を取得できませんでした。'));
-  } else if(healthImp>0 && dailyImp===0) {
-    items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','ERROR','半年健康診断には実績がありますが、日別推移が全て0です。Search Consoleデータの再取得が必要です。',{code:'SUMMARY_ROWS_MISMATCH',health_snapshot:healthFull,daily_summary:dailyFull}));
-  } else if(healthFull&&dailyFull) {
-    var diff=sbmDoctorMetricDifference_(healthFull,dailyFull);
-    var allowedImpressions=Math.max(2,Math.round(healthImp*0.05));
-    var healthClicks=Number(healthFull.clicks||0);
-    var allowedClicks=Math.max(1,Math.round(healthClicks*0.05));
+  } else if(pageImp>0 && dailyImp===0) {
+    items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','ERROR','同じ条件で取得した180日ページ合計には実績がありますが、日別推移が全て0です。Search Consoleデータの再取得が必要です。',{code:'PAGE_DAILY_MISMATCH',page_summary:pageFull,daily_summary:dailyFull,health_snapshot_reference:healthFull}));
+  } else if(pageFull&&dailyFull) {
+    var diff=sbmDoctorMetricDifference_(pageFull,dailyFull);
+    var allowedImpressions=Math.max(2,Math.round(pageImp*0.05));
+    var pageClicks=Number(pageFull.clicks||0);
+    var allowedClicks=Math.max(1,Math.round(pageClicks*0.05));
     var positionMismatch=diff.position>1.0;
-    if(diff.impressions>allowedImpressions||diff.clicks>allowedClicks||positionMismatch) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','WARNING','半年健康診断の集計値と日別推移の合計に差があります。期間・URL・集計粒度を確認して診断してください。',{code:'SUMMARY_ROWS_DIFFERENCE',difference:diff,tolerance:{clicks:allowedClicks,impressions:allowedImpressions,position:1.0},health_snapshot:healthFull,daily_summary:dailyFull}));
+    var mismatch=diff.impressions>allowedImpressions||diff.clicks>allowedClicks||positionMismatch;
+    var severe=diff.impressions>allowedImpressions*2||diff.clicks>allowedClicks*2||diff.position>2.0;
+    if(mismatch) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','WARNING',severe?'同じ条件で取得した180日ページ合計と日別合計に大きな差があります。半年全体の絶対値は参考扱いとし、限定診断にしてください。':'同じ条件で取得した180日ページ合計と日別合計に差があります。期間・URL・取得条件を確認してください。',{code:severe?'PAGE_DAILY_LARGE_DIFFERENCE':'PAGE_DAILY_DIFFERENCE',severity:severe?'LARGE':'MODERATE',difference:diff,tolerance:{clicks:allowedClicks,impressions:allowedImpressions,position:1.0},page_summary:pageFull,daily_summary:dailyFull,health_snapshot_reference:healthFull}));
     else if(dailyImp===0) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','EMPTY','対象期間にSearch Consoleの表示実績がありません。',{row_count:e.daily_performance.row_count||0}));
-    else items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','VALID','180日の日別推移と半年健康診断の集計値は整合しています。',{row_count:e.daily_performance.row_count||0,summary:dailyFull}));
+    else items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','VALID','同じ条件で取得した180日ページ合計と日別合計は整合しています。',{row_count:e.daily_performance.row_count||0,page_summary:pageFull,daily_summary:dailyFull,health_snapshot_reference:healthFull}));
   } else if(dailyImp===0) items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','EMPTY','対象期間にSearch Consoleの表示実績がありません。',{row_count:e.daily_performance.row_count||0}));
   else items.push(sbmDoctorEvidenceItem_('E002','180日の日別推移','VALID','180日の日別推移を取得しました。',{row_count:e.daily_performance.row_count||0,summary:dailyFull}));
 
@@ -8879,26 +8900,31 @@ function sbmDoctorValidateEvidencePackage_(e) {
   items.push((e.doctor_history||[]).length?sbmDoctorEvidenceItem_('E006','過去のDoctor診断','VALID',(e.doctor_history||[]).length+'件の診断履歴を添付しました。'):sbmDoctorEvidenceItem_('E006','過去のDoctor診断','EMPTY','過去のDoctor診断はありません。'));
   if(!e.internal_links||e.internal_links.available===false) items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','ERROR',e.internal_links&&e.internal_links.message||'内部リンク候補を取得できませんでした。'));
   else if((e.internal_links.candidates||[]).length===0) items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','EMPTY','適合する内部リンク候補はありません。'));
-  else items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','VALID',(e.internal_links.candidates||[]).length+'件の候補を添付しました。'));
+  else items.push(sbmDoctorEvidenceItem_('E007','内部リンク候補','VALID',(e.internal_links.candidates||[]).length+'件の候補と、本文内の実リンク照合結果を添付しました。',{candidate_count:(e.internal_links.candidates||[]).length,existing_link_count:(e.internal_links.existing_links||[]).length,unlinked_candidate_count:(e.internal_links.unlinked_candidates||[]).length}));
   items.push(sbmDoctorEvidenceItem_('E008','SERP比較','NOT_SUPPORTED','SBMでは自動取得していません。Claude版Doctorで必要に応じて確認してください。'));
   if(queryCount>0) items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','VALID','クエリデータを基にDoctorがカニバリ候補を判定できます。'));
   else if(healthImp>0) items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','WARNING','クエリ明細がないため、カニバリ候補を十分に判定できません。'));
   else items.push(sbmDoctorEvidenceItem_('E009','カニバリ候補','EMPTY','表示実績がないため、カニバリ判定の対象データがありません。'));
+
+  var stale=sbmDoctorMainQueryFreshness_(e.main_query,e.article_title);
+  if(stale.warning) items.push(sbmDoctorEvidenceItem_('E010','メインクエリの鮮度','WARNING',stale.message,{code:'MAIN_QUERY_STALE',query_year:stale.query_year,current_year:stale.current_year}));
+  else items.push(sbmDoctorEvidenceItem_('E010','メインクエリの鮮度','VALID','メインクエリに明確な古い年号はありません。'));
 
   var counts={VALID:0,WARNING:0,ERROR:0,EMPTY:0,NOT_SUPPORTED:0,MISSING:0};
   items.forEach(function(x){counts[x.quality]=(counts[x.quality]||0)+1;});
   var score=100-counts.ERROR*30-counts.WARNING*10;
   if(score<0)score=0;
   var criticalError=items.some(function(x){return x.evidence_id==='E002'&&x.quality==='ERROR';});
+  var severeMismatch=items.some(function(x){return x.evidence_id==='E002'&&x.details&&x.details.severity==='LARGE';});
   var readiness,readinessLabel,action;
   if(criticalError||score<70){readiness='REFETCH_REQUIRED';readinessLabel='再取得が必要';action='Search Consoleの180日データを再取得してから診断してください。';}
-  else if(counts.ERROR>0||score<85){readiness='LIMITED_DIAGNOSIS';readinessLabel='限定的な診断が可能';action='不足・不整合のある証拠を除外し、確定診断を避けてください。';}
+  else if(severeMismatch||counts.ERROR>0||score<85){readiness='LIMITED_DIAGNOSIS';readinessLabel='限定的な診断が可能';action='不足・不整合のある証拠を除外し、確定診断を避けてください。';}
   else {readiness='READY';readinessLabel='診断可能';action='通常の個別診断を進められます。';}
   var overall=counts.ERROR>0?'ERROR':counts.WARNING>0?'WARNING':'VALID';
   var overallLabel=overall==='ERROR'?'再取得が必要':overall==='WARNING'?'注意事項あり':'良好';
   return {
     evidence_index:items,
-    validation_report:{validation_version:'2.0.0',validated_at:sbmDoctorIso_(new Date()),overall:overall,overall_label:overallLabel,evidence_score:score,counts:counts,checks:items.filter(function(x){return x.quality==='ERROR'||x.quality==='WARNING';}).map(function(x){return {evidence_id:x.evidence_id,result:x.quality,code:x.details&&x.details.code||null,message:x.note};})},
+    validation_report:{validation_version:'2.1.0',validated_at:sbmDoctorIso_(new Date()),overall:overall,overall_label:overallLabel,evidence_score:score,counts:counts,checks:items.filter(function(x){return x.quality==='ERROR'||x.quality==='WARNING';}).map(function(x){return {evidence_id:x.evidence_id,result:x.quality,code:x.details&&x.details.code||null,message:x.note};})},
     doctor_readiness:{status:readiness,label:readinessLabel,recommended_action:action,diagnosis_allowed:readiness!=='REFETCH_REQUIRED'}
   };
 }
@@ -8935,6 +8961,17 @@ function sbmDoctorSearchConsoleForUrl_(property,baseBody,url,preferredUrl){
   last.matched_url=null;last.candidate_trace=trace;
   return last;
 }
+function sbmDoctorFetchLongTermPageSummary_(url,days,preferredUrl){
+  var range=sbmDoctorEvidenceRange_(days), property=sbmGetSetting_('SearchConsoleProperty','');
+  try{
+    var data=sbmDoctorSearchConsoleForUrl_(property,{startDate:range.startDate,endDate:range.endDate,rowLimit:10},url,preferredUrl);
+    var rows=data.rows||[], clicks=0, impressions=0, posNum=0, posDen=0;
+    rows.forEach(function(r){var imp=Number(r.impressions||0);clicks+=Number(r.clicks||0);impressions+=imp;posNum+=Number(r.position||0)*imp;posDen+=imp;});
+    var summary={clicks:clicks,impressions:impressions,ctr:impressions?clicks/impressions:0,position:posDen?posNum/posDen:0};
+    return {ok:(clicks>0||impressions>0),message:(clicks>0||impressions>0)?'同一条件の180日ページ合計を取得しました。':'180日ページ合計に実績がありません。',start_date:range.startDate,end_date:range.endDate,matched_url:data.matched_url||null,candidate_trace:data.candidate_trace||[],summary:summary};
+  }catch(e){return {ok:false,message:'180日ページ合計を取得できませんでした：'+String(e&&e.message||e),start_date:range.startDate,end_date:range.endDate,matched_url:null,candidate_trace:[],summary:null};}
+}
+
 function sbmDoctorFetchLongTermPerformance_(url,days,preferredUrl){
   var range=sbmDoctorEvidenceRange_(days), property=sbmGetSetting_('SearchConsoleProperty','');
   try{
@@ -8942,9 +8979,13 @@ function sbmDoctorFetchLongTermPerformance_(url,days,preferredUrl){
     var rows=(data.rows||[]).map(function(r){return {date:String(r.keys&&r.keys[0]||''),clicks:Number(r.clicks||0),impressions:Number(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)};});
     var summary=sbmDoctorSummarizeDailyMetrics_(rows,range);
     var hasMetrics=summary&&summary.full_180_days&&(Number(summary.full_180_days.clicks||0)>0||Number(summary.full_180_days.impressions||0)>0);
-    return {ok:!!hasMetrics,message:hasMetrics?(rows.length+'日分のデータを取得しました。'):'URL候補を確認しましたが、180日の日別実績を取得できませんでした。',start_date:range.startDate,end_date:range.endDate,row_count:rows.length,matched_url:data.matched_url||null,candidate_trace:data.candidate_trace||[],summary:summary,rows:rows};
+    return {ok:!!hasMetrics,message:hasMetrics?(rows.length+'日分のデータを取得しました。'):'URL候補を確認しましたが、180日の日別実績を取得できませんでした。',start_date:range.startDate,end_date:range.endDate,row_count:rows.length,matched_url:data.matched_url||null,candidate_trace:data.candidate_trace||[],summary:summary,period_sample_notes:sbmDoctorPeriodSampleNotes_(summary),rows:rows};
   }catch(e){return {ok:false,message:'180日の日別推移を取得できませんでした：'+String(e&&e.message||e),start_date:range.startDate,end_date:range.endDate,row_count:0,matched_url:null,candidate_trace:[],summary:null,rows:[]};}
 }
+function sbmDoctorPeriodSampleNotes_(summary){
+  var out={};Object.keys(summary||{}).forEach(function(k){var m=summary[k]||{},imp=Number(m.impressions||0),clicks=Number(m.clicks||0);out[k]={impressions:imp,clicks:clicks,sample_quality:imp<50?'VERY_LOW':imp<200?'LOW':'SUFFICIENT',interpretation_note:imp<200?'母数が小さいためCTRや順位の比較は参考値として扱ってください。':'通常比較が可能です。'};});return out;
+}
+
 function sbmDoctorSummarizeDailyMetrics_(rows,range){
   function aggregate(list){var c=0,i=0,posNum=0,posDen=0;list.forEach(function(r){c+=Number(r.clicks||0);i+=Number(r.impressions||0);posNum+=Number(r.position||0)*Number(r.impressions||0);posDen+=Number(r.impressions||0);});return {clicks:c,impressions:i,ctr:i?c/i:0,position:posDen?posNum/posDen:0};}
   function addDays(text,n){var d=new Date(text+'T00:00:00+09:00');d.setDate(d.getDate()+n);return Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');}
@@ -8984,9 +9025,19 @@ function sbmDoctorExistingMedicalHistory_(articleId,url){
   return rows.filter(function(r){return (articleId&&String(r['記事ID']||'').trim()===articleId)||sbmNormalizeUrl_(r['記事URL']||'')===normalized;}).map(function(r){return sbmDoctorPlainRecord_(r);});
 }
 function sbmDoctorPlainRecord_(record){var out={};Object.keys(record||{}).forEach(function(k){var v=record[k];if(v instanceof Date)out[k]=sbmDoctorIso_(v);else out[k]=v;});return out;}
-function sbmDoctorInternalLinkEvidence_(article,queryRows){
-  try{var candidates=sbmFindInternalLinkCandidates_(article,3,8,(queryRows||[]).map(function(q){return q.query;}));return {available:true,candidates:candidates||[]};}
-  catch(e){return {available:false,message:String(e&&e.message||e),candidates:[]};}
+function sbmDoctorInternalLinkEvidence_(article,queryRows,source){
+  try{
+    var candidates=sbmFindInternalLinkCandidates_(article,3,8,(queryRows||[]).map(function(q){return q.query;}))||[];
+    var existing=(source&&source.ok&&source.data&&source.data.outbound_links)||[],existingSet={};
+    existing.forEach(function(x){existingSet[sbmNormalizeUrl_(x.url||'')]=true;});
+    candidates=candidates.map(function(c){var linked=!!existingSet[sbmNormalizeUrl_(c.url||'')];var out={};Object.keys(c).forEach(function(k){out[k]=c[k];});out.already_linked=linked;out.link_status=linked?'LINKED':'NOT_LINKED';return out;});
+    return {available:true,existing_links:existing,candidates:candidates,linked_candidates:candidates.filter(function(c){return c.already_linked;}),unlinked_candidates:candidates.filter(function(c){return !c.already_linked;}),diagnostic_rule:'本文の実リンクURLと候補URLが一致する場合のみリンク済みと判定します。URLが取得できない場合は未設置と断定しないでください。'};
+  }catch(e){return {available:false,message:String(e&&e.message||e),existing_links:[],candidates:[],linked_candidates:[],unlinked_candidates:[]};}
+}
+function sbmDoctorMainQueryFreshness_(mainQuery,title){
+  var current=Number(Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyy')),q=String(mainQuery||''),years=q.match(/20\d{2}/g)||[];
+  var old=years.map(Number).filter(function(y){return y<current;}).sort()[0]||null;
+  return old?{warning:true,query_year:old,current_year:current,message:'メインクエリに古い年号「'+old+'」が残っています。記事の現在の役割と検索実績を確認し、必要ならメインクエリを見直してください。'}:{warning:false,query_year:null,current_year:current};
 }
 function sbmDoctorComparisonWindow_(improvement,performance){
   var elapsed=improvement&&improvement.elapsed_days!==null?Number(improvement.elapsed_days):null;

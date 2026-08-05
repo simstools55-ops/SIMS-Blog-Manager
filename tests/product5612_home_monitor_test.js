@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const must = [
-  "const SBM_VERSION = '5.7.1-rc.10'",
+  "const SBM_VERSION = '5.7.1-rc.11'",
   "'改善前クリック','現在クリック','改善前表示回数','現在表示回数','判定'",
   'function sbmHomeMonitorJudgmentCounts_()',
   "sh.getRange('E14:H14').merge().setValue('改善中の記事（モニター中）')",
