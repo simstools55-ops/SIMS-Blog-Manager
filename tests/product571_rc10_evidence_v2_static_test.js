@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
 const required=[
-  "const SBM_VERSION = '5.8.0-rc.3'",
+  "const SBM_VERSION = '5.8.0-rc.4'",
   'SIMS_DOCTOR_EVIDENCE_PACKAGE_V2',
   "package_version:'2.1.0'",
   'compatible_with',

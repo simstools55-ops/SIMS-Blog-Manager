@@ -1,4 +1,4 @@
-> Current release: SIMS-Blog-Manager Product 5.8.0 RC3
+> Current release: SIMS-Blog-Manager Product 5.8.0 RC4
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 

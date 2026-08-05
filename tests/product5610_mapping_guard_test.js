@@ -1,7 +1,7 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
 function must(re,msg){if(!re.test(code)){throw new Error(msg)}}
-must(/const SBM_VERSION = '5\.8\.0-rc\.3'/,'version');
+must(/const SBM_VERSION = '5\.8\.0-rc\.4'/,'version');
 must(/url, '', '', m\.clicks, m\.impressions, ctr, pos/,'H1 placeholder missing');
 must(/function sbmValidateFreshArticleDbRows_/,'validator missing');
 must(/row\.length !== headers\.length/,'width guard missing');

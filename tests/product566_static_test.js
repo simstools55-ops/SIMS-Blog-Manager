@@ -1,7 +1,7 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const checks = [
-  ["version", "const SBM_VERSION = '5.8.0-rc.3';"],
+  ["version", "const SBM_VERSION = '5.8.0-rc.4';"],
   ["constant", "const QUERY_ROW_LIMIT = 200;"],
   ["fetch limit", "sbmFetchTopQueriesForUrlNow_(url,QUERY_ROW_LIMIT)"],
   ["impressions sort", "return (b.imps-a.imps) || (b.clicks-a.clicks)"],

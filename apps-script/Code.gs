@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.8.0 RC3
+ * SIMS-Blog-Manager Product 5.8.0 RC4
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.8.0-rc.3';
+const SBM_VERSION = '5.8.0-rc.4';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7918,7 +7918,7 @@ function onOpen() {
 
   var ui = SpreadsheetApp.getUi();
 
-  // 従来のトップレベル構成を維持します。毎日の主要機能をサブメニューへ移しません。
+  // 製品管理メニューを最左翼に配置します。
   ui.createMenu('SIMS-Blog-Manager')
     .addItem('Homeを確認する','sbmOpenHome')
     .addSeparator()
@@ -7934,7 +7934,8 @@ function onOpen() {
     .addItem('バージョン情報','sbmShowVersionInfo')
     .addToUi();
 
-  ui.createMenu('今日の改善')
+  // 毎日の作業入口であることが伝わる名称にします。
+  ui.createMenu('記事改善スタート')
     .addItem('今日の改善を開く','sbmOpenTodayImprovement')
     .addItem('選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
     .addSeparator()
@@ -7945,7 +7946,8 @@ function onOpen() {
     .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
     .addToUi();
 
-  ui.createMenu('改善の推移')
+  // 改善中の記事と4週間の測定状況をここへ統合します。
+  ui.createMenu('推移確認')
     .addItem('改善の推移を開く','sbmOpenImprovementStatus')
     .addItem('最新データで更新','sbmUpdateEffectiveness')
     .addItem('選択記事の詳細を見る','sbmShowSelectedEffectDetail')
@@ -7972,7 +7974,8 @@ function onOpen() {
     .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll')
     .addToUi();
 
-  // Doctorは必要時に使う独立メニューです。既存の運用メニューを置き換えません。
+
+  // Doctorは独立製品です。SBMは明示操作時の依頼JSON生成だけを担当します。
   ui.createMenu('SIMS Doctor')
     .addItem('記事一覧の選択記事を診断依頼','sbmDoctorCreateRequestFromArticleList')
     .addItem('改善の推移の選択記事を診断依頼','sbmDoctorCreateRequestFromEffect')
@@ -7991,6 +7994,8 @@ function onOpen() {
     .addToUi();
 
   // 配布版では開発者用メニューを生成しません。
+
+  // Homeを描画・表示します。日次処理のダイアログは利用者がメニューから実行した場合だけ表示します。
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var home = ss.getSheetByName(SBM_SHEETS.HOME);
@@ -8004,6 +8009,7 @@ function onOpen() {
   } catch (eHome) { try { sbmLog_('OnOpenHomeDisplay','Warning',String(eHome)); } catch(ignoreHome) {} sbmToast_('Homeの表示更新に失敗しました。System_Logを確認してください。','起動時エラー',8); }
   try { sbmEnsureTodayRecommendations_('open'); } catch (eToday) {}
 }
+
 
 
 
@@ -9219,7 +9225,7 @@ function sbmDoctorOpenDetailedCandidates(){
 
 
 /* ========================================================================== *
- * Product 5.8.0 RC3: Doctor Case Workflow Integration
+ * Product 5.8.0 RC4: Doctor Case Workflow Integration
  * ========================================================================== */
 function sbmDoctorGenerateCaseId_(articleId) {
   var base='CASE-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd')+'-'+String(articleId||'ARTICLE').replace(/[^A-Za-z0-9_-]/g,'');

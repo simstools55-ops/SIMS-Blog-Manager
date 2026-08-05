@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.8.0 RC3
+# SIMS-Blog-Manager Product 5.8.0 RC4
 
 ## メニュー完全復元・Doctor追加版
 
