@@ -2,7 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const code=fs.readFileSync(path.join(__dirname,'..','apps-script','Code.gs'),'utf8');
 const checks=[
-  ['version',/5\.8\.0-rc\.2/],
+  ['version',/5\.8\.0-rc\.3/],
   ['package 2.1',/package_version:'2\.1\.0'/],
   ['page summary fetch',/function sbmDoctorFetchLongTermPageSummary_/],
   ['page daily validation',/PAGE_DAILY_LARGE_DIFFERENCE/],

@@ -1,12 +1,14 @@
-## 5.8.0-rc.2
-
-- Restored a compact, daily-operation-first menu structure.
-- Kept Home and daily processing visible in the main SBM menu.
-- Added organized Doctor diagnosis, treatment, and health-check submenus.
-
 # Changelog
 
-## 5.8.0-rc.2
+## 5.8.0-rc.3
+
+- 従来のトップレベルメニューを完全復元
+- 今日の改善・改善の推移・記事一覧・改善履歴を再表示
+- Doctor関連機能を独立メニューへ追加
+- 全テキストファイルをUTF-8へ再正規化
+
+
+## 5.8.0-rc.1
 
 - SBM発行CaseIDとDoctor_Casesを追加
 - Doctor Case Result V2受付を追加

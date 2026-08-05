@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.8.0 RC2
+ * SIMS-Blog-Manager Product 5.8.0 RC3
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.8.0-rc.2';
+const SBM_VERSION = '5.8.0-rc.3';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7918,25 +7918,41 @@ function onOpen() {
 
   var ui = SpreadsheetApp.getUi();
 
-  // 毎日の運用機能を一つの主メニューへ集約し、画面幅によるメニュー欠落を防ぎます。
-  var improveMenu = ui.createMenu('記事改善')
+  // 従来のトップレベル構成を維持します。毎日の主要機能をサブメニューへ移しません。
+  ui.createMenu('SIMS-Blog-Manager')
+    .addItem('Homeを確認する','sbmOpenHome')
+    .addSeparator()
+    .addItem('日次処理を実行','sbmRunDailyUpdateManual')
+    .addSeparator()
+    .addItem('初回セットアップ','sbmStartInitialSetup')
+    .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
+    .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
+    .addItem('シートの作成・修復','sbmInitializeSheets')
+    .addItem('設定を開く','sbmOpenUserSettings')
+    .addSeparator()
+    .addItem('セットアップ画面を開く','sbmOpenSetup')
+    .addItem('バージョン情報','sbmShowVersionInfo')
+    .addToUi();
+
+  ui.createMenu('今日の改善')
     .addItem('今日の改善を開く','sbmOpenTodayImprovement')
     .addItem('選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
-    .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
     .addSeparator()
-    .addItem('表示件数を設定','sbmSetTodayDisplayCount');
+    .addItem('表示件数を設定','sbmSetTodayDisplayCount')
+    .addToUi();
 
-  var progressMenu = ui.createMenu('改善の推移・履歴')
+  ui.createMenu('結果登録')
+    .addItem('選択記事の改善結果を登録','sbmOpenImprovementFeedbackDialog')
+    .addToUi();
+
+  ui.createMenu('改善の推移')
     .addItem('改善の推移を開く','sbmOpenImprovementStatus')
     .addItem('最新データで更新','sbmUpdateEffectiveness')
     .addItem('選択記事の詳細を見る','sbmShowSelectedEffectDetail')
     .addItem('修正前を確認','sbmShowSelectedRollbackDetail')
-    .addSeparator()
-    .addItem('改善履歴を開く','sbmOpenImprovementHistory')
-    .addItem('選択した履歴の詳細を見る','sbmOpenSelectedHistoryDetail')
-    .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll');
+    .addToUi();
 
-  var articleMenu = ui.createMenu('記事管理')
+  ui.createMenu('記事一覧')
     .addItem('記事一覧を開く','sbmOpenAllBlogArticles')
     .addItem('選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
     .addItem('選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
@@ -7947,56 +7963,34 @@ function onOpen() {
     .addItem('表示回数の多い順','sbmSortArticlesByImpressions')
     .addItem('CTRの高い順','sbmSortArticlesByCtr')
     .addItem('掲載順位の高い順','sbmSortArticlesByPosition')
-    .addItem('最終取得日時の新しい順','sbmSortArticlesByUpdated');
-
-  var settingsMenu = ui.createMenu('管理・設定')
-    .addItem('初回セットアップ','sbmStartInitialSetup')
-    .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
-    .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
-    .addItem('シートの作成・修復','sbmInitializeSheets')
-    .addItem('設定を開く','sbmOpenUserSettings')
-    .addSeparator()
-    .addItem('セットアップ画面を開く','sbmOpenSetup')
-    .addItem('バージョン情報','sbmShowVersionInfo');
-
-  ui.createMenu('SIMS-Blog-Manager')
-    .addItem('Homeを確認する','sbmOpenHome')
-    .addItem('日次処理を実行','sbmRunDailyUpdateManual')
-    .addSeparator()
-    .addSubMenu(improveMenu)
-    .addSubMenu(progressMenu)
-    .addSubMenu(articleMenu)
-    .addSubMenu(settingsMenu)
+    .addItem('最終取得日時の新しい順','sbmSortArticlesByUpdated')
     .addToUi();
 
-  // Doctorは必要時に起動する独立メニューとして整理します。
-  var doctorDiagnosisMenu = ui.createMenu('診断')
+  ui.createMenu('改善履歴')
+    .addItem('改善履歴を開く','sbmOpenImprovementHistory')
+    .addItem('選択した履歴の詳細を見る','sbmOpenSelectedHistoryDetail')
+    .addItem('選択記事の全履歴を見る','sbmOpenSelectedHistoryArticleAll')
+    .addToUi();
+
+  // Doctorは必要時に使う独立メニューです。既存の運用メニューを置き換えません。
+  ui.createMenu('SIMS Doctor')
     .addItem('記事一覧の選択記事を診断依頼','sbmDoctorCreateRequestFromArticleList')
     .addItem('改善の推移の選択記事を診断依頼','sbmDoctorCreateRequestFromEffect')
-    .addItem('Doctor診断結果を登録','sbmDoctorRegisterCaseResult');
-
-  var doctorTreatmentMenu = ui.createMenu('治療連携')
+    .addItem('Doctor診断結果を登録','sbmDoctorRegisterCaseResult')
+    .addSeparator()
     .addItem('治療ケース一覧を開く','sbmDoctorOpenCases')
     .addItem('選択ケースのWriter治療依頼を作成','sbmDoctorCreateWriterTreatmentRequest')
-    .addItem('Writer治療結果を登録','sbmDoctorRegisterWriterTreatmentResult');
-
-  var doctorHealthMenu = ui.createMenu('半年健康診断')
+    .addItem('Writer治療結果を登録','sbmDoctorRegisterWriterTreatmentResult')
+    .addSeparator()
     .addItem('ブログ全体の健康診断を実行','sbmDoctorRunHealthCheck')
     .addItem('ブログ健康診断書を見る','sbmDoctorOpenHealthReport')
     .addItem('精密診断紹介状を見る','sbmDoctorOpenDetailedCandidates')
-    .addItem('健康診断の進み具合を見る','sbmDoctorShowHealthCheckStatus');
-
-  ui.createMenu('SIMS Doctor')
-    .addSubMenu(doctorDiagnosisMenu)
-    .addSubMenu(doctorTreatmentMenu)
-    .addSubMenu(doctorHealthMenu)
+    .addItem('健康診断の進み具合を見る','sbmDoctorShowHealthCheckStatus')
     .addSeparator()
     .addItem('Doctor連携状態を確認','sbmDoctorShowIntegrationStatus')
     .addToUi();
 
   // 配布版では開発者用メニューを生成しません。
-
-  // Homeを描画・表示します。日次処理のダイアログは利用者がメニューから実行した場合だけ表示します。
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var home = ss.getSheetByName(SBM_SHEETS.HOME);
@@ -8010,7 +8004,6 @@ function onOpen() {
   } catch (eHome) { try { sbmLog_('OnOpenHomeDisplay','Warning',String(eHome)); } catch(ignoreHome) {} sbmToast_('Homeの表示更新に失敗しました。System_Logを確認してください。','起動時エラー',8); }
   try { sbmEnsureTodayRecommendations_('open'); } catch (eToday) {}
 }
-
 
 
 
@@ -9226,7 +9219,7 @@ function sbmDoctorOpenDetailedCandidates(){
 
 
 /* ========================================================================== *
- * Product 5.8.0 RC2: Doctor Case Workflow Integration
+ * Product 5.8.0 RC3: Doctor Case Workflow Integration
  * ========================================================================== */
 function sbmDoctorGenerateCaseId_(articleId) {
   var base='CASE-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd')+'-'+String(articleId||'ARTICLE').replace(/[^A-Za-z0-9_-]/g,'');

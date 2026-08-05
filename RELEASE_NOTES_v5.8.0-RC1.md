@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager Product 5.8.0 RC2
+# SIMS-Blog-Manager Product 5.8.0 RC1
 
 ## Doctor Workflow Integration
 
