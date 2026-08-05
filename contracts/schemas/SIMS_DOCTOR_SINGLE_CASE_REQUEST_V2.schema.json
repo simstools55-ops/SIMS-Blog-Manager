@@ -56,10 +56,10 @@
       ],
       "properties": {
         "package_format": {
-          "const": "SIMS_DOCTOR_EVIDENCE_PACKAGE_V1"
+          "const": "SIMS_DOCTOR_EVIDENCE_PACKAGE_V2"
         },
         "package_version": {
-          "const": "1.1.0"
+          "const": "2.0.0"
         },
         "evidence_index": {
           "type": "array"
@@ -83,6 +83,12 @@
             "label",
             "diagnosis_allowed"
           ]
+        },
+        "compatible_with": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": true

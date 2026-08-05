@@ -1,5 +1,13 @@
 # Changelog
 
+
+## 5.7.1-rc.10
+
+- Doctor Evidence Package v2へ更新
+- Evidence送信前Validationを強化
+- RC9までのバージョン表記不整合を修正
+- 契約スキーマ、配布コード、静的テストを同期
+
 ## 5.7.1 RC9
 
 - Doctor個別診断の180日日別Search Console取得で、ゼロ埋め行を取得成功と誤認する不具合を修正。
