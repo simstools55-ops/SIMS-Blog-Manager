@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sims.local/contracts/SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1.schema.json",
+  "title": "SIMS Doctor Single Case Request V1",
+  "type": "object",
+  "required": [
+    "format",
+    "contract_version",
+    "schema_version",
+    "source_system",
+    "target_system",
+    "message_id",
+    "generated_at",
+    "timezone",
+    "site",
+    "request",
+    "article",
+    "current_performance",
+    "improvement_context",
+    "workflow",
+    "diagnosis_scope",
+    "attachments",
+    "return_contract"
+  ],
+  "properties": {
+    "format": {
+      "const": "SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1"
+    },
+    "contract_version": {
+      "const": "1.0"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "source_system": {
+      "const": "SIMS_BLOG_MANAGER"
+    },
+    "target_system": {
+      "const": "SIMS_DOCTOR"
+    },
+    "message_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timezone": {
+      "const": "Asia/Tokyo"
+    },
+    "site": {
+      "type": "object",
+      "required": [
+        "site_id",
+        "site_name",
+        "blog_url",
+        "search_console_property"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "required": [
+        "request_id",
+        "consultation_mode",
+        "trigger",
+        "chief_complaint"
+      ]
+    },
+    "article": {
+      "type": "object",
+      "required": [
+        "article_id",
+        "url",
+        "title",
+        "article_rank"
+      ]
+    },
+    "current_performance": {
+      "type": "object",
+      "required": [
+        "period_days",
+        "clicks",
+        "impressions",
+        "ctr",
+        "position",
+        "data_quality"
+      ]
+    },
+    "improvement_context": {
+      "type": "object",
+      "required": [
+        "has_active_improvement",
+        "before",
+        "current",
+        "changes",
+        "sbm_judgement"
+      ]
+    },
+    "workflow": {
+      "type": "object",
+      "required": [
+        "workflow_status",
+        "doctor_diagnosis_allowed",
+        "doctor_treatment_allowed"
+      ]
+    },
+    "diagnosis_scope": {
+      "type": "object",
+      "required": [
+        "requested_examinations",
+        "maximum_data_period_days"
+      ]
+    },
+    "attachments": {
+      "type": "object"
+    },
+    "return_contract": {
+      "type": "object",
+      "required": [
+        "format",
+        "contract_version",
+        "return_to"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

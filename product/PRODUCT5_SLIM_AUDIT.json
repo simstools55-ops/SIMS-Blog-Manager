@@ -1,0 +1,214 @@
+{
+  "original_lines": 7602,
+  "slim_lines": 6056,
+  "original_bytes": 441504,
+  "slim_bytes": 342586,
+  "function_definitions_before": 424,
+  "unique_function_names": 348,
+  "removed_obsolete_definitions": 76,
+  "remaining_function_definitions": 348,
+  "duplicate_names": {
+    "onOpen": [
+      75,
+      4258,
+      4810,
+      4913,
+      6131,
+      7031,
+      7195,
+      7542
+    ],
+    "sbmInitializeSheets": [
+      220,
+      4306,
+      4751,
+      5592
+    ],
+    "sbmShowRepairCompletionNavigator_": [
+      242,
+      4774,
+      6273,
+      6456,
+      6609,
+      7508
+    ],
+    "sbmHandleRepairNextAction": [
+      285,
+      7013
+    ],
+    "sbmApplyProductVisibleTabs_": [
+      456,
+      4330
+    ],
+    "sbmSortArticleDbRows_": [
+      1212,
+      4663
+    ],
+    "sbmStyleArticleDbSheet_": [
+      1340,
+      4597,
+      5536
+    ],
+    "sbmGetSelectedArticleDbSummary": [
+      1521,
+      4672
+    ],
+    "sbmEscapeHtml_": [
+      2836,
+      4177
+    ],
+    "sbmOpenSelectedArticleDbDetail": [
+      2883,
+      4673
+    ],
+    "sbmShowArticleDbDetailForRow_": [
+      2949,
+      5237
+    ],
+    "sbmArticleDbDetailHtml_": [
+      2973,
+      5251,
+      6055,
+      6194
+    ],
+    "sbmShowSelectedEffectDetail": [
+      3265,
+      4483,
+      4649,
+      5218
+    ],
+    "sbmUpdateEffectiveness": [
+      3324,
+      4451,
+      4808
+    ],
+    "sbmUpdateEffectivenessSilent_": [
+      3328,
+      4452
+    ],
+    "sbmUpdateEffectivenessCore_": [
+      3339,
+      4454,
+      4655
+    ],
+    "sbmParseDate_": [
+      3382,
+      5845
+    ],
+    "sbmWriteTodayRecommendations_": [
+      3860,
+      6819
+    ],
+    "sbmOpenSelectedImprovementNavi": [
+      3924,
+      4653
+    ],
+    "sbmRefreshHome_": [
+      4005,
+      5964
+    ],
+    "sbmNormalizeImprovementFeedback_": [
+      4135,
+      4401
+    ],
+    "sbmSelectedArticleContext_": [
+      4161,
+      4671
+    ],
+    "sbmDateAfterDaysText_": [
+      4176,
+      6543
+    ],
+    "sbmAppendImprovementHistory_": [
+      4197,
+      4414
+    ],
+    "sbmOpenSelectedArticleHistory": [
+      4218,
+      4495
+    ],
+    "sbmOpenImprovementHistory": [
+      4232,
+      4425,
+      4803,
+      5804,
+      6118
+    ],
+    "sbmOpenSetup": [
+      4235,
+      6918
+    ],
+    "sbmStyleHistorySheetV2_": [
+      4383,
+      4507,
+      4629,
+      4899,
+      5144
+    ],
+    "sbmStyleEffectSheetV2_": [
+      4391,
+      4515,
+      4638,
+      5895,
+      6385,
+      6682
+    ],
+    "sbmOpenSelectedHistoryDetail": [
+      4427,
+      4647,
+      5454
+    ],
+    "sbmHistoryDetailHtmlV2_": [
+      4432,
+      5083,
+      5373
+    ],
+    "sbmOpenSelectedHistoryArticleAll": [
+      4441,
+      4648
+    ],
+    "sbmOpenEffectiveness": [
+      4450,
+      4807
+    ],
+    "sbmEffectDetailHtmlV2_": [
+      4487,
+      5184
+    ],
+    "sbmContinueSelectedMonitoring": [
+      4489,
+      4650
+    ],
+    "sbmCompleteSelectedMeasurement": [
+      4491,
+      4651
+    ],
+    "sbmMigrateArticleManagementSheet_": [
+      4530,
+      4666
+    ],
+    "sbmApplySelectionUi_": [
+      4548,
+      5508,
+      6356,
+      6753
+    ],
+    "onEdit": [
+      4577,
+      4789
+    ],
+    "sbmRepairImprovementHistoryData_": [
+      4693,
+      4874
+    ],
+    "sbmRefreshHistoryAndEffectAfterRepair_": [
+      5464,
+      5786,
+      6099
+    ],
+    "sbmFinalizeTodayImprovementSelection_": [
+      6801,
+      6895
+    ]
+  }
+}

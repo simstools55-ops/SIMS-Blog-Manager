@@ -1,0 +1,11 @@
+{
+  "product_code": "SBM",
+  "product_name": "SIMS-Blog-Manager",
+  "repository_name": "SIMS-Blog-Manager",
+  "repository_type": "PRODUCT",
+  "platform": "SIMS Editorial Platform",
+  "platform_compatibility": "1.x",
+  "current_version": "5.9.0-RC1",
+  "shared_version": "3.3.0",
+  "role": "CONTROL_PLANE_AND_SYSTEM_OF_RECORD"
+}

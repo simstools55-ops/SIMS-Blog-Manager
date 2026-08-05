@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SIMS Doctor Case Result V2",
+  "type": "object",
+  "required": ["format", "contract_version", "case_id", "article_id", "diagnosis", "treatment_plan", "referral", "workflow", "reexamination"],
+  "properties": {
+    "format": {"const": "SIMS_DOCTOR_CASE_RESULT_V2"},
+    "contract_version": {"const": "2.0"},
+    "case_id": {"type": "string", "minLength": 1},
+    "article_id": {"type": "string", "minLength": 1},
+    "diagnosis": {"type": "object"},
+    "treatment_plan": {"type": "object"},
+    "referral": {"type": "object"},
+    "workflow": {"type": "object"},
+    "reexamination": {"type": "object"}
+  }
+}
