@@ -1,5 +1,15 @@
 # Changelog
 
+## 5.9.0-rc.1
+
+- Repository IdentityとVersionをProduct 5.9.0 RC1へ整合
+- SIMS Shared Editorial Knowledge 3.3.0参照を追加
+- Platform_Cases／Platform_Treatments／Platform_Events／Platform_Errorsの非表示シート基盤を追加
+- Platform Version／Shared Version／Contract MajorをSettingsへ記録
+- Editorial Platform状態確認メニューを追加
+- SIMS_FEEDBACK_V2をPlatform Writer Resultへ正規化する後方互換Adapter基盤を追加
+- 既存の日次改善、Doctor Case、Writer連携を変更せず維持
+
 ## 5.8.0-rc.4
 
 - 従来のトップレベルメニューを完全復元
