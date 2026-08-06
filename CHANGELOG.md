@@ -1,5 +1,12 @@
 # Changelog
 
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
+
 ## 5.9.1 - Doctor Workflow UX Improvement
 
 - 一次検査完了後に、利用者が次に行う操作を具体的に表示
@@ -66,6 +73,13 @@
 
 # Changelog
 
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
+
 ## 5.7.1 RC5
 
 - Refined the Doctor health report into a Japanese executive summary.
@@ -104,6 +118,13 @@
 - Doctor専用シートと日本語メニューを追加。
 
 # Changelog
+
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
 
 ## 5.7.0-rc.1
 
@@ -206,6 +227,13 @@
 
 # Changelog
 
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
+
 ## Product 5.5.4 - Daily Completion UI and Status Consistency
 
 - 日次処理本体の戻り値をダイアログへ直接反映し、完了後のスピナー残留を修正。
@@ -274,6 +302,13 @@
 - 「シートの作成・修復」で復元不能な孤立行をバックアップ後に確実に削除。
 
 # Changelog
+
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
 
 ## 5.2.9
 
@@ -424,6 +459,13 @@
 - 厳格条件で候補不足の場合の補欠選定を追加
 # Changelog
 
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
+
 ## Product 5.0 RC11 Startup Today & Work Colors
 
 - シート作成・修復完了ダイアログの3ボタンが動作しない問題を修正。
@@ -453,6 +495,13 @@
 
 # Changelog
 
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
+
 ## 5.0.0 Today Improvement V1
 
 - 「改善ブリーフ」を利用者向け名称「改善ナビ」へ変更
@@ -472,6 +521,13 @@
 - 記事ランク再判定で不足していた `sbmPercentileRank_` を追加
 - 別ブログの旧データやサンプル情報がHomeに表示される経路を遮断
 # Changelog
+
+## 5.9.2 - Doctor Result Registration Compatibility Hotfix
+
+- Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
+- Doctor回答全文を貼り付けた場合でも、コードブロック内のJSONを自動抽出します。
+- 旧 `SIMS_DOCTOR_CASE_RESULT_V2` との後方互換を維持します。
+- 登録後に、利用者が次に行う作業を案内します。
 
 ## 5.0.0 Article Rank / Work State
 
