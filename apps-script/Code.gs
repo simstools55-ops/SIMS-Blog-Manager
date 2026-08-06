@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.9.2';
+const SBM_VERSION = '5.9.4';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -8059,20 +8059,20 @@ function sbmDoctorRunHealthCheck() {
     if(run&&run.healthCheckId&&run.statusCode!=='PREPARING'&&run.statusCode!=='COMPLETED'&&sbmDoctorSnapshotCountForRun_(run.healthCheckId)===0){run.statusCode='PREPARING';run.phase='180日集計を再取得します';run.processedCount=0;run.nextStep='180日集計を取得';run.lastError='';run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);}
     if(!run||!run.healthCheckId||run.statusCode==='COMPLETED'){
       var period=sbmDoctorHealthPeriod_(),articleCount=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB).length,ui=SpreadsheetApp.getUi();
-      var answer=ui.alert('ブログ全体の一次検査を開始します','処理は複数回に分けて自動継続するため、スプレッドシートを開いたまま待つ必要はありません。\n\n対象期間：'+period.full.startDate+' ～ '+period.full.endDate+'\n登録記事数：'+articleCount+'件\n\n開始後は「2．一次検査の進み具合を見る」で状況を確認できます。',ui.ButtonSet.OK_CANCEL);
+      var answer=ui.alert('ブログ全体の一次検査を開始します','処理時間の上限が近づいた場合は、安全に途中保存します。\nその場合は、同じ「1．ブログ全体を一次検査する」をもう一度選ぶと続きから再開できます。\n\n対象期間：'+period.full.startDate+' ～ '+period.full.endDate+'\n登録記事数：'+articleCount+'件\n\n進捗は「2．一次検査の進み具合を見る」で確認できます。',ui.ButtonSet.OK_CANCEL);
       if(answer!==ui.Button.OK)return;
       var id='HC-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss');
       run={healthCheckId:id,statusCode:'PREPARING',phase:'準備中',startDate:period.full.startDate,endDate:period.full.endDate,targetCount:articleCount,processedCount:0,nextStep:'180日集計を取得',lastSuccessAt:'',retryCount:0,lastError:'',createdAt:sbmNowText_(),updatedAt:sbmNowText_()};
       sbmDoctorSaveHealthRun_(run);sbmDoctorClearSnapshotForRun_(id);
     }
-    sbmDoctorDeleteContinuationTriggers_();sbmDoctorProcessOneHealthStep_(false);run=sbmDoctorGetHealthRun_();
-    if(run&&run.statusCode!=='COMPLETED'){sbmDoctorScheduleContinuation_();sbmAlert_('一次検査を開始しました','処理を分割して自動継続します。\n\n現在の工程：'+run.phase+'\n次の処理：'+run.nextStep+'\n\n進捗は「2．一次検査の進み具合を見る」で確認できます。');}
-  }catch(e){var r=sbmDoctorGetHealthRun_()||{};if(r.healthCheckId){r.statusCode='RETRYABLE_ERROR';r.phase='エラー（再実行可能）';r.retryCount=Number(r.retryCount||0)+1;r.lastError=String(e&&e.message?e.message:e);r.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(r);}sbmDoctorDeleteContinuationTriggers_();sbmAlert_('一次検査でエラーが発生しました',String(e&&e.message?e.message:e)+'\n\n同じ「1．ブログ全体を一次検査する」を選ぶと、保存済みの続きから再開します。');}
+    sbmDoctorExecuteHealthCheckToCompletion_();
+  }catch(e){var r=sbmDoctorGetHealthRun_()||{};if(r.healthCheckId){r.statusCode='RETRYABLE_ERROR';r.phase='エラー（再実行可能）';r.retryCount=Number(r.retryCount||0)+1;r.lastError=String(e&&e.message?e.message:e);r.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(r);}sbmAlert_('一次検査でエラーが発生しました',String(e&&e.message?e.message:e)+'\n\n同じ「1．ブログ全体を一次検査する」を選ぶと、保存済みの続きから再開します。');}
 }
-function sbmDoctorContinueHealthCheckTrigger(){try{sbmDoctorDeleteContinuationTriggers_();sbmDoctorProcessOneHealthStep_(true);var r=sbmDoctorGetHealthRun_();if(r&&r.statusCode!=='COMPLETED')sbmDoctorScheduleContinuation_();}catch(e){var r2=sbmDoctorGetHealthRun_()||{};if(r2.healthCheckId){r2.statusCode='RETRYABLE_ERROR';r2.phase='エラー（再実行可能）';r2.retryCount=Number(r2.retryCount||0)+1;r2.lastError=String(e&&e.message?e.message:e);r2.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(r2);}sbmDoctorDeleteContinuationTriggers_();}}
+// 旧版との互換用。自動トリガーは使用せず、手動再開と同じ安全な処理を行います。
+function sbmDoctorContinueHealthCheckTrigger(){return sbmDoctorExecuteHealthCheckToCompletion_();}
 function sbmDoctorProcessOneHealthStep_(silent){var run=sbmDoctorGetHealthRun_();if(!run||!run.healthCheckId)throw new Error('健康診断の実行情報がありません。');if(run.statusCode==='COMPLETED')return;if(run.statusCode==='PREVIOUS_DONE'){sbmDoctorRunScreening_(!!silent);return;}var period=sbmDoctorHealthPeriodFromRun_(run),step=sbmDoctorNextHealthStep_(run.statusCode);if(!step)throw new Error('現在の状態から処理を続行できません：'+sbmDoctorHealthStatusJa_(run.statusCode));run.statusCode=step.runningCode;run.phase=step.runningLabel;run.nextStep=step.label;run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);var rows=sbmDoctorFetchPageMetrics_(period[step.periodKey]);sbmDoctorMergeSnapshotMetrics_(run.healthCheckId,period,step.metricPrefix,rows);run.statusCode=step.doneCode;run.phase=step.doneLabel;run.nextStep=step.nextLabel;run.processedCount=sbmDoctorSnapshotCountForRun_(run.healthCheckId);run.lastSuccessAt=sbmNowText_();run.lastError='';run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);}
-function sbmDoctorScheduleContinuation_(){sbmDoctorDeleteContinuationTriggers_();ScriptApp.newTrigger('sbmDoctorContinueHealthCheckTrigger').timeBased().after(60*1000).create();}
-function sbmDoctorDeleteContinuationTriggers_(){ScriptApp.getProjectTriggers().forEach(function(t){if(t.getHandlerFunction&&t.getHandlerFunction()==='sbmDoctorContinueHealthCheckTrigger')ScriptApp.deleteTrigger(t);});}
+function sbmDoctorScheduleContinuation_(){return false;}
+function sbmDoctorDeleteContinuationTriggers_(){return false;}
 
 // 旧メニュー・既存参照との互換性を維持します。
 function sbmDoctorStartHealthCheck() { return sbmDoctorRunHealthCheck(); }
@@ -8080,7 +8080,7 @@ function sbmDoctorResumeHealthCheck() { return sbmDoctorRunHealthCheck(); }
 
 function sbmDoctorExecuteHealthCheckToCompletion_() {
   var started = Date.now();
-  var maxMillis = 270000;
+  var maxMillis = 210000;
   while (Date.now() - started < maxMillis) {
     var run = sbmDoctorGetHealthRun_();
     if (!run || !run.healthCheckId) throw new Error('健康診断の実行情報がありません。');

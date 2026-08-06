@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.9.4 - 2026-08-07
+
+### Fixed
+- ブログ全体の一次検査で、権限不足により `ScriptApp.getProjectTriggers()` が失敗する不具合を修正。
+- Doctor健康診断の自動トリガー管理を撤去し、処理時間上限前に安全保存して同じメニューから続行する方式へ変更。
+- Apps Scriptで不要なトリガー管理権限を要求しない構成へ復帰。
+- Homeに表示される製品バージョンを実際のリリース番号と一致させた。
+
 ## 5.9.2 - Doctor Result Registration Compatibility Hotfix
 
 - Doctor v1.0.1 の `SIMS_DOCTOR_SINGLE_CASE_RESULT_V1` を登録可能にしました。
