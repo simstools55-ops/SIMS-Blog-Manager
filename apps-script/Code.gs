@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.9.4';
+const SBM_VERSION = '5.9.5';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -9194,15 +9194,81 @@ function sbmDoctorOpenHealthReport(){
   sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); sh.activate();
 }
 
+function sbmDoctorEnsureReferralSelectionColumn_(sh){
+  if(!sh) return null;
+  var lastCol=Math.max(1,sh.getLastColumn());
+  var headers=sh.getRange(6,1,1,lastCol).getDisplayValues()[0].map(function(v){return String(v||'').trim();});
+  var selectionIndex=headers.indexOf('選択');
+  if(selectionIndex<0){
+    sh.insertColumnBefore(1);
+    sh.getRange(6,1).setValue('選択').setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
+    sh.setColumnWidth(1,60);
+    var lastRow=sh.getLastRow();
+    if(lastRow>=7) sh.getRange(7,1,lastRow-6,1).insertCheckboxes().setValue(false);
+    lastCol=sh.getLastColumn();
+    headers=sh.getRange(6,1,1,lastCol).getDisplayValues()[0].map(function(v){return String(v||'').trim();});
+  }else if(selectionIndex!==0){
+    sh.moveColumns(sh.getRange(1,selectionIndex+1,sh.getMaxRows(),1),1);
+    lastCol=sh.getLastColumn();
+    headers=sh.getRange(6,1,1,lastCol).getDisplayValues()[0].map(function(v){return String(v||'').trim();});
+  }
+  var last=sh.getLastRow();
+  if(last>=7){
+    var rng=sh.getRange(7,1,last-6,1);
+    rng.insertCheckboxes();
+    var vals=rng.getValues();
+    for(var i=0;i<vals.length;i++) if(vals[i][0]!==true) vals[i][0]=false;
+    rng.setValues(vals);
+  }
+  sh.setColumnWidth(1,60);
+  return headers;
+}
+
+function sbmDoctorReferralHeaderMap_(sh){
+  var headers=sbmDoctorEnsureReferralSelectionColumn_(sh)||[];
+  var map={};
+  headers.forEach(function(v,i){if(v)map[v]=i+1;});
+  return map;
+}
+
 function sbmDoctorOpenDetailedCandidates(){
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var sh=ss.getSheetByName('Doctor_精密診断紹介状')||ss.getSheetByName('Doctor_精密診断候補');
   if(!sh) return sbmAlert_('精密診断紹介状','まだ精密診断紹介状は作成されていません。先にブログ全体の健康診断を実行してください。');
+  sbmDoctorEnsureReferralSelectionColumn_(sh);
   sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
 }
 
 function sbmDoctorCreateRequestFromDetailedCandidate(){
-  try{var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断紹介状');if(!sh)throw new Error('精密診断紹介状がありません。先にブログ全体の一次検査を完了してください。');var last=sh.getLastRow();if(last<7)throw new Error('診断対象の記事がありません。');var checks=sh.getRange(7,1,last-6,1).getValues(),selected=[];checks.forEach(function(v,i){if(v[0]===true)selected.push(i+7);});if(selected.length===0)throw new Error('診断する記事の「選択」にチェックを入れてください。');if(selected.length>1)throw new Error('一度に依頼できるのは1記事です。チェックを1件だけ残してください。');var row=selected[0],articleId=String(sh.getRange(row,7).getDisplayValue()||'').trim(),articleUrl=String(sh.getRange(row,8).getDisplayValue()||'').trim();var db=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);if(!db)throw new Error('記事管理シートがありません。');var hm=sbmHeaderMap_(db),vals=db.getLastRow()>1?db.getRange(2,1,db.getLastRow()-1,db.getLastColumn()).getValues():[],dbRow=0;for(var i=0;i<vals.length;i++){var id=String(vals[i][hm['ArticleID']-1]||''),url=sbmNormalizeUrl_(vals[i][hm['記事URL']-1]||'');if((articleId&&id===articleId)||(articleUrl&&url===sbmNormalizeUrl_(articleUrl))){dbRow=i+2;break;}}if(!dbRow)throw new Error('記事管理で対象記事を確認できませんでした。');var result=sbmDoctorCreateAndSaveRequest_('ARTICLE_LIST',db,dbRow);sh.getRange(row,1).setValue(false);return result;}catch(e){sbmAlert_('Doctor診断依頼を作成できません',String(e.message||e));}
+  try{
+    var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断紹介状')||ss.getSheetByName('Doctor_精密診断候補');
+    if(!sh)throw new Error('精密診断紹介状がありません。先にブログ全体の一次検査を完了してください。');
+    var col=sbmDoctorReferralHeaderMap_(sh),last=sh.getLastRow();
+    if(last<7)throw new Error('診断対象の記事がありません。');
+    if(!col['選択'])throw new Error('紹介状の選択欄を準備できませんでした。シートを閉じてもう一度開いてください。');
+    var checks=sh.getRange(7,col['選択'],last-6,1).getValues(),selected=[];
+    checks.forEach(function(v,i){if(v[0]===true)selected.push(i+7);});
+    if(selected.length===0)throw new Error('A列の「選択」にチェックを入れてください。旧レイアウトの場合は、メニューの「4．精密診断する記事を選ぶ」を開き直すと自動修復されます。');
+    if(selected.length>1)throw new Error('一度に依頼できるのは1記事です。チェックを1件だけ残してください。');
+    var row=selected[0];
+    var idCol=col['記事ID']||col['ArticleID'];
+    var urlCol=col['記事URL']||col['URL'];
+    if(!idCol&&!urlCol)throw new Error('紹介状に記事IDまたは記事URLの列がありません。一次検査を再実行してください。');
+    var articleId=idCol?String(sh.getRange(row,idCol).getDisplayValue()||'').trim():'';
+    var articleUrl=urlCol?String(sh.getRange(row,urlCol).getDisplayValue()||'').trim():'';
+    var db=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);if(!db)throw new Error('記事管理シートがありません。');
+    var hm=sbmHeaderMap_(db),vals=db.getLastRow()>1?db.getRange(2,1,db.getLastRow()-1,db.getLastColumn()).getValues():[],dbRow=0;
+    var dbIdCol=hm['ArticleID']||hm['記事ID'],dbUrlCol=hm['記事URL']||hm['URL'];
+    for(var i=0;i<vals.length;i++){
+      var id=dbIdCol?String(vals[i][dbIdCol-1]||''):'';
+      var url=dbUrlCol?sbmNormalizeUrl_(vals[i][dbUrlCol-1]||''):'';
+      if((articleId&&id===articleId)||(articleUrl&&url===sbmNormalizeUrl_(articleUrl))){dbRow=i+2;break;}
+    }
+    if(!dbRow)throw new Error('記事管理で対象記事を確認できませんでした。記事ID：'+(articleId||'未取得')+' / URL：'+(articleUrl||'未取得'));
+    var result=sbmDoctorCreateAndSaveRequest_('ARTICLE_LIST',db,dbRow);
+    sh.getRange(row,col['選択']).setValue(false);
+    return result;
+  }catch(e){sbmAlert_('Doctor診断依頼を作成できません',String(e.message||e));}
 }
 
 function sbmDoctorOpenTreatmentGuide(){
