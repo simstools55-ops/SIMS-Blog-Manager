@@ -900,3 +900,8 @@
 - 本文内の実リンクURL抽出と候補照合を追加
 - 内部リンク候補スコア飽和を抑制
 - メインクエリ年号の鮮度警告と期間別サンプル品質情報を追加
+
+## 5.9.7
+- Added immediate product-format guard to Writer result registration.
+- Doctor JSON is rejected before case lookup or sheet processing.
+- Clarified the Writer-result-only input prompt.

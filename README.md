@@ -2,12 +2,12 @@
 
 SIMS Editorial PlatformのControl Plane／System of Recordとして、日次改善、Doctor診断、Treatment Routing、公開結果、効果測定を管理します。
 
-- Product Version: `5.9.6`
+- Product Version: `5.9.7`
 - Platform Compatibility: `SIMS Editorial Platform 1.x`
 - Shared Version: `3.3.0`
 - Repository Type: `Product`
 
-> Current release: SIMS-Blog-Manager Product 5.9.6
+> Current release: SIMS-Blog-Manager Product 5.9.7
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
