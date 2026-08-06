@@ -1,0 +1,20 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
+const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
+function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
+ok(code.includes("const SBM_VERSION = '5.9.8';"),'version 5.9.8');
+ok(code.includes('精密診断から次の処置まで'),'integrated dialog title');
+ok(code.includes('id="doctorResult"'),'doctor result input');
+ok(code.includes('診断結果を登録して次へ進む'),'register button');
+ok(code.includes('function sbmDoctorRegisterResultAndBuildNext'),'server handler');
+ok(code.includes('function sbmDoctorBuildWriterTreatmentRequest_'),'writer request builder');
+ok(code.includes("source_content:attachments.article_body"),'article source included');
+ok(code.includes('evidence_package:evidence'),'evidence package included');
+ok(code.includes("if(String(n.caseId)!==sourceCase)"),'case guard');
+ok(code.includes("if(resultArticle&&sourceArticle&&resultArticle!==sourceArticle)"),'article guard');
+ok(code.includes("f.indexOf('SIMS_WRITER_')===0"),'wrong product guard');
+ok(code.includes("nextTitle:'③ 次はSIMS Writerです'"),'immediate Writer handoff');
+ok(code===dist,'apps-script and distribution are identical');
+console.log('PASS product598_doctor_dialog_workflow_test');

@@ -1,3 +1,12 @@
+# Product 5.9.8 - Doctor Workflow Integration
+
+- 精密診断紹介状ダイアログを上下2段化しました。
+- Doctor依頼JSONの下に、Doctor診断結果JSONの貼り付け欄を追加しました。
+- 診断結果登録直後に、記事本文・GSCクエリ・内部リンク候補・Doctor治療方針を統合したWriter紹介状を自動生成します。
+- CaseID・ArticleID・製品別JSON形式を処理開始前に検証し、誤投入を即時停止します。
+- Writerが不要な診断では、経過観察または利用者確認の案内へ自動分岐します。
+- 大容量のWriter紹介状はセルへ無理に保存せず、同じダイアログ内へ安全に表示します。
+
 # CHANGELOG
 
 ## 5.9.6
