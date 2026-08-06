@@ -1,5 +1,14 @@
 # Changelog
 
+## 5.9.1 - Doctor Workflow UX Improvement
+
+- 一次検査完了後に、利用者が次に行う操作を具体的に表示
+- 精密診断紹介状から選択記事のDoctor依頼文を直接生成できる導線を追加
+- 健康診断書の「次に行うこと」を作業手順形式へ変更
+- Doctor_CasesとDoctor治療待ちをシステム専用シートとして非表示化
+- 利用者向けの「Doctor_治療案内」シートを追加
+- Doctorメニューを実際の作業順に整理
+
 ## 5.9.0-rc.1
 
 - Repository IdentityとVersionをProduct 5.9.0 RC1へ整合

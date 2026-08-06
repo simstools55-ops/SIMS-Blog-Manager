@@ -1,7 +1,7 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
 const required=[
- "const SBM_VERSION = '5.9.0-rc.1';",
+ "const SBM_VERSION = '5.9.1';",
  "DOCTOR_CASES: 'Doctor_Cases'",
  "SIMS_DOCTOR_CASE_RESULT_V2",
  "SIMS_WRITER_TREATMENT_REQUEST_V1",

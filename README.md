@@ -2,7 +2,7 @@
 
 SIMS Editorial PlatformのControl Plane／System of Recordとして、日次改善、Doctor診断、Treatment Routing、公開結果、効果測定を管理します。
 
-- Product Version: `5.9.0-RC1`
+- Product Version: `5.9.1`
 - Platform Compatibility: `SIMS Editorial Platform 1.x`
 - Shared Version: `3.3.0`
 - Repository Type: `Product`

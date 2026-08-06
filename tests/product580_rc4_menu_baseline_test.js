@@ -2,7 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const code=fs.readFileSync(path.join(__dirname,'../apps-script/Code.gs'),'utf8');
 const required=[
-  ["version", "const SBM_VERSION = '5.9.0-rc.1';"],
+  ["version", "const SBM_VERSION = '5.9.1';"],
   ["main menu", "ui.createMenu('SIMS-Blog-Manager')"],
   ["daily action", ".addItem('日次処理を実行','sbmRunDailyUpdateManual')"],
   ["legacy improvement menu", "ui.createMenu('記事改善スタート')"],
