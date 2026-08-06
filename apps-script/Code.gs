@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.9.5';
+const SBM_VERSION = '5.9.6';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -7985,22 +7985,20 @@ function onOpen() {
     .addToUi();
 
 
-  // Doctorは独立製品です。SBMは明示操作時の依頼JSON生成だけを担当します。
+  // 正式フロー: SBM → Doctor → Writer / Creator / Merge → SBM。
+  // Doctor診断結果のSBM登録は通常不要。SBMは処置結果・効果測定・再診を管理します。
   ui.createMenu('SIMS Doctor')
     .addItem('1．ブログ全体を一次検査する','sbmDoctorRunHealthCheck')
     .addItem('2．一次検査の進み具合を見る','sbmDoctorShowHealthCheckStatus')
     .addItem('3．ブログ健康診断書を開く','sbmDoctorOpenHealthReport')
     .addItem('4．精密診断する記事を選ぶ','sbmDoctorOpenDetailedCandidates')
     .addItem('5．チェックした記事のDoctor依頼文を作る','sbmDoctorCreateRequestFromDetailedCandidate')
-    .addItem('6．Doctorの診断結果を登録する','sbmDoctorRegisterCaseResult')
     .addSeparator()
-    .addItem('7．治療が必要な記事を確認する','sbmDoctorOpenTreatmentGuide')
-    .addItem('8．チェックした記事のWriter依頼文を作る','sbmDoctorCreateWriterTreatmentRequestFromGuide')
-    .addItem('9．Writerの治療結果を登録する','sbmDoctorRegisterWriterTreatmentResult')
+    .addItem('6．Writerの処置結果を登録する','sbmDoctorRegisterWriterTreatmentResult')
+    .addItem('7．Doctor連携状態を確認する','sbmDoctorShowIntegrationStatus')
     .addSeparator()
     .addItem('記事一覧から個別診断を依頼する','sbmDoctorCreateRequestFromArticleList')
     .addItem('改善の推移から個別診断を依頼する','sbmDoctorCreateRequestFromEffect')
-    .addItem('Doctor連携状態を確認する','sbmDoctorShowIntegrationStatus')
     .addToUi();
 
   // 配布版では開発者用メニューを生成しません。
@@ -8222,7 +8220,7 @@ function sbmDoctorRunScreening_(silent) {
   sbmDoctorBuildHealthReportSheets_(run.healthCheckId, run, {excluded:excluded,eligible:eligible,selected:selected,candidateTotal:candidates.length,lowSample:lowSample,healthy:healthy});
   sbmDoctorDeleteContinuationTriggers_();
   if(!silent){
-    sbmAlert_('ブログ全体の一次検査が完了しました','登録記事：'+run.targetCount+'件\n詳しい診断が必要な記事：'+selected+'件\n経過を見る記事：'+lowSample+'件\n大きな問題が見つからなかった記事：'+healthy+'件\n\n次に行うこと\n1．「4．精密診断する記事を選ぶ」を開きます。\n2．診断する記事のチェック欄をオンにします。\n3．「5．チェックした記事のDoctor依頼文を作る」を実行します。\n4．Doctorの回答を「6．Doctorの診断結果を登録する」から戻します。'+(selected>0?'':'\n\n今回は精密診断の対象がないため、通常のSBM運用を続けてください。'));
+    sbmAlert_('ブログ全体の一次検査が完了しました','登録記事：'+run.targetCount+'件\n詳しい診断が必要な記事：'+selected+'件\n経過を見る記事：'+lowSample+'件\n大きな問題が見つからなかった記事：'+healthy+'件\n\n次に行うこと\n1．「4．精密診断する記事を選ぶ」を開きます。\n2．診断する記事のチェック欄をオンにします。\n3．「5．チェックした記事のDoctor依頼文を作る」を実行します。\n4．Doctorが表示したWriter / Creator / Mergeへの依頼文を、そのまま対象製品へ渡します。\n5．処置後、その製品の結果をSBMへ登録します。'+(selected>0?'':'\n\n今回は精密診断の対象がないため、通常のSBM運用を続けてください。'));
     if(selected>0)sbmDoctorOpenDetailedCandidates();else sbmDoctorOpenHealthReport();
   }
 }
@@ -9103,7 +9101,7 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
   report.getRange('A25:F25').setBackground('#d9ead3');
   report.getRange('A25').setValue('次に行うこと').setFontWeight('bold');
   report.getRange('A26:F28').setWrap(true).setVerticalAlignment('middle');
-  report.getRange('A26').setValue(Number(counts.selected||0)>0 ? '1．SIMS Doctorメニューの「4．精密診断する記事を選ぶ」を開きます。\n2．診断する記事のチェック欄をオンにします。\n3．「5．チェックした記事のDoctor依頼文を作る」を実行します。\n4．Doctorの回答を「6．Doctorの診断結果を登録する」からSBMへ戻します。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続け、次回の健康診断で推移を確認してください。');
+  report.getRange('A26').setValue(Number(counts.selected||0)>0 ? '1．SIMS Doctorメニューの「4．精密診断する記事を選ぶ」を開きます。\n2．診断する記事のチェック欄をオンにします。\n3．「5．チェックした記事のDoctor依頼文を作る」を実行します。\n4．Doctorが表示したWriter / Creator / Mergeへの依頼文を、そのまま対象製品へ渡します。\n5．処置後、その製品の結果をSBMへ登録します。' : '今回、精密診断を優先する記事はありません。通常のSBM運用を続け、次回の健康診断で推移を確認してください。');
   report.setColumnWidth(1,230); report.setColumnWidth(2,310); report.setColumnWidth(3,30); report.setColumnWidth(4,180); report.setColumnWidth(5,180); report.setColumnWidth(6,180);
   report.setRowHeights(1,2,34); report.setRowHeights(14,3,30); report.setRowHeights(26,3,30);
   report.getRange('A4:F28').setVerticalAlignment('middle');
@@ -9278,7 +9276,7 @@ function sbmDoctorOpenTreatmentGuide(){
   var name='Doctor_治療案内', sh=ss.getSheetByName(name)||ss.insertSheet(name); sh.clear(); sh.showSheet(); sh.setHiddenGridlines(true);
   sh.getRange('A1:H2').setBackground('#0b5d3b').setFontColor('#ffffff').setHorizontalAlignment('center');
   sh.getRange('A1').setValue('SIMS Doctor').setFontSize(18).setFontWeight('bold'); sh.getRange('A2').setValue('治療が必要な記事').setFontSize(15).setFontWeight('bold');
-  sh.getRange('A4').setValue('次に行うこと：Writerへ渡す記事の「選択」にチェックを入れ、SIMS Doctorメニューの「8．チェックした記事のWriter依頼文を作る」を実行してください。').setWrap(true);
+  sh.getRange('A4').setValue('このシートは旧ワークフローの記録用です。現在はDoctor回答内の依頼文を直接Writerへ渡し、Writerの処置結果だけをSBMへ登録してください。').setWrap(true);
   var headers=['選択','記事ID','記事タイトル','現在の状態','優先度','紹介先','次に行うこと','CaseID']; sh.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
   var out=[]; vals.forEach(function(r){var code=String(r[hm['状態コード']-1]||''); if(['WRITER_REQUEST_READY','USER_DECISION_REQUIRED','USER_ACTION_REQUIRED','MONITORING','PUBLICATION_PENDING','WRITER_IN_PROGRESS'].indexOf(code)<0)return; var next=code==='WRITER_REQUEST_READY'?'Writer治療依頼を作成':code==='USER_ACTION_REQUIRED'?'Doctor指示に従って手動確認':code==='USER_DECISION_REQUIRED'?'診断詳細を確認して判断':code==='MONITORING'?'再診予定日まで経過観察':code==='PUBLICATION_PENDING'?'修正内容を確認して公開':'Writerの処置完了を待つ'; out.push([false,r[hm['記事ID']-1],r[hm['記事タイトル']-1],r[hm['状態']-1],r[hm['優先度']-1],r[hm['紹介先']-1],next,r[hm['CaseID']-1]]);});
   if(out.length)sh.getRange(7,1,out.length,out[0].length).setValues(out);else sh.getRange('A7').setValue('現在、治療が必要な記事はありません。');
@@ -9367,7 +9365,7 @@ function sbmDoctorNormalizeCaseResult_(o){
 }
 function sbmDoctorRegisterCaseResult(){
   try{
-    var o=sbmDoctorPromptJson_('Doctor診断結果を登録','Doctorの診断回答を登録します。回答全文でも、JSON部分だけでも登録できます。');
+    var o=sbmDoctorPromptJson_('Doctor診断記録を保存（任意）','通常運用では不要です。監査目的でDoctor診断回答を保存する場合だけ使用してください。');
     if(!o)return;
     var n=sbmDoctorNormalizeCaseResult_(o),id=n.caseId;
     if(!id)throw new Error('case_id がありません。');
@@ -9377,7 +9375,7 @@ function sbmDoctorRegisterCaseResult(){
     var code,label;if(n.locked){code='WORKFLOW_LOCKED';label='既存改善の測定中';}else if(n.writerReady){code='WRITER_REQUEST_READY';label='Writer依頼作成可能';}else if(n.manualReview){code='USER_ACTION_REQUIRED';label='利用者作業待ち';}else if(n.monitor){code='MONITORING';label='経過観察';}else{code='DOCTOR_DIAGNOSED';label='Doctor診断済み';}
     put('状態コード',code);put('状態',label);put('更新日時',sbmNowText_());rec.sheet.getRange(rec.row,1,1,r.length).setValues([r]);
     var next=code==='WRITER_REQUEST_READY'?'次は「治療が必要な記事を確認」からWriter依頼を作成してください。':code==='USER_ACTION_REQUIRED'?'Doctor回答の「SBMへ渡す依頼文」に従って手動確認してください。':'診断内容に従って進めてください。';
-    sbmAlert_('Doctor診断結果を登録しました','CaseID：'+id+'\n状態：'+label+'\n\n'+next);
+    sbmAlert_('Doctor診断記録を保存しました','CaseID：'+id+'\n状態：'+label+'\n\n'+next);
   }catch(e){sbmAlert_('Doctor診断結果を登録できません',String(e.message||e));}
 }
 function sbmDoctorOpenCases(){var sh=sbmDoctorEnsureCaseSheet_();sh.showSheet();SpreadsheetApp.getActive().setActiveSheet(sh);}

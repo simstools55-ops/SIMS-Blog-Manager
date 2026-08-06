@@ -1,3 +1,8 @@
+# CHANGELOG
+
+## 5.9.6
+- Direct Doctor-to-specialist handoff; specialist results return to SBM.
+
 ## 5.9.5 - 2026-08-07
 
 - 旧レイアウトの精密診断紹介状を開いた際に「選択」列とチェックボックスを自動追加する互換修正
