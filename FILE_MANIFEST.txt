@@ -607,6 +607,7 @@ tests/product580_rc3_menu_test.js
 tests/product580_rc4_menu_baseline_test.js
 tests/product590_rc1_platform_foundation_test.js
 tests/product5910_doctor_routing_cannibal_test.js
+tests/product5910_home_layout_regression_test.js
 tests/product591_doctor_ux_static_test.js
 tests/product596_direct_handoff_test.js
 tests/product598_doctor_dialog_workflow_test.js

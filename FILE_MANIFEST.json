@@ -1,5 +1,6 @@
 {
   "version": "5.9.10",
+  "file_count": 667,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -323,8 +324,8 @@
     },
     {
       "path": "RELEASE_NOTES_v5.9.10.md",
-      "size": 489,
-      "sha256": "a660188a9061b0149ff3a03af0de6b0cff6dc96c7f8739d92c3108d272c9fdce"
+      "size": 913,
+      "sha256": "95d8aeab4dd4636f554a7aa866683c86b0c480284c5a6571e752202a4837e983"
     },
     {
       "path": "RELEASE_NOTES_v5.9.3.md",
@@ -388,8 +389,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "size": 609456,
-      "sha256": "833db5de41f2f3ca807c64e91cf3a32307735177dc817432df5dd3644ababdfc"
+      "size": 609721,
+      "sha256": "a7bbb1a343380849c8b82c7ed98d964f8e4770613f08d586fd1804e87c252f75"
     },
     {
       "path": "apps-script/appsscript.json",
@@ -728,8 +729,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "size": 609456,
-      "sha256": "833db5de41f2f3ca807c64e91cf3a32307735177dc817432df5dd3644ababdfc"
+      "size": 609721,
+      "sha256": "a7bbb1a343380849c8b82c7ed98d964f8e4770613f08d586fd1804e87c252f75"
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -3045,6 +3046,11 @@
       "path": "tests/product5910_doctor_routing_cannibal_test.js",
       "size": 657,
       "sha256": "995afa1d0e44cac115961df55901043a08dc99c3afd5c4b53a479387dfb88adf"
+    },
+    {
+      "path": "tests/product5910_home_layout_regression_test.js",
+      "size": 509,
+      "sha256": "2ea7efc5707eb5c2746e15dd9d277a7ad3a49cfb233091fe80fff76e7fdcf7af"
     },
     {
       "path": "tests/product591_doctor_ux_static_test.js",
