@@ -935,3 +935,7 @@
 - Added immediate product-format guard to Writer result registration.
 - Doctor JSON is rejected before case lookup or sheet processing.
 - Clarified the Writer-result-only input prompt.
+
+## 5.10.0-RC4
+- Restored the Writer treatment-result JSON input in the precise diagnosis dialog.
+- Unified dialog and menu Writer-result registration validation/storage.
