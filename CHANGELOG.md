@@ -939,3 +939,11 @@
 ## 5.10.0-RC4
 - Restored the Writer treatment-result JSON input in the precise diagnosis dialog.
 - Unified dialog and menu Writer-result registration validation/storage.
+
+## 5.10.0-RC5
+
+- Guided User Confirmation を追加。
+- USER_CONFIRMATION の結果登録後、Doctor再診依頼JSONを自動生成。
+- Search Console URL検査の結果選択UIを追加。
+- Doctor_Casesへ確認結果・再診依頼を記録。
+- Writer結果欄はWriterルート時のみ表示。

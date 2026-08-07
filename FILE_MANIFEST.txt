@@ -48,6 +48,8 @@ RELEASE_NOTES_v1.0.0-sprint9.7.md
 RELEASE_NOTES_v1.0.0-sprint9.8.md
 RELEASE_NOTES_v1.0.0-sprint9.9.md
 RELEASE_NOTES_v5.10.0-RC1.md
+RELEASE_NOTES_v5.10.0-RC4.md
+RELEASE_NOTES_v5.10.0-RC5.md
 RELEASE_NOTES_v5.7.1-RC10.md
 RELEASE_NOTES_v5.7.1-RC11.md
 RELEASE_NOTES_v5.7.1-RC3.md
@@ -71,6 +73,7 @@ RELEASE_NOTES_v5.9.7.md
 RELEASE_NOTES_v5.9.8.md
 RELEASE_NOTES_v5.9.9.md
 SECURITY.md
+SHA256SUMS.txt
 SHARED_VERSION
 SUPPORT.md
 UPDATE_GUIDE.md
@@ -329,6 +332,8 @@ mkdocs.yml
 product/PRODUCT5_10_0_RC1_DOCTOR_ALGORITHM_SITE_IMPACT.md
 product/PRODUCT5_10_0_RC2_DOCTOR_REFERRAL_PRESENTATION_ADAPTER.md
 product/PRODUCT5_10_0_RC3_INTERNAL_LINK_REFERRAL.md
+product/PRODUCT5_10_0_RC4_WRITER_RESULT_DIALOG_HOTFIX.md
+product/PRODUCT5_10_0_RC5_GUIDED_USER_CONFIRMATION.md
 product/PRODUCT5_1_ARTICLE_SOURCE_IMPLEMENTATION.md
 product/PRODUCT5_2_10_ORPHAN_HISTORY_CLEANUP.md
 product/PRODUCT5_2_6_QUERY_DATE_FIX.md
@@ -833,6 +838,8 @@ tests/product5100_rc1_doctor_algorithm_site_impact_test.js
 tests/product5100_rc2_doctor_referral_presentation_adapter_test.js
 tests/product5100_rc3_internal_link_referral_functional_test.js
 tests/product5100_rc3_internal_link_referral_test.js
+tests/product5100_rc4_writer_result_dialog_hotfix_test.js
+tests/product5100_rc5_guided_user_confirmation_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js

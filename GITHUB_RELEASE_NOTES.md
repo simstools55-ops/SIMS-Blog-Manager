@@ -1,9 +1,12 @@
-# SIMS-Blog-Manager Product 5.10.0-RC1
+# SIMS-Blog-Manager Product 5.10.0-RC5
 
-Doctor v1.2連携のため、Evidence Package 2.3.0とサイト全体の28日比較 `site_impact` を追加しました。
+Guided User Confirmation & Automatic Re-referral を追加しました。
 
-- 直近28日 / 前28日のサイト全体pageデータを個別Doctor紹介状生成時のみ取得
-- 改善 / 安定 / 低下 / 低サンプルの記事数とサイト全体指標を要約
-- Googleアップデートとの因果判定はDoctor側に限定
-- Shared Editorial Knowledge 3.4.0へ同期
-- Doctor → SBM → Writer / Creator / Merge → SBM routingを維持
+- Doctor が `USER_CONFIRMATION` を返した場合、確認手順をSBMが具体化
+- Search Console URL検査の結果を選択または貼り付け可能
+- 確認結果をDoctor_Casesへ保存
+- 前回CaseIDと確認結果を `follow_up_context` に持つDoctor再診依頼を自動生成
+- Writer結果入力欄はWriterルート時のみ表示
+- 利用者は確認だけを行い、次の治療方針は再診Doctorが決定
+
+Shared Editorial Knowledge 3.5.0互換です。
