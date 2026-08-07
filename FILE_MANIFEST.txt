@@ -51,6 +51,7 @@ RELEASE_NOTES_v5.10.0-RC1.md
 RELEASE_NOTES_v5.10.0-RC4.md
 RELEASE_NOTES_v5.10.0-RC5.md
 RELEASE_NOTES_v5.10.0-RC6.md
+RELEASE_NOTES_v5.10.0-RC7.md
 RELEASE_NOTES_v5.7.1-RC10.md
 RELEASE_NOTES_v5.7.1-RC11.md
 RELEASE_NOTES_v5.7.1-RC3.md
@@ -842,6 +843,7 @@ tests/product5100_rc3_internal_link_referral_test.js
 tests/product5100_rc4_writer_result_dialog_hotfix_test.js
 tests/product5100_rc5_guided_user_confirmation_test.js
 tests/product5100_rc6_ui_ux_refresh_test.js
+tests/product5100_rc7_human_view_workflow_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js

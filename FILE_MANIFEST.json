@@ -1,7 +1,7 @@
 {
-  "version": "5.10.0-RC6",
-  "generated_at": "2026-08-07T20:41:55.006146+00:00",
-  "file_count": 921,
+  "version": "5.10.0-RC7",
+  "generated_at": "2026-08-07T23:47:21.939361+00:00",
+  "file_count": 923,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -15,13 +15,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "829ff4c55822e1dca01184f76abee613c9a11f855a6243ef27f9b3613bf8746d",
-      "size": 48372
+      "sha256": "a60479a5211de6c3208ba02b27a4c7cee7402bf04d2cc2682df0d14b5cbf0288",
+      "size": 48809
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
-      "sha256": "d030719ac6486761d9a685d810a1016c2c3e11b366bf933492c0e99570bd85e7",
-      "size": 616
+      "sha256": "cfeb268aa7d5c1d38d2535ab68fdbcfddd4a538f510d8af8484c1e9bde0767e0",
+      "size": 1678
     },
     {
       "path": "HOW_TO_PUBLISH.md",
@@ -35,12 +35,12 @@
     },
     {
       "path": "PRODUCT_IDENTITY.json",
-      "sha256": "42b2540ff85c91e9d966d2929cbccecc52e1a6b75db09c1f30f70683a22584bf",
+      "sha256": "4faa67941c7ba03fb30702f08d82b27193374043da950dfbd21ef409cf0e650c",
       "size": 329
     },
     {
       "path": "README.md",
-      "sha256": "411e6e837626800180f6c695262672968317fe941dc2c17f267e825a5056d91a",
+      "sha256": "f317de7d15963a6ae73eb4fb967e70a6400a1cc3af91ee422e486663451bc8c0",
       "size": 6328
     },
     {
@@ -269,6 +269,11 @@
       "size": 1240
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC7.md",
+      "sha256": "cfeb268aa7d5c1d38d2535ab68fdbcfddd4a538f510d8af8484c1e9bde0767e0",
+      "size": 1678
+    },
+    {
       "path": "RELEASE_NOTES_v5.7.1-RC10.md",
       "sha256": "a50bbf00b6ae18b348f0749324ca5d63edad166d4ab23334278391a0acaddbf2",
       "size": 846
@@ -405,13 +410,13 @@
     },
     {
       "path": "VERSION",
-      "sha256": "7baf8f7638fa6ffef03d2de00ea590adae00d56b9c44fb18825daf9801f5901e",
+      "sha256": "8d3d5161b592ed8591b7e5c34e5cdaa87fe53f51b56f0e0638298407b1cdcd9a",
       "size": 11
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "2ec381997f400b56e51a50c59edf5b56a8f16af9097950d5887cde35ae1fccdf",
-      "size": 641766
+      "sha256": "0c624695444d7df7cc9fe4e194d68dfe40997f50cca192ccde7fa0f3817924c6",
+      "size": 654926
     },
     {
       "path": "apps-script/appsscript.json",
@@ -750,8 +755,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "2ec381997f400b56e51a50c59edf5b56a8f16af9097950d5887cde35ae1fccdf",
-      "size": 641766
+      "sha256": "0c624695444d7df7cc9fe4e194d68dfe40997f50cca192ccde7fa0f3817924c6",
+      "size": 654926
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -4205,8 +4210,8 @@
     },
     {
       "path": "tests/product5100_rc3_internal_link_referral_test.js",
-      "sha256": "4fc077bbd5d670dcda224b3b6be3b224bf850be8dc503b8ff8053ec643093fbe",
-      "size": 721
+      "sha256": "47d73ba949a14c1b1f12a638f332573eb27f6d1c754a1e9b2831c247c6219fe7",
+      "size": 729
     },
     {
       "path": "tests/product5100_rc4_writer_result_dialog_hotfix_test.js",
@@ -4220,8 +4225,13 @@
     },
     {
       "path": "tests/product5100_rc6_ui_ux_refresh_test.js",
-      "sha256": "1b4df4bf947001cb96392c7141099ad6391496ee6e72b1fcdac55330a1c637b6",
+      "sha256": "6606d7402517d9ba4d868097f306c482a5189e55b0b413ac04bafa2d4ab3f80e",
       "size": 1664
+    },
+    {
+      "path": "tests/product5100_rc7_human_view_workflow_test.js",
+      "sha256": "2bd70c0115397d81f0e04de37c931acd501cb96b61f321a8804e18a4d042df48",
+      "size": 1876
     },
     {
       "path": "tests/product5610_mapping_guard_test.js",
@@ -4235,7 +4245,7 @@
     },
     {
       "path": "tests/product5612_home_monitor_test.js",
-      "sha256": "aba9d6353253e9c40c0497863748cfe210148fea093fea496a416ef00818d144",
+      "sha256": "998336042a35661cefb2a8c9330b0c1cb25c70d4f8034724117b093171c01025",
       "size": 937
     },
     {
@@ -4320,7 +4330,7 @@
     },
     {
       "path": "tests/product5910_home_layout_regression_test.js",
-      "sha256": "822ace31a0f63645e5a28afa67de4fef56108f22872ad4b7c3f6599a2ccb75ec",
+      "sha256": "38562e4e2e4a0395b0634fb364df2890ccd36481722c20ba095c2cc4f1141bf2",
       "size": 513
     },
     {
@@ -4335,7 +4345,7 @@
     },
     {
       "path": "tests/product598_doctor_dialog_workflow_test.js",
-      "sha256": "2d2df006b9e034e90b30f8495187e14a2ea64e10edb8d3cf2e4e63ab7d445690",
+      "sha256": "8571b8e7ef5623f180cf1445ae8d3955c2afa59c270936d86694b7e401acc935",
       "size": 1430
     },
     {
@@ -4360,8 +4370,8 @@
     },
     {
       "path": "tests/test_doctor_writer_result_guard_v597.py",
-      "sha256": "8eda762bcd8fc15ced73827c81dcd504ef5acbb8f1f563e9b9375de70de9569f",
-      "size": 370
+      "sha256": "4365219a5bf88c346eeabf6e818aae3c5a5e08fee7de45df33b2a6252c7e285a",
+      "size": 409
     },
     {
       "path": "tests/unit/test_article_snapshot_models.py",
