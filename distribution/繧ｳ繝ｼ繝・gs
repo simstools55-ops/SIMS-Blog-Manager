@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.9.8';
+const SBM_VERSION = '5.9.9';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -9369,12 +9369,15 @@ function sbmDoctorNormalizeCaseResult_(o){
     function uniq(items){var seen={},out=[];items.forEach(function(v){String(v||'').split(',').forEach(function(s){s=s.trim();if(s&&!seen[s]){seen[s]=1;out.push(s);}});});return out;}
     var allowed=[],blocked=[];activeWriter.forEach(function(x){allowed=allowed.concat(x.allowed_scope||[]);blocked=blocked.concat(x.blocked_scope||[]);});
     var priorities=refs.map(function(x){return String(x.priority||'');}),priority=priorities.indexOf('HIGH')>=0?'HIGH':priorities.indexOf('MEDIUM')>=0?'MEDIUM':priorities.indexOf('LOW')>=0?'LOW':'';
+    var explicitNextAction=String(o.workflow_handoff&&o.workflow_handoff.next_action||'').toUpperCase();
     var handoffWriter=!!(o.workflow_handoff&&o.workflow_handoff.writer_request_text);
-    var writerReady=activeWriter.length>0||handoffWriter;
+    var writerReady=explicitNextAction==='WRITER'||activeWriter.length>0||handoffWriter;
     var diagnosisStatus=o.overall_verdict||o.diagnosis&&o.diagnosis.overall_status||o.diagnosis&&o.diagnosis.overall_status_label_ja||'';
     var primaryCode=o.overall_verdict||o.diagnosis&&o.diagnosis.overall_status||'';
     var reviewDate=o.next_review&&o.next_review.recommended_date||o.workflow&&o.workflow.next_review_recommended||'';
-    return {format:format,caseId:String(o.case_id||''),diagnosisId:o.diagnosis_id||o.case_id||'',diagnosisStatus:diagnosisStatus,primaryCode:primaryCode,priority:priority,action:writerReady?'TREATMENT_RECOMMENDED':(sbmRequired.length?'MANUAL_REVIEW':'MONITOR'),treatmentLevel:writerReady?'LIMITED':'',destination:writerReady?'SIMS_WRITER':(sbmRequired.length?'SBM':''),allowed:uniq(allowed),blocked:uniq(blocked),reviewDate:reviewDate,locked:!!(o.workflow&&o.workflow.lock_at_diagnosis_time),writerReady:writerReady,manualReview:!writerReady&&sbmRequired.length>0,monitor:!writerReady&&!sbmRequired.length,writerReferrals:activeWriter,deferredWriterReferrals:deferredWriter,sbmReferrals:sbmRequired};
+    var manualReview=explicitNextAction==='USER_CONFIRMATION'||(!writerReady&&sbmRequired.length>0);
+    var monitor=explicitNextAction==='MONITOR'||(!writerReady&&!manualReview&&explicitNextAction==='');
+    return {format:format,caseId:String(o.case_id||''),diagnosisId:o.diagnosis_id||o.case_id||'',diagnosisStatus:diagnosisStatus,primaryCode:primaryCode,priority:priority,action:writerReady?'TREATMENT_RECOMMENDED':(manualReview?'MANUAL_REVIEW':'MONITOR'),treatmentLevel:writerReady?'LIMITED':'',destination:writerReady?'SIMS_WRITER':(manualReview?'SBM':''),allowed:uniq(allowed),blocked:uniq(blocked),reviewDate:reviewDate,locked:!!(o.workflow&&o.workflow.lock_at_diagnosis_time),nextAction:explicitNextAction||(writerReady?'WRITER':manualReview?'USER_CONFIRMATION':'MONITOR'),writerReady:writerReady,manualReview:manualReview,monitor:monitor,writerReferrals:activeWriter,deferredWriterReferrals:deferredWriter,sbmReferrals:sbmRequired};
   }
   throw new Error('未対応のDoctor結果形式です：'+format+'。Doctor回答内のJSON contractを貼り付けてください。');
 }

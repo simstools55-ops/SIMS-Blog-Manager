@@ -1,3 +1,8 @@
+# Product 5.9.9 - Doctor Next Action Routing
+
+- `next_action: WRITER`なら、`writer_request_text`がnullでもWriter紹介状を生成。
+- 旧形式はreferralsで後方互換。
+
 # Product 5.9.8 - Doctor Workflow Integration
 
 - 精密診断紹介状ダイアログを上下2段化しました。
