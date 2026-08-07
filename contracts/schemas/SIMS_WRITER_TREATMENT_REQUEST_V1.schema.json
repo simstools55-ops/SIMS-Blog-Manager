@@ -2,6 +2,57 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SIMS Writer Treatment Request V1",
   "type": "object",
-  "required": ["format", "contract_version", "case_id", "article_id", "request_mode", "doctor_referral", "workflow", "return_contract"],
-  "properties": {"format":{"const":"SIMS_WRITER_TREATMENT_REQUEST_V1"},"contract_version":{"const":"1.0"},"case_id":{"type":"string"},"article_id":{"type":"string"}}
+  "required": [
+    "format",
+    "contract_version",
+    "case_id",
+    "article_id",
+    "request_mode",
+    "doctor_referral",
+    "workflow",
+    "return_contract"
+  ],
+  "properties": {
+    "format": {
+      "const": "SIMS_WRITER_TREATMENT_REQUEST_V1"
+    },
+    "contract_version": {
+      "const": "1.0"
+    },
+    "case_id": {
+      "type": "string"
+    },
+    "article_id": {
+      "type": "string"
+    },
+    "doctor_referral": {
+      "type": "object",
+      "properties": {
+        "allowed_scope": {
+          "type": "array"
+        },
+        "blocked_scope": {
+          "type": "array"
+        },
+        "instructions": {
+          "type": "array"
+        },
+        "candidate_urls": {
+          "type": "array"
+        },
+        "treatment_tasks": {
+          "type": "array"
+        },
+        "presentation": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "doctor_result": {
+          "type": "object"
+        }
+      }
+    }
+  }
 }

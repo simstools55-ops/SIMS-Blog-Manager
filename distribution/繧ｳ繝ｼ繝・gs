@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.10.0 RC1
+ * SIMS-Blog-Manager Product 5.10.0 RC2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.0-RC1';
+const SBM_VERSION = '5.10.0-RC2';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -9513,16 +9513,62 @@ function sbmDoctorStoreCaseResult_(o,n){
   return {record:rec,code:code,label:label};
 }
 function sbmDoctorReferralDetails_(doctor,n){
-  var refs=n.writerReferrals||[],allowed=[],blocked=[],instructions=[],candidates=[];
-  refs.forEach(function(x){allowed=allowed.concat(x.allowed_scope||[]);blocked=blocked.concat(x.blocked_scope||[]);if(x.instructions)instructions=instructions.concat(Array.isArray(x.instructions)?x.instructions:[x.instructions]);if(x.candidate_urls)candidates=candidates.concat(x.candidate_urls);});
-  if(!refs.length&&doctor.referral){allowed=allowed.concat(doctor.referral.allowed_scope||[]);blocked=blocked.concat(doctor.referral.blocked_scope||[]);instructions=instructions.concat(doctor.referral.instructions||[]);}
+  var refs=n.writerReferrals||[],allowed=[],blocked=[],instructions=[],candidates=[],tasks=[];
+  refs.forEach(function(x){
+    allowed=allowed.concat(x.allowed_scope||[]);blocked=blocked.concat(x.blocked_scope||[]);
+    if(x.instructions)instructions=instructions.concat(Array.isArray(x.instructions)?x.instructions:[x.instructions]);
+    if(x.candidate_urls)candidates=candidates.concat(x.candidate_urls);
+  });
+  if(!refs.length&&doctor.referral){
+    allowed=allowed.concat(doctor.referral.allowed_scope||[]);
+    blocked=blocked.concat(doctor.referral.blocked_scope||[]);
+    instructions=instructions.concat(doctor.referral.instructions||[]);
+    candidates=candidates.concat(doctor.referral.candidate_urls||[]);
+  }
+
+  // Product 5.10.0 RC2: Doctor v1.2 treatment_plan is a first-class referral source.
+  // The previous adapter only read referral.allowed_scope / blocked_scope, so a valid
+  // Doctor result could reach Writer with empty scope arrays. Normalize permitted and
+  // prohibited actions here before generating the Writer request.
+  var tp=doctor&&doctor.treatment_plan||{},permitted=Array.isArray(tp.actions_permitted)?tp.actions_permitted:[],prohibited=Array.isArray(tp.actions_prohibited)?tp.actions_prohibited:[];
+  permitted.forEach(function(a){
+    if(!a)return;
+    var type=String(a.type||a.action||'').trim();
+    if(type)allowed.push(type);
+    var urls=[];
+    if(Array.isArray(a.target_urls))urls=urls.concat(a.target_urls);
+    if(a.target_url)urls.push(a.target_url);
+    candidates=candidates.concat(urls);
+    var note=String(a.scope_note||a.instruction||a.reason||'').trim();
+    if(note)instructions.push(note);
+    tasks.push({
+      type:type||'TREATMENT',
+      location:a.location||a.target||a.section||'',
+      target_urls:urls,
+      instruction:note,
+      reason:a.reason||'',
+      expected_effect:a.expected_effect||''
+    });
+  });
+  prohibited.forEach(function(a){
+    var code=typeof a==='string'?a:String(a&&a.type||a&&a.action||'').trim();
+    if(code)blocked.push(code);
+  });
+
   if(doctor.workflow_handoff&&doctor.workflow_handoff.writer_request_text)instructions.push(doctor.workflow_handoff.writer_request_text);
   function uniq(a){var seen={},out=[];(a||[]).forEach(function(v){var k=typeof v==='string'?v:JSON.stringify(v);if(k&&!seen[k]){seen[k]=1;out.push(v);}});return out;}
-  return {allowed_scope:uniq(allowed),blocked_scope:uniq(blocked),instructions:uniq(instructions),candidate_urls:uniq(candidates)};
+  return {
+    allowed_scope:uniq(allowed),
+    blocked_scope:uniq(blocked),
+    instructions:uniq(instructions),
+    candidate_urls:uniq(candidates),
+    treatment_tasks:uniq(tasks),
+    presentation:doctor&&doctor.presentation||null
+  };
 }
 function sbmDoctorBuildWriterTreatmentRequest_(sourceRequest,doctor,n){
   var article=sourceRequest.article||{},attachments=sourceRequest.attachments||{},evidence=sourceRequest.evidence_package||{},detail=sbmDoctorReferralDetails_(doctor,n);
-  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:article.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||'',request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:article.url||'',canonical_url:article.canonical_url||'',title:article.title||'',h1:article.h1||'',seo_title:article.seo_title||'',meta_description:article.meta_description||'',main_query:article.main_query||'',source_content:attachments.article_body||evidence.article_source&&evidence.article_source.data||null},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
+  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:article.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||'',request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:article.url||'',canonical_url:article.canonical_url||'',title:article.title||'',h1:article.h1||'',seo_title:article.seo_title||'',meta_description:article.meta_description||'',main_query:article.main_query||'',source_content:attachments.article_body||evidence.article_source&&evidence.article_source.data||null},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,presentation:detail.presentation,doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
 }
 function sbmDoctorSaveGeneratedWriterRequest_(caseId,req){
   var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)return;
@@ -9564,8 +9610,19 @@ function sbmDoctorRegisterCaseResult(){
 }
 function sbmDoctorOpenCases(){var sh=sbmDoctorEnsureCaseSheet_();sh.showSheet();SpreadsheetApp.getActive().setActiveSheet(sh);}
 function sbmDoctorSelectedCase_(){var sh=SpreadsheetApp.getActiveSheet();if(!sh||sh.getName()!==SBM_SHEETS.DOCTOR_CASES)throw new Error('Doctor_Casesシートで対象ケースの行を選択してください。');var row=sh.getActiveRange().getRow();if(row<2)throw new Error('対象ケースの行を選択してください。');var hm=sbmHeaderMap_(sh),vals=sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0],o={};Object.keys(hm).forEach(function(k){o[k]=vals[hm[k]-1];});return o;}
-function sbmDoctorCreateWriterTreatmentRequest(){try{var c=sbmDoctorSelectedCase_();if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{};var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_codes:[doctor.diagnosis&&doctor.diagnosis.primary_code].concat(doctor.diagnosis&&doctor.diagnosis.secondary_codes||[]).filter(Boolean),treatment_level:doctor.treatment_plan&&doctor.treatment_plan.treatment_level||'',objective:doctor.treatment_plan&&doctor.treatment_plan.objective||'',allowed_scope:doctor.referral&&doctor.referral.allowed_scope||[],blocked_scope:doctor.referral&&doctor.referral.blocked_scope||[],instructions:doctor.referral&&doctor.referral.instructions||[]},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',return_to:'SIMS_BLOG_MANAGER'}};var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));}catch(e){sbmAlert_('Writer治療依頼を作成できません',String(e.message||e));}}
-function sbmDoctorCreateWriterTreatmentRequestForCase_(c){if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{};var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_codes:[doctor.diagnosis&&doctor.diagnosis.primary_code].concat(doctor.diagnosis&&doctor.diagnosis.secondary_codes||[]).filter(Boolean),treatment_level:doctor.treatment_plan&&doctor.treatment_plan.treatment_level||'',objective:doctor.treatment_plan&&doctor.treatment_plan.objective||'',allowed_scope:doctor.referral&&doctor.referral.allowed_scope||[],blocked_scope:doctor.referral&&doctor.referral.blocked_scope||[],instructions:doctor.referral&&doctor.referral.instructions||[]},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',return_to:'SIMS_BLOG_MANAGER'}};var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));}
+function sbmDoctorCreateWriterTreatmentRequest(){
+  try{
+    var c=sbmDoctorSelectedCase_();
+    if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');
+    return sbmDoctorCreateWriterTreatmentRequestForCase_(c);
+  }catch(e){sbmAlert_('Writer治療依頼を作成できません',String(e.message||e));}
+}
+function sbmDoctorCreateWriterTreatmentRequestForCase_(c){
+  if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');
+  var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{},n=sbmDoctorNormalizeCaseResult_(doctor),detail=sbmDoctorReferralDetails_(doctor,n);
+  var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,presentation:detail.presentation,doctor_result:doctor},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
+  var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));return req;
+}
 function sbmDoctorFindArticleByIdOrUrl_(articleId,url){var rows=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],nu=sbmNormalizeUrl_(url);for(var i=0;i<rows.length;i++)if((articleId&&String(rows[i]['ArticleID']||'')===String(articleId))||sbmNormalizeUrl_(rows[i]['記事URL']||'')===nu)return rows[i];return null;}
 
 function sbmDoctorPromptWriterResultJson_(){
@@ -9590,7 +9647,7 @@ function sbmDoctorRegisterWriterTreatmentResult(){try{var o=sbmDoctorPromptWrite
  * ========================================================================== */
 
 const SBM_PLATFORM_VERSION = '1.0.0-RC1';
-const SBM_SHARED_VERSION = '3.4.0';
+const SBM_SHARED_VERSION = '3.5.0';
 const SBM_PLATFORM_CONTRACT_MAJOR = 1;
 
 function sbmPlatformEnsureSheets_() {
