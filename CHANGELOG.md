@@ -1,3 +1,9 @@
+# Product 5.9.10 - Doctor Routing & Cannibal Evidence Hotfix
+
+- Doctor CASE_RESULT_V2でもworkflow_handoff.next_actionを共通優先し、WRITER紹介状を生成。
+- Evidence Package v2.2で主要クエリ最大15件のサイト横断URL比較を追加。
+- E009カニバリ候補を対象記事クエリの有無ではなく、実際の他URL表示実績で評価。
+
 # Product 5.9.9 - Doctor Next Action Routing
 
 - `next_action: WRITER`なら、`writer_request_text`がnullでもWriter紹介状を生成。
