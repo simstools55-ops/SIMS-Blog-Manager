@@ -1,14 +1,9 @@
-## Product 5.7.0 RC2 — SIMS Doctor 外来診療 Sprint 1
+# SIMS-Blog-Manager Product 5.10.0-RC1
 
-- 選択記事から `SIMS_DOCTOR_SINGLE_CASE_REQUEST_V1` を生成
-- Google Drive保存を廃止
-- コピー用ダイアログと「JSONをコピー」ボタンを追加
-- Drive権限の追加不要
-- 日次処理・記事ランク・改善処理は5.6.12から変更なし
+Doctor v1.2連携のため、Evidence Package 2.3.0とサイト全体の28日比較 `site_impact` を追加しました。
 
-
-## Product 5.9.3 — Doctor workflow reliability
-
-- 一次検査を分割して自動継続し、タイムアウトを回避
-- 紹介状と治療案内をチェックボックス操作へ統一
-- Doctorメニューを利用手順順に整理
+- 直近28日 / 前28日のサイト全体pageデータを個別Doctor紹介状生成時のみ取得
+- 改善 / 安定 / 低下 / 低サンプルの記事数とサイト全体指標を要約
+- Googleアップデートとの因果判定はDoctor側に限定
+- Shared Editorial Knowledge 3.4.0へ同期
+- Doctor → SBM → Writer / Creator / Merge → SBM routingを維持

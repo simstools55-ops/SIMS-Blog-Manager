@@ -1,29 +1,21 @@
 {
-  "shared_version": "3.3.0",
+  "shared_version": "3.4.0",
   "snapshot_for": "SBM",
-  "generated_at": "2026-08-05T00:00:00+09:00",
+  "generated_at": "2026-08-07T10:07:00+09:00",
   "included_paths": [
-    "contracts/common",
-    "contracts/platform",
-    "contracts/doctor",
-    "contracts/writer",
-    "contracts/creator",
-    "contracts/merge",
-    "contracts/adapters",
+    "contracts",
     "enums",
-    "architecture"
+    "architecture",
+    "doctor"
   ],
   "files": [
-    "shared/COMPATIBILITY_MATRIX.md",
-    "shared/PLATFORM_MANIFEST.json",
-    "shared/PRODUCT_IDENTITY.json",
-    "shared/VERSION",
     "shared/architecture/CLAUDE_OPERATIONS.md",
     "shared/architecture/END_TO_END_WORKFLOW.md",
     "shared/architecture/PLATFORM_ARCHITECTURE.md",
     "shared/architecture/PRODUCT_RESPONSIBILITIES.md",
     "shared/architecture/RELEASE_PLAN_V1.md",
     "shared/architecture/REPOSITORY_GOVERNANCE.md",
+    "shared/contracts/README.md",
     "shared/contracts/adapters/doctor-case-result-v2-to-diagnosis-result-v1.md",
     "shared/contracts/adapters/legacy-identifier-normalization.md",
     "shared/contracts/adapters/sims-feedback-v2-to-writer-result-v1.md",
@@ -49,7 +41,15 @@
     "shared/enums/product-code.json",
     "shared/enums/result-status.json",
     "shared/enums/routing-validation.json",
-    "shared/enums/treatment-type.json"
+    "shared/enums/treatment-type.json",
+    "shared/doctor/ALGORITHM_EVIDENCE_V1.md",
+    "shared/doctor/CASE_LIFECYCLE_V1.md",
+    "shared/doctor/CASE_TREATMENT_TERMINOLOGY.md",
+    "shared/doctor/INTERFACE_CONTRACTS_V1.md",
+    "shared/doctor/INTERFACE_CONTRACTS_V2.md",
+    "shared/doctor/README.md",
+    "shared/doctor/SBM_DOCTOR_SAFETY_BOUNDARY.md",
+    "shared/doctor/TREATMENT_ROUTING_V1.md"
   ],
-  "content_hash": "sha256:9176f9235c511787e6763363013c9c72a808d050a34bf6b8aa64ecfe79dec57d"
+  "content_hash": "sha256:57e7c778a13419297ab2271679c9321952aa41ee587ee190360783026280c796"
 }

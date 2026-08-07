@@ -1,3 +1,13 @@
+# Product 5.10.0-RC1 - Doctor v1.2 Site Impact Evidence
+
+- Doctor Evidence Packageを2.3.0へ更新。
+- 直近28日と前28日のサイト全体pageデータを2 API callで集計する `site_impact` を追加。
+- Algorithm影響の因果判定はSBMでは行わず、Doctorへ補助Evidenceとして返却。
+- Shared Editorial Knowledge 3.4.0のSBM snapshotへ同期。
+- 既存のDoctor→SBM→Writer / Creator / Merge routingは変更なし。
+
+---
+
 # Product 5.9.10 - Doctor Routing & Cannibal Evidence Hotfix
 
 - Doctor CASE_RESULT_V2でもworkflow_handoff.next_actionを共通優先し、WRITER紹介状を生成。

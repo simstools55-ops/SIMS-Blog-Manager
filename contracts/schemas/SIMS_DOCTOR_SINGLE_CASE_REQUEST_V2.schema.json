@@ -20,7 +20,7 @@
       "const": "2.0"
     },
     "schema_version": {
-      "const": "2.0.0"
+      "const": "2.3.0"
     },
     "site": {
       "type": "object",
@@ -59,7 +59,7 @@
           "const": "SIMS_DOCTOR_EVIDENCE_PACKAGE_V2"
         },
         "package_version": {
-          "const": "2.0.0"
+          "const": "2.3.0"
         },
         "evidence_index": {
           "type": "array"
@@ -89,6 +89,37 @@
           "items": {
             "type": "string"
           }
+        },
+        "site_impact": {
+          "type": "object",
+          "properties": {
+            "available": {
+              "type": "boolean"
+            },
+            "evidence_role": {
+              "type": "string"
+            },
+            "periods": {
+              "type": "object"
+            },
+            "metrics": {
+              "type": "object"
+            },
+            "article_population": {
+              "type": "object"
+            },
+            "collection": {
+              "type": "object"
+            },
+            "confidence": {
+              "enum": [
+                "LOW",
+                "MEDIUM",
+                "HIGH"
+              ]
+            }
+          },
+          "additionalProperties": true
         }
       },
       "additionalProperties": true
@@ -97,5 +128,6 @@
       "type": "object"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "schema_version": null
 }

@@ -1,7 +1,7 @@
 # SIMS Editorial Platform v1.0 Release Plan
 
 1. Stabilize repository identity and versions.
-2. Release Shared 3.3.0 Platform baseline.
+2. Maintain Shared 3.4.0 Platform baseline with backward-compatible Algorithm Evidence boundaries.
 3. Adapt Doctor, Writer, and Creator.
 4. Create Merge RC1.
 5. Implement SBM Control Plane and legacy adapters.
