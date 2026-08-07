@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product 5.9.10 Final Rebuilt
+ * SIMS-Blog-Manager Product 5.10.0 RC2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.9.10';
+const SBM_VERSION = '5.10.0-RC3';
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -8781,7 +8781,7 @@ function sbmDoctorDateOnlyOrNull_(value) {
 
 
 /**
- * Product 5.7.1 RC11: Doctor Evidence Package v2.1
+ * Product 5.10.0 RC1: Doctor Evidence Package v2.3
  * 個別診断時だけ対象記事の証拠を可能な限り収集します。
  */
 function sbmDoctorBuildEvidencePackage_(ctx, payload) {
@@ -8798,6 +8798,7 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
   var doctorHistory = sbmDoctorExistingMedicalHistory_(articleId, url);
   var internalLinks = sbmDoctorInternalLinkEvidence_(ctx.article, queries.rows || [], source);
   var cannibalization = sbmDoctorFetchCannibalizationEvidence_(queries.rows || [], SBM_DOCTOR_EVIDENCE_DAYS, url);
+  var siteImpact = sbmDoctorFetchSiteImpactSummary_();
   var comparison = sbmDoctorComparisonWindow_(payload.improvement_context, performance);
 
   var quality = sbmDoctorValidateEvidencePackage_({
@@ -8810,6 +8811,7 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
     doctor_history:doctorHistory,
     internal_links:internalLinks,
     cannibalization:cannibalization,
+    site_impact:siteImpact,
     main_query:payload.article&&payload.article.main_query||null,
     article_title:payload.article&&payload.article.title||null
   });
@@ -8817,7 +8819,7 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
 
   return {
     package_format:'SIMS_DOCTOR_EVIDENCE_PACKAGE_V2',
-    package_version:'2.2.0',
+    package_version:'2.3.0',
     compatible_with:['SIMS_DOCTOR_EVIDENCE_PACKAGE_V1'],
     collected_at:collectedAt,
     request_id:payload.request&&payload.request.request_id||null,
@@ -8846,6 +8848,7 @@ function sbmDoctorBuildEvidencePackage_(ctx, payload) {
     doctor_history:{count:doctorHistory.length,records:doctorHistory},
     internal_links:internalLinks,
     cannibalization:cannibalization,
+    site_impact:siteImpact,
     missing_evidence:evidenceIndex.filter(function(e){return e.quality==='MISSING'||e.quality==='ERROR';}).map(function(e){return e.label;}),
     diagnostic_instruction:'最初にevidence_validationとdoctor_readinessを確認してください。再取得が必要な場合は確定診断を行わず、利用者には分かりやすい日本語で再取得を案内してください。個別診断では有効な証拠をすべて確認し、証拠不足の検査は未評価と明記してください。英語の内部コードは利用者向け本文に表示しないでください。'
   };
@@ -8919,6 +8922,11 @@ function sbmDoctorValidateEvidencePackage_(e) {
   if(stale.warning) items.push(sbmDoctorEvidenceItem_('E010','メインクエリの鮮度','WARNING',stale.message,{code:'MAIN_QUERY_STALE',query_year:stale.query_year,current_year:stale.current_year}));
   else items.push(sbmDoctorEvidenceItem_('E010','メインクエリの鮮度','VALID','メインクエリに明確な古い年号はありません。'));
 
+  var site=e.site_impact;
+  if(!site||site.available===false) items.push(sbmDoctorEvidenceItem_('E011','サイト全体の28日比較','WARNING',site&&site.message||'サイト全体の比較データを取得できませんでした。Algorithm影響の判定ではこの項目を未評価として扱ってください。',{code:'SITE_IMPACT_UNAVAILABLE'}));
+  else if(Number(site.article_population&&site.article_population.articles_with_data||0)<5) items.push(sbmDoctorEvidenceItem_('E011','サイト全体の28日比較','WARNING','比較可能な記事数が少ないため、サイト全体傾向は参考値として扱ってください。',{code:'SITE_IMPACT_LOW_SAMPLE',articles_with_data:Number(site.article_population&&site.article_population.articles_with_data||0),confidence:site.confidence||'LOW'}));
+  else items.push(sbmDoctorEvidenceItem_('E011','サイト全体の28日比較','VALID','直近28日と前28日のサイト全体推移を記事単位で集計しました。Googleアップデートとの関連はDoctorが他のEvidenceと統合して判断してください。',{articles_with_data:Number(site.article_population&&site.article_population.articles_with_data||0),declined_ratio:Number(site.article_population&&site.article_population.declined_ratio||0),improved_ratio:Number(site.article_population&&site.article_population.improved_ratio||0),confidence:site.confidence||'MEDIUM'}));
+
   var counts={VALID:0,WARNING:0,ERROR:0,EMPTY:0,NOT_SUPPORTED:0,MISSING:0};
   items.forEach(function(x){counts[x.quality]=(counts[x.quality]||0)+1;});
   var score=100-counts.ERROR*30-counts.WARNING*10;
@@ -8933,7 +8941,7 @@ function sbmDoctorValidateEvidencePackage_(e) {
   var overallLabel=overall==='ERROR'?'再取得が必要':overall==='WARNING'?'注意事項あり':'良好';
   return {
     evidence_index:items,
-    validation_report:{validation_version:'2.1.0',validated_at:sbmDoctorIso_(new Date()),overall:overall,overall_label:overallLabel,evidence_score:score,counts:counts,checks:items.filter(function(x){return x.quality==='ERROR'||x.quality==='WARNING';}).map(function(x){return {evidence_id:x.evidence_id,result:x.quality,code:x.details&&x.details.code||null,message:x.note};})},
+    validation_report:{validation_version:'2.3.0',validated_at:sbmDoctorIso_(new Date()),overall:overall,overall_label:overallLabel,evidence_score:score,counts:counts,checks:items.filter(function(x){return x.quality==='ERROR'||x.quality==='WARNING';}).map(function(x){return {evidence_id:x.evidence_id,result:x.quality,code:x.details&&x.details.code||null,message:x.note};})},
     doctor_readiness:{status:readiness,label:readinessLabel,recommended_action:action,diagnosis_allowed:readiness!=='REFETCH_REQUIRED'}
   };
 }
@@ -9019,7 +9027,81 @@ function sbmDoctorFetchLongTermQueries_(url,days,limit){
   }catch(e){return {ok:false,message:'180日のクエリ推移を取得できませんでした：'+String(e&&e.message||e),start_date:full.startDate,end_date:full.endDate,row_count:0,limit:Number(limit||200),matched_urls:{},periods:periods,rows:[]};}
 }
 /**
- * Product 5.9.10: カニバリ判定用のサイト横断クエリ×URL証拠。
+ * Product 5.10.0 RC1: Doctor v1.2用サイト全体Impact Summary。
+ * 直近28日と前28日のpageデータを2回だけ取得し、記事単位の方向性を集計します。
+ * Googleアップデートの因果判定は行わず、DoctorへSite Evidenceとして渡します。
+ */
+function sbmDoctorDateAdd_(text,n){
+  var d=new Date(String(text||'')+'T00:00:00+09:00');
+  if(isNaN(d.getTime()))return null;
+  d.setDate(d.getDate()+Number(n||0));
+  return Utilities.formatDate(d,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');
+}
+function sbmDoctorSitePeriodRows_(property,startDate,endDate){
+  var limit=25000;
+  var data=sbmSearchConsoleApiRequest_(property,{startDate:startDate,endDate:endDate,dimensions:['page'],rowLimit:limit})||{};
+  var rows=(data.rows||[]).map(function(r){
+    var url=String(r.keys&&r.keys[0]||'');
+    return {url:url,normalized_url:sbmNormalizeUrl_(url),clicks:Number(r.clicks||0),impressions:Number(r.impressions||0),ctr:Number(r.ctr||0),position:Number(r.position||0)};
+  }).filter(function(r){return !!r.normalized_url&&sbmIsValidArticleUrl_(r.normalized_url);});
+  return {rows:rows,row_count:rows.length,row_limit:limit,truncated:rows.length>=limit};
+}
+function sbmDoctorAggregateSiteRows_(rows){
+  var clicks=0,impressions=0,posNum=0;
+  (rows||[]).forEach(function(r){var imp=Number(r.impressions||0);clicks+=Number(r.clicks||0);impressions+=imp;posNum+=Number(r.position||0)*imp;});
+  return {clicks:clicks,impressions:impressions,ctr:impressions?clicks/impressions:0,position:impressions?posNum/impressions:0};
+}
+function sbmDoctorRateChange_(current,previous){
+  current=Number(current||0);previous=Number(previous||0);
+  if(previous===0)return current===0?0:null;
+  return Number(((current-previous)/previous).toFixed(6));
+}
+function sbmDoctorClassifySiteArticleShift_(current,previous){
+  current=current||{clicks:0,impressions:0,position:0};previous=previous||{clicks:0,impressions:0,position:0};
+  var ci=Number(current.impressions||0),pi=Number(previous.impressions||0),cc=Number(current.clicks||0),pc=Number(previous.clicks||0);
+  if(ci+pi<20)return 'LOW_SAMPLE';
+  if(pi===0&&ci>=20)return 'IMPROVED';
+  if(ci===0&&pi>=20)return 'DECLINED';
+  var impRate=sbmDoctorRateChange_(ci,pi),clickRate=sbmDoctorRateChange_(cc,pc),posDelta=(ci>0&&pi>0)?Number(current.position||0)-Number(previous.position||0):0;
+  var up=0,down=0;
+  if(clickRate!==null&&clickRate>=0.20&&cc-pc>=2)up++;
+  if(clickRate!==null&&clickRate<=-0.20&&pc-cc>=2)down++;
+  if(impRate!==null&&impRate>=0.20&&ci-pi>=20)up++;
+  if(impRate!==null&&impRate<=-0.20&&pi-ci>=20)down++;
+  if(ci>=50&&pi>=50&&posDelta<=-1.5)up++;
+  if(ci>=50&&pi>=50&&posDelta>=1.5)down++;
+  if(up>down)return 'IMPROVED';
+  if(down>up)return 'DECLINED';
+  return 'STABLE';
+}
+function sbmDoctorFetchSiteImpactSummary_(){
+  var property=sbmGetSetting_('SearchConsoleProperty','');
+  var full=sbmDoctorEvidenceRange_(180),recentEnd=full.endDate,recentStart=sbmDoctorDateAdd_(recentEnd,-27),previousEnd=sbmDoctorDateAdd_(recentStart,-1),previousStart=sbmDoctorDateAdd_(previousEnd,-27);
+  try{
+    var recent=sbmDoctorSitePeriodRows_(property,recentStart,recentEnd),previous=sbmDoctorSitePeriodRows_(property,previousStart,previousEnd);
+    var map={};
+    function put(period,row){var k=row.normalized_url;if(!map[k])map[k]={url:row.url,recent:null,previous:null};map[k][period]=row;}
+    recent.rows.forEach(function(r){put('recent',r);});previous.rows.forEach(function(r){put('previous',r);});
+    var counts={IMPROVED:0,STABLE:0,DECLINED:0,LOW_SAMPLE:0};
+    Object.keys(map).forEach(function(k){counts[sbmDoctorClassifySiteArticleShift_(map[k].recent,map[k].previous)]++;});
+    var comparable=counts.IMPROVED+counts.STABLE+counts.DECLINED,total=Object.keys(map).length;
+    var rm=sbmDoctorAggregateSiteRows_(recent.rows),pm=sbmDoctorAggregateSiteRows_(previous.rows);
+    var truncated=!!(recent.truncated||previous.truncated),confidence=truncated?'MEDIUM':comparable>=20?'HIGH':comparable>=5?'MEDIUM':'LOW';
+    return {
+      available:true,
+      evidence_role:'SITE_WIDE_CONTEXT_ONLY',
+      diagnostic_rule:'サイト全体の同時変動を示す補助Evidenceです。Googleアップデートとの時期一致だけで因果関係を確定せず、対象記事・SERP・本文・公式Update情報と統合してDoctorが判断してください。',
+      periods:{recent_28_days:{start_date:recentStart,end_date:recentEnd},previous_28_days:{start_date:previousStart,end_date:previousEnd}},
+      metrics:{recent_28_days:rm,previous_28_days:pm,change:{clicks_rate:sbmDoctorRateChange_(rm.clicks,pm.clicks),impressions_rate:sbmDoctorRateChange_(rm.impressions,pm.impressions),ctr_delta:Number((rm.ctr-pm.ctr).toFixed(6)),position_delta:Number((rm.position-pm.position).toFixed(6))}},
+      article_population:{total_articles_with_any_data:total,articles_with_data:comparable,improved:counts.IMPROVED,stable:counts.STABLE,declined:counts.DECLINED,low_sample:counts.LOW_SAMPLE,improved_ratio:comparable?Number((counts.IMPROVED/comparable).toFixed(6)):0,stable_ratio:comparable?Number((counts.STABLE/comparable).toFixed(6)):0,declined_ratio:comparable?Number((counts.DECLINED/comparable).toFixed(6)):0},
+      collection:{recent_rows:recent.row_count,previous_rows:previous.row_count,row_limit:recent.row_limit,truncated:truncated},
+      confidence:confidence
+    };
+  }catch(e){return {available:false,message:'サイト全体の28日比較を取得できませんでした：'+String(e&&e.message||e),evidence_role:'SITE_WIDE_CONTEXT_ONLY',confidence:'LOW'};}
+}
+
+/**
+ * Product 5.10.0 RC1: カニバリ判定用のサイト横断クエリ×URL証拠。
  * 対象記事の上位クエリから最大15件を抽出し、同じクエリで表示された自サイト内URLを取得します。
  */
 function sbmDoctorFetchCannibalizationEvidence_(queryRows,days,targetUrl){
@@ -9430,17 +9512,93 @@ function sbmDoctorStoreCaseResult_(o,n){
   put('状態コード',code);put('状態',label);put('更新日時',sbmNowText_());rec.sheet.getRange(rec.row,1,1,r.length).setValues([r]);
   return {record:rec,code:code,label:label};
 }
-function sbmDoctorReferralDetails_(doctor,n){
-  var refs=n.writerReferrals||[],allowed=[],blocked=[],instructions=[],candidates=[];
-  refs.forEach(function(x){allowed=allowed.concat(x.allowed_scope||[]);blocked=blocked.concat(x.blocked_scope||[]);if(x.instructions)instructions=instructions.concat(Array.isArray(x.instructions)?x.instructions:[x.instructions]);if(x.candidate_urls)candidates=candidates.concat(x.candidate_urls);});
-  if(!refs.length&&doctor.referral){allowed=allowed.concat(doctor.referral.allowed_scope||[]);blocked=blocked.concat(doctor.referral.blocked_scope||[]);instructions=instructions.concat(doctor.referral.instructions||[]);}
-  if(doctor.workflow_handoff&&doctor.workflow_handoff.writer_request_text)instructions.push(doctor.workflow_handoff.writer_request_text);
+function sbmDoctorReferralDetails_(doctor,n,evidence){
+  var refs=n.writerReferrals||[],allowed=[],blocked=[],instructions=[],candidates=[],tasks=[],linkRecs=[];
+  refs.forEach(function(x){
+    allowed=allowed.concat(x.allowed_scope||[]);blocked=blocked.concat(x.blocked_scope||[]);
+    if(x.instructions)instructions=instructions.concat(Array.isArray(x.instructions)?x.instructions:[x.instructions]);
+    if(x.candidate_urls)candidates=candidates.concat(x.candidate_urls);
+    if(x.internal_link_recommendations)linkRecs=linkRecs.concat(x.internal_link_recommendations);
+  });
+  if(!refs.length&&doctor.referral){
+    allowed=allowed.concat(doctor.referral.allowed_scope||[]);
+    blocked=blocked.concat(doctor.referral.blocked_scope||[]);
+    instructions=instructions.concat(doctor.referral.instructions||[]);
+    candidates=candidates.concat(doctor.referral.candidate_urls||[]);
+    linkRecs=linkRecs.concat(doctor.referral.internal_link_recommendations||[]);
+  }
+
+  // Product 5.10.0 RC3: normalize every supported Doctor v1.2 referral shape.
+  // Doctor may express treatment through actions_permitted (RC2-compatible),
+  // immediate_action_scope (WAIT + LIGHT_FIX), or workflow_handoff. All must
+  // produce the same complete Writer referral.
+  var tp=doctor&&doctor.treatment_plan||{},permitted=Array.isArray(tp.actions_permitted)?tp.actions_permitted:[],prohibited=Array.isArray(tp.actions_prohibited)?tp.actions_prohibited:[];
+  permitted.forEach(function(a){
+    if(!a)return;
+    var type=String(a.type||a.action||'').trim();
+    if(type)allowed.push(type);
+    var urls=[];
+    if(Array.isArray(a.target_urls))urls=urls.concat(a.target_urls);
+    if(a.target_url)urls.push(a.target_url);
+    candidates=candidates.concat(urls);
+    var note=String(a.scope_note||a.instruction||a.reason||'').trim();
+    if(note)instructions.push(note);
+    tasks.push({type:type||'TREATMENT',location:a.location||a.target||a.section||'',target_urls:urls,instruction:note,reason:a.reason||'',expected_effect:a.expected_effect||''});
+  });
+  prohibited.forEach(function(a){var code=typeof a==='string'?a:String(a&&a.type||a&&a.action||'').trim();if(code)blocked.push(code);});
+
+  var immediate=tp.immediate_action_scope||{};
+  if(tp.immediate_action_allowed&&immediate&&typeof immediate==='object'){
+    var itype=String(immediate.type||'').trim();
+    var maxLinks=Number(immediate.max_links||0);
+    var scopeCode=itype;
+    if(itype==='INTERNAL_LINK_ADDITION'&&maxLinks>0)scopeCode='INTERNAL_LINK_ADDITION_MAX_'+maxLinks;
+    if(scopeCode)allowed.push(scopeCode);
+    var iurls=Array.isArray(immediate.candidate_urls)?immediate.candidate_urls:[];
+    candidates=candidates.concat(iurls);
+    blocked=blocked.concat(immediate.prohibited||[]);
+    tasks.push({type:itype||'TREATMENT',max_links:maxLinks||null,target_urls:iurls,instruction:immediate.scope_note||'',reason:immediate.reason||'',expected_effect:immediate.expected_effect||''});
+  }
+
+  var handoff=doctor&&doctor.workflow_handoff||{};
+  allowed=allowed.concat(handoff.allowed_scope||[]);
+  blocked=blocked.concat(handoff.blocked_scope||[]);
+  if(handoff.instructions)instructions=instructions.concat(Array.isArray(handoff.instructions)?handoff.instructions:[handoff.instructions]);
+  if(handoff.candidate_urls)candidates=candidates.concat(handoff.candidate_urls);
+  linkRecs=linkRecs.concat(handoff.internal_link_recommendations||[]);
+  if(handoff.writer_request_text)instructions.push(handoff.writer_request_text);
+
+  linkRecs=linkRecs.concat(tp.internal_link_recommendations||[]);
+  if(doctor.internal_link_recommendations)linkRecs=linkRecs.concat(doctor.internal_link_recommendations);
+
+  // Enrich selected URLs from SBM Evidence Package. This is metadata only;
+  // Writer still decides final placement, surrounding copy and anchor wording.
+  var evidenceCandidates=evidence&&evidence.internal_links&&Array.isArray(evidence.internal_links.candidates)?evidence.internal_links.candidates:[];
+  var byUrl={}; evidenceCandidates.forEach(function(c){if(c&&c.url)byUrl[String(c.url).replace(/\/$/,'')]=c;});
+  function hasRec(url){var k=String(url||'').replace(/\/$/,'');return linkRecs.some(function(r){return r&&String(r.url||r.target_url||'').replace(/\/$/,'')===k;});}
+  candidates.forEach(function(url){
+    if(hasRec(url))return;
+    var c=byUrl[String(url||'').replace(/\/$/,'')];
+    linkRecs.push({
+      url:url,
+      title:c&&c.title||'',
+      reason:'Doctorが内部リンク候補として選定。Writerは本文との関連性を再確認して自然な文脈で配置する。',
+      relationship:c&&c.relatedQuery||'',
+      suggested_context:'関連する症状・操作の説明箇所。記事末尾への機械的なタイトル列挙は避ける。',
+      suggested_anchor_hint:c&&c.anchor||'',
+      writer_must_finalize_anchor:true,
+      source:'SBM_EVIDENCE_ENRICHMENT'
+    });
+  });
+
   function uniq(a){var seen={},out=[];(a||[]).forEach(function(v){var k=typeof v==='string'?v:JSON.stringify(v);if(k&&!seen[k]){seen[k]=1;out.push(v);}});return out;}
-  return {allowed_scope:uniq(allowed),blocked_scope:uniq(blocked),instructions:uniq(instructions),candidate_urls:uniq(candidates)};
+  // Deduplicate recommendations by normalized URL, preferring richer Doctor metadata.
+  var recMap={},recOut=[]; linkRecs.forEach(function(r){if(!r)return;var url=String(r.url||r.target_url||'').trim();if(!url)return;var k=url.replace(/\/$/,'');if(!recMap[k]){var x=JSON.parse(JSON.stringify(r));x.url=url;if(x.writer_must_finalize_anchor===undefined)x.writer_must_finalize_anchor=true;recMap[k]=x;recOut.push(x);}else{var dst=recMap[k];['title','reason','relationship','suggested_context','suggested_anchor_hint'].forEach(function(f){if(!dst[f]&&r[f])dst[f]=r[f];});}});
+  return {allowed_scope:uniq(allowed),blocked_scope:uniq(blocked),instructions:uniq(instructions),candidate_urls:uniq(candidates),treatment_tasks:uniq(tasks),internal_link_recommendations:recOut,presentation:doctor&&doctor.presentation||null};
 }
 function sbmDoctorBuildWriterTreatmentRequest_(sourceRequest,doctor,n){
-  var article=sourceRequest.article||{},attachments=sourceRequest.attachments||{},evidence=sourceRequest.evidence_package||{},detail=sbmDoctorReferralDetails_(doctor,n);
-  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:article.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||'',request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:article.url||'',canonical_url:article.canonical_url||'',title:article.title||'',h1:article.h1||'',seo_title:article.seo_title||'',meta_description:article.meta_description||'',main_query:article.main_query||'',source_content:attachments.article_body||evidence.article_source&&evidence.article_source.data||null},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
+  var article=sourceRequest.article||{},attachments=sourceRequest.attachments||{},evidence=sourceRequest.evidence_package||{},detail=sbmDoctorReferralDetails_(doctor,n,evidence);
+  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:article.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||'',request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:article.url||'',canonical_url:article.canonical_url||'',title:article.title||'',h1:article.h1||'',seo_title:article.seo_title||'',meta_description:article.meta_description||'',main_query:article.main_query||'',source_content:attachments.article_body||evidence.article_source&&evidence.article_source.data||null},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,internal_link_recommendations:detail.internal_link_recommendations,presentation:detail.presentation,doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
 }
 function sbmDoctorSaveGeneratedWriterRequest_(caseId,req){
   var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)return;
@@ -9482,8 +9640,19 @@ function sbmDoctorRegisterCaseResult(){
 }
 function sbmDoctorOpenCases(){var sh=sbmDoctorEnsureCaseSheet_();sh.showSheet();SpreadsheetApp.getActive().setActiveSheet(sh);}
 function sbmDoctorSelectedCase_(){var sh=SpreadsheetApp.getActiveSheet();if(!sh||sh.getName()!==SBM_SHEETS.DOCTOR_CASES)throw new Error('Doctor_Casesシートで対象ケースの行を選択してください。');var row=sh.getActiveRange().getRow();if(row<2)throw new Error('対象ケースの行を選択してください。');var hm=sbmHeaderMap_(sh),vals=sh.getRange(row,1,1,sh.getLastColumn()).getValues()[0],o={};Object.keys(hm).forEach(function(k){o[k]=vals[hm[k]-1];});return o;}
-function sbmDoctorCreateWriterTreatmentRequest(){try{var c=sbmDoctorSelectedCase_();if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{};var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_codes:[doctor.diagnosis&&doctor.diagnosis.primary_code].concat(doctor.diagnosis&&doctor.diagnosis.secondary_codes||[]).filter(Boolean),treatment_level:doctor.treatment_plan&&doctor.treatment_plan.treatment_level||'',objective:doctor.treatment_plan&&doctor.treatment_plan.objective||'',allowed_scope:doctor.referral&&doctor.referral.allowed_scope||[],blocked_scope:doctor.referral&&doctor.referral.blocked_scope||[],instructions:doctor.referral&&doctor.referral.instructions||[]},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',return_to:'SIMS_BLOG_MANAGER'}};var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));}catch(e){sbmAlert_('Writer治療依頼を作成できません',String(e.message||e));}}
-function sbmDoctorCreateWriterTreatmentRequestForCase_(c){if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{};var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_codes:[doctor.diagnosis&&doctor.diagnosis.primary_code].concat(doctor.diagnosis&&doctor.diagnosis.secondary_codes||[]).filter(Boolean),treatment_level:doctor.treatment_plan&&doctor.treatment_plan.treatment_level||'',objective:doctor.treatment_plan&&doctor.treatment_plan.objective||'',allowed_scope:doctor.referral&&doctor.referral.allowed_scope||[],blocked_scope:doctor.referral&&doctor.referral.blocked_scope||[],instructions:doctor.referral&&doctor.referral.instructions||[]},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',return_to:'SIMS_BLOG_MANAGER'}};var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));}
+function sbmDoctorCreateWriterTreatmentRequest(){
+  try{
+    var c=sbmDoctorSelectedCase_();
+    if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');
+    return sbmDoctorCreateWriterTreatmentRequestForCase_(c);
+  }catch(e){sbmAlert_('Writer治療依頼を作成できません',String(e.message||e));}
+}
+function sbmDoctorCreateWriterTreatmentRequestForCase_(c){
+  if(String(c['状態コード'])!=='WRITER_REQUEST_READY')throw new Error('このケースはWriter依頼を作成できる状態ではありません。');
+  var doctor=JSON.parse(String(c['Doctor結果JSON']||'{}')),article=sbmDoctorFindArticleByIdOrUrl_(c['記事ID'],c['記事URL'])||{},n=sbmDoctorNormalizeCaseResult_(doctor),detail=sbmDoctorReferralDetails_(doctor,n,null);
+  var req={format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:c['CaseID'],article_id:c['記事ID'],site_id:c['サイトID'],request_mode:'DOCTOR_REFERRAL_TREATMENT',article:{url:c['記事URL'],title:c['記事タイトル'],seo_title:article['SEOタイトル']||'',meta_description:article['メタディスクリプション']||'',main_query:article['メインクエリ']||''},doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:[n.primaryCode].filter(Boolean),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,internal_link_recommendations:detail.internal_link_recommendations,presentation:detail.presentation,doctor_result:doctor},workflow:{locked:false,treatment_allowed:true},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
+  var rec=sbmDoctorFindCaseRow_(c['CaseID']);rec.values[rec.hm['Writer依頼JSON']-1]=JSON.stringify(req);rec.values[rec.hm['状態コード']-1]='WRITER_IN_PROGRESS';rec.values[rec.hm['状態']-1]='Writer治療中';rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);sbmDoctorShowCopyDialog_(req,JSON.stringify(req,null,2));return req;
+}
 function sbmDoctorFindArticleByIdOrUrl_(articleId,url){var rows=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],nu=sbmNormalizeUrl_(url);for(var i=0;i<rows.length;i++)if((articleId&&String(rows[i]['ArticleID']||'')===String(articleId))||sbmNormalizeUrl_(rows[i]['記事URL']||'')===nu)return rows[i];return null;}
 
 function sbmDoctorPromptWriterResultJson_(){
@@ -9504,11 +9673,11 @@ function sbmDoctorRegisterWriterTreatmentResult(){try{var o=sbmDoctorPromptWrite
 
 /* ========================================================================== *
  * Product 5.9.0 RC1: SIMS Editorial Platform control-plane foundation
- * Shared Editorial Knowledge 3.3.0 / Platform Contract major 1
+ * Shared Editorial Knowledge 3.4.0 / Platform Contract major 1
  * ========================================================================== */
 
 const SBM_PLATFORM_VERSION = '1.0.0-RC1';
-const SBM_SHARED_VERSION = '3.3.0';
+const SBM_SHARED_VERSION = '3.5.0';
 const SBM_PLATFORM_CONTRACT_MAJOR = 1;
 
 function sbmPlatformEnsureSheets_() {
