@@ -1,3 +1,8 @@
+## 5.10.0-RC6
+
+- SBM UI/UX Refresh: Home判定色、健康診断書、精密診断紹介状を読みやすく再設計。
+- Doctor再診結果を精密診断ダイアログへ戻せる共通Routerを追加。
+
 # Product 5.10.0-RC1 - Doctor v1.2 Site Impact Evidence
 
 - Doctor Evidence Packageを2.3.0へ更新。

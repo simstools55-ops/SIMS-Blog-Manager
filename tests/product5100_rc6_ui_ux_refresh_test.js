@@ -1,0 +1,24 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
+const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
+function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
+ok(code.includes("const SBM_VERSION = '5.10.0-RC6';"),'RC6 version');
+ok(code.includes('改善中の記事｜推移'),'Home monitor heading');
+ok(code.includes('function sbmHomeJudgmentStyle_'),'Home judgment shared colors');
+ok(code.includes("value === '大きく改善'"),'positive judgment color');
+ok(code.includes("value === '元に戻す検討'"),'negative judgment color');
+ok(code.includes("setValue('総評')"),'health report summary row');
+ok(code.includes("setValue('今回多かった傾向')"),'health report trend row');
+ok(code.includes("setValue('Doctor判断')"),'health report Doctor decision row');
+ok(code.includes('cand.hideColumns(7,6)'),'referral machine columns hidden');
+ok(code.includes('id="followUpResult"'),'follow-up result input');
+ok(code.includes('function registerFollowUpResult()'),'follow-up result router');
+ok(code.includes('.sbmDoctorRegisterResultAndBuildNext(activeRequestText,result)'),'same router for follow-up');
+ok(code.includes('class="progress"'),'wizard progress');
+ok(code.includes('function sbmDoctorFollowUpChainMeta_'),'follow-up chain metadata');
+ok(code.includes('follow_up_depth:nextDepth'),'follow-up depth');
+ok(code.includes('loop_guard:{active:guardActive'),'loop guard');
+ok(code===dist,'distribution code identical');
+console.log('PASS product5100_rc6_ui_ux_refresh_test');

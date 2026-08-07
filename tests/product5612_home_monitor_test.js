@@ -1,11 +1,11 @@
 const fs = require('fs');
 const code = fs.readFileSync('apps-script/Code.gs', 'utf8');
 const must = [
-  "const SBM_VERSION = '5.9.1'",
+  "const SBM_VERSION = '5.10.0-RC6'",
   "'改善前クリック','現在クリック','改善前表示回数','現在表示回数','判定'",
   'function sbmHomeMonitorJudgmentCounts_()',
-  "sh.getRange('E14:H14').merge().setValue('改善中の記事（モニター中）')",
-  "sh.getRange('A20:H21').merge().setValue('判定はクリック数を最優先に",
+  "sh.getRange('E14:H14').merge().setValue('改善中の記事｜推移')",
+  "sh.getRange('A20:H21').merge().setValue('右側の色は「改善の推移」と同じ判定色です。",
   "setNumberFormat('#,##0')"
 ];
 for (const token of must) {

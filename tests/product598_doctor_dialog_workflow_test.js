@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
 function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC5';"),'version 5.10.0-RC5');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC6';"),'version 5.10.0-RC6');
 ok(code.includes('精密診断から次の処置まで'),'integrated dialog title');
 ok(code.includes('id="doctorResult"'),'doctor result input');
 ok(code.includes('診断結果を登録して次へ進む'),'register button');
