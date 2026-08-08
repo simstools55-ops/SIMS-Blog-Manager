@@ -8393,8 +8393,44 @@ function sbmDoctorGetHealthRun_() {
 }
 
 function sbmDoctorClearSnapshotForRun_(id){var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT); sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT); if(sh.getLastRow()<2)return; var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues(), hm=sbmHeaderMap_(sh), keep=vals.filter(function(r){return String(r[hm['健康診断ID']-1])!==id;}); sh.clearContents(); sh.getRange(1,1,1,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues([SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT]); if(keep.length)sh.getRange(2,1,keep.length,keep[0].length).setValues(keep);}
-function sbmDoctorHealthStatusJa_(code){var m={PREPARING:'準備中',FETCHING_FULL:'180日集計を取得中',FULL_DONE:'180日集計完了',FETCHING_FIRST:'前半90日集計を取得中',FIRST_DONE:'前半90日集計完了',FETCHING_SECOND:'後半90日集計を取得中',SECOND_DONE:'後半90日集計完了',FETCHING_RECENT:'直近28日集計を取得中',RECENT_DONE:'直近28日集計完了',FETCHING_PREVIOUS:'比較期間を取得中',PREVIOUS_DONE:'比較データ取得完了',SCREENING:'一次検査中',COMPLETED:'完了',RETRYABLE_ERROR:'エラー（再開可能）'};return m[code]||code||'未開始';}
-function sbmDoctorShowHealthCheckStatus(){sbmDoctorEnsureMedicalSheets_();var r=sbmDoctorGetHealthRun_();if(!r)return sbmAlert_('健康診断の進み具合','まだ健康診断は開始されていません。');sbmAlert_('健康診断の進み具合','健康診断ID：'+r.healthCheckId+'\n状態：'+sbmDoctorHealthStatusJa_(r.statusCode)+'\n現在の工程：'+r.phase+'\n対象期間：'+r.startDate+' ～ '+r.endDate+'\n保存済み記事数：'+r.processedCount+'件（登録記事 '+r.targetCount+'件）\n次の処理：'+r.nextStep+'\n最終成功：'+(r.lastSuccessAt||'－')+(r.lastError?'\n\n最後のエラー：'+r.lastError:''));}
+function sbmDoctorHealthStatusJa_(code){var m={PREPARING:'準備中',FETCHING_FULL:'180日集計を取得中',FULL_DONE:'180日集計完了',FETCHING_FIRST:'前半90日集計を取得中',FIRST_DONE:'前半90日集計完了',FETCHING_SECOND:'後半90日集計を取得中',SECOND_DONE:'後半90日集計完了',FETCHING_RECENT:'直近28日集計を取得中',RECENT_DONE:'直近28日集計完了',FETCHING_PREVIOUS:'比較期間を取得中',PREVIOUS_DONE:'比較データ取得完了',SCREENING:'一次検査中',COMPLETED:'完了',RETRYABLE_ERROR:'停止（再開できます）'};return m[code]||code||'未開始';}
+function sbmDoctorHealthProgress_(code){
+  var m={PREPARING:5,FETCHING_FULL:10,FULL_DONE:22,FETCHING_FIRST:28,FIRST_DONE:40,FETCHING_SECOND:46,SECOND_DONE:58,FETCHING_RECENT:64,RECENT_DONE:74,FETCHING_PREVIOUS:80,PREVIOUS_DONE:88,SCREENING:94,COMPLETED:100,RETRYABLE_ERROR:null};
+  return m.hasOwnProperty(code)?m[code]:0;
+}
+function sbmDoctorHealthStageLine_(code){
+  var order=['PREPARING','FETCHING_FULL','FULL_DONE','FETCHING_FIRST','FIRST_DONE','FETCHING_SECOND','SECOND_DONE','FETCHING_RECENT','RECENT_DONE','FETCHING_PREVIOUS','PREVIOUS_DONE','SCREENING','COMPLETED'];
+  var idx=order.indexOf(code);
+  if(code==='RETRYABLE_ERROR') return '①データ取得  ②比較データ  ③一次診断  ⚠停止';
+  var dataDone=idx>=9, compareDone=idx>=11, screeningDone=idx>=12;
+  return '①データ取得 '+(dataDone?'✓':idx>=1?'…':'・')+'   ②比較データ '+(compareDone?'✓':idx>=9?'…':'・')+'   ③一次診断 '+(screeningDone?'✓':idx>=11?'…':'・');
+}
+function sbmDoctorFriendlyHealthError_(message){
+  var s=String(message||'');
+  if(!s)return '';
+  if(/権限|permission|authorization|ScriptApp|getProjectTriggers/i.test(s))return 'Google Apps Script の権限確認が必要です。';
+  if(/時間|timeout|maximum execution|exceeded/i.test(s))return '処理時間の上限で一時停止しました。保存済みの続きから再開できます。';
+  return '処理が途中で停止しました。保存済みの続きから再開できます。';
+}
+function sbmDoctorShowHealthCheckStatus(){
+  sbmDoctorEnsureMedicalSheets_();
+  var r=sbmDoctorGetHealthRun_();
+  if(!r)return sbmAlert_('健康診断の進み具合','まだ健康診断は開始されていません。');
+  var pct=sbmDoctorHealthProgress_(r.statusCode), isError=r.statusCode==='RETRYABLE_ERROR';
+  var progressText=pct===null?'停止中':('進捗：'+pct+'%');
+  var articleText=(Number(r.targetCount||0)>0)?('記事：'+Number(r.processedCount||0)+' / '+Number(r.targetCount||0)+'件'):'';
+  var next=isError?'「1．ブログ全体を一次検査する」を選ぶと、続きから再開します。':(r.statusCode==='COMPLETED'?'健康診断書を確認し、必要な記事だけ精密診断します。':String(r.nextStep||'処理を続けます。'));
+  var body=[
+    progressText+'　'+sbmDoctorHealthStatusJa_(r.statusCode),
+    articleText,
+    sbmDoctorHealthStageLine_(r.statusCode),
+    '',
+    '現在：'+String(r.phase||sbmDoctorHealthStatusJa_(r.statusCode)),
+    '次に行うこと：'+next
+  ];
+  if(isError&&r.lastError)body.push('','⚠ '+sbmDoctorFriendlyHealthError_(r.lastError));
+  sbmAlert_('健康診断の進み具合',body.filter(function(v,i){return !(v===''&&body[i-1]==='');}).join('\n'));
+}
 
 /**
  * Product 5.7.0 RC2: SIMS Doctor 外来診療 Sprint 1
@@ -9243,78 +9279,65 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
   var candidateTotal = Number(counts.candidateTotal||counts.selected||0);
   var observationCount = Number(counts.lowSample||0) + Math.max(0,candidateTotal-Number(counts.selected||0));
   var overall = sbmDoctorOverallComment_(healthScore, issueCounts, Number(counts.selected||0));
+  var trends=sbmDoctorTrendMessages_(issueCounts);
 
   var reportName='Doctor_健康診断書';
   var report=ss.getSheetByName(reportName)||ss.insertSheet(reportName);
   report.setFrozenRows(0); report.setFrozenColumns(0);
   try { report.getRange(1,1,Math.min(report.getMaxRows(),100),Math.min(report.getMaxColumns(),20)).breakApart(); } catch(e) {}
-  report.clear(); report.showSheet();
-  report.setHiddenGridlines(true);
+  report.clear(); report.showSheet(); report.setHiddenGridlines(true);
 
-  report.getRange('A1:E2').setBackground('#0b5d3b').setFontColor('#ffffff').setVerticalAlignment('middle');
+  // RC8 Final: PC標準画面で縦スクロールせず読める16行サマリー。
+  report.getRange('A1:F2').setBackground('#0b5d3b').setFontColor('#ffffff').setVerticalAlignment('middle');
   report.getRange('A1').setValue('SIMS Doctor').setFontSize(19).setFontWeight('bold');
-  report.getRange('A2').setValue('ブログ健康診断書').setFontSize(16).setFontWeight('bold');
-  report.getRange('A4:B7').setValues([
-    ['ブログ名',sbmGetSetting_('SiteName','')],
-    ['診断日',Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyy年M月d日')],
-    ['対象期間',run.startDate+' ～ '+run.endDate],
-    ['健康診断ID',healthCheckId]
-  ]);
+  report.getRange('A2').setValue('ブログ健康診断書').setFontSize(15).setFontWeight('bold');
 
   var healthLabel = healthScore >= 85 ? '良好' : healthScore >= 70 ? '概ね安定' : healthScore >= 55 ? '要改善' : '要精密診断';
   var healthBg = healthScore >= 85 ? '#b7e1cd' : healthScore >= 70 ? '#d9ead3' : healthScore >= 55 ? '#fce8b2' : '#f4c7c3';
   var healthFg = healthScore < 55 ? '#b31412' : '#274e13';
-  report.getRange('A9:E9').setBackground('#d9ead3');
-  report.getRange('A9').setValue('ブログ健康度').setFontWeight('bold');
-  report.getRange('A10').setValue(healthScore+'点').setFontSize(30).setFontWeight('bold');
-  report.getRange('B10').setValue(healthLabel).setFontSize(15).setFontWeight('bold').setBackground(healthBg).setFontColor(healthFg).setHorizontalAlignment('center');
 
-  report.getRange('A12:E12').setBackground('#d9ead3');
-  report.getRange('A12').setValue('Doctor所見').setFontWeight('bold');
-  report.getRange('A13').setValue('総評').setFontWeight('bold').setBackground('#f3f6f4');
-  report.getRange('B13').setValue(overall).setWrap(true).setVerticalAlignment('top');
-  var trends=sbmDoctorTrendMessages_(issueCounts);
-  report.getRange('A15').setValue('今回多かった傾向').setFontWeight('bold').setBackground('#f3f6f4');
-  report.getRange('B15').setValue(trends.length?trends.map(function(v){return '・'+v;}).join('\n'):'・半年間の主要指標に共通した大きな異常はありませんでした。').setWrap(true).setVerticalAlignment('top');
-  report.getRange('A17').setValue('Doctor判断').setFontWeight('bold').setBackground('#f3f6f4');
-  report.getRange('B17').setValue(Number(counts.selected||0)>0 ? '詳しい診断を優先する記事が '+Number(counts.selected||0)+'件あります。優先順に精密診断してください。' : '今回は精密診断を優先する記事はありません。通常運用を継続してください。').setWrap(true);
-
-  report.getRange('D12:E12').setBackground('#d9ead3');
-  report.getRange('D12').setValue('検査結果の内訳').setFontWeight('bold');
-  report.getRange('D13:E18').setValues([
-    ['検査した登録記事',Number(run.targetCount||0)+'件'],
-    ['SBM対応中のため対象外',Number(counts.excluded||0)+'件'],
-    ['大きな問題なし',Number(counts.healthy||0)+'件'],
-    ['データ不足で経過観察',Number(counts.lowSample||0)+'件'],
-    ['今後の経過を確認',observationCount+'件'],
-    ['精密診断を優先',Number(counts.selected||0)+'件']
+  report.getRange('A4:F4').setBackground('#d9ead3');
+  report.getRange('A4').setValue('診断サマリー').setFontWeight('bold');
+  report.getRange('A5:F6').setValues([
+    ['ブログ名',sbmGetSetting_('SiteName',''),'健康度',healthScore+'点 '+healthLabel,'診断日',Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyy年M月d日')],
+    ['対象期間',run.startDate+' ～ '+run.endDate,'登録記事',Number(run.targetCount||0)+'件','精密診断',Number(counts.selected||0)+'件']
   ]);
-  report.getRange('D13:D18').setFontWeight('bold').setBackground('#f8f9fa');
-  report.getRange('E13:E18').setHorizontalAlignment('center').setFontWeight('bold');
+  report.getRange('A5:A6').setFontWeight('bold').setBackground('#f3f6f4');
+  report.getRange('C5:C6').setFontWeight('bold').setBackground('#f3f6f4');
+  report.getRange('E5:E6').setFontWeight('bold').setBackground('#f3f6f4');
+  report.getRange('D5').setFontWeight('bold').setBackground(healthBg).setFontColor(healthFg).setHorizontalAlignment('center');
 
-  report.getRange('A20:E20').setBackground('#d9ead3');
-  report.getRange('A20').setValue('次に行うこと').setFontWeight('bold');
-  var nextSteps = Number(counts.selected||0)>0 ? [
-    ['STEP 1','「精密診断する記事を選ぶ」を開き、診断する記事を1件選びます。'],
-    ['STEP 2','「チェックした記事のDoctor依頼文を作る」を実行し、Doctorへ送ります。'],
-    ['STEP 3','Doctor結果をSBMへ登録します。SBMがWriter / Creator / Merge / 経過観察へ自動分岐します。']
-  ] : [
-    ['STEP 1','今回、精密診断を優先する記事はありません。'],
-    ['STEP 2','通常のSBM運用を続けます。'],
-    ['STEP 3','次回の健康診断で推移を確認します。']
-  ];
-  report.getRange('A21:B23').setValues(nextSteps);
-  report.getRange('A21:A23').setFontWeight('bold').setBackground('#eef5ee').setHorizontalAlignment('center');
-  report.getRange('B21:B23').setWrap(true).setVerticalAlignment('middle');
+  report.getRange('A8:F8').setBackground('#d9ead3');
+  report.getRange('A8').setValue('Doctor所見').setFontWeight('bold');
+  report.getRange('A9').setValue('総評').setFontWeight('bold').setBackground('#f3f6f4');
+  report.getRange('B9').setValue(overall).setWrap(true).setVerticalAlignment('middle');
 
-  report.setColumnWidth(1,150); report.setColumnWidth(2,680); report.setColumnWidth(3,20); report.setColumnWidth(4,195); report.setColumnWidth(5,105);
-  report.setRowHeights(1,2,34); report.setRowHeights(21,3,48); try{report.autoResizeRows(13,5);}catch(eAutoHealth){}
-  report.getRange('A1:E23').setFontFamily('Arial').setVerticalAlignment('middle');
-  report.getRange('A4:A7').setFontWeight('bold').setBackground('#f3f6f4');
-  report.getRange('A4:B7').setBorder(false,false,false,false,false,true,'#e0e0e0',SpreadsheetApp.BorderStyle.SOLID);
-  report.getRange('A12:B17').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
-  report.getRange('D12:E18').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
-  report.getRange('A20:B23').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
+  report.getRange('A11:B11').setBackground('#d9ead3');
+  report.getRange('A11').setValue('今回多く見られた傾向').setFontWeight('bold');
+  report.getRange('B12').setValue(trends.length?trends.slice(0,3).map(function(v){return '・'+v;}).join('\n'):'・半年間の主要指標に共通した大きな異常はありませんでした。').setWrap(true).setVerticalAlignment('top');
+
+  report.getRange('D11:F11').setBackground('#d9ead3');
+  report.getRange('D11').setValue('検査結果の内訳').setFontWeight('bold');
+  report.getRange('D12:F14').setValues([
+    ['大きな問題なし',Number(counts.healthy||0)+'件','経過観察 '+observationCount+'件'],
+    ['SBM対応中',Number(counts.excluded||0)+'件','データ不足 '+Number(counts.lowSample||0)+'件'],
+    ['精密診断を優先',Number(counts.selected||0)+'件','診断ID '+healthCheckId]
+  ]);
+  report.getRange('D12:D14').setFontWeight('bold').setBackground('#f8f9fa');
+  report.getRange('E12:E14').setFontWeight('bold').setHorizontalAlignment('center');
+
+  report.getRange('A16:F16').setBackground('#eef5ee');
+  var nextText=Number(counts.selected||0)>0 ? '①「精密診断する記事を選ぶ」→ ②1件選択 → ③Doctor依頼文を作る' : '通常のSBM運用を続け、次回の健康診断で推移を確認します。';
+  report.getRange('A16').setValue('次に行うこと').setFontWeight('bold');
+  report.getRange('B16').setValue(nextText).setFontWeight('bold').setWrap(true);
+
+  report.setColumnWidth(1,125); report.setColumnWidth(2,420); report.setColumnWidth(3,25); report.setColumnWidth(4,170); report.setColumnWidth(5,105); report.setColumnWidth(6,180);
+  report.setRowHeights(1,2,30); report.setRowHeight(9,54); report.setRowHeight(12,66); report.setRowHeights(13,2,28); report.setRowHeight(16,34);
+  report.getRange('A1:F16').setFontFamily('Arial').setVerticalAlignment('middle');
+  report.getRange('A5:F6').setBorder(true,true,true,true,true,true,'#e0e0e0',SpreadsheetApp.BorderStyle.SOLID);
+  report.getRange('A8:F9').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
+  report.getRange('A11:B14').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
+  report.getRange('D11:F14').setBorder(true,true,true,true,false,false,'#d8e4d8',SpreadsheetApp.BorderStyle.SOLID);
 
   var candName='Doctor_精密診断紹介状';
   var old=ss.getSheetByName('Doctor_精密診断候補');

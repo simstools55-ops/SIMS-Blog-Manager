@@ -17,6 +17,6 @@ ok(code.includes("rec.values[rec.hm['状態コード']-1]='MONITORING'"),'Doctor
 ok(code.includes('sbmDoctorTreatmentResultAsFeedback_'),'Doctor treatment result adapts to monitoring history');
 ok(code.includes("!mainQuery && imps > 0"),'missing main query replenishment');
 ok(code.includes('var needsMeta = !articleTitle'),'missing H1/title replenishment');
-ok(code.includes('report.setColumnWidth(2,680)'),'health report reading width');
+ok(code.includes('report.setColumnWidth(2,420)'),'health report compact reading width');
 ok(code===dist,'distribution code identical');
 console.log('PASS product5100_rc7_human_view_workflow_test');

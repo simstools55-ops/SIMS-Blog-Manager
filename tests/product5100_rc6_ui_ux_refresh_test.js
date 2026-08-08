@@ -10,8 +10,8 @@ ok(code.includes('function sbmHomeJudgmentStyle_'),'Home judgment shared colors'
 ok(code.includes("value === '大きく改善'"),'positive judgment color');
 ok(code.includes("value === '元に戻す検討'"),'negative judgment color');
 ok(code.includes("setValue('総評')"),'health report summary row');
-ok(code.includes("setValue('今回多かった傾向')"),'health report trend row');
-ok(code.includes("setValue('Doctor判断')"),'health report Doctor decision row');
+ok(code.includes("setValue('今回多く見られた傾向')"),'health report trend row');
+ok(code.includes("setValue('次に行うこと')"),'health report next-action row');
 ok(code.includes('cand.hideColumns(6,8)'),'referral machine columns hidden');
 ok(code.includes('id="followUpResult"'),'follow-up result input');
 ok(code.includes('function registerFollowUpResult()'),'follow-up result router');
