@@ -1,3 +1,8 @@
+
+## 5.10.0-RC8 Doctor Candidate / Worklist UX Hotfix
+- Doctor精密診断画面を「候補一覧」に再設計し、記事別の短い選定理由を表示。
+- Doctor診断状況を「対応一覧」に簡素化し、一覧性を改善。
+- Doctor系シートを1行タイトル + 1行説明へ圧縮。
 ## 5.10.0-RC8
 
 - RC7で確立したDoctor / Writer / SBM連携ロジックを維持したまま、利用者向けワークフロー表示を最終調整。
