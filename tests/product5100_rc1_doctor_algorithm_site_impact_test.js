@@ -2,8 +2,8 @@ const fs=require('fs'),p=require('path');
 const root=p.join(__dirname,'..');
 const code=fs.readFileSync(p.join(root,'apps-script','Code.gs'),'utf8');
 function ok(v,m){if(!v)throw new Error(m);}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC1';"),'version');
-ok(code.includes("const SBM_SHARED_VERSION = '3.4.0';"),'shared');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'version');
+ok(code.includes("const SBM_SHARED_VERSION = '3.5.0';"),'shared');
 ok(code.includes("package_version:'2.3.0'"),'evidence 2.3');
 ok(code.includes('function sbmDoctorFetchSiteImpactSummary_()'),'site impact function');
 ok(code.includes("dimensions:['page'],rowLimit:limit"),'page dimension');

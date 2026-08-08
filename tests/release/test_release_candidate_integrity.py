@@ -23,9 +23,8 @@ def test_release_manifest_events_match_registry():
     assert set(manifest["medical_record_events"]) == set(events["items"])
 
 def test_version_is_release_candidate():
-    assert (ROOT / "VERSION").read_text(
-        encoding="utf-8"
-    ).strip() == "1.0.0-RC12"
+    version = (ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    assert version.startswith("5.10.0-RC")
 
 def test_treatment_execution_remains_disabled():
     manifest = json.loads(

@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
 function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC7';"),'RC7 version');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'RC8 version');
 ok(!code.includes("ui.createMenu('結果登録')"),'standalone result menu removed');
 ok(code.includes("1．今日の改善を開く")&&code.includes("3．今日の改善の表示件数を設定"),'numbered daily workflow menu');
 ok(code.includes("6．Doctor診断状況を確認する")&&code.includes('sbmDoctorOpenDiagnosisStatus'),'Doctor status menu redesigned');

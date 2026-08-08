@@ -1,6 +1,6 @@
 const fs=require('fs'); const code=fs.readFileSync('apps-script/Code.gs','utf8');
 function ok(v,m){if(!v)throw Error(m)}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC7';"),'current version');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'current version');
 ok(code.includes('tp.immediate_action_scope'),'immediate action scope');
 ok(code.includes('handoff.allowed_scope'),'workflow allowed scope');
 ok(code.includes('handoff.blocked_scope'),'workflow blocked scope');

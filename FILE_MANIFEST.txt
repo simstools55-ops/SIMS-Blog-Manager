@@ -1,5 +1,9 @@
 .github/workflows/deploy.yml
 .gitignore
+.pytest_cache/.gitignore
+.pytest_cache/CACHEDIR.TAG
+.pytest_cache/README.md
+.pytest_cache/v/cache/nodeids
 CHANGELOG.md
 GITHUB_RELEASE_NOTES.md
 HOW_TO_PUBLISH.md
@@ -52,6 +56,7 @@ RELEASE_NOTES_v5.10.0-RC4.md
 RELEASE_NOTES_v5.10.0-RC5.md
 RELEASE_NOTES_v5.10.0-RC6.md
 RELEASE_NOTES_v5.10.0-RC7.md
+RELEASE_NOTES_v5.10.0-RC8.md
 RELEASE_NOTES_v5.7.1-RC10.md
 RELEASE_NOTES_v5.7.1-RC11.md
 RELEASE_NOTES_v5.7.1-RC3.md
@@ -733,6 +738,7 @@ tests/PRODUCT5_6_9_EFFECT_FORMAT_UAT.md
 tests/PRODUCT5_7_0_RC1_DOCTOR_OUTPATIENT_UAT.md
 tests/SETUP_UAT.md
 tests/UAT_CHECKLIST.md
+tests/__pycache__/conftest.cpython-313-pytest-9.0.2.pyc
 tests/conftest.py
 tests/contract/validate_fixtures.py
 tests/feedback_parser_node_test.js
@@ -844,6 +850,7 @@ tests/product5100_rc4_writer_result_dialog_hotfix_test.js
 tests/product5100_rc5_guided_user_confirmation_test.js
 tests/product5100_rc6_ui_ux_refresh_test.js
 tests/product5100_rc7_human_view_workflow_test.js
+tests/product5100_rc8_workflow_ux_qa_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js
@@ -868,6 +875,7 @@ tests/product591_doctor_ux_static_test.js
 tests/product596_direct_handoff_test.js
 tests/product598_doctor_dialog_workflow_test.js
 tests/product599_next_action_routing_test.js
+tests/release/__pycache__/test_release_candidate_integrity.cpython-313-pytest-9.0.2.pyc
 tests/release/test_release_candidate_integrity.py
 tests/site_daily_static_test.js
 tests/test_catalog_importer.py
