@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-08T19:15:00+09:00",
-  "file_count": 1038,
+  "generated_at": "2026-08-08T12:33:23.843770+00:00",
+  "file_count": 939,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -14,34 +14,9 @@
       "size": 5
     },
     {
-      "path": ".pytest_cache/.gitignore",
-      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
-      "size": 37
-    },
-    {
-      "path": ".pytest_cache/CACHEDIR.TAG",
-      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
-      "size": 191
-    },
-    {
-      "path": ".pytest_cache/README.md",
-      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
-      "size": 302
-    },
-    {
-      "path": ".pytest_cache/v/cache/lastfailed",
-      "sha256": "0e88ee622a4b581b4d2843bd8d30816384ad3bc6901f256aab823f682aebf829",
-      "size": 5363
-    },
-    {
-      "path": ".pytest_cache/v/cache/nodeids",
-      "sha256": "1bfe6d54e562e7625f812b9e5d41cfe0556af802b7fb79b7db5695d7c2a1a7ea",
-      "size": 679
-    },
-    {
       "path": "CHANGELOG.md",
-      "sha256": "70411f213db4b6aac720379d800422930a91d5a9c8cdbf7dae2aeb131777630c",
-      "size": 50430
+      "sha256": "07b480bdf7a9af0d1bdc528d3d7b2b972637e1f0ac968dc9c0424cb2f2e41bd7",
+      "size": 51049
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -309,6 +284,21 @@
       "size": 937
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Freeze-Candidate.md",
+      "sha256": "034bd624bb6ea412118f1c6f5c35a147d907bba5e22e51d569659165d6f2e299",
+      "size": 1386
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix1.md",
+      "sha256": "de8830affa996f1e5f4f626069e8b9a9b0c0a86c4c243811f51be870b8decef6",
+      "size": 1286
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final.md",
+      "sha256": "bc66cdc002ded22a41a4679df7523acc18793157eb8744aa7f47ae7c164fa4a7",
+      "size": 1174
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md",
       "sha256": "2ce6818ebb023349bb6ce5d5139e4f5a41b23cd13475e5dc05dccd3e1aae00c3",
       "size": 2074
@@ -460,8 +450,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "2ea2affe2145a4b66009f92144922f3dd87dfe495e99d265b3d1ba0d549a4fc5",
-      "size": 658978
+      "sha256": "98f730119c7e9f3adeeef8dd5d8391c824620b552b7c598b8de592b68feffa23",
+      "size": 674819
     },
     {
       "path": "apps-script/appsscript.json",
@@ -800,8 +790,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "2ea2affe2145a4b66009f92144922f3dd87dfe495e99d265b3d1ba0d549a4fc5",
-      "size": 658978
+      "sha256": "98f730119c7e9f3adeeef8dd5d8391c824620b552b7c598b8de592b68feffa23",
+      "size": 674819
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -2162,11 +2152,6 @@
       "path": "requirements.txt",
       "sha256": "b648383d0fa36ceccb3fce7c76e0aa36df591c817b7e5ce46ee61c0c92f29b04",
       "size": 16
-    },
-    {
-      "path": "runtime/__pycache__/catalog_importer.cpython-313.pyc",
-      "sha256": "713d72c1d682bde76cc6872e78843c031cf901c877b9090bd3a0adfa0868f690",
-      "size": 4072
     },
     {
       "path": "runtime/apps-script-validator/DoctorContractValidator.gs",
@@ -3594,11 +3579,6 @@
       "size": 0
     },
     {
-      "path": "src/__pycache__/__init__.cpython-313.pyc",
-      "sha256": "b18f60e31f07c238cf070ba0ab54c19d04b7b671f91bf93a9b0b311956b5b104",
-      "size": 148
-    },
-    {
       "path": "tests/PRODUCT5_1_ARTICLE_SOURCE_UAT.md",
       "sha256": "6f4ba95fbb9d992918a648e5e771b045292385cf84d9bfe6edd0077ab63a6549",
       "size": 617
@@ -3732,21 +3712,6 @@
       "path": "tests/UAT_CHECKLIST.md",
       "sha256": "33651497415d61dad621e6e803e1a50fe9675d90851d81557f19af67e753ae2c",
       "size": 773
-    },
-    {
-      "path": "tests/__pycache__/conftest.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "f6e91280f3f2e535bb37bab413a1ebf23f72992ecd924f71fbfebb7018c760e2",
-      "size": 661
-    },
-    {
-      "path": "tests/__pycache__/test_catalog_importer.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "b8e2260354f62f82d9e7069b6e63674a63a53702145ee5e00ec2d364f8a171d6",
-      "size": 3396
-    },
-    {
-      "path": "tests/__pycache__/test_doctor_writer_result_guard_v597.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "9e0c8195cc7c1d47d4b356e13e9b780fb6696199a00fbe5ab75c1309590bb33e",
-      "size": 3219
     },
     {
       "path": "tests/conftest.py",
@@ -4039,231 +4004,6 @@
       "size": 2765
     },
     {
-      "path": "tests/integration/__pycache__/test_acquisition_to_observation.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ab61000ec0b52147c366b9355e213c32ada700303b6a7fa57641533f76bba259",
-      "size": 3967
-    },
-    {
-      "path": "tests/integration/__pycache__/test_article_snapshot_content_integrity.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ad971125dada93fdac91518aad99c525f295331ca2393cc0c52ddfc45d6a0602",
-      "size": 3271
-    },
-    {
-      "path": "tests/integration/__pycache__/test_batch_runner.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "c84ba49b5e5f8362a2574f39dd77e57862119bcb794b1e62adcfb293e42945da",
-      "size": 7205
-    },
-    {
-      "path": "tests/integration/__pycache__/test_batch_scheduler_cli.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "4db1ede4418a9eaee75856bed18354927c25556e4ffb14aee21429bea0aadfce",
-      "size": 6517
-    },
-    {
-      "path": "tests/integration/__pycache__/test_cannibalization_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ad7c81e78142b6a1f9685d2777bf653dd7969ddde4eeee44b3c52d751946e987",
-      "size": 2716
-    },
-    {
-      "path": "tests/integration/__pycache__/test_cannibalization_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "aaa774621d48bd773a87c0be9bea651eb2b8bd5f2ee3126bceabaf09f1c84dd0",
-      "size": 2981
-    },
-    {
-      "path": "tests/integration/__pycache__/test_composite_diagnosis_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "f93ad73c66204bdf54e26cfc050235537042f80ad78669a85fe2ab682489162b",
-      "size": 3437
-    },
-    {
-      "path": "tests/integration/__pycache__/test_cross_article_to_merge_referral.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "7888a1c54acb673291c936cce1871d7b565959b0d3be774811740f51a03ce5a3",
-      "size": 4430
-    },
-    {
-      "path": "tests/integration/__pycache__/test_ctr_opportunity_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "d19f669fdc39b2360b6311a6643bbc88e71ef1174ae4db21b9cd258eed06a730",
-      "size": 2580
-    },
-    {
-      "path": "tests/integration/__pycache__/test_ctr_opportunity_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "863b2ae020d5e4d5d6e39bd1dc58f50ada17e1180aa1c2669057c1a472da1e0d",
-      "size": 2919
-    },
-    {
-      "path": "tests/integration/__pycache__/test_diagnostic_rule_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "a75be2734f63ac347cff2d86ae7b29363e8a275660d812ed17d45377e666c3c0",
-      "size": 3612
-    },
-    {
-      "path": "tests/integration/__pycache__/test_differential_event_integration.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "84c9c501abd06867b3afe97caa009505e0829b496d4043e9a086d2957a3ee163",
-      "size": 3337
-    },
-    {
-      "path": "tests/integration/__pycache__/test_doctor_report_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "f23564eb03aa38f052fb4a6dfef28b88a43d10f1a0440b0205fe6a1b22a29894",
-      "size": 2975
-    },
-    {
-      "path": "tests/integration/__pycache__/test_evidence_event_integration.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1ced7818dc9ac887d724db5f3c2b233162e73fd0db6c36f03e6161da9bdea557",
-      "size": 4457
-    },
-    {
-      "path": "tests/integration/__pycache__/test_explainable_diagnosis_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "a7cbd3d9cb5ea08ed1ef02cb4ee977afcf11457215979cf950d016e8b0e74ec1",
-      "size": 3451
-    },
-    {
-      "path": "tests/integration/__pycache__/test_final_diagnosis_event.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "36e7691c00ed73310a0cbf5a4fd19453621889eb70971535ddb3a3a802548943",
-      "size": 8551
-    },
-    {
-      "path": "tests/integration/__pycache__/test_finding_event_integration.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "3e6dcabf4f08153886cb692c45389ce7ee523cdc829547774321055514015541",
-      "size": 3369
-    },
-    {
-      "path": "tests/integration/__pycache__/test_freshness_decay_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "d3f84d8eccc1ab162901bcc0fbc2fd7b14ee5f28ef577d6d244a61a13a4e2e95",
-      "size": 2858
-    },
-    {
-      "path": "tests/integration/__pycache__/test_freshness_decay_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "d2b5873d1c516a042217dee1cfcc576d3215d83fb8c741e8aa54b72e2251ad55",
-      "size": 3383
-    },
-    {
-      "path": "tests/integration/__pycache__/test_full_clinical_pipeline.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "97fdf3779045b1ca903066b1c18ae309ec912ff99683eeb04d4893364d706335",
-      "size": 5681
-    },
-    {
-      "path": "tests/integration/__pycache__/test_improvement_failure_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ba890cf52117de080ced45317b52bd2a98d77ed26fc343b61dfed63634e26419",
-      "size": 2904
-    },
-    {
-      "path": "tests/integration/__pycache__/test_improvement_failure_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "71dcdf94382abb83f1f8769bb7e7ab4f6a3390038f7c8e30d7e95c2a56d92abc",
-      "size": 3427
-    },
-    {
-      "path": "tests/integration/__pycache__/test_intent_drift_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ee19866e5502cf3182b54ff5df7cffa4da56a698d793beb2c4f67fa252e97edb",
-      "size": 2827
-    },
-    {
-      "path": "tests/integration/__pycache__/test_intent_drift_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "097864135f98ce33e9694fc891eec4feceabd264919d6051efbc2842f05a1d4e",
-      "size": 3354
-    },
-    {
-      "path": "tests/integration/__pycache__/test_long_term_degradation_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "bc3329a21c88c0d1822e5b29056e70f83d8ca080dd164ab0e7a2a29dd3acba3c",
-      "size": 2890
-    },
-    {
-      "path": "tests/integration/__pycache__/test_long_term_degradation_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "eb76fe70ead5c77a5da97655a72666ad0cee57a5e2fee2c58de06d72620387fd",
-      "size": 3442
-    },
-    {
-      "path": "tests/integration/__pycache__/test_long_term_diagnosis.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "b0a3bf9515196578f42e616e7ccfd07d284dd73453b2311337da30a5bd910341",
-      "size": 4454
-    },
-    {
-      "path": "tests/integration/__pycache__/test_longitudinal_profile_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "5794509225d0bb61dcc960b32632ff1a7d91d83d30144c28cab413d8f65f9a40",
-      "size": 5239
-    },
-    {
-      "path": "tests/integration/__pycache__/test_nightly_batch_worker.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "9fec84153e9439729e4640797e0c9754cca567fa14c9d6974cfe1069938c5c2a",
-      "size": 9270
-    },
-    {
-      "path": "tests/integration/__pycache__/test_output_generation_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "20e41c248205f11c502b6e62875807c5ea2ac4d2a21688145aa6e39419fa9a62",
-      "size": 5071
-    },
-    {
-      "path": "tests/integration/__pycache__/test_position_opportunity_rule_connection.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "c8f278f1768e2aa0d867ff97553e04185c333099d818051d27b8ff42c6169ca0",
-      "size": 2892
-    },
-    {
-      "path": "tests/integration/__pycache__/test_position_opportunity_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "52cc74e99b09e443a7829000f733eef3e6469e0d325c5ddd037c4d9d46f3822e",
-      "size": 3438
-    },
-    {
-      "path": "tests/integration/__pycache__/test_production_app_factory.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "4a45993741e7b51e4d6ed6d45c0d45b995485dbfd56e6a7bafd638fddb9dd3ae",
-      "size": 6534
-    },
-    {
-      "path": "tests/integration/__pycache__/test_reception_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "ce405227c5eb1cd64138463886d76f169446a9706de6468d5d8c8d78655f7739",
-      "size": 7716
-    },
-    {
-      "path": "tests/integration/__pycache__/test_referral_separation.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "4f7e6f670b2c8265a6ed1c4b8166830cac921abe6ad5b23c615828518c1cc117",
-      "size": 3388
-    },
-    {
-      "path": "tests/integration/__pycache__/test_sbm_batch_result_export.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "5340627f6094138d6596406958f39891c19bc711db8dddc666e6883db4f319c6",
-      "size": 4999
-    },
-    {
-      "path": "tests/integration/__pycache__/test_search_console_observation_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "e3c20dd3d3a825dcc19eb74906e23da1547595f0b02ed7ddb8fe9a40933c5e1f",
-      "size": 7672
-    },
-    {
-      "path": "tests/integration/__pycache__/test_serp_observation_and_vital.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "24704df12fb87ee069658e781c96228929349ee4faf17a8099b3765d2286711e",
-      "size": 3234
-    },
-    {
-      "path": "tests/integration/__pycache__/test_sqlite_nightly_restart.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1e5f2367973ae25ff0094f6e29cc3cec2cb486024d86e7e44e2750645b1a92ac",
-      "size": 4571
-    },
-    {
-      "path": "tests/integration/__pycache__/test_transport_api.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "294033d0adde4e5642c10b3bd53e3919334d43aa9710f42d2bd4c0eeb037f86b",
-      "size": 9327
-    },
-    {
-      "path": "tests/integration/__pycache__/test_treatment_history_success.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "75fad466bcb60afe8ff6741d8c15ad8bebacc4ef5086c263a3969adb486bce0e",
-      "size": 5425
-    },
-    {
-      "path": "tests/integration/__pycache__/test_treatment_history_worsening.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0098ff9cca5e6928c7547d3b5eb8545ca4305bf151e57b2c5e7cc54bccfb3eb8",
-      "size": 4961
-    },
-    {
-      "path": "tests/integration/__pycache__/test_treatment_recommendation_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "5a64d297dd559ee55641019761459e9ed87dd366cd50f319cc2f6a30b8038326",
-      "size": 3980
-    },
-    {
-      "path": "tests/integration/__pycache__/test_vital_profile_event.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "603b7e8f6cdaab183c05030bb0efa5c1945c62b82be6618afdfd65bbc51ac3cd",
-      "size": 2875
-    },
-    {
-      "path": "tests/integration/__pycache__/test_vital_score_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0c55781097965e7d2a2feb23d2a51511ba15bb4270dc6094e3e7f63e9a234de5",
-      "size": 3320
-    },
-    {
       "path": "tests/integration/test_acquisition_to_observation.py",
       "sha256": "abeeab4322c343ac62fb3971efc1caa362d10c88ba9d1adbddfa3769851f09c1",
       "size": 2095
@@ -4525,8 +4265,8 @@
     },
     {
       "path": "tests/product5100_rc7_human_view_workflow_test.js",
-      "sha256": "ebaf0412932f4612a50518de19ef0506cbb121148695ae2cfbe7e0ba94709b3d",
-      "size": 1977
+      "sha256": "813b09e3483c3c218834830ab870c53e6b46fdf5a4f9511e156ec1ec16772096",
+      "size": 1980
     },
     {
       "path": "tests/product5100_rc8_compact_doctor_ui_test.js",
@@ -4535,8 +4275,8 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_candidate_worklist_test.js",
-      "sha256": "ba5f6372ac5e9f778f9d8b86825d818fee1c8cc0c22a59bdd627fe3438ca9e4c",
-      "size": 1321
+      "sha256": "8544210fefec697d3daa9a3fe4af6cbd537b40d5540876ca6819e31a9f1f3da4",
+      "size": 1366
     },
     {
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
@@ -4544,14 +4284,24 @@
       "size": 646
     },
     {
+      "path": "tests/product5100_rc8_final_hotfix1_test.js",
+      "sha256": "a0422f917a473de6d231e0f4c700e56c3622c9dd0c3314a42de4ba6d7b08d2d3",
+      "size": 1194
+    },
+    {
+      "path": "tests/product5100_rc8_final_ux_static_test.js",
+      "sha256": "4923b808c02c87634d96e45142acd243fee661bd13ff0fa0ce212e8fed438a55",
+      "size": 1562
+    },
+    {
       "path": "tests/product5100_rc8_typed_column_referral_hotfix_test.js",
-      "sha256": "3f2ca47a29dd59695b2dd2d3526a7b4e6e67fbddd7d461df5cac96a2d61af1e7",
-      "size": 1294
+      "sha256": "bf64a568617e571f998ba85dc8bc592171309a6b1f36d38d879e5988d00c05ce",
+      "size": 1417
     },
     {
       "path": "tests/product5100_rc8_unified_improvement_workflow_test.js",
-      "sha256": "d2780a5a015efcfac98f0c08e3442ba1becb869ff1d6c37ac1f4fb7519fcaf04",
-      "size": 1786
+      "sha256": "c1e3a4eacfbd11209ca9cbf4fa9d61e5cc0e467d7d3850bf83fa8c2b84cbb6cd",
+      "size": 1803
     },
     {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
@@ -4679,11 +4429,6 @@
       "size": 218
     },
     {
-      "path": "tests/release/__pycache__/test_release_candidate_integrity.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "6617869d298ca2391f1caa4af7f61ef940a6e046a81fc54c2ff1d72e448a8a2b",
-      "size": 5543
-    },
-    {
       "path": "tests/release/test_release_candidate_integrity.py",
       "sha256": "a5ad48ffb76b083ca55fadba3beca8a6e9039189ac3c5eaf66b5b864a1ed254e",
       "size": 1165
@@ -4704,249 +4449,9 @@
       "size": 409
     },
     {
-      "path": "tests/unit/__pycache__/test_article_snapshot_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "66741c5b03fdec561dca6086a5953b7ea0ea5cc58923842d362d7d47a6baf716",
-      "size": 2564
-    },
-    {
-      "path": "tests/unit/__pycache__/test_article_snapshot_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "04cab2f94d3aca8c469f2ff2e8be4474144ac6b6c52d1852e28c8d9da8d8f17c",
-      "size": 4561
-    },
-    {
-      "path": "tests/unit/__pycache__/test_batch_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "7b08d4c4b225c19c3e95364f8be2dd9747196c14ab9c7036a32cec5096f20b84",
-      "size": 3359
-    },
-    {
-      "path": "tests/unit/__pycache__/test_batch_priority.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "26e39c9487bf96d637c99efd22ece33866c5f1b6e6cb5b293fa9a406925e8d64",
-      "size": 2814
-    },
-    {
-      "path": "tests/unit/__pycache__/test_batch_queue_service.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1180b62985cc02659b7765823b17ed494b2f587e061b44ea448d8c909615dd73",
-      "size": 5417
-    },
-    {
-      "path": "tests/unit/__pycache__/test_cannibalization_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "f354b5d421db7e5b8b701be1bb2ffcbdb967ddc53aa53612cb8fc42c8962ffca",
-      "size": 4980
-    },
-    {
-      "path": "tests/unit/__pycache__/test_clinical_knowledge_base.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "42dc0ecd984f5c31d6dcbc5c17a36ba2abf6727e658e02d0cf67a886d5ad8498",
-      "size": 6930
-    },
-    {
-      "path": "tests/unit/__pycache__/test_clinical_pipeline.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "e44b455e18e6e25e8ceb02dd028eb930183953185f96bcf461bf7c341b38bd49",
-      "size": 8351
-    },
-    {
-      "path": "tests/unit/__pycache__/test_composite_diagnosis_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "aa41a3f9583ca6792423af2a66bd71625f1c8bd4cadbe3274d35c8e60cb30c83",
-      "size": 6103
-    },
-    {
-      "path": "tests/unit/__pycache__/test_cross_article_analyzer.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1aa512e472050b06b1bef715a2cbb7defcd5bf6269925172b43acbf63401ade6",
-      "size": 2760
-    },
-    {
-      "path": "tests/unit/__pycache__/test_ctr_opportunity_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "fb46ecb47a3c53a9d1c64eb68f6ca87222a1e0aa680dd2ba1f20d54ac06152b4",
-      "size": 4130
-    },
-    {
-      "path": "tests/unit/__pycache__/test_diagnosis_report.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "bff5220805704b0572650e473de359c252e2ddcbca5344e67c75c2781fc69ceb",
-      "size": 3146
-    },
-    {
-      "path": "tests/unit/__pycache__/test_diagnostic_rule_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "552e07a8a46535c2d166376ac96a38e3c8d69e40ae95094ca6c54ec08b11b866",
-      "size": 5554
-    },
-    {
-      "path": "tests/unit/__pycache__/test_diagnostic_rule_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "2ce9be5f2979edc198f89ba81236146272ce69efe08dc0634eaa8d014dfafb17",
-      "size": 4282
-    },
-    {
-      "path": "tests/unit/__pycache__/test_differential_diagnosis_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "6a1775cbc8d7036c74c48b61572da06e346957237f7eb720344fd5690930d272",
-      "size": 9081
-    },
-    {
-      "path": "tests/unit/__pycache__/test_doctor_report_generator.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "3bd4a9dfae59a7bea2d0bdbb85c2b32ca0c9177ae66ecc09cf432120609b6527",
-      "size": 3663
-    },
-    {
-      "path": "tests/unit/__pycache__/test_event_log.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "04434d5e27f108961ff8dd35e0e3a233c70c6b5128b3455ac0b85e70167f8ae0",
-      "size": 4607
-    },
-    {
-      "path": "tests/unit/__pycache__/test_evidence_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "848941ead5cd465c5225a4287ee4e42540558760e1c4ec97467294c94be6f6c0",
-      "size": 8773
-    },
-    {
-      "path": "tests/unit/__pycache__/test_explainable_diagnosis_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "30fa45ee1a99dd39bc56898963e9612a3995079ea0809476d37cbf6c79ace70f",
-      "size": 5306
-    },
-    {
-      "path": "tests/unit/__pycache__/test_final_diagnosis_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "53ec1209eb8fdb37ce1af1f02b2df9ce99c0fcfd9e777f65962d290899f7e6b5",
-      "size": 8476
-    },
-    {
-      "path": "tests/unit/__pycache__/test_findings_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "d07d29763868192f87d3320de20925cb54200abfd66e6d0caf32d4437bc81f1b",
-      "size": 7644
-    },
-    {
-      "path": "tests/unit/__pycache__/test_freshness_decay_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "97e95d6ca233ff8ad45ac6fbf1b3a59e2d84d045c2b82f68abfe59a93c6e4a25",
-      "size": 5720
-    },
-    {
-      "path": "tests/unit/__pycache__/test_hmac_auth.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "7c32b2dcd790f82588b2fd98617a5703bccbda9daecc2f60df9d14d7eed496b5",
-      "size": 2741
-    },
-    {
-      "path": "tests/unit/__pycache__/test_improvement_failure_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "7575c4db38b299f7ce8d256edfaa800e694f269d53333a4f026cbdbe570ec9b0",
-      "size": 5974
-    },
-    {
-      "path": "tests/unit/__pycache__/test_intent_drift_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "166ad1c0236f28cdc7fc21eb20ffda371ba684d6e62283fd30ac67370c218b7a",
-      "size": 4977
-    },
-    {
-      "path": "tests/unit/__pycache__/test_long_term_analyzer.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "87830de5120d3546ac8d17c689e4847f63dcf138747aaf6948156df55cd2a44a",
-      "size": 3173
-    },
-    {
-      "path": "tests/unit/__pycache__/test_long_term_degradation_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "a93c69e9219ce740cc231df8881c066f60efb3bfe97f219588b69325c0433e4c",
-      "size": 5385
-    },
-    {
-      "path": "tests/unit/__pycache__/test_longitudinal_analyzer.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "f261b55d21e49129a3676295697b5e5d97e43c03e17fe218bc72fea2d22a6ef1",
-      "size": 5045
-    },
-    {
-      "path": "tests/unit/__pycache__/test_medical_record.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0844112e231f7deb8ac1efbd6df83d44cfd8e8ac6182f817d4b995205e6c846d",
-      "size": 4952
-    },
-    {
-      "path": "tests/unit/__pycache__/test_observation_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "89b2792e054d5e637e2f8b8fa21fa48c0328d76f8c6ed11161e1a60a27e419c8",
-      "size": 2161
-    },
-    {
-      "path": "tests/unit/__pycache__/test_output_builders.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1e9b19513064b322c4f2131c5fc79d41a7ec1b00223acb63d92fb9e0d6163078",
-      "size": 4544
-    },
-    {
-      "path": "tests/unit/__pycache__/test_position_opportunity_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "bf52b9904456f78431a6700f7a3038f348f28d1704b1124d0bc9f61e97bb995a",
-      "size": 5279
-    },
-    {
-      "path": "tests/unit/__pycache__/test_production_settings.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "38cb9a25ae8574f61a6904c5af0770c4c64507251a472cd8b22dc9f8304d192b",
-      "size": 3632
-    },
-    {
-      "path": "tests/unit/__pycache__/test_rc12_sbm_orchestration.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "3ecd6e2add8762aa140b0de48dfe886c372242dc285ae0d1f077160ad6215ea7",
-      "size": 5448
-    },
-    {
-      "path": "tests/unit/__pycache__/test_rc4_clinical_review.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0ef010a887b12d7bae81e240f56bca0c4de457b6ba7b1208fbafe2c4521c83b5",
-      "size": 7303
-    },
-    {
-      "path": "tests/unit/__pycache__/test_request_receiver.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "fdeb05f1996859812f0d9c577ccac0ec6b4d7f517605ad7fee40f6598a4689d0",
-      "size": 7187
-    },
-    {
-      "path": "tests/unit/__pycache__/test_sbm_batch_gateway.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "4027364299644611a0ccd896a51706024588a7fa4c72c231823a7c2bb6423385",
-      "size": 5878
-    },
-    {
-      "path": "tests/unit/__pycache__/test_search_console_acquisition.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "9ab425bfea14872c8609175574fbc3e79a9425df8daaab09daf6dc54ca27bc10",
-      "size": 10493
-    },
-    {
-      "path": "tests/unit/__pycache__/test_search_console_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "60e1b8574d7b7148bd996eb86a38c77b0aa313c69117e0364a7dc1594980eaad",
-      "size": 3510
-    },
-    {
-      "path": "tests/unit/__pycache__/test_serp_acquisition.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "8b72d72977acdf0a2089ead0f68ca6d6bb0493803492a15712b6bc1252d12750",
-      "size": 6326
-    },
-    {
-      "path": "tests/unit/__pycache__/test_serp_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0f66339496375c0fa60027ed7358623c44d54216a0f5616d60e6c195d3e50f93",
-      "size": 3053
-    },
-    {
-      "path": "tests/unit/__pycache__/test_sqlite_batch_queue_repository.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "8b876cad4e4a70558c1351da04080979e9b6163aa168d1822f9c5c6f032f7f0f",
-      "size": 5421
-    },
-    {
-      "path": "tests/unit/__pycache__/test_sqlite_security_state.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "8f1cd94abb66ca2bd2676e56f4454b45f47cdc564f8d4fb2ddfe08dadc6bd981",
-      "size": 5291
-    },
-    {
-      "path": "tests/unit/__pycache__/test_treatment_history_analyzer.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "df2af4c07994c714a106d6b134ee1e214e133ace1e24f818e482fe1783f65d78",
-      "size": 4134
-    },
-    {
-      "path": "tests/unit/__pycache__/test_treatment_history_models.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "885747639da9502701be827c4467e30b634577d12969cb80f0429fe7206a55e7",
-      "size": 2283
-    },
-    {
-      "path": "tests/unit/__pycache__/test_treatment_recommendation_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "1636f6d4c052db09d5ca5b5308d88eb409a9b8f9f725fd8ccd35a8de5f39fd51",
-      "size": 5394
-    },
-    {
-      "path": "tests/unit/__pycache__/test_treatment_referral.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "c8170bb5e12660e04194fee87ea3b5f36dd94e43ddafc7a842fbee4116b66211",
-      "size": 7443
-    },
-    {
-      "path": "tests/unit/__pycache__/test_vital_score_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "0a9657232d3135d8eb25e68bac7f4e8174c9a1062be2afb995e900c1189e8fba",
-      "size": 8809
-    },
-    {
-      "path": "tests/unit/__pycache__/test_vital_signs_engine.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "7a53fd598ad4e4d8f3f001a3c1a16415b068f0126112653cd46f6e4b826d4a87",
-      "size": 8249
+      "path": "tests/test_rc8_final_freeze_contract.py",
+      "sha256": "8a14183218db3a40bc4e4fe8facc19ad9be90502e558f1aa738e09c25e3fc638",
+      "size": 2182
     },
     {
       "path": "tests/unit/test_article_snapshot_models.py",

@@ -8,7 +8,7 @@ ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'RC8 version');
 ok(!code.includes("ui.createMenu('結果登録')"),'standalone result menu removed');
 ok(code.includes("1．今日の改善を開く")&&code.includes("3．今日の改善の表示件数を設定"),'numbered daily workflow menu');
 ok(!code.includes("6．Doctor対応一覧を確認する")&&code.includes('sbmRetireDoctorWorklistSheets_'),'obsolete Doctor worklist retired');
-ok(code.includes("var headers=['選択','優先','記事タイトル','選定理由','状態'"),'five-column referral human view');
+ok(code.includes("var headers=['選択','重症度','記事タイトル','選定理由','状態'"),'five-column referral human view');
 ok(code.includes('cand.hideColumns(6,8)'),'referral machine columns hidden');
 ok(code.includes('function sbmDoctorApplyReferralRowStates_'),'referral row state styling');
 ok(code.includes("clearDataValidations().setValue(false).setBackground('#eeeeee')"),'completed referral cannot be selected');

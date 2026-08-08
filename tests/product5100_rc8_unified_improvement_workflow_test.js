@@ -5,10 +5,10 @@ function ok(v,m){if(!v){console.error('FAIL:',m);process.exit(1)}}
 ok(!code.includes(".addItem('6．Doctor対応一覧を確認する'"),'Doctor worklist menu retired');
 ok(code.includes('function sbmRetireDoctorWorklistSheets_'),'legacy Doctor worklist retirement helper');
 ok(code.includes("sbmOpenImprovementHistory();"),'legacy Doctor worklist entry redirects to improvement history');
-ok(code.includes("'改善方法'"),'improvement method field exists');
+ok(code.includes("'改善経路'"),'improvement route field exists');
 ok(code.includes("improvement_method:'Doctor→Writer'"),'Doctor Writer result identifies method');
-ok(code.includes("'改善方法':data.improvement_method||'通常改善'"),'normal improvement fallback');
-ok(code.includes("h['改善方法']||'通常改善'"),'effect sheet inherits improvement method');
+ok(code.includes("'改善経路':data.improvement_method||'通常改善'"),'normal improvement fallback');
+ok(code.includes("h['改善経路']||h['改善方法']||'通常改善'"),'effect sheet inherits improvement route');
 ok(code.includes("setValue('✏️ 改善中')") || code.includes("'✏️ 改善中'"),'shared work-state improvement in progress');
 ok(code.includes("set('作業状態','👀 モニター中')"),'shared monitoring state after result');
 ok(code.includes('function sbmEnsureArticleListDisplayCompleteness_'),'article list completeness helper');
