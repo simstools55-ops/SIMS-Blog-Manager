@@ -1,3 +1,9 @@
+## 5.10.0-RC8 Final Freeze Candidate
+- 記事一覧のH1/記事タイトル欠損を相互補完し、日次処理・Doctor一次検査前にも自動修復。
+- メインクエリの「取得待ち／検索実績なし」を外部連携用の実クエリと分離。
+- Doctor対応一覧を利用者導線から廃止し、改善履歴・改善の推移へ統合。
+- Doctor→Writerは記事ランクを変更せず、共通の作業状態で管理。
+
 
 ## 5.10.0-RC8 Unified Improvement Workflow Hotfix
 - Doctor対応一覧を廃止し、Doctor経由処置を改善履歴・改善の推移へ統合。

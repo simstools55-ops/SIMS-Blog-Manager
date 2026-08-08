@@ -1417,7 +1417,8 @@ function sbmNextArticleId_(map) {
 function sbmWriteArticleDbObjects_(map) {
   var rows = Object.keys(map || {}).map(function(url){
     var r = map[url];
-    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
+    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || sbmCleanDisplayTitle_('', r['記事URL'] || '') || 'タイトル取得待ち';
+    r['記事タイトル'] = r['記事タイトル'] || r['H1タイトル'];
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
   });
   sbmWriteArticleDb_(rows);
@@ -1497,6 +1498,8 @@ function sbmCollectPageDataToArticleDbManual(silent) {
     var apiSec = sbmSecondsSince_(tApi);
     var tWrite = new Date();
     var mergeResult = sbmMergeArticleDbDaily_(result.rows);
+    // RC8 Final: 日次処理のたびに記事一覧の欠損を少量ずつ自動修復します。
+    try { sbmEnsureArticleListDisplayCompleteness_(30,60); } catch (eCompleteness) { sbmLog_('DailyArticleListCompleteness','Warning',String(eCompleteness)); }
     try { sbmEnsureTodayRecommendations_('daily'); } catch (eToday) { sbmLog_('DailyTodayDefault','Warning',String(eToday)); }
     var writeSec = sbmSecondsSince_(tWrite);
 
@@ -1752,7 +1755,8 @@ function sbmMergeArticleDbDaily_(freshRows) {
   sbmApplyArticleRanksToObjectMap_(map);
   var rows = Object.keys(map).map(function(url){
     var r = map[url];
-    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
+    r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || sbmCleanDisplayTitle_('', r['記事URL'] || '') || 'タイトル取得待ち';
+    r['記事タイトル'] = r['記事タイトル'] || r['H1タイトル'];
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
   });
   sbmWriteArticleDb_(rows);
@@ -1872,7 +1876,7 @@ function sbmSupplementArticleDbMetaManual(silent) {
       var preserved = {};
       SBM_HEADERS.ARTICLE_DB.forEach(function(h){ preserved[h] = r[h] !== undefined ? r[h] : ''; });
       preserved['記事ランク'] = preserved['記事ランク'] || '';
-      preserved['作業状態'] = preserved['作業状態'] || '未着手';
+      preserved['作業状態'] = sbmNormalizeWorkState_(preserved['作業状態']);
       preserved['記事URL'] = url;
       preserved['メインクエリ'] = mainQuery;
       preserved['クリック数'] = clicks;
@@ -1908,7 +1912,7 @@ function sbmSupplementArticleDbMetaManual(silent) {
 }
 
 function sbmOpenArticleDb() {
-  try { sbmEnsureArticleListDisplayCompleteness_(); } catch(e) { sbmLog_('ArticleListCompleteness','Warning',String(e)); }
+  try { sbmEnsureArticleListDisplayCompleteness_(12,20); } catch(e) { sbmLog_('ArticleListCompleteness','Warning',String(e)); }
   sbmHideOptionalAdminSheets_();
   sbmOpenSheet_(SBM_SHEETS.ARTICLE_DB);
   try { SpreadsheetApp.getActiveSpreadsheet().toast('記事行を選択し、右側の「記事DBツールバー」または上部メニューから操作してください。', '記事DBの操作', 8); } catch(e) {}
@@ -2707,25 +2711,63 @@ function sbmArticleListQueryDisplay_(value, impressions) {
   if(q)return q;
   return Number(impressions||0)>0?SBM_QUERY_PENDING_LABEL:SBM_QUERY_NO_DATA_LABEL;
 }
-function sbmEnsureArticleListDisplayCompleteness_() {
+function sbmIsTitlePlaceholder_(value) {
+  var s=String(value||'').trim();
+  return !s || s==='タイトル取得待ち' || s==='タイトル取得失敗';
+}
+
+/**
+ * RC8 Final: 利用者が見る記事一覧で H1 / 記事タイトル / メインクエリを空欄にしません。
+ * H1 と記事タイトルは相互補完し、どちらも無い場合だけ外部取得を少量実行します。
+ * 数字だけのURLスラッグはタイトルとして採用しません。
+ */
+function sbmEnsureArticleListDisplayCompleteness_(maxFetch, maxSeconds) {
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.ARTICLE_DB);
-  if(!sh||sh.getLastRow()<2)return 0;
-  var hm=sbmHeaderMap_(sh); if(!hm['記事URL'])return 0;
-  var n=sh.getLastRow()-1, vals=sh.getRange(2,1,n,sh.getLastColumn()).getValues(), changed=0;
+  if(!sh||sh.getLastRow()<2)return {changed:0,fetchedTitle:0,fetchedQuery:0,pendingTitle:0,pendingQuery:0};
+  var hm=sbmHeaderMap_(sh); if(!hm['記事URL'])return {changed:0,fetchedTitle:0,fetchedQuery:0,pendingTitle:0,pendingQuery:0};
+  maxFetch=Math.max(0,Math.min(100,Number(maxFetch===undefined?12:maxFetch)||0));
+  maxSeconds=Math.max(1,Math.min(120,Number(maxSeconds===undefined?20:maxSeconds)||20));
+  var started=Date.now(),n=sh.getLastRow()-1,vals=sh.getRange(2,1,n,sh.getLastColumn()).getValues();
+  var changed=0,fetchedTitle=0,fetchedQuery=0,pendingTitle=0,pendingQuery=0;
   vals.forEach(function(row){
     var url=String(row[hm['記事URL']-1]||'').trim();
-    if(hm['記事タイトル']){
-      var title=sbmCleanDataListText_(row[hm['記事タイトル']-1]||'',url);
-      if(!title){row[hm['記事タイトル']-1]=sbmCleanDisplayTitle_('',url)||'タイトル取得待ち';changed++;}
+    var h1=hm['H1タイトル']?sbmCleanDataListText_(row[hm['H1タイトル']-1]||'',url):'';
+    var article=hm['記事タイトル']?sbmCleanDataListText_(row[hm['記事タイトル']-1]||'',url):'';
+    if(sbmIsTitlePlaceholder_(h1))h1='';
+    if(sbmIsTitlePlaceholder_(article))article='';
+    var best=h1||article;
+    var within=(Date.now()-started)<maxSeconds*1000;
+    if(!best && url && within && fetchedTitle<maxFetch){
+      try{
+        var meta=sbmFetchArticleMetaInfo_(url);
+        best=sbmCleanDataListText_((meta&&meta.h1)||(meta&&meta.titleTag)||'',url);
+        if(best)fetchedTitle++;
+      }catch(eTitle){}
     }
+    if(!best){
+      var pathTitle=sbmCleanDataListText_(sbmCleanDisplayTitle_('',url),url);
+      best=pathTitle||'タイトル取得待ち';
+      if(best==='タイトル取得待ち')pendingTitle++;
+    }
+    if(hm['H1タイトル'] && String(row[hm['H1タイトル']-1]||'').trim()!==best){row[hm['H1タイトル']-1]=best;changed++;}
+    if(hm['記事タイトル'] && String(row[hm['記事タイトル']-1]||'').trim()!==best){row[hm['記事タイトル']-1]=best;changed++;}
+
     if(hm['メインクエリ']){
       var imps=hm['表示回数']?sbmNumber_(row[hm['表示回数']-1]):0;
-      var shown=sbmArticleListQueryDisplay_(row[hm['メインクエリ']-1],imps);
+      var real=sbmRealMainQuery_(row[hm['メインクエリ']-1]);
+      within=(Date.now()-started)<maxSeconds*1000;
+      if(!real && imps>0 && url && within && fetchedQuery<maxFetch){
+        try{var q=sbmFetchMainQueryForUrl_(url);if(q){real=q;fetchedQuery++;}}catch(eQuery){}
+      }
+      var shown=sbmArticleListQueryDisplay_(real,imps);
+      if(shown===SBM_QUERY_PENDING_LABEL)pendingQuery++;
       if(String(row[hm['メインクエリ']-1]||'').trim()!==shown){row[hm['メインクエリ']-1]=shown;changed++;}
     }
   });
   if(changed)sh.getRange(2,1,n,sh.getLastColumn()).setValues(vals);
-  return changed;
+  sbmSetSetting_('ArticleListPendingTitleCount',pendingTitle,'記事一覧でタイトル再取得待ちの件数');
+  sbmSetSetting_('ArticleListPendingQueryCount',pendingQuery,'記事一覧でメインクエリ取得待ちの件数');
+  return {changed:changed,fetchedTitle:fetchedTitle,fetchedQuery:fetchedQuery,pendingTitle:pendingTitle,pendingQuery:pendingQuery};
 }
 
 function sbmResolveArticleTitle_(url, fallback, allowFetch) {
@@ -3973,6 +4015,19 @@ function sbmLegacyStatusToWorkState_(status) {
   return '未着手';
 }
 
+
+/** RC8 Final: 記事ランクとは独立した利用者向け作業状態を正規化します。 */
+function sbmNormalizeWorkState_(value) {
+  var s=String(value||'').trim();
+  if(!s)return '未着手';
+  if(s.indexOf('モニター')>=0)return '👀 モニター中';
+  if(s.indexOf('完了')>=0)return '✔️ 完了';
+  if(s.indexOf('公開待ち')>=0)return '📤 公開待ち';
+  if(s.indexOf('改善中')>=0 || s.indexOf('今日の改善')>=0 || s.indexOf('治療中')>=0 || s.indexOf('診療中')>=0)return '✏️ 改善中';
+  if(s==='未着手')return '未着手';
+  return s;
+}
+
 function sbmPercentileRankSorted_(sortedValues, value) {
   var a = sortedValues || [];
   if (!a.length) return 0;
@@ -4034,7 +4089,8 @@ function sbmUpdateArticleRankManual() {
     sbmApplyArticleRanksToObjectMap_(map);
     var out = Object.keys(map).map(function(url){
       var r = map[url];
-      r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || '';
+      r['H1タイトル'] = r['H1タイトル'] || r['記事タイトル'] || sbmCleanDisplayTitle_('', r['記事URL'] || '') || 'タイトル取得待ち';
+    r['記事タイトル'] = r['記事タイトル'] || r['H1タイトル'];
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
     });
     sbmWriteArticleDb_(out);
@@ -8109,6 +8165,8 @@ function sbmDoctorEnsureMedicalSheets_() {
 
 function sbmDoctorRunHealthCheck() {
   try {
+    // Doctorへ渡す前に、記事一覧の表示欠損を可能な範囲で自動修復します。
+    try { sbmEnsureArticleListDisplayCompleteness_(20,40); } catch(eCompleteness) { sbmLog_('DoctorPreflightArticleListCompleteness','Warning',String(eCompleteness)); }
     sbmDoctorAssertSafeToExport_();
     if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') return sbmAlert_('ブログ全体の一次検査を始められません','初回セットアップとSearch Console接続を完了してください。');
     sbmDoctorEnsureMedicalSheets_();
