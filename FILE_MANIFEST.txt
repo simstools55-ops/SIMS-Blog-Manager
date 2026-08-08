@@ -1,10 +1,10 @@
-github/workflows/deploy.yml
-gitignore
-pytest_cache/.gitignore
-pytest_cache/CACHEDIR.TAG
-pytest_cache/README.md
-pytest_cache/v/cache/lastfailed
-pytest_cache/v/cache/nodeids
+.github/workflows/deploy.yml
+.gitignore
+.pytest_cache/.gitignore
+.pytest_cache/CACHEDIR.TAG
+.pytest_cache/README.md
+.pytest_cache/v/cache/lastfailed
+.pytest_cache/v/cache/nodeids
 CHANGELOG.md
 GITHUB_RELEASE_NOTES.md
 HOW_TO_PUBLISH.md
@@ -59,6 +59,7 @@ RELEASE_NOTES_v5.10.0-RC6.md
 RELEASE_NOTES_v5.10.0-RC7.md
 RELEASE_NOTES_v5.10.0-RC8-Doctor-Candidate-Worklist-UX.md
 RELEASE_NOTES_v5.10.0-RC8-Doctor-Header-Layout-Hotfix.md
+RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md
 RELEASE_NOTES_v5.10.0-RC8.md
 RELEASE_NOTES_v5.7.1-RC10.md
 RELEASE_NOTES_v5.7.1-RC11.md
@@ -906,6 +907,7 @@ tests/product5100_rc8_compact_doctor_ui_test.js
 tests/product5100_rc8_doctor_candidate_worklist_test.js
 tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js
 tests/product5100_rc8_typed_column_referral_hotfix_test.js
+tests/product5100_rc8_unified_improvement_workflow_test.js
 tests/product5100_rc8_workflow_ux_qa_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js

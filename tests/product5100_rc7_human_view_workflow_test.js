@@ -7,7 +7,7 @@ function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
 ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'RC8 version');
 ok(!code.includes("ui.createMenu('結果登録')"),'standalone result menu removed');
 ok(code.includes("1．今日の改善を開く")&&code.includes("3．今日の改善の表示件数を設定"),'numbered daily workflow menu');
-ok(code.includes("6．Doctor対応一覧を確認する")&&code.includes('sbmDoctorOpenDiagnosisStatus'),'Doctor status menu redesigned');
+ok(!code.includes("6．Doctor対応一覧を確認する")&&code.includes('sbmRetireDoctorWorklistSheets_'),'obsolete Doctor worklist retired');
 ok(code.includes("var headers=['選択','優先','記事タイトル','選定理由','状態'"),'five-column referral human view');
 ok(code.includes('cand.hideColumns(6,8)'),'referral machine columns hidden');
 ok(code.includes('function sbmDoctorApplyReferralRowStates_'),'referral row state styling');
@@ -15,8 +15,8 @@ ok(code.includes("clearDataValidations().setValue(false).setBackground('#eeeeee'
 ok(code.includes("set('作業状態','👀 モニター中')"),'normal monitoring state retained');
 ok(code.includes("rec.values[rec.hm['状態コード']-1]='MONITORING'"),'Doctor treatment enters monitoring');
 ok(code.includes('sbmDoctorTreatmentResultAsFeedback_'),'Doctor treatment result adapts to monitoring history');
-ok(code.includes("!mainQuery && imps > 0"),'missing main query replenishment');
+ok(code.includes("fetchedQuery < maxMeta && url && !mainQuery && imps > 0"),'missing real main query replenishment');
 ok(code.includes('var needsMeta = !articleTitle'),'missing H1/title replenishment');
-ok(code.includes('report.setColumnWidth(2,760)'),'health report compact reading width');
+ok(code.includes('sbmPolishDoctorHealthReportView_')||code.includes('sbmDoctorPolishHealthReportView_'),'health report polish retained');
 ok(code===dist,'distribution code identical');
 console.log('PASS product5100_rc7_human_view_workflow_test');

@@ -1,0 +1,20 @@
+const fs=require('fs');
+const code=fs.readFileSync('apps-script/Code.gs','utf8');
+const dist=fs.readFileSync('distribution/コード.gs','utf8');
+function ok(v,m){if(!v){console.error('FAIL:',m);process.exit(1)}}
+ok(!code.includes(".addItem('6．Doctor対応一覧を確認する'"),'Doctor worklist menu retired');
+ok(code.includes('function sbmRetireDoctorWorklistSheets_'),'legacy Doctor worklist retirement helper');
+ok(code.includes("sbmOpenImprovementHistory();"),'legacy Doctor worklist entry redirects to improvement history');
+ok(code.includes("'改善方法'"),'improvement method field exists');
+ok(code.includes("improvement_method:'Doctor→Writer'"),'Doctor Writer result identifies method');
+ok(code.includes("'改善方法':data.improvement_method||'通常改善'"),'normal improvement fallback');
+ok(code.includes("h['改善方法']||'通常改善'"),'effect sheet inherits improvement method');
+ok(code.includes("setValue('✏️ 改善中')") || code.includes("'✏️ 改善中'"),'shared work-state improvement in progress');
+ok(code.includes("set('作業状態','👀 モニター中')"),'shared monitoring state after result');
+ok(code.includes('function sbmEnsureArticleListDisplayCompleteness_'),'article list completeness helper');
+ok(code.includes("SBM_QUERY_NO_DATA_LABEL = '検索実績なし'"),'no-query user label');
+ok(code.includes("SBM_QUERY_PENDING_LABEL = '取得待ち'"),'pending-query user label');
+ok(code.includes('function sbmRealMainQuery_'),'placeholder is excluded from real query handoff');
+ok(code.includes("articleTitle = sbmCleanDisplayTitle_('', url) || 'タイトル取得待ち'"),'title fallback prevents blank');
+ok(code===dist,'distribution code identical');
+console.log('PASS product5100_rc8_unified_improvement_workflow_test');

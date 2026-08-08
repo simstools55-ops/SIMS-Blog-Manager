@@ -1,47 +1,47 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-08T17:02:14+09:00",
-  "file_count": 1036,
+  "generated_at": "2026-08-08T19:15:00+09:00",
+  "file_count": 1038,
   "files": [
     {
-      "path": "github/workflows/deploy.yml",
+      "path": ".github/workflows/deploy.yml",
       "sha256": "a46b738669c8923e17c0491f663edac1a6b335edcb960489d67f0669e8eb35f5",
       "size": 915
     },
     {
-      "path": "gitignore",
+      "path": ".gitignore",
       "sha256": "ad8cf3990ef9272f621f2d0906590be8e9cde9d68cc6b1729c73fcefdb726622",
       "size": 5
     },
     {
-      "path": "pytest_cache/.gitignore",
+      "path": ".pytest_cache/.gitignore",
       "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
       "size": 37
     },
     {
-      "path": "pytest_cache/CACHEDIR.TAG",
+      "path": ".pytest_cache/CACHEDIR.TAG",
       "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
       "size": 191
     },
     {
-      "path": "pytest_cache/README.md",
+      "path": ".pytest_cache/README.md",
       "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
       "size": 302
     },
     {
-      "path": "pytest_cache/v/cache/lastfailed",
+      "path": ".pytest_cache/v/cache/lastfailed",
       "sha256": "0e88ee622a4b581b4d2843bd8d30816384ad3bc6901f256aab823f682aebf829",
       "size": 5363
     },
     {
-      "path": "pytest_cache/v/cache/nodeids",
+      "path": ".pytest_cache/v/cache/nodeids",
       "sha256": "1bfe6d54e562e7625f812b9e5d41cfe0556af802b7fb79b7db5695d7c2a1a7ea",
       "size": 679
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "724ca76bae75815e1bef687fe42a641d352ea5f168a22a91132e04abc90c4737",
-      "size": 49982
+      "sha256": "70411f213db4b6aac720379d800422930a91d5a9c8cdbf7dae2aeb131777630c",
+      "size": 50430
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -309,6 +309,11 @@
       "size": 937
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md",
+      "sha256": "2ce6818ebb023349bb6ce5d5139e4f5a41b23cd13475e5dc05dccd3e1aae00c3",
+      "size": 2074
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8.md",
       "sha256": "52d72af6cccdbc83776206fc30650cf269772689b7ff6af3c565f344c3271666",
       "size": 3196
@@ -455,8 +460,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "af4169be4cc3cc198e70672a8c639506268a9b766d8760c8fb80ce9fd90a796b",
-      "size": 657717
+      "sha256": "2ea2affe2145a4b66009f92144922f3dd87dfe495e99d265b3d1ba0d549a4fc5",
+      "size": 658978
     },
     {
       "path": "apps-script/appsscript.json",
@@ -795,8 +800,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "af4169be4cc3cc198e70672a8c639506268a9b766d8760c8fb80ce9fd90a796b",
-      "size": 657717
+      "sha256": "2ea2affe2145a4b66009f92144922f3dd87dfe495e99d265b3d1ba0d549a4fc5",
+      "size": 658978
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -4520,8 +4525,8 @@
     },
     {
       "path": "tests/product5100_rc7_human_view_workflow_test.js",
-      "sha256": "b5e18bd5485e4fa91d6cc5e0d850ed123690a52b9bb0608f180c938a4fad1cba",
-      "size": 1884
+      "sha256": "ebaf0412932f4612a50518de19ef0506cbb121148695ae2cfbe7e0ba94709b3d",
+      "size": 1977
     },
     {
       "path": "tests/product5100_rc8_compact_doctor_ui_test.js",
@@ -4530,13 +4535,13 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_candidate_worklist_test.js",
-      "sha256": "1f5d4df1b8400e8dd5c0c18464eb40148045a04db6c0aee848d3b63f2d507f03",
-      "size": 1476
+      "sha256": "ba5f6372ac5e9f778f9d8b86825d818fee1c8cc0c22a59bdd627fe3438ca9e4c",
+      "size": 1321
     },
     {
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
-      "sha256": "adb40275941d2b5ece5e7f89132d6d0fff9d212eff724120542c610c711c93b5",
-      "size": 864
+      "sha256": "823db1548a25eead0b94b8114aac976f71738468040d27dae78d5c47040ecb63",
+      "size": 646
     },
     {
       "path": "tests/product5100_rc8_typed_column_referral_hotfix_test.js",
@@ -4544,9 +4549,14 @@
       "size": 1294
     },
     {
+      "path": "tests/product5100_rc8_unified_improvement_workflow_test.js",
+      "sha256": "d2780a5a015efcfac98f0c08e3442ba1becb869ff1d6c37ac1f4fb7519fcaf04",
+      "size": 1786
+    },
+    {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
-      "sha256": "768980d69277d8e76395c3b528db24cd2028193c708bcbf8ba9d3b9eebab2279",
-      "size": 1415
+      "sha256": "af30e2066212c577b57275d2dfe3131e6dd20ea83993a6af2e1dc9058192410b",
+      "size": 1423
     },
     {
       "path": "tests/product5610_mapping_guard_test.js",

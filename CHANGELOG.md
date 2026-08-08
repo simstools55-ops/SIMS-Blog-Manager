@@ -1,4 +1,11 @@
 
+## 5.10.0-RC8 Unified Improvement Workflow Hotfix
+- Doctor対応一覧を廃止し、Doctor経由処置を改善履歴・改善の推移へ統合。
+- 改善方法（通常改善 / Doctor→Writer）を履歴・推移へ追加。
+- 記事一覧のタイトル・メインクエリ表示の空欄を解消。
+- Doctor→Writer処置中は作業状態を「改善中」、結果登録後は「モニター中」として通常改善と共通化。
+
+
 ## 5.10.0-RC8 Doctor Candidate / Worklist UX Hotfix
 - Doctor精密診断画面を「候補一覧」に再設計し、記事別の短い選定理由を表示。
 - Doctor診断状況を「対応一覧」に簡素化し、一覧性を改善。
