@@ -31,10 +31,11 @@ def test_doctor_worklist_is_retired_from_user_menu():
     assert "sbmRetireDoctorWorklistSheets_" in CODE
 
 
-def test_improvement_history_and_effect_share_method_field():
-    assert "'改善方法'" in CODE[CODE.index('const SBM_HISTORY_HEADERS_V2'):CODE.index('const SBM_EFFECT_HEADERS_V2')]
+def test_improvement_history_and_effect_share_route_field():
+    assert "'改善経路'" in CODE[CODE.index('const SBM_HISTORY_HEADERS_V2'):CODE.index('const SBM_EFFECT_HEADERS_V2')]
     effect = CODE[CODE.index('const SBM_EFFECT_HEADERS_V2'):CODE.index('function sbmApplyProductVisibleTabs_')]
-    assert "'改善方法'" in effect
+    assert "'改善経路'" in effect
+    assert "['改善経路','改善方法']" in CODE
     assert "improvement_method:'Doctor→Writer'" in CODE
 
 

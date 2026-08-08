@@ -989,3 +989,6 @@
 - Search Console URL検査の結果選択UIを追加。
 - Doctor_Casesへ確認結果・再診依頼を記録。
 - Writer結果欄はWriterルート時のみ表示。
+
+## 5.10.0-RC8 Final
+- Finalized Doctor severity/category UX, quantified health trends, improvement route naming, hidden AI column, and Today query blank handling.
