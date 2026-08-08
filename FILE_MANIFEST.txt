@@ -56,6 +56,7 @@ RELEASE_NOTES_v5.10.0-RC4.md
 RELEASE_NOTES_v5.10.0-RC5.md
 RELEASE_NOTES_v5.10.0-RC6.md
 RELEASE_NOTES_v5.10.0-RC7.md
+RELEASE_NOTES_v5.10.0-RC8-Doctor-Header-Layout-Hotfix.md
 RELEASE_NOTES_v5.10.0-RC8.md
 RELEASE_NOTES_v5.7.1-RC10.md
 RELEASE_NOTES_v5.7.1-RC11.md
@@ -850,6 +851,9 @@ tests/product5100_rc4_writer_result_dialog_hotfix_test.js
 tests/product5100_rc5_guided_user_confirmation_test.js
 tests/product5100_rc6_ui_ux_refresh_test.js
 tests/product5100_rc7_human_view_workflow_test.js
+tests/product5100_rc8_compact_doctor_ui_test.js
+tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js
+tests/product5100_rc8_typed_column_referral_hotfix_test.js
 tests/product5100_rc8_workflow_ux_qa_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js

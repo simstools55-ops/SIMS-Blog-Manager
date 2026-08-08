@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-08T09:10:28+09:00",
-  "file_count": 931,
+  "generated_at": "2026-08-08T15:56:31+09:00",
+  "file_count": 935,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -294,9 +294,14 @@
       "size": 1678
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Doctor-Header-Layout-Hotfix.md",
+      "sha256": "c915a24b8c05c55bc91f2802c395167ac5eef05d2c5d69c4067d0b3bbc74df81",
+      "size": 937
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8.md",
-      "sha256": "13afcf07775963fc7adcd424be2f024691cb0524f4c0f8d97d55e829a89227a9",
-      "size": 1797
+      "sha256": "52d72af6cccdbc83776206fc30650cf269772689b7ff6af3c565f344c3271666",
+      "size": 3196
     },
     {
       "path": "RELEASE_NOTES_v5.7.1-RC10.md",
@@ -440,8 +445,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "365e8ff36754352d7b3acef407c0266aad88d90cf29b96a800ace32f862fed59",
-      "size": 655540
+      "sha256": "c1d9bd515c8be04f618782c71e1cf2f87536244cb9069eead8d27b79d1a1e675",
+      "size": 658673
     },
     {
       "path": "apps-script/appsscript.json",
@@ -780,8 +785,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "365e8ff36754352d7b3acef407c0266aad88d90cf29b96a800ace32f862fed59",
-      "size": 655540
+      "sha256": "c1d9bd515c8be04f618782c71e1cf2f87536244cb9069eead8d27b79d1a1e675",
+      "size": 658673
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -3705,8 +3710,8 @@
     },
     {
       "path": "tests/__pycache__/conftest.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "4f4c643b4e0ff9f9b698a1be7f2a2e342166bb8d68e3f0fbb836d0ca32bdbffb",
-      "size": 663
+      "sha256": "f6e91280f3f2e535bb37bab413a1ebf23f72992ecd924f71fbfebb7018c760e2",
+      "size": 661
     },
     {
       "path": "tests/conftest.py",
@@ -4255,18 +4260,33 @@
     },
     {
       "path": "tests/product5100_rc6_ui_ux_refresh_test.js",
-      "sha256": "711d33be0da3740577842637d07303e5560fdc86f11c8d349b68cd39d6e86c7f",
-      "size": 1664
+      "sha256": "cbd2a2996a8aa99565b25cbe3aa344313e20c9b573774b2af824a2a2bbfc625c",
+      "size": 1675
     },
     {
       "path": "tests/product5100_rc7_human_view_workflow_test.js",
-      "sha256": "8f26a5fbf44a55aecfecb1851bad3531c2405711a4d3c8bfdf97609832d8bb3d",
-      "size": 1876
+      "sha256": "2e28e7b14ad5c6d90e532001e4d3525c4f73cc1919e88b4e6fa2a5e7f4b17ba8",
+      "size": 1884
+    },
+    {
+      "path": "tests/product5100_rc8_compact_doctor_ui_test.js",
+      "sha256": "640a50c8242f89fe3e274defc932a2815623c38867a0ab80677c1dd25e77a3dc",
+      "size": 1155
+    },
+    {
+      "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
+      "sha256": "c2edb09e40a7f560f389ce733b8f23ac0da99284e33b00ac507374e402cacc41",
+      "size": 1472
+    },
+    {
+      "path": "tests/product5100_rc8_typed_column_referral_hotfix_test.js",
+      "sha256": "e7c1daf50696c70429206bc69236cd34a4a134a4f5e7908d8e84bcd92ef43593",
+      "size": 1443
     },
     {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
-      "sha256": "9fd8ea0b6da8e5c108a78963499fa97e6bc4e1b0b6a13fdae2fb04de934f1fd5",
-      "size": 1560
+      "sha256": "23b8c4267e845d5856e57358130bdccf54145b343a8a5b0f757a0c3841a7a28e",
+      "size": 1616
     },
     {
       "path": "tests/product5610_mapping_guard_test.js",
@@ -4390,8 +4410,8 @@
     },
     {
       "path": "tests/release/__pycache__/test_release_candidate_integrity.cpython-313-pytest-9.0.2.pyc",
-      "sha256": "15230cb39400a799f0cb4baae41a29a51f528635c93582cecfe663de13a586c9",
-      "size": 5545
+      "sha256": "6617869d298ca2391f1caa4af7f61ef940a6e046a81fc54c2ff1d72e448a8a2b",
+      "size": 5543
     },
     {
       "path": "tests/release/test_release_candidate_integrity.py",
