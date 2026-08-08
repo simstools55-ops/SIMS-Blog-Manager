@@ -9522,12 +9522,12 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
 
   var headers=['選択','重症度','記事タイトル','選定理由','状態','記事ID','記事URL','優先度','診断予定','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
-  var selectedRows=current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
   var out=selectedRows.map(function(r){
     var code=String(r[hm['一次検査コード']-1]||'');
     var articleId=String(r[hm['記事ID']-1]||''), articleUrl=String(r[hm['記事URL']-1]||'');
     var humanStatus=sbmDoctorReferralHumanStatus_(articleId,articleUrl);
-    return [false,sbmDoctorSeverity_(code,String(r[hm['優先度']-1]||'')),String(r[hm['記事タイトル']-1]||''),sbmDoctorSelectionReason_(code,r,hm),humanStatus.label,articleId,articleUrl,sbmDoctorPriorityDisplay_(String(r[hm['優先度']-1]||'')),sbmDoctorPlannedExamination_(code),Number(r[hm['180日表示']-1]||0),Number(r[hm['180日クリック']-1]||0),Number(r[hm['180日CTR']-1]||0),Number(r[hm['180日平均順位']-1]||0)];
+    return [false,sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),String(r[hm['記事タイトル']-1]||''),sbmDoctorSelectionReason_(code,r,hm),humanStatus.label,articleId,articleUrl,sbmDoctorPriorityDisplay_(String(r[hm['優先度']-1]||'')),sbmDoctorPlannedExamination_(code),Number(r[hm['180日表示']-1]||0),Number(r[hm['180日クリック']-1]||0),Number(r[hm['180日CTR']-1]||0),Number(r[hm['180日平均順位']-1]||0)];
   });
   if(out.length) cand.getRange(7,1,out.length,out[0].length).setValues(out);
   else { cand.getRange('A7:E8').setBackground('#f7f7f7'); cand.getRange('A7').setValue('今回、精密診断を優先する記事はありません。').setHorizontalAlignment('left').setVerticalAlignment('middle'); }
@@ -9619,6 +9619,49 @@ function sbmDoctorSeverity_(code,priority){
   if(code==='LONG_TERM_DECLINE' && priority==='高') return '🟠 重症';
   if(code==='CTR_OPPORTUNITY' || code==='POSITION_OPPORTUNITY' || code==='LONG_TERM_STAGNATION') return '🟡 中等症';
   return priority==='高' ? '🟠 重症' : '🟢 軽症';
+}
+/** RC8 Final Hotfix 3: 変化率だけでなく母数・絶対量も加味した重症度。 */
+function sbmDoctorSeverityForRow_(code,priority,row,hm){
+  function n(k){return hm[k]?Number(row[hm[k]-1]||0):0;}
+  function decline(before,after){return before>0?Math.max(0,(before-after)/before):0;}
+  var firstC=n('前半90日クリック'),secondC=n('後半90日クリック'),firstI=n('前半90日表示'),secondI=n('後半90日表示');
+  var prevC=n('前28日クリック'),recentC=n('直近28日クリック'),prevI=n('前28日表示'),recentI=n('直近28日表示');
+  var fullC=n('180日クリック'),fullI=n('180日表示');
+  if(code==='RECENT_DROP'){
+    var c28=decline(prevC,recentC),i28=decline(prevI,recentI);
+    if((prevC>=20&&c28>=0.60)||(prevI>=500&&i28>=0.60))return '🔴 緊急';
+    if((prevC>=5&&c28>=0.50)||(prevI>=150&&i28>=0.50))return '🟠 重症';
+    return '🟡 中等症';
+  }
+  if(code==='LONG_TERM_DECLINE'){
+    var c90=decline(firstC,secondC),i90=decline(firstI,secondI);
+    if((firstC>=20&&c90>=0.60)||(firstI>=500&&i90>=0.60))return '🟠 重症';
+    if((firstC>=5&&c90>=0.40)||(firstI>=100&&i90>=0.40))return '🟡 中等症';
+    return '🟢 軽症';
+  }
+  if(code==='CTR_OPPORTUNITY'||code==='POSITION_OPPORTUNITY'||code==='LONG_TERM_STAGNATION')return (fullC>=5||fullI>=200||priority==='高')?'🟡 中等症':'🟢 軽症';
+  return priority==='高'?'🟠 重症':priority==='中'?'🟡 中等症':'🟢 軽症';
+}
+function sbmDoctorLatestHealthCheckIdFromRows_(rows,hm){
+  var bestId='',bestTime=-1;
+  (rows||[]).forEach(function(r){
+    var id=hm['健康診断ID']?String(r[hm['健康診断ID']-1]||''):'';if(!id)return;
+    var raw=hm['取得日時']?r[hm['取得日時']-1]:'';var t=raw instanceof Date?raw.getTime():Date.parse(String(raw||''));
+    if(!isNaN(t)&&t>=bestTime){bestTime=t;bestId=id;}else if(bestTime<0){bestId=id;}
+  });
+  if(!bestId){for(var i=(rows||[]).length-1;i>=0;i--){var x=hm['健康診断ID']?String(rows[i][hm['健康診断ID']-1]||''):'';if(x){bestId=x;break;}}}
+  return bestId;
+}
+function sbmDoctorDedupeCandidateRows_(rows,hm){
+  var seen={},out=[];
+  (rows||[]).forEach(function(r){
+    var id=hm['記事ID']?String(r[hm['記事ID']-1]||'').trim():'';
+    var url=hm['記事URL']?sbmNormalizeUrl_(r[hm['記事URL']-1]||''):'';
+    var title=hm['記事タイトル']?String(r[hm['記事タイトル']-1]||'').trim():'';
+    var key=id?'id:'+id:(url?'url:'+url:(title?'title:'+title:''));
+    if(!key||seen[key])return;seen[key]=true;out.push(r);
+  });
+  return out;
 }
 function sbmDoctorPriorityDisplay_(priority){
   if(priority==='高')return '最優先';
@@ -9788,9 +9831,11 @@ function sbmDoctorReferralHeaderMap_(sh){
 function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(), snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
   if(!snap||snap.getLastRow()<2)return null;
-  var hm=sbmHeaderMap_(snap), current=snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues();
+  var hm=sbmHeaderMap_(snap), allRows=snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues();
   if(!hm['詳細検査'])return null;
-  var selectedRows=current.filter(function(r){return String(r[hm['詳細検査']-1]||'')==='精密診断候補';}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  var latestHealthCheckId=sbmDoctorLatestHealthCheckIdFromRows_(allRows,hm);
+  var current=latestHealthCheckId?allRows.filter(function(r){return String(r[hm['健康診断ID']-1]||'')===latestHealthCheckId;}):allRows;
+  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){return String(r[hm['詳細検査']-1]||'')==='精密診断候補';}),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
   var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
   try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
   var cand=ss.insertSheet(candName), headers=['選択','重症度','記事タイトル','選定理由','状態','記事ID','記事URL','優先度','診断予定','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
@@ -9798,7 +9843,7 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   cand.getRange('A1:E1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
   cand.getRange('A2:E2').merge().setValue('半年診断で詳しい確認が必要と判定された記事です。1件だけ選び、SIMS Doctorメニューの「5．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
-  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),st=sbmDoctorReferralHumanStatus_(id,url);return [false,sbmDoctorSeverity_(code,String(r[hm['優先度']-1]||'')),String(r[hm['記事タイトル']-1]||''),sbmDoctorSelectionReason_(code,r,hm),st.label,id,url,sbmDoctorPriorityDisplay_(String(r[hm['優先度']-1]||'')),sbmDoctorPlannedExamination_(code),Number(r[hm['180日表示']-1]||0),Number(r[hm['180日クリック']-1]||0),Number(r[hm['180日CTR']-1]||0),Number(r[hm['180日平均順位']-1]||0)];});
+  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),st=sbmDoctorReferralHumanStatus_(id,url);return [false,sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),String(r[hm['記事タイトル']-1]||''),sbmDoctorSelectionReason_(code,r,hm),st.label,id,url,sbmDoctorPriorityDisplay_(String(r[hm['優先度']-1]||'')),sbmDoctorPlannedExamination_(code),Number(r[hm['180日表示']-1]||0),Number(r[hm['180日クリック']-1]||0),Number(r[hm['180日CTR']-1]||0),Number(r[hm['180日平均順位']-1]||0)];});
   if(out.length)cand.getRange(7,1,out.length,out[0].length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する記事はありません。');
   cand.setFrozenRows(6);cand.setColumnWidth(1,70);cand.setColumnWidth(2,90);cand.setColumnWidth(3,390);cand.setColumnWidth(4,285);cand.setColumnWidth(5,145);for(var c=6;c<=13;c++)cand.setColumnWidth(c,110);try{cand.hideColumns(6,8);}catch(eHide){}
   cand.setRowHeight(1,36);cand.setRowHeight(2,48);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setVerticalAlignment('middle').setFontFamily('Arial');
