@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const code = fs.readFileSync(path.join(__dirname, '..', 'apps-script', 'Code.gs'), 'utf8');
 function must(x, msg){ if(!x){ console.error('FAIL:', msg); process.exit(1); } }
-must(code.includes("report.getRange('A1:F16')"), 'health report must fit in 16-row compact layout');
-must(code.includes("report.getRange('B9').setValue(overall)"), 'Doctor overall comment must use wide text cell');
-must(code.includes("report.getRange('B12').setValue(trends.length"), 'trend text must use wide text cell');
+must(code.includes("report.getRange('A1:B13')"), 'health report must fit in 13-row two-column layout');
+must(code.includes("['Doctor所見',overall]"), 'Doctor overall comment must be in A-label/B-content layout');
+must(code.includes("['多く見られた傾向',trendText]"), 'trend text must be in A-label/B-content layout');
 must(code.includes("function sbmDoctorHealthProgress_"), 'compact health progress helper missing');
 must(code.includes("function sbmDoctorFriendlyHealthError_"), 'friendly error adapter missing');
 must(code.includes("Google Apps Script の権限確認が必要です。"), 'human-readable permission error missing');
