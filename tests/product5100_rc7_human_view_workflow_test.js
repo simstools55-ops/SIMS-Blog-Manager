@@ -11,7 +11,7 @@ ok(!code.includes("6．Doctor対応一覧を確認する")&&code.includes('sbmRe
 ok(code.includes("var headers=['選択','重症度','記事タイトル','選定理由','状態'"),'five-column referral human view');
 ok(code.includes('cand.hideColumns(6,8)'),'referral machine columns hidden');
 ok(code.includes('function sbmDoctorApplyReferralRowStates_'),'referral row state styling');
-ok(code.includes("clearDataValidations().setValue(false).setBackground('#eeeeee')"),'completed referral cannot be selected');
+ok(code.includes("clearDataValidations().clearContent().setBackground('#eeeeee')"),'completed referral cannot be selected');
 ok(code.includes("set('作業状態','👀 モニター中')"),'normal monitoring state retained');
 ok(code.includes("rec.values[rec.hm['状態コード']-1]='MONITORING'"),'Doctor treatment enters monitoring');
 ok(code.includes('sbmDoctorTreatmentResultAsFeedback_'),'Doctor treatment result adapts to monitoring history');

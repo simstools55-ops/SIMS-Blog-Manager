@@ -9682,11 +9682,19 @@ function sbmDoctorApplyReferralRowStates_(sh,startRow,count){
     if(statusCol)sh.getRange(row,statusCol).setValue(st.label);
     var range=sh.getRange(row,1,1,Math.min(5,sh.getLastColumn()));
     if(st.completed){
-      sh.getRange(row,1).clearDataValidations().setValue(false).setBackground('#eeeeee');
+      // RC8 Final Hotfix 2: 入力規則だけ外して false を残すとセルに FALSE と表示される。
+      // 完了・モニター中は選択不可の空欄セルとして扱う。
+      sh.getRange(row,1).clearDataValidations().clearContent().setBackground('#eeeeee');
       range.setBackground('#eeeeee').setFontColor('#777777');
     }else{
-      sh.getRange(row,1).insertCheckboxes();
-      var bg=st.code==='WRITER_IN_PROGRESS'||st.code==='PUBLICATION_PENDING'?'#fff2cc':st.code.indexOf('USER_')===0||st.code==='FOLLOW_UP_REQUEST_READY'?'#e8f0fe':'#ffffff';
+      var selectCell=sh.getRange(row,1);
+      var current=selectCell.getValue()===true;
+      selectCell.insertCheckboxes().setValue(current);
+      var bg='#ffffff';
+      if(st.code==='WRITER_IN_PROGRESS'||st.code==='PUBLICATION_PENDING') bg='#fff2cc';
+      else if(st.code==='DOCTOR_DIAGNOSIS_PENDING'||st.code==='TREATMENT_FAILED'||st.code==='READY') bg='#fce8e6';
+      else if(st.code==='USER_DECISION_REQUIRED') bg='#fff2cc';
+      else if(st.code.indexOf('USER_')===0||st.code==='FOLLOW_UP_REQUEST_READY') bg='#e8f0fe';
       range.setBackground(bg).setFontColor('#202124');
     }
   }

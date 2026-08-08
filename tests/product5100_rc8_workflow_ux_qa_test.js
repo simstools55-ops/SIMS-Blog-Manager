@@ -10,8 +10,8 @@ ok(code.includes("4．精密診断候補を見る")&&code.includes("5．チェ�
 ok(!code.includes("6．Doctor対応一覧を確認する"),'redundant Doctor worklist removed');
 ok(code.includes("setValue('SIMS Doctor　精密診断候補')"),'candidate purpose visible in title');
 ok(code.includes('sbmOpenImprovementHistory();'),'Doctor completion joins improvement history');
-ok(code.includes("['選択','優先','記事タイトル','選定理由','状態'"),'five-column candidate human view retained');
-ok(code.includes("clearDataValidations().setValue(false).setBackground('#eeeeee')"),'completed candidate lock retained');
+ok(code.includes("['選択','重症度','記事タイトル','選定理由','状態'"),'five-column candidate human view retained');
+ok(code.includes("clearDataValidations().clearContent().setBackground('#eeeeee')"),'completed candidate lock retained');
 ok(!code.includes("ui.createMenu('結果登録')"),'standalone result menu remains removed');
 ok(code===dist,'distribution code identical');
 console.log('PASS product5100_rc8_workflow_ux_qa_test');
