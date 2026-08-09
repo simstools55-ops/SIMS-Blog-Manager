@@ -5569,6 +5569,8 @@ function sbmElapsedDaysFromImprovementDate_(value) {
 
 function sbmUpdateEffectivenessCore_(showAlert){
   sbmEnsureHistoryAndEffectSchemas_();
+  // Doctor処置と改善履歴IDの紐付けから改善経路を毎回復元し、推移からDoctor→Writer等が消える退化を防ぎます。
+  try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRouteSync){sbmLog_('DoctorRouteSync','Warning',String(eRouteSync));}
   var history=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[],articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],byId={},byUrl={};
   articles.forEach(function(a){if(a['ArticleID'])byId[String(a['ArticleID'])]=a;if(a['記事URL'])byUrl[sbmNormalizeUrl_(a['記事URL'])]=a;});
   var rows=[], now=new Date(), recordedCount=0;
@@ -9720,6 +9722,36 @@ function sbmDoctorLatestCaseForArticle_(articleId,url){
   });
   return best;
 }
+/** RC8 Final Hotfix 5: 現在の健康診断より後に作られたDoctorケースだけを、現在候補の処理済みケースとして扱います。 */
+function sbmDoctorCaseIsAfterCurrentHealthCheck_(caseRow){
+  if(!caseRow)return false;
+  var run=sbmDoctorGetHealthRun_(), caseDate=sbmParseDate_(caseRow['作成日時']||caseRow['更新日時']||'');
+  if(!run||!run.createdAt)return true;
+  var runDate=sbmParseDate_(run.createdAt);
+  if(!caseDate||!runDate)return true;
+  return caseDate.getTime()>=runDate.getTime();
+}
+
+/** 現在の精密診断候補に残してよい記事か。候補は未処理（Doctor未送信）だけです。 */
+function sbmDoctorIsUntreatedCurrentCandidate_(articleId,url){
+  var article=sbmFindArticleDbByIdentity_(articleId,url)||{}, work=String(article['作業状態']||'');
+  if(work.indexOf('モニター中')>=0||work.indexOf('改善中')>=0)return false;
+  var c=sbmDoctorLatestCaseForArticle_(articleId,url);
+  if(c&&sbmDoctorCaseIsAfterCurrentHealthCheck_(c))return false;
+  return true;
+}
+
+/** 候補ビューから指定記事を即時除外します。正本は健康診断スナップショットなのでデータは失いません。 */
+function sbmDoctorRemoveCandidateArticle_(articleId,url){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断候補');
+  if(!sh||sh.getLastRow()<7)return;
+  var hm=sbmDoctorReferralHeaderMapNoRepair_(sh),idCol=hm['記事ID'],urlCol=hm['記事URL'],norm=sbmNormalizeUrl_(url||'');
+  for(var r=sh.getLastRow();r>=7;r--){
+    var id=idCol?String(sh.getRange(r,idCol).getDisplayValue()||''):'',u=urlCol?sbmNormalizeUrl_(sh.getRange(r,urlCol).getDisplayValue()||''):'';
+    if((articleId&&id===String(articleId))||(norm&&u===norm))sh.deleteRow(r);
+  }
+}
+
 function sbmDoctorReferralHumanStatus_(articleId,url){
   var article=sbmFindArticleDbByIdentity_(articleId,url)||{}, work=String(article['作業状態']||'');
   var c=sbmDoctorLatestCaseForArticle_(articleId,url), code=c?String(c['状態コード']||''):'';
@@ -9856,7 +9888,11 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   if(!hm['詳細検査'])return null;
   var latestHealthCheckId=sbmDoctorLatestHealthCheckIdFromRows_(allRows,hm);
   var current=latestHealthCheckId?allRows.filter(function(r){return String(r[hm['健康診断ID']-1]||'')===latestHealthCheckId;}):allRows;
-  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){return String(r[hm['詳細検査']-1]||'')==='精密診断候補';}),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){
+    if(String(r[hm['詳細検査']-1]||'')!=='精密診断候補')return false;
+    var id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||'');
+    return sbmDoctorIsUntreatedCurrentCandidate_(id,url);
+  }),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
   var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
   try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
   var cand=ss.insertSheet(candName), headers=['選択','重症度','記事タイトル','選定理由','状態','記事ID','記事URL','優先度','診断予定','半年の表示回数','半年のクリック数','半年のCTR','半年の平均順位'];
@@ -9909,8 +9945,12 @@ function sbmDoctorCreateRequestFromDetailedCandidate(){
     }
     if(!dbRow)throw new Error('記事管理で対象記事を確認できませんでした。記事ID：'+(articleId||'未取得')+' / URL：'+(articleUrl||'未取得'));
     var result=sbmDoctorCreateAndSaveRequest_('ARTICLE_LIST',db,dbRow);
-    sh.getRange(row,col['選択']).setValue(false);
-    try { sbmDoctorApplyReferralRowStates_(sh,row,1); } catch(eRefreshReferral) {}
+    if(result&&result.ok){
+      // 精密診断候補は未処理だけの入口。Doctor依頼を作成した時点で候補ビューから外します。
+      try{sbmDoctorRemoveCandidateArticle_(articleId,articleUrl);}catch(eRemoveCandidate){}
+    }else{
+      try{sh.getRange(row,col['選択']).setValue(false);}catch(eResetCheck){}
+    }
     return result;
   }catch(e){sbmAlert_('Doctor診断依頼を作成できません',String(e.message||e));}
 }
@@ -10301,6 +10341,30 @@ function sbmDoctorTreatmentComponentKey_(component){
   if(c.indexOf('body')>=0||c.indexOf('section')>=0)return 'body';
   return 'body';
 }
+/** Doctorケースの改善履歴IDを正本として改善経路を復元します。Hotfix途中の退化で「通常改善」へ戻った履歴も修復します。 */
+function sbmDoctorRouteFromCase_(c){
+  c=c||{};
+  var destination=String(c['紹介先']||'').toUpperCase();
+  var writer=String(c['Writer結果JSON']||'').trim();
+  if(destination.indexOf('CREATOR')>=0)return 'Doctor→Creator';
+  if(destination.indexOf('MERGE')>=0)return 'Doctor→Merge';
+  if(writer||destination.indexOf('WRITER')>=0)return 'Doctor→Writer';
+  return '';
+}
+function sbmDoctorSyncImprovementRoutesFromCases_(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),hist=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  if(!hist||hist.getLastRow()<2)return 0;
+  var cases=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_CASES)||[],routeByHistory={};
+  cases.forEach(function(c){var hid=String(c['改善履歴ID']||'').trim(),route=sbmDoctorRouteFromCase_(c);if(hid&&route)routeByHistory[hid]=route;});
+  if(!Object.keys(routeByHistory).length)return 0;
+  var hm=sbmHeaderMap_(hist),hidCol=hm['改善履歴ID'],routeCol=hm['改善経路']||hm['改善方法'];
+  if(!hidCol||!routeCol)return 0;
+  var vals=hist.getRange(2,1,hist.getLastRow()-1,hist.getLastColumn()).getValues(),changed=0;
+  vals.forEach(function(row){var hid=String(row[hidCol-1]||'').trim(),route=routeByHistory[hid];if(route&&String(row[routeCol-1]||'')!==route){row[routeCol-1]=route;changed++;}});
+  if(changed)hist.getRange(2,1,vals.length,vals[0].length).setValues(vals);
+  return changed;
+}
+
 function sbmDoctorTreatmentResultAsFeedback_(o){
   var performed=Array.isArray(o.performed_changes)?o.performed_changes:[], pub=o.publication_result||{};
   var publicChanges=performed.map(function(x){return {
@@ -10369,7 +10433,11 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
     rec.values[rec.hm['状態コード']-1]='TREATMENT_FAILED';rec.values[rec.hm['状態']-1]='治療結果受付失敗';
   }
   rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);
-  try{var ref=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_精密診断候補')||SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_精密診断紹介状');if(ref&&ref.getLastRow()>=7)sbmDoctorApplyReferralRowStates_(ref,7,ref.getLastRow()-6);}catch(eReferral){}
+  if(String(rec.values[rec.hm['状態コード']-1]||'')==='MONITORING'){
+    try{sbmDoctorRemoveCandidateArticle_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);}catch(eRemoveDone){}
+    // Caseへ改善履歴IDを書いた後に再同期し、改善の推移へDoctor経路を確実に反映します。
+    try{sbmDoctorSyncImprovementRoutesFromCases_();sbmUpdateEffectivenessCore_(false);}catch(eFinalEffect){sbmLog_('DoctorFinalMonitoringSync','Warning',String(eFinalEffect));}
+  }
   return {caseId:String(o.case_id||''),status:String(rec.values[rec.hm['状態']-1]||'')};
 }
 function sbmDoctorRegisterWriterTreatmentResultFromDialog(raw){
