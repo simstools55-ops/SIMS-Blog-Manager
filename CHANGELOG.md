@@ -996,3 +996,8 @@
 ## RC8 URL Canonicalization Fix
 - URL末尾スラッシュ差を同一記事として扱う共通Canonical Keyを強化。
 - 記事DB等の運用URLを一度だけ正規化し、直接URL文字列比較を除去。
+
+## 5.10.0-RC8 GSC URL Display Policy
+- Separate internal URL identity keys from user-visible URLs.
+- Prefer Search Console page URL representation for operational sheets.
+- Preserve existing URL representation when an article is not present in the current GSC fetch.
