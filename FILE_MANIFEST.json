@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-09T11:54:49.914255+00:00",
-  "file_count": 955,
+  "generated_at": "2026-08-09T12:51:36.430923+00:00",
+  "file_count": 962,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -15,8 +15,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "a650d9732130b8bfbdf0848e23b319cec2c44e5503448dc73e832032de708428",
-      "size": 51265
+      "sha256": "eace5b6fbcec115519261d3125339386da6c5f9e12940390d0649680f688b39c",
+      "size": 51533
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -334,6 +334,16 @@
       "size": 1174
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-GSC-URL-Display-Policy.md",
+      "sha256": "ba1410f155f3c178e4f5f57a9ada9924e45be0546fb0f45584d2dae08b148109",
+      "size": 995
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Health-Staged-Runner.md",
+      "sha256": "652fff2dd95b1a93c4f1a614bbc708e1cc066002e41b63d389944305f0622e2d",
+      "size": 1287
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Release-Candidate-Last.md",
       "sha256": "472643187436acf79d0fd6bf40d1968e4ff6bbeed703d7f42ef550758b1ec631",
       "size": 1405
@@ -469,6 +479,11 @@
       "size": 90
     },
     {
+      "path": "SHA256SUMS.txt",
+      "sha256": "087335bb257336c77a92ffef060e194263d9c905f023920dd0371e9a9ec02187",
+      "size": 107121
+    },
+    {
       "path": "SHARED_VERSION",
       "sha256": "f5e3e93e58ffc2a20a3ca53e8025bc50d7c1dccbef4b34e2388aa9bbf8678466",
       "size": 6
@@ -495,8 +510,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "5666ee22d53321326e9ab16546b4d97491102b8aa9fb2ffb4bb0017cced424af",
-      "size": 697324
+      "sha256": "36fde86f8ae9e21da6e70f8d7d824aa227e381a454f5d83db20047cc2c3a11b4",
+      "size": 703075
     },
     {
       "path": "apps-script/appsscript.json",
@@ -835,8 +850,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "5666ee22d53321326e9ab16546b4d97491102b8aa9fb2ffb4bb0017cced424af",
-      "size": 697324
+      "sha256": "36fde86f8ae9e21da6e70f8d7d824aa227e381a454f5d83db20047cc2c3a11b4",
+      "size": 703075
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -2234,6 +2249,11 @@
       "size": 348
     },
     {
+      "path": "shared/FILE_MANIFEST.txt",
+      "sha256": "5c15ebc90a6e0ba56042b899acd52cce24af6a3c5c0c23c6f32835fa226abe08",
+      "size": 10431
+    },
+    {
       "path": "shared/LICENSE",
       "sha256": "ce0c69a4019923878282e03bb1ce789260e592199a0fbbab67e77fefe0e97664",
       "size": 158
@@ -2427,6 +2447,11 @@
       "path": "shared/RELEASE_NOTES_v3.5.0.md",
       "sha256": "7ab2d2772db0d0fcd8e283496f8c6f2b8d29b6d9c65a8128774d9f8e37de5bf4",
       "size": 798
+    },
+    {
+      "path": "shared/SHA256SUMS.txt",
+      "sha256": "8fe8bda6e69eef4e05f41f1d9f8bee52a12fc7f0ad943f82e17d62dbfc648640",
+      "size": 28251
     },
     {
       "path": "shared/SNAPSHOT_MANIFEST.json",
@@ -4352,6 +4377,16 @@
       "path": "tests/product5100_rc8_final_ux_static_test.js",
       "sha256": "4e5bb0c49007c8922376710d468ce1accb1698d17e66d34b5ed9a533fc906a64",
       "size": 1583
+    },
+    {
+      "path": "tests/product5100_rc8_gsc_display_url_policy_test.js",
+      "sha256": "9223dc931b4679a24a0ec18ba30c3fd7962da7d492252106e34613f402f0ed85",
+      "size": 1157
+    },
+    {
+      "path": "tests/product5100_rc8_health_staged_runner_test.js",
+      "sha256": "0ac91fa36d46752fdca64a319449c0efbcdde656520317de1a404038746dff6c",
+      "size": 1501
     },
     {
       "path": "tests/product5100_rc8_official_blocker_final_test.js",

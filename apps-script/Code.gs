@@ -8353,66 +8353,103 @@ function sbmDoctorPrepareHealthCheckScreen_(){
 function sbmDoctorRunHealthCheck() {
   try {
     sbmDoctorPrepareHealthCheckScreen_();
-    // Doctorへ渡す前に、記事一覧の表示欠損を可能な範囲で自動修復します。
     try { sbmEnsureArticleListDisplayCompleteness_(20,40); } catch(eCompleteness) { sbmLog_('DoctorPreflightArticleListCompleteness','Warning',String(eCompleteness)); }
     sbmDoctorAssertSafeToExport_();
     if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') return sbmAlert_('ブログ健康診断を始められません','初回セットアップとSearch Console接続を完了してください。');
     sbmDoctorEnsureMedicalSheets_();
+
     var run=sbmDoctorGetHealthRun_();
-    if(run&&run.healthCheckId&&run.statusCode!=='PREPARING'&&run.statusCode!=='COMPLETED'&&sbmDoctorSnapshotCountForRun_(run.healthCheckId)===0){run.statusCode='PREPARING';run.phase='180日集計を再取得します';run.processedCount=0;run.nextStep='180日集計を取得';run.lastError='';run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);}
+    if(run&&run.healthCheckId&&run.statusCode!=='COMPLETED'&&sbmDoctorSnapshotCountForRun_(run.healthCheckId)===0){
+      run.statusCode='PREPARING'; run.phase='準備中'; run.processedCount=0; run.nextStep='180日集計'; run.lastError=''; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+    }
+
     if(!run||!run.healthCheckId||run.statusCode==='COMPLETED'){
-      var period=sbmDoctorHealthPeriod_(),articleCount=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB).length,ui=SpreadsheetApp.getUi();
-      var answer=ui.alert('ブログ健康診断を開始します','処理時間の上限が近づいた場合は、安全に途中保存します。\nその場合は、同じ「1．ブログ健康診断を実行」をもう一度選ぶと続きから再開できます。\n\n対象期間：'+period.full.startDate+' ～ '+period.full.endDate+'\n登録記事数：'+articleCount+'件\n\n進捗は「2．健康診断の進み具合を見る」で確認できます。',ui.ButtonSet.OK_CANCEL);
+      var period=sbmDoctorHealthPeriod_(), articleCount=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB).length, ui=SpreadsheetApp.getUi();
+      var answer=ui.alert('ブログ健康診断を開始します','1回の操作で、内部処理を複数STEPに分けて最後まで自動実行します。\n\n対象期間：'+period.full.startDate+' ～ '+period.full.endDate+'\n登録記事数：'+articleCount+'件\n\n処理中は画面を切り替えず、完了後に健康診断書を表示します。',ui.ButtonSet.OK_CANCEL);
       if(answer!==ui.Button.OK)return;
       var id='HC-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss');
-      run={healthCheckId:id,statusCode:'PREPARING',phase:'準備中',startDate:period.full.startDate,endDate:period.full.endDate,targetCount:articleCount,processedCount:0,nextStep:'180日集計を取得',lastSuccessAt:'',retryCount:0,lastError:'',createdAt:sbmNowText_(),updatedAt:sbmNowText_()};
-      sbmDoctorSaveHealthRun_(run);sbmDoctorClearSnapshotForRun_(id);
+      run={healthCheckId:id,statusCode:'PREPARING',phase:'準備中',startDate:period.full.startDate,endDate:period.full.endDate,targetCount:articleCount,processedCount:0,nextStep:'180日集計',lastSuccessAt:'',retryCount:0,lastError:'',createdAt:sbmNowText_(),updatedAt:sbmNowText_()};
+      sbmDoctorSaveHealthRun_(run); sbmDoctorClearSnapshotForRun_(id);
     }
-    sbmDoctorExecuteHealthCheckToCompletion_();
-  }catch(e){var r=sbmDoctorGetHealthRun_()||{};var rawErr=String(e&&e.message?e.message:e);if(r.healthCheckId){r.statusCode='RETRYABLE_ERROR';r.phase='エラー（再実行可能）';r.retryCount=Number(r.retryCount||0)+1;r.lastError=rawErr;r.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(r);}var userErr=rawErr.indexOf('型付きの列')>=0?'シートの表示形式に関するエラーが発生しました。RC8修正版では自動復旧できるようにしています。':rawErr;sbmAlert_('ブログ健康診断でエラーが発生しました',userErr+'\n\n同じ「1．ブログ健康診断を実行」を選ぶと、保存済みの続きから再開します。');}
+    sbmDoctorShowHealthCheckRunnerDialog_();
+  } catch(e) {
+    sbmAlert_('ブログ健康診断を開始できません', String(e&&e.message?e.message:e));
+  }
 }
-// 旧版との互換用。自動トリガーは使用せず、手動再開と同じ安全な処理を行います。
-function sbmDoctorContinueHealthCheckTrigger(){return sbmDoctorExecuteHealthCheckToCompletion_();}
-function sbmDoctorProcessOneHealthStep_(silent){var run=sbmDoctorGetHealthRun_();if(!run||!run.healthCheckId)throw new Error('健康診断の実行情報がありません。');if(run.statusCode==='COMPLETED')return;if(run.statusCode==='PREVIOUS_DONE'){sbmDoctorRunScreening_(!!silent);return;}var period=sbmDoctorHealthPeriodFromRun_(run),step=sbmDoctorNextHealthStep_(run.statusCode);if(!step)throw new Error('現在の状態から処理を続行できません：'+sbmDoctorHealthStatusJa_(run.statusCode));run.statusCode=step.runningCode;run.phase=step.runningLabel;run.nextStep=step.label;run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);var rows=sbmDoctorFetchPageMetrics_(period[step.periodKey]);sbmDoctorMergeSnapshotMetrics_(run.healthCheckId,period,step.metricPrefix,rows);run.statusCode=step.doneCode;run.phase=step.doneLabel;run.nextStep=step.nextLabel;run.processedCount=sbmDoctorSnapshotCountForRun_(run.healthCheckId);run.lastSuccessAt=sbmNowText_();run.lastError='';run.updatedAt=sbmNowText_();sbmDoctorSaveHealthRun_(run);}
+
+/**
+ * RC8: 健康診断は利用者の1回の操作で完了させる。
+ * google.script.run をSTEPごとに呼び分けることで、Apps Script 1実行の時間上限を跨がない。
+ */
+function sbmDoctorShowHealthCheckRunnerDialog_(){
+  var html='<!doctype html><html><head><base target="_top"><style>'+
+    'body{font-family:Arial,sans-serif;margin:0;padding:22px;color:#202124}.title{font-size:22px;font-weight:700;margin-bottom:8px}.sub{color:#5f6368;margin-bottom:20px}.bar{height:14px;background:#e8eaed;border-radius:8px;overflow:hidden}.fill{height:100%;width:0;background:#0b8043;transition:width .25s}.pct{font-weight:700;margin:10px 0}.box{background:#f6f9f7;border:1px solid #dfe7e1;border-radius:8px;padding:14px;margin-top:14px;line-height:1.65}.step{font-weight:700}.small{font-size:12px;color:#5f6368;margin-top:10px}.done{background:#e6f4ea;border-color:#b7dfc4}.err{background:#fce8e6;border-color:#f3b7b1}.btn{margin-top:16px;padding:9px 18px;border:0;border-radius:6px;background:#0b8043;color:white;cursor:pointer}.btn.secondary{background:#5f6368;margin-left:8px}</style></head><body>'+
+    '<div class="title">ブログ健康診断</div><div class="sub">内部で処理を分割し、最後まで自動で進めます。</div>'+
+    '<div class="bar"><div id="fill" class="fill"></div></div><div id="pct" class="pct">準備中…</div>'+
+    '<div id="box" class="box"><div id="step" class="step">処理を開始しています</div><div id="detail">しばらくお待ちください。</div></div>'+
+    '<div id="note" class="small">処理中はこのダイアログを閉じないでください。</div><button id="retry" class="btn" style="display:none">続きから再開</button><button id="close" class="btn secondary" style="display:none">閉じる</button>'+
+    '<script>var retryCount=0,terminal=false;function el(i){return document.getElementById(i)}function paint(r){var p=Math.max(0,Math.min(100,Number(r.progress||0)));el("fill").style.width=p+"%";el("pct").textContent="進捗 "+p+"%";el("step").textContent=r.stage||"処理中";el("detail").textContent=r.message||"";}function next(){if(terminal)return;google.script.run.withSuccessHandler(function(r){paint(r||{});if(r&&r.done){terminal=true;el("box").className="box done";el("note").textContent="健康診断が完了しました。健康診断書を表示します。";setTimeout(function(){google.script.run.withSuccessHandler(function(){google.script.host.close();}).sbmDoctorOpenHealthReport();},300);return;}retryCount=0;setTimeout(next,250);}).withFailureHandler(function(e){var msg=(e&&e.message)?e.message:String(e||"処理が停止しました");el("box").className="box err";el("step").textContent="処理を一時停止しました";el("detail").textContent=msg;el("note").textContent="保存済みの工程から再開できます。";if(retryCount<2 && /時間|timeout|maximum execution|exceeded|停止/i.test(msg)){retryCount++;setTimeout(next,1200);return;}el("retry").style.display="inline-block";el("close").style.display="inline-block";}).sbmDoctorRunHealthStageFromDialog();}el("retry").onclick=function(){el("retry").style.display="none";el("close").style.display="none";el("box").className="box";retryCount=0;next();};el("close").onclick=function(){google.script.host.close();};next();</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(430),'ブログ健康診断');
+}
+
+function sbmDoctorRecoverHealthRunForStage_(run){
+  var code=String(run.statusCode||'');
+  var back={FETCHING_FULL:'PREPARING',FETCHING_FIRST:'FULL_DONE',FETCHING_SECOND:'FIRST_DONE',FETCHING_RECENT:'SECOND_DONE',FETCHING_PREVIOUS:'RECENT_DONE',SCREENING:'PREVIOUS_DONE'};
+  if(back[code]){
+    run.statusCode=back[code]; run.phase=sbmDoctorHealthStatusJa_(back[code]); run.nextStep='保存済みの工程から再開'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  } else if(code==='RETRYABLE_ERROR'){
+    var phase=String(run.phase||'')+' '+String(run.lastError||'');
+    if(phase.indexOf('前半')>=0) run.statusCode='FULL_DONE';
+    else if(phase.indexOf('後半')>=0) run.statusCode='FIRST_DONE';
+    else if(phase.indexOf('直近')>=0) run.statusCode='SECOND_DONE';
+    else if(phase.indexOf('その前')>=0||phase.indexOf('比較')>=0) run.statusCode='RECENT_DONE';
+    else if(phase.indexOf('判定')>=0||phase.indexOf('診断')>=0) run.statusCode='PREVIOUS_DONE';
+    else run.statusCode='PREPARING';
+    run.phase=sbmDoctorHealthStatusJa_(run.statusCode); run.lastError=''; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  }
+  return run;
+}
+
+function sbmDoctorRunHealthStageFromDialog(){
+  var run=sbmDoctorGetHealthRun_();
+  if(!run||!run.healthCheckId) throw new Error('健康診断の実行情報がありません。');
+  run=sbmDoctorRecoverHealthRunForStage_(run);
+  if(run.statusCode==='COMPLETED') return sbmDoctorHealthDialogResult_(run,true,'健康診断が完了しました。');
+  try{
+    if(run.statusCode==='PREVIOUS_DONE'){
+      sbmDoctorRunScreening_(true);
+      run=sbmDoctorGetHealthRun_();
+      return sbmDoctorHealthDialogResult_(run,true,'健康状態の判定と診断書作成が完了しました。');
+    }
+    var period=sbmDoctorHealthPeriodFromRun_(run), step=sbmDoctorNextHealthStep_(run.statusCode);
+    if(!step) throw new Error('現在の工程を判定できません：'+sbmDoctorHealthStatusJa_(run.statusCode));
+    run.statusCode=step.runningCode; run.phase=step.runningLabel; run.nextStep=step.label; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+    var rows=sbmDoctorFetchPageMetrics_(period[step.periodKey]);
+    sbmDoctorMergeSnapshotMetrics_(run.healthCheckId,period,step.metricPrefix,rows);
+    run.statusCode=step.doneCode; run.phase=step.doneLabel; run.nextStep=step.nextLabel; run.processedCount=sbmDoctorSnapshotCountForRun_(run.healthCheckId); run.lastSuccessAt=sbmNowText_(); run.lastError=''; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+    return sbmDoctorHealthDialogResult_(run,false,step.doneLabel+'。次の工程へ進みます。');
+  }catch(e){
+    run=sbmDoctorGetHealthRun_()||run; run.statusCode='RETRYABLE_ERROR'; run.retryCount=Number(run.retryCount||0)+1; run.lastError=String(e&&e.message?e.message:e); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run); throw e;
+  }
+}
+
+function sbmDoctorHealthDialogResult_(run,done,message){
+  return {ok:true,done:!!done,healthCheckId:String(run.healthCheckId||''),statusCode:String(run.statusCode||''),stage:sbmDoctorHealthStatusJa_(run.statusCode),progress:Number(sbmDoctorHealthProgress_(run.statusCode)||0),processed:Number(run.processedCount||0),total:Number(run.targetCount||0),message:String(message||run.nextStep||'')};
+}
+
+// 旧版との互換用。手動再開要求は不要になり、1STEPだけ安全に進めます。
+function sbmDoctorContinueHealthCheckTrigger(){return sbmDoctorRunHealthStageFromDialog();}
+function sbmDoctorProcessOneHealthStep_(silent){return sbmDoctorRunHealthStageFromDialog();}
 function sbmDoctorScheduleContinuation_(){return false;}
 function sbmDoctorDeleteContinuationTriggers_(){return false;}
-
-// 旧メニュー・既存参照との互換性を維持します。
 function sbmDoctorStartHealthCheck() { return sbmDoctorRunHealthCheck(); }
 function sbmDoctorResumeHealthCheck() { return sbmDoctorRunHealthCheck(); }
 
-function sbmDoctorExecuteHealthCheckToCompletion_() {
-  var started = Date.now();
-  var maxMillis = 210000;
-  while (Date.now() - started < maxMillis) {
-    var run = sbmDoctorGetHealthRun_();
-    if (!run || !run.healthCheckId) throw new Error('健康診断の実行情報がありません。');
-    if (run.statusCode === 'COMPLETED') return;
-    if (run.statusCode === 'PREVIOUS_DONE') {
-      sbmDoctorRunScreening_();
-      return;
-    }
-    var period = sbmDoctorHealthPeriodFromRun_(run);
-    var step = sbmDoctorNextHealthStep_(run.statusCode);
-    if (!step) throw new Error('現在の状態から処理を続行できません：' + sbmDoctorHealthStatusJa_(run.statusCode));
-    run.statusCode = step.runningCode;
-    run.phase = step.runningLabel;
-    run.nextStep = step.label;
-    run.updatedAt = sbmNowText_();
-    sbmDoctorSaveHealthRun_(run);
-    var rows = sbmDoctorFetchPageMetrics_(period[step.periodKey]);
-    sbmDoctorMergeSnapshotMetrics_(run.healthCheckId, period, step.metricPrefix, rows);
-    run.statusCode = step.doneCode;
-    run.phase = step.doneLabel;
-    run.nextStep = step.nextLabel;
-    run.processedCount = sbmDoctorSnapshotCountForRun_(run.healthCheckId);
-    run.lastSuccessAt = sbmNowText_();
-    run.lastError = '';
-    run.updatedAt = sbmNowText_();
-    sbmDoctorSaveHealthRun_(run);
-  }
-  var paused = sbmDoctorGetHealthRun_();
-  sbmAlert_('健康診断を一時保存しました', '処理時間の上限が近いため、安全に一時保存しました。\n\n同じ「ブログ全体の健康診断を実行」をもう一度選ぶと、続きから進みます。\n現在の工程：' + (paused ? paused.phase : '確認中'));
+// 互換用。新UIでは呼ばないが、旧参照からでも段階的に処理できるよう残す。
+function sbmDoctorExecuteHealthCheckToCompletion_(){
+  var guard=0, result=null;
+  while(guard++<7){result=sbmDoctorRunHealthStageFromDialog(); if(result&&result.done) return result;}
+  return result;
 }
 
 function sbmDoctorSnapshotCountForRun_(healthCheckId) {
@@ -8695,7 +8732,7 @@ function sbmDoctorHealthStageLine_(code){
   var idx=order.indexOf(code);
   if(code==='RETRYABLE_ERROR') return '①データ取得  ②比較データ  ③健康状態判定  ⚠停止';
   var dataDone=idx>=9, compareDone=idx>=11, screeningDone=idx>=12;
-  return '①データ取得 '+(dataDone?'✓':idx>=1?'…':'・')+'   ②比較データ '+(compareDone?'✓':idx>=9?'…':'・')+'   ③一次診断 '+(screeningDone?'✓':idx>=11?'…':'・');
+  return '①データ取得 '+(dataDone?'✓':idx>=1?'…':'・')+'   ②比較データ '+(compareDone?'✓':idx>=9?'…':'・')+'   ③健康状態判定 '+(screeningDone?'✓':idx>=11?'…':'・');
 }
 function sbmDoctorFriendlyHealthError_(message){
   var s=String(message||'');

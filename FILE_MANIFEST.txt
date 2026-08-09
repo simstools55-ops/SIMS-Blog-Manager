@@ -64,6 +64,8 @@ RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix5.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix6.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix7.md
 RELEASE_NOTES_v5.10.0-RC8-Final.md
+RELEASE_NOTES_v5.10.0-RC8-GSC-URL-Display-Policy.md
+RELEASE_NOTES_v5.10.0-RC8-Health-Staged-Runner.md
 RELEASE_NOTES_v5.10.0-RC8-Release-Candidate-Last.md
 RELEASE_NOTES_v5.10.0-RC8-URL-Canonicalization.md
 RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md
@@ -91,6 +93,7 @@ RELEASE_NOTES_v5.9.7.md
 RELEASE_NOTES_v5.9.8.md
 RELEASE_NOTES_v5.9.9.md
 SECURITY.md
+SHA256SUMS.txt
 SHARED_VERSION
 SUPPORT.md
 UPDATE_GUIDE.md
@@ -444,6 +447,7 @@ scripts/release_audit.py
 shared/.gitignore
 shared/CHANGELOG.md
 shared/COMPATIBILITY_MATRIX.md
+shared/FILE_MANIFEST.txt
 shared/LICENSE
 shared/PLATFORM_MANIFEST.json
 shared/PRODUCT_IDENTITY.json
@@ -483,6 +487,7 @@ shared/RELEASE_NOTES_v3.2.0.md
 shared/RELEASE_NOTES_v3.3.0.md
 shared/RELEASE_NOTES_v3.4.0.md
 shared/RELEASE_NOTES_v3.5.0.md
+shared/SHA256SUMS.txt
 shared/SNAPSHOT_MANIFEST.json
 shared/VERSION
 shared/architecture/CLAUDE_OPERATIONS.md
@@ -868,6 +873,8 @@ tests/product5100_rc8_final_hotfix4_test.js
 tests/product5100_rc8_final_hotfix5_test.js
 tests/product5100_rc8_final_hotfix6_test.js
 tests/product5100_rc8_final_ux_static_test.js
+tests/product5100_rc8_gsc_display_url_policy_test.js
+tests/product5100_rc8_health_staged_runner_test.js
 tests/product5100_rc8_official_blocker_final_test.js
 tests/product5100_rc8_official_candidate_table_test.js
 tests/product5100_rc8_release_candidate_last_test.js
