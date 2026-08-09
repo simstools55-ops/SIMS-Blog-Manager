@@ -1,10 +1,6 @@
-# SIMS-Blog-Manager Product 5.10.0-RC8
+# SIMS-Blog-Manager Product 5.10.0-RC8 URL Canonicalization Fix
 
-RC7で確立したDoctor / Writer / SBM連携を維持し、利用者向けワークフロー表示とQAを仕上げるRCです。
-
-- 「現在地」「次に行うこと」をDoctor主要画面へ追加
-- Doctor 5段階進捗を具体化
-- 日常操作の番号ルールを統一
-- 精密診断紹介状・診断状況をコンパクト化
-- 旧RC12固定QAを現行Product版へ修正
-- RC8退化防止テストを追加
+- Search Console/CMSの末尾スラッシュ差を同一記事として扱うURL Canonical Keyを強化。
+- 記事DB、今日の改善、改善履歴、改善の推移、Doctor系運用シートのURLを共通形式へ一度だけ移行。
+- 記事DB・改善ブリーフ・改善完了処理に残っていたURL直接比較をCanonical比較へ修正。
+- `/1238/` と `/1238` がDoctor→Writer→SBMの同期で別記事扱いされないことをRC8回帰テストへ追加。

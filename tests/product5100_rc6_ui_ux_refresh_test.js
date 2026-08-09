@@ -12,7 +12,7 @@ ok(code.includes("value === '元に戻す検討'"),'negative judgment color');
 ok(code.includes("['Doctor所見',overall]"),'health report summary row');
 ok(code.includes("['多く見られた傾向',trendText]"),'health report trend row');
 ok(code.includes("['次に行うこと',nextText]"),'health report next-action row');
-ok(code.includes('cand.hideColumns(6,8)'),'referral machine columns hidden');
+ok(code.includes('cand.hideColumns(9,2)'),'candidate internal ArticleID/URL columns hidden');
 ok(code.includes('id="followUpResult"'),'follow-up result input');
 ok(code.includes('function registerFollowUpResult()'),'follow-up result router');
 ok(code.includes('.sbmDoctorRegisterResultAndBuildNext(activeRequestText,result)'),'same router for follow-up');

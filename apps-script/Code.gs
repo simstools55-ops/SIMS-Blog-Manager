@@ -2616,14 +2616,77 @@ function sbmActiveMeasurementUrlMap_() {
 
 
 function sbmNormalizeUrl_(url) {
-  url = String(url || '').trim();
-  if (!url) return '';
-  if (/^sc-domain:/i.test(url)) return url;
-  // Search Consoleには #見出し 付きURLやクエリ付きURLが混ざることがある。
-  // Product 5.0では記事単位で管理するため、#以降と通常の?以降は削除して同一記事へ統合する。
-  url = url.split('#')[0].split('?')[0];
-  if (/^https?:\/\//i.test(url)) return url.replace(/\/+$/, function(m){ return url.match(/^https?:\/\/[^\/]+\/?$/i) ? '/' : ''; });
-  return 'https://' + url.replace(/^\/+/, '');
+  var raw = String(url || '').trim();
+  if (!raw) return '';
+  if (/^sc-domain:/i.test(raw)) return raw.toLowerCase();
+
+  // RC8 Official: URL比較・保存の共通Canonical Key。
+  // Search Console/CMSで末尾スラッシュの有無が異なっても同一記事として扱う。
+  // 運用シートでは「ルート以外は末尾スラッシュなし」に統一し、GSCの生データ表現には依存しない。
+  raw = raw.split('#')[0].split('?')[0].trim();
+  if (!/^https?:\/\//i.test(raw)) raw = 'https://' + raw.replace(/^\/+/, '');
+
+  var m = raw.match(/^(https?):\/\/([^\/]+)(\/.*)?$/i);
+  if (!m) return raw;
+  var scheme = String(m[1] || 'https').toLowerCase();
+  var authority = String(m[2] || '').toLowerCase();
+  if (scheme === 'https') authority = authority.replace(/:443$/, '');
+  if (scheme === 'http') authority = authority.replace(/:80$/, '');
+  var path = String(m[3] || '/');
+  if (path !== '/') path = path.replace(/\/+$/, '');
+  return scheme + '://' + authority + path;
+}
+
+function sbmUrlEquals_(left, right) {
+  var a = sbmNormalizeUrl_(left || '');
+  var b = sbmNormalizeUrl_(right || '');
+  return !!a && !!b && a === b;
+}
+
+function sbmEnsureCanonicalOperationalUrlsOnce_() {
+  var props = PropertiesService.getDocumentProperties();
+  var version = 'RC8_URL_CANONICAL_V1';
+  if (String(props.getProperty('SBM_CANONICAL_URL_STORAGE_VERSION') || '') === version) return 0;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var targets = [
+    [SBM_SHEETS.ARTICLE_DB, ['記事URL']],
+    [SBM_SHEETS.QUERY_DATA, ['記事URL']],
+    [SBM_SHEETS.DIAGNOSIS, ['URL']],
+    [SBM_SHEETS.TODAY, ['記事URL']],
+    [SBM_SHEETS.LOG, ['URL']],
+    [SBM_SHEETS.EFFECT, ['URL','記事URL']],
+    [SBM_SHEETS.BRIEF, ['URL']],
+    [SBM_SHEETS.FEEDBACK_HISTORY, ['記事URL']],
+    [SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT, ['記事URL']],
+    [SBM_SHEETS.DOCTOR_HEALTH_RECORD, ['記事URL']],
+    [SBM_SHEETS.DOCTOR_CASES, ['記事URL']]
+  ];
+  var changed = 0;
+  targets.forEach(function(t){
+    var sh = ss.getSheetByName(t[0]);
+    if (!sh || sh.getLastRow() < 2 || sh.getLastColumn() < 1) return;
+    var headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();});
+    var col = 0;
+    for (var i=0;i<t[1].length;i++) {
+      var idx = headers.indexOf(t[1][i]);
+      if (idx >= 0) { col = idx + 1; break; }
+    }
+    if (!col) return;
+    var range = sh.getRange(2,col,sh.getLastRow()-1,1);
+    var values = range.getValues();
+    var dirty = false;
+    values.forEach(function(r){
+      var before = String(r[0] || '').trim();
+      if (!before || before.charAt(0) === '=') return;
+      var after = sbmNormalizeUrl_(before);
+      if (after && after !== before) { r[0] = after; dirty = true; changed++; }
+    });
+    if (dirty) range.setValues(values);
+  });
+  props.setProperty('SBM_CANONICAL_URL_STORAGE_VERSION', version);
+  try { sbmLog_('CanonicalUrlMigration','Info','運用シートのURLを共通Canonical形式へ統一しました。変更 '+changed+'件'); } catch(e) {}
+  return changed;
 }
 
 function sbmIsValidArticleUrl_(url) {
@@ -3738,7 +3801,7 @@ function sbmAppendObject_(sheetName, headers, obj) { var sh=sbmGetOrCreateSheet_
 function sbmGetSetting_(key, def) { var rows=sbmRowsAsObjects_(SBM_SHEETS.SETTINGS); for(var i=0;i<rows.length;i++){ if(String(rows[i].Key)===String(key)) return rows[i].Value; } return def; }
 function sbmSetSettingIfEmpty_(key, value, desc) { var current=sbmGetSetting_(key, null); if(current === null || current === '') sbmSetSetting_(key,value,desc); }
 function sbmSetSetting_(key,value,desc) { var sh=sbmGetOrCreateSheet_(SBM_SHEETS.SETTINGS); sbmEnsureHeaders_(sh, SBM_HEADERS.SETTINGS); var row=sbmFindRowByValue_(SBM_SHEETS.SETTINGS,'Key',key); if(row) sbmSetObjectValues_(sh,row,{Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); else sbmAppendObject_(SBM_SHEETS.SETTINGS, SBM_HEADERS.SETTINGS, {Key:key,Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); }
-function sbmFindBriefByUrl_(url) { var rows = sbmRowsAsObjects_(SBM_SHEETS.BRIEF); for (var i=0;i<rows.length;i++){ if(String(rows[i].URL) === String(url)) return rows[i]; } return null; }
+function sbmFindBriefByUrl_(url) { var rows = sbmRowsAsObjects_(SBM_SHEETS.BRIEF); for (var i=0;i<rows.length;i++){ if(sbmUrlEquals_(rows[i].URL||'', url||'')) return rows[i]; } return null; }
 function sbmImprovementRequestText_(title, url, mainQuery, subQueries, faqQueries, separateQueries, noiseQueries, querySummary, reason, recommendation) {
   return '次の記事を改善してください。\n\n'
     + '記事タイトル: ' + (title || '') + '\n'
@@ -4144,7 +4207,7 @@ function sbmCompleteImprovementRow_(row, fromEdit) {
     return sbmAlert_('改善完了', '対象記事を確認できませんでした。');
   }
   var rec = sbmRowRecord_(today, row);
-  var url = String(rec['記事URL'] || '').trim();
+  var url = sbmNormalizeUrl_(rec['記事URL'] || '');
   if (!url) return sbmAlert_('改善完了', '記事URLを取得できませんでした。');
   var db = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
   if (!db || db.getLastRow() < 2) return sbmAlert_('改善完了', '記事DBがありません。');
@@ -4154,7 +4217,7 @@ function sbmCompleteImprovementRow_(row, fromEdit) {
   if (!urlCol || !workCol) return sbmAlert_('改善完了', '記事DBの必要列がありません。');
   var urls = db.getRange(2,urlCol,db.getLastRow()-1,1).getValues();
   for (var i=0;i<urls.length;i++) {
-    if (String(urls[i][0]||'').trim() === url) {
+    if (sbmUrlEquals_(urls[i][0]||'', url||'')) {
       db.getRange(i+2,workCol).setValue('👀 モニター中');
       try { sbmRefreshHome_(); } catch(e) {}
       if (!fromEdit) sbmAlert_('改善完了', '作業状態を「モニター中」に変更しました。');
@@ -4456,9 +4519,9 @@ function sbmApplyTodayWorkState_(candidates, count) {
   var urlCol=headers.indexOf('記事URL')+1, workCol=headers.indexOf('作業状態')+1;
   if (!urlCol || !workCol) return;
   var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
-  var shown={}; candidates.slice(0,count).forEach(function(c){shown[c.url]=true;});
+  var shown={}; candidates.slice(0,count).forEach(function(c){var k=sbmNormalizeUrl_(c.url||'');if(k)shown[k]=true;});
   for(var i=0;i<vals.length;i++){
-    var url=String(vals[i][urlCol-1]||'').trim();
+    var url=sbmNormalizeUrl_(vals[i][urlCol-1]||'');
     var work=String(vals[i][workCol-1]||'').trim();
     if(shown[url] && (!work || work==='未着手' || work.indexOf('今日の改善')>=0)) vals[i][workCol-1]='🔥 今日の改善';
     else if(!shown[url] && work.indexOf('今日の改善')>=0) vals[i][workCol-1]='未着手';
@@ -4475,7 +4538,7 @@ function sbmRowRecord_(sh,row){
 
 function sbmFindArticleDbByUrl_(url){
   var rows=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[];
-  for(var i=0;i<rows.length;i++) if(String(rows[i]['記事URL']||'').trim()===url) return rows[i];
+  for(var i=0;i<rows.length;i++) if(sbmUrlEquals_(rows[i]['記事URL']||'', url||'')) return rows[i];
   return null;
 }
 
@@ -8116,6 +8179,11 @@ function onOpen() {
     sbmEnsureOfficialSchemaOnce_();
   } catch (e) {
     try { sbmLog_('OnOpenOfficialSchema', 'Warning', String(e)); } catch (ignore) {}
+  }
+  try {
+    sbmEnsureCanonicalOperationalUrlsOnce_();
+  } catch (eUrl) {
+    try { sbmLog_('OnOpenCanonicalUrl', 'Warning', String(eUrl)); } catch (ignoreUrl) {}
   }
 
   var ui = SpreadsheetApp.getUi();

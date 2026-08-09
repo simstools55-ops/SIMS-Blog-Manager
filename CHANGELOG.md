@@ -992,3 +992,7 @@
 
 ## 5.10.0-RC8 Final
 - Finalized Doctor severity/category UX, quantified health trends, improvement route naming, hidden AI column, and Today query blank handling.
+
+## RC8 URL Canonicalization Fix
+- URL末尾スラッシュ差を同一記事として扱う共通Canonical Keyを強化。
+- 記事DB等の運用URLを一度だけ正規化し、直接URL文字列比較を除去。

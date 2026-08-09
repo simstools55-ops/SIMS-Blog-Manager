@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-09T11:11:11.181149+00:00",
-  "file_count": 957,
+  "generated_at": "2026-08-09T11:54:49.914255+00:00",
+  "file_count": 955,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -15,18 +15,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "07b480bdf7a9af0d1bdc528d3d7b2b972637e1f0ac968dc9c0424cb2f2e41bd7",
-      "size": 51049
-    },
-    {
-      "path": "FILE_MANIFEST.txt",
-      "sha256": "d468c3188fc9761e901e5da0a8e2bd52b15c81ab648970ee6f417521149bdab5",
-      "size": 41981
+      "sha256": "a650d9732130b8bfbdf0848e23b319cec2c44e5503448dc73e832032de708428",
+      "size": 51265
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
-      "sha256": "ae9f10f982f8eb59496f502e9811f192153ad77e46da3d29ae6d86a24f2347e6",
-      "size": 463
+      "sha256": "54a866688b5282a806921235236ba406374bb27c35263d4674e380bbb251e5ab",
+      "size": 548
     },
     {
       "path": "HOW_TO_PUBLISH.md",
@@ -344,6 +339,11 @@
       "size": 1405
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-URL-Canonicalization.md",
+      "sha256": "fe55f05e5d332c43765ccca35d69fc199b3964c3eb890758c805e0ea54bdfa85",
+      "size": 1381
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md",
       "sha256": "2ce6818ebb023349bb6ce5d5139e4f5a41b23cd13475e5dc05dccd3e1aae00c3",
       "size": 2074
@@ -469,11 +469,6 @@
       "size": 90
     },
     {
-      "path": "SHA256SUMS.txt",
-      "sha256": "93af4c2ac662baaf183609fcc46d1fd8811eeb83f4635ee07c4e6b01f7609007",
-      "size": 107208
-    },
-    {
       "path": "SHARED_VERSION",
       "sha256": "f5e3e93e58ffc2a20a3ca53e8025bc50d7c1dccbef4b34e2388aa9bbf8678466",
       "size": 6
@@ -500,8 +495,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "9e6e83f93d8541f7ed5c70300733d2ca5cebd8d7ea8c9afd545371acee31e160",
-      "size": 694578
+      "sha256": "5666ee22d53321326e9ab16546b4d97491102b8aa9fb2ffb4bb0017cced424af",
+      "size": 697324
     },
     {
       "path": "apps-script/appsscript.json",
@@ -840,8 +835,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "9e6e83f93d8541f7ed5c70300733d2ca5cebd8d7ea8c9afd545371acee31e160",
-      "size": 694578
+      "sha256": "5666ee22d53321326e9ab16546b4d97491102b8aa9fb2ffb4bb0017cced424af",
+      "size": 697324
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -1064,14 +1059,14 @@
       "size": 586
     },
     {
-      "path": "docs/daily-workflow/index.md",
-      "sha256": "b15344b77c83320624803171b9af513858018a21e9e26eadae7d482605a22969",
-      "size": 1515
-    },
-    {
       "path": "docs/daily-workflow.md",
       "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
       "size": 3541
+    },
+    {
+      "path": "docs/daily-workflow/index.md",
+      "sha256": "b15344b77c83320624803171b9af513858018a21e9e26eadae7d482605a22969",
+      "size": 1515
     },
     {
       "path": "docs/download.md",
@@ -1084,24 +1079,24 @@
       "size": 395
     },
     {
-      "path": "docs/faq/index.md",
-      "sha256": "c4edd348ff675a992460e04c6b5264fd9c45dc39fc0bc77a596604119285a967",
-      "size": 1672
-    },
-    {
       "path": "docs/faq.md",
       "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
       "size": 183
     },
     {
-      "path": "docs/getting-started/index.md",
-      "sha256": "de8a1159c73ce595fc2dbec7be18628974c24e2527b5057538a08f5c2e3cf083",
-      "size": 1229
+      "path": "docs/faq/index.md",
+      "sha256": "c4edd348ff675a992460e04c6b5264fd9c45dc39fc0bc77a596604119285a967",
+      "size": 1672
     },
     {
       "path": "docs/getting-started.md",
       "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
       "size": 252
+    },
+    {
+      "path": "docs/getting-started/index.md",
+      "sha256": "de8a1159c73ce595fc2dbec7be18628974c24e2527b5057538a08f5c2e3cf083",
+      "size": 1229
     },
     {
       "path": "docs/google-cloud-api-guide.md",
@@ -1154,6 +1149,16 @@
       "size": 198
     },
     {
+      "path": "docs/setup-guide.md",
+      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
+      "size": 571
+    },
+    {
+      "path": "docs/setup.html",
+      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
+      "size": 1951
+    },
+    {
       "path": "docs/setup/article-db-foundation.md",
       "sha256": "c3f85876300981507686c5fb4c0aac18c3fb09c0524fa355766f3295e57462e3",
       "size": 1458
@@ -1189,16 +1194,6 @@
       "size": 588
     },
     {
-      "path": "docs/setup-guide.md",
-      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
-      "size": 571
-    },
-    {
-      "path": "docs/setup.html",
-      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
-      "size": 1951
-    },
-    {
       "path": "docs/spreadsheet-guide.md",
       "sha256": "6c089cbe99ff4104887698da7daea77a2c874590f1572c99cb23b2dfffaa023f",
       "size": 1052
@@ -1212,6 +1207,16 @@
       "path": "docs/todays-improvement.html",
       "sha256": "febaa74b6beb8d716a2cdf0c349f88414a32e69802d4f5244c7a032dc9e43599",
       "size": 1813
+    },
+    {
+      "path": "docs/troubleshooting.html",
+      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
+      "size": 1791
+    },
+    {
+      "path": "docs/troubleshooting.md",
+      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
+      "size": 241
     },
     {
       "path": "docs/troubleshooting/common-errors.md",
@@ -1237,16 +1242,6 @@
       "path": "docs/troubleshooting/urlfetch-auth.md",
       "sha256": "06482d76ef7657d8cf4a052cb3993def516933b7b22e1aa850e61758184802c7",
       "size": 525
-    },
-    {
-      "path": "docs/troubleshooting.html",
-      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
-      "size": 1791
-    },
-    {
-      "path": "docs/troubleshooting.md",
-      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
-      "size": 241
     },
     {
       "path": "docs/user-guide/data-list.md",
@@ -1284,14 +1279,14 @@
       "size": 533
     },
     {
-      "path": "docs/user-guide/todays-improvement/index.md",
-      "sha256": "ca2c1a7470c3d201da9861849acfe59709698122d8ec4b6c91c7643713010140",
-      "size": 1495
-    },
-    {
       "path": "docs/user-guide/todays-improvement.md",
       "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
       "size": 551
+    },
+    {
+      "path": "docs/user-guide/todays-improvement/index.md",
+      "sha256": "ca2c1a7470c3d201da9861849acfe59709698122d8ec4b6c91c7643713010140",
+      "size": 1495
     },
     {
       "path": "integration/SBM_BATCH_INTEGRATION.md",
@@ -2239,11 +2234,6 @@
       "size": 348
     },
     {
-      "path": "shared/FILE_MANIFEST.txt",
-      "sha256": "5c15ebc90a6e0ba56042b899acd52cce24af6a3c5c0c23c6f32835fa226abe08",
-      "size": 10431
-    },
-    {
       "path": "shared/LICENSE",
       "sha256": "ce0c69a4019923878282e03bb1ce789260e592199a0fbbab67e77fefe0e97664",
       "size": 158
@@ -2437,11 +2427,6 @@
       "path": "shared/RELEASE_NOTES_v3.5.0.md",
       "sha256": "7ab2d2772db0d0fcd8e283496f8c6f2b8d29b6d9c65a8128774d9f8e37de5bf4",
       "size": 798
-    },
-    {
-      "path": "shared/SHA256SUMS.txt",
-      "sha256": "8fe8bda6e69eef4e05f41f1d9f8bee52a12fc7f0ad943f82e17d62dbfc648640",
-      "size": 28251
     },
     {
       "path": "shared/SNAPSHOT_MANIFEST.json",
@@ -4310,8 +4295,8 @@
     },
     {
       "path": "tests/product5100_rc6_ui_ux_refresh_test.js",
-      "sha256": "cbd2a2996a8aa99565b25cbe3aa344313e20c9b573774b2af824a2a2bbfc625c",
-      "size": 1675
+      "sha256": "8b534a99062bdc88308e74df8130aae7c1860b2ab83feac55756d55b0ce76461",
+      "size": 1691
     },
     {
       "path": "tests/product5100_rc7_human_view_workflow_test.js",
@@ -4392,6 +4377,11 @@
       "path": "tests/product5100_rc8_unified_improvement_workflow_test.js",
       "sha256": "c1e3a4eacfbd11209ca9cbf4fa9d61e5cc0e467d7d3850bf83fa8c2b84cbb6cd",
       "size": 1803
+    },
+    {
+      "path": "tests/product5100_rc8_url_canonicalization_test.js",
+      "sha256": "9419d4b49a8bcdf249f43b3cea2843c7b23b2f4523d78db659f6a3e16f18e344",
+      "size": 2094
     },
     {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
