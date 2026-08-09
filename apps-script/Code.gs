@@ -9552,30 +9552,50 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
 }
 
 function sbmDoctorSelectionReason_(code,row,hm){
-  function n(k){return Number(row[hm[k]-1]||0);}
+  function n(k){return hm[k]?Number(row[hm[k]-1]||0):0;}
   function drop(before,after){if(before<=0)return null;return Math.round((before-after)/before*100);}
+  function pct(v){return (Number(v||0)*100).toFixed(1)+'%';}
+  function pos(v){return Number(v||0)>0?Number(v).toFixed(1)+'位':'―';}
+  function join(parts){return parts.filter(function(x){return !!x;}).join(' ／ ');}
   var firstC=n('前半90日クリック'), secondC=n('後半90日クリック'), firstI=n('前半90日表示'), secondI=n('後半90日表示');
   var firstCtr=n('前半90日CTR'), secondCtr=n('後半90日CTR'), firstP=n('前半90日平均順位'), secondP=n('後半90日平均順位');
   var recentC=n('直近28日クリック'), prevC=n('前28日クリック'), recentI=n('直近28日表示'), prevI=n('前28日表示');
+  var recentCtr=n('直近28日CTR'), prevCtr=n('前28日CTR'), recentP=n('直近28日平均順位'), prevP=n('前28日平均順位');
   if(code==='RECENT_DROP'){
-    var rd=drop(prevC,recentC), ri=drop(prevI,recentI);
-    if(rd!==null&&rd>0)return '直近流入急減｜クリック '+rd+'%減（直近28日）';
-    if(ri!==null&&ri>0)return '直近流入急減｜表示回数 '+ri+'%減（直近28日）';
-    return '直近流入急減｜直近28日で検索流入が急減';
+    var rd=drop(prevC,recentC), ri=drop(prevI,recentI), parts=[];
+    if(rd!==null&&rd>0)parts.push('クリック '+prevC+'→'+recentC+'（'+rd+'%減）');
+    if(ri!==null&&ri>0)parts.push('表示 '+prevI+'→'+recentI+'（'+ri+'%減）');
+    if(prevP>0&&recentP>prevP+0.5)parts.push('順位 '+pos(prevP)+'→'+pos(recentP));
+    if(prevCtr>0&&recentCtr>=0&&recentCtr<prevCtr)parts.push('CTR '+pct(prevCtr)+'→'+pct(recentCtr));
+    return '直近流入急減｜'+(join(parts)||'直近28日で検索流入が急減');
   }
   if(code==='LONG_TERM_DECLINE'){
-    var cd=drop(firstC,secondC), id=drop(firstI,secondI);
-    if(cd!==null&&cd>0)return '長期流入低下｜クリック '+cd+'%減（前半→後半）';
-    if(id!==null&&id>0)return '長期流入低下｜表示回数 '+id+'%減（前半→後半）';
-    if(firstP>0&&secondP>firstP+1)return '長期流入低下｜平均順位 '+firstP.toFixed(1)+'→'+secondP.toFixed(1)+'位';
-    return '長期流入低下｜半年後半で検索流入が低下';
+    var cd=drop(firstC,secondC), id=drop(firstI,secondI), parts2=[];
+    if(cd!==null&&cd>0)parts2.push('クリック '+firstC+'→'+secondC+'（'+cd+'%減）');
+    if(id!==null&&id>0)parts2.push('表示 '+firstI+'→'+secondI+'（'+id+'%減）');
+    if(firstP>0&&secondP>firstP+0.5)parts2.push('順位 '+pos(firstP)+'→'+pos(secondP));
+    if(firstCtr>0&&secondCtr>=0&&secondCtr<firstCtr)parts2.push('CTR '+pct(firstCtr)+'→'+pct(secondCtr));
+    return '長期流入低下｜'+(join(parts2)||'半年後半で検索流入が低下');
   }
-  if(code==='CTR_OPPORTUNITY')return 'CTR低下・改善余地｜CTR '+(n('180日CTR')*100).toFixed(1)+'%';
-  if(code==='POSITION_OPPORTUNITY')return '順位改善余地｜平均順位 '+n('180日平均順位').toFixed(1)+'位';
-  if(code==='LONG_TERM_STAGNATION')return '長期停滞｜半年間、検索成果がほぼ横ばい';
-  if(firstCtr>0&&secondCtr>0&&secondCtr<firstCtr)return 'CTR低下｜'+(firstCtr*100).toFixed(1)+'→'+(secondCtr*100).toFixed(1)+'%';
-  return '詳しい確認が必要';
+  if(code==='CTR_OPPORTUNITY'){
+    var cparts=['180日CTR '+pct(n('180日CTR'))];
+    if(firstCtr>0||secondCtr>0)cparts.push('前半→後半 '+pct(firstCtr)+'→'+pct(secondCtr));
+    if(n('180日表示')>0)cparts.push('表示 '+n('180日表示')+'回');
+    return 'CTR低下・改善余地｜'+join(cparts);
+  }
+  if(code==='POSITION_OPPORTUNITY'){
+    var pparts=['180日平均 '+pos(n('180日平均順位'))];
+    if(firstP>0||secondP>0)pparts.push('前半→後半 '+pos(firstP)+'→'+pos(secondP));
+    if(n('180日表示')>0)pparts.push('表示 '+n('180日表示')+'回');
+    return '順位改善余地｜'+join(pparts);
+  }
+  if(code==='LONG_TERM_STAGNATION'){
+    return '長期停滞｜クリック '+n('180日クリック')+'回 ／ 表示 '+n('180日表示')+'回 ／ 平均 '+pos(n('180日平均順位'));
+  }
+  if(firstCtr>0&&secondCtr>0&&secondCtr<firstCtr)return 'CTR低下｜'+pct(firstCtr)+'→'+pct(secondCtr)+' ／ 表示 '+firstI+'→'+secondI;
+  return '詳しい確認が必要｜一次データだけでは主因を特定できません';
 }
+
 function sbmDoctorSelectionReasonFromLatestSnapshot_(articleId,url,fallback){
   try{
     var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);if(!sh||sh.getLastRow()<2)return fallback||'詳しい確認が必要';
@@ -9703,14 +9723,17 @@ function sbmDoctorLatestCaseForArticle_(articleId,url){
 function sbmDoctorReferralHumanStatus_(articleId,url){
   var article=sbmFindArticleDbByIdentity_(articleId,url)||{}, work=String(article['作業状態']||'');
   var c=sbmDoctorLatestCaseForArticle_(articleId,url), code=c?String(c['状態コード']||''):'';
+  // 精密診断候補は「新しくDoctorへ送る記事を選ぶ場所」。
+  // すでにDoctor案件として進行した記事は、重複診断防止のため再選択不可にします。
   if(work.indexOf('モニター中')>=0||code==='MONITORING')return {label:'⚪ モニター中',completed:true,code:'MONITORING'};
-  if(code==='WRITER_IN_PROGRESS')return {label:'🟠 Writer処置中',completed:false,code:code};
-  if(code==='PUBLICATION_PENDING')return {label:'🟠 結果登録待ち',completed:false,code:code};
-  if(code==='USER_ACTION_REQUIRED')return {label:'🔵 利用者確認待ち',completed:false,code:code};
-  if(code==='FOLLOW_UP_REQUEST_READY')return {label:'🔵 Doctor再診待ち',completed:false,code:code};
-  if(code==='DOCTOR_DIAGNOSIS_PENDING')return {label:'🔵 Doctor診断待ち',completed:false,code:code};
-  if(code==='USER_DECISION_REQUIRED')return {label:'🟡 利用者判断待ち',completed:false,code:code};
-  if(code==='TREATMENT_FAILED')return {label:'🔴 要確認',completed:false,code:code};
+  if(code==='WRITER_IN_PROGRESS')return {label:'🟠 Writer処置中',completed:true,code:code};
+  if(code==='PUBLICATION_PENDING')return {label:'🟠 修正済み・結果登録待ち',completed:true,code:code};
+  if(code==='USER_ACTION_REQUIRED')return {label:'🔵 利用者確認待ち',completed:true,code:code};
+  if(code==='FOLLOW_UP_REQUEST_READY')return {label:'🔵 Doctor再診待ち',completed:true,code:code};
+  if(code==='DOCTOR_DIAGNOSIS_PENDING')return {label:'🔵 Doctor診断待ち',completed:true,code:code};
+  if(code==='USER_DECISION_REQUIRED')return {label:'🟡 利用者判断待ち',completed:true,code:code};
+  if(code==='TREATMENT_FAILED')return {label:'🔴 要確認',completed:true,code:code};
+  if(code==='DOCTOR_DIAGNOSED'||code==='WRITER_REQUEST_READY')return {label:'🔵 処置準備中',completed:true,code:code};
   return {label:'🔴 要精密診断',completed:false,code:code||'READY'};
 }
 function sbmDoctorApplyReferralRowStates_(sh,startRow,count){
@@ -10301,6 +10324,25 @@ function sbmDoctorLatestHistoryIdForArticle_(articleId,url){
   rows.forEach(function(r){if((articleId&&String(r['ArticleID']||'')===String(articleId))||(norm&&sbmNormalizeUrl_(r['記事URL']||'')===norm))best=String(r['改善履歴ID']||best);});return best;
 }
 
+/** RC8 Final: Doctor経由の処置完了をSBMの共通モニタリング基盤へ確実に同期します。 */
+function sbmDoctorEnsureMonitoringSync_(articleId,url){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if(sh&&sh.getLastRow()>=2){
+    var hm=sbmHeaderMap_(sh),idCol=hm['ArticleID'],urlCol=hm['記事URL'],workCol=hm['作業状態'];
+    if(workCol&&(idCol||urlCol)){
+      var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues(),norm=sbmNormalizeUrl_(url||'');
+      for(var i=0;i<vals.length;i++){
+        var match=(articleId&&idCol&&String(vals[i][idCol-1]||'')===String(articleId))||(norm&&urlCol&&sbmNormalizeUrl_(vals[i][urlCol-1]||'')===norm);
+        if(match){sh.getRange(i+2,workCol).setValue('👀 モニター中');break;}
+      }
+    }
+  }
+  // 改善履歴を正本として改善の推移を即時再生成。日次処理を待たせません。
+  try{sbmUpdateEffectivenessCore_(false);}catch(eEffect){sbmLog_('DoctorMonitoringSync','Warning','改善の推移更新: '+String(eEffect));}
+  try{sbmRefreshArticleDbView_();}catch(eView){}
+  try{sbmRefreshHome_();}catch(eHome){}
+}
+
 function sbmDoctorStoreWriterTreatmentResult_(o){
   var format=String(o&&o.format||'');
   if(format.indexOf('SIMS_DOCTOR_')===0)throw new Error('これはDoctorの診断JSONです。Writer結果登録には使いません。精密診断ダイアログでDoctor診断結果を登録し、そこで自動生成されたWriter紹介状をWriterへ渡してください。');
@@ -10317,6 +10359,7 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
     // Doctor紹介で完了した処置も通常改善と同じ履歴・モニタリング基盤へ接続します。記事ランクは変更しません。
     var feedback=sbmDoctorTreatmentResultAsFeedback_(o), normalized=sbmNormalizeImprovementFeedback_(JSON.stringify(feedback));
     var registered=sbmRegisterImprovementFeedback(normalized);if(!registered||registered.ok===false)throw new Error('処置結果は受け取りましたが、モニタリング登録に失敗しました：'+(registered&&registered.message?registered.message:'不明なエラー'));
+    sbmDoctorEnsureMonitoringSync_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);
     rec.values[rec.hm['状態コード']-1]='MONITORING';rec.values[rec.hm['状態']-1]='モニター中';
     if(rec.hm['改善履歴ID'])rec.values[rec.hm['改善履歴ID']-1]=sbmDoctorLatestHistoryIdForArticle_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);
     if(rec.hm['再診予定日'])rec.values[rec.hm['再診予定日']-1]=sbmDateAfterDaysText_(Number(o.recommended_review_days||28)||28);

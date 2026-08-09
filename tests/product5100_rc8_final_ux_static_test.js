@@ -9,6 +9,6 @@ must(code.includes("['長期流入低下',Number(issueCounts.LONG_TERM_DECLINE||
 must(code.includes("※鮮度・競合強化・カニバリ等は精密診断で追加判定します。"),'一次検査と精密診断の責務分離');
 must(code.includes("var headers=['選択','重症度','記事タイトル','選定理由','状態'"),'精密診断候補の重症度');
 must(code.includes("return '🔴 緊急'"),'重症度 緊急');
-must(code.includes("長期流入低下｜クリック"),'選定理由の診断カテゴリ');
+must(code.includes("長期流入低下｜"),'選定理由の診断カテゴリ');
 must(code.includes("setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle')"),'次に行うことの折り返し');
 console.log('PASS product5100_rc8_final_ux_static_test');
