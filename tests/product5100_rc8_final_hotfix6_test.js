@@ -1,0 +1,17 @@
+const fs=require('fs'), path=require('path');
+const code=fs.readFileSync(path.join(__dirname,'..','apps-script','Code.gs'),'utf8');
+function must(x,msg){if(!x){console.error('FAIL:',msg);process.exit(1);}console.log('PASS:',msg);}
+must(code.includes('function sbmDoctorReconcileCompletedTreatments_'),'保存済みDoctor処置結果の自己修復処理がある');
+must(code.includes("String(o.treatment_status||'').toUpperCase()!=='COMPLETED'"),'完了済みWriter結果だけを自己修復対象にする');
+must(code.includes("route.indexOf('Doctor→')!==0"),'既存Doctor改善履歴を正本にモニター状態を復元する');
+must(code.includes("setValue('👀 モニター中')"),'記事管理をモニター中へ同期する');
+must(code.includes("improvement_method:'Doctor→Writer'"),'Doctor→Writer改善経路を保存する');
+must(code.includes("try{sbmUpdateEffectivenessCore_(false);}catch(eEffectSync)"),'結果登録時に改善の推移を即時同期する');
+must(code.includes("・改善の推移へ反映しました"),'結果登録メッセージに改善の推移反映を明示する');
+must(code.includes("try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}\n  sbmUpdateEffectivenessSilent_();"),'改善の推移を開く前にDoctor旧データを自己修復する');
+must(code.includes("function sbmOpenAllBlogArticles() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'記事一覧を開く前にDoctor旧データを自己修復する');
+must(code.includes("function sbmOpenImprovementHistory() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'改善履歴を開く前にDoctor旧データを自己修復する');
+must(code.includes("try { sbmStyleEffectSheetV2_(); } catch(eEffectStyle)"),'起動時から改善の推移を装飾済みにする');
+must(code.includes("if(writerResult)return false"),'Writer結果保存済み記事は精密診断候補へ戻さない');
+must(code.includes("'PUBLICATION_PENDING'"),'旧結果登録待ち状態も新規候補から除外する');
+console.log('PASS product5100_rc8_final_hotfix6_test');

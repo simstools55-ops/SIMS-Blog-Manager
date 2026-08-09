@@ -4942,8 +4942,11 @@ function sbmRegisterImprovementFeedback(data) {
     sbmAppendLegacyImprovementLog_(data,row,before);
     sbmSetSetting_('LastImprovementRegisteredAt',sbmNowText_(),'最後に改善結果を登録した日時');
     try { sbmMarkTodayImprovementCompleted_(data.article_id, data.article_url); } catch (e) {}
+    // 結果登録を唯一の確定ポイントにし、記事管理・改善履歴・改善の推移を同じトランザクションで同期します。
+    try{sbmStyleArticleDbSheet_(sh);}catch(eArticleStyle){}
+    try{sbmUpdateEffectivenessCore_(false);}catch(eEffectSync){sbmLog_('FeedbackEffectSync','Warning',String(eEffectSync));}
     try{sbmRefreshHome_();}catch(e){}
-    return {ok:true,message:'改善結果を登録しました。\n・記事管理を更新しました\n・改善履歴を作成しました\n・今日の改善を完了表示にしました\n・作業状態を「モニター中」に変更しました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'};
+    return {ok:true,message:'改善結果を登録しました。\n・記事管理を「モニター中」に更新しました\n・改善履歴を作成しました\n・改善の推移へ反映しました\n・今日の改善を完了表示にしました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'};
   } catch(e) { return {ok:false,message:String(e.message||e)}; }
 }
 
@@ -7143,6 +7146,7 @@ function sbmRefreshHistoryAndEffectAfterRepair_() {
  * 改善履歴を開く際に一覧・書式・チェックボックスを必ず再反映します。
  */
 function sbmOpenImprovementHistory() {
+  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var history = ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   // RC8 Final: 内部列の再構築・非表示処理を利用者に見せない。
@@ -8047,16 +8051,19 @@ function sbmEnsureOfficialSchemaOnce_() {
 
 
 function sbmOpenImprovementStatus() {
+  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
   sbmUpdateEffectivenessSilent_();
   return sbmOpenEffectiveness();
 }
 
 
 function sbmOpenAllBlogArticles() {
+  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
   return sbmOpenArticleDb();
 }
 
 function sbmOpenImprovementTrend() {
+  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
   return sbmOpenImprovementHistory();
 }
 
@@ -8171,6 +8178,9 @@ function onOpen() {
 
   // 配布版では開発者用メニューを生成しません。
   try { sbmRetireDoctorWorklistSheets_(); } catch(e) {}
+
+  // 改善の推移は初期表示時点から、今日の改善・改善履歴と同じく装飾済みの完成画面にしておきます。
+  try { sbmStyleEffectSheetV2_(); } catch(eEffectStyle) { try { sbmLog_('OnOpenEffectStyle','Warning',String(eEffectStyle)); } catch(ignoreEffectStyle) {} }
 
   // Homeを描画・表示します。日次処理のダイアログは利用者がメニューから実行した場合だけ表示します。
   try {
@@ -9737,7 +9747,12 @@ function sbmDoctorIsUntreatedCurrentCandidate_(articleId,url){
   var article=sbmFindArticleDbByIdentity_(articleId,url)||{}, work=String(article['作業状態']||'');
   if(work.indexOf('モニター中')>=0||work.indexOf('改善中')>=0)return false;
   var c=sbmDoctorLatestCaseForArticle_(articleId,url);
-  if(c&&sbmDoctorCaseIsAfterCurrentHealthCheck_(c))return false;
+  if(!c)return true;
+  var code=String(c['状態コード']||''),writerResult=String(c['Writer結果JSON']||'').trim();
+  // Writer結果が保存済み、またはDoctor案件が進行中なら「新規候補」ではありません。
+  if(writerResult)return false;
+  if(['DOCTOR_DIAGNOSIS_PENDING','DOCTOR_DIAGNOSED','WRITER_REQUEST_READY','WRITER_IN_PROGRESS','PUBLICATION_PENDING','USER_ACTION_REQUIRED','USER_DECISION_REQUIRED','FOLLOW_UP_REQUEST_READY','MONITORING'].indexOf(code)>=0)return false;
+  if(sbmDoctorCaseIsAfterCurrentHealthCheck_(c))return false;
   return true;
 }
 
@@ -9909,6 +9924,7 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
 }
 
 function sbmDoctorOpenDetailedCandidates(){
+  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){sbmLog_('DoctorCandidateReconcile','Warning',String(eReconcile));}
   var ss=SpreadsheetApp.getActiveSpreadsheet();
   var sh=ss.getSheetByName('Doctor_精密診断候補')||ss.getSheetByName('Doctor_精密診断紹介状');
   if(!sh) return sbmAlert_('精密診断候補','まだ精密診断候補は作成されていません。先にブログ全体の健康診断を実行してください。');
@@ -10354,13 +10370,29 @@ function sbmDoctorRouteFromCase_(c){
 function sbmDoctorSyncImprovementRoutesFromCases_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(),hist=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   if(!hist||hist.getLastRow()<2)return 0;
-  var cases=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_CASES)||[],routeByHistory={};
-  cases.forEach(function(c){var hid=String(c['改善履歴ID']||'').trim(),route=sbmDoctorRouteFromCase_(c);if(hid&&route)routeByHistory[hid]=route;});
-  if(!Object.keys(routeByHistory).length)return 0;
-  var hm=sbmHeaderMap_(hist),hidCol=hm['改善履歴ID'],routeCol=hm['改善経路']||hm['改善方法'];
-  if(!hidCol||!routeCol)return 0;
+  var cases=sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_CASES)||[],routeByHistory={},routeByArticle={};
+  cases.forEach(function(c){
+    var hid=String(c['改善履歴ID']||'').trim(),route=sbmDoctorRouteFromCase_(c),writerResult=String(c['Writer結果JSON']||'').trim();
+    if(!route)return;
+    if(hid)routeByHistory[hid]=route;
+    // 旧RCで改善履歴IDがCaseへ保存されなかったDoctor処置も復元できるよう、
+    // Writer結果が実在するケースだけArticleID/URLを補助キーにします。
+    if(writerResult){
+      var aid=String(c['記事ID']||'').trim(),url=sbmNormalizeUrl_(c['記事URL']||'');
+      if(aid)routeByArticle['ID:'+aid]=route;
+      if(url)routeByArticle['URL:'+url]=route;
+    }
+  });
+  var hm=sbmHeaderMap_(hist),hidCol=hm['改善履歴ID'],routeCol=hm['改善経路']||hm['改善方法'],aidCol=hm['ArticleID'],urlCol=hm['記事URL'];
+  if(!routeCol)return 0;
   var vals=hist.getRange(2,1,hist.getLastRow()-1,hist.getLastColumn()).getValues(),changed=0;
-  vals.forEach(function(row){var hid=String(row[hidCol-1]||'').trim(),route=routeByHistory[hid];if(route&&String(row[routeCol-1]||'')!==route){row[routeCol-1]=route;changed++;}});
+  vals.forEach(function(row){
+    var hid=hidCol?String(row[hidCol-1]||'').trim():'',route=hid?routeByHistory[hid]:'';
+    if(!route&&aidCol){var aid=String(row[aidCol-1]||'').trim();if(aid)route=routeByArticle['ID:'+aid]||'';}
+    if(!route&&urlCol){var url=sbmNormalizeUrl_(row[urlCol-1]||'');if(url)route=routeByArticle['URL:'+url]||'';}
+    var current=String(row[routeCol-1]||'').trim();
+    if(route&&current!==route){row[routeCol-1]=route;changed++;}
+  });
   if(changed)hist.getRange(2,1,vals.length,vals[0].length).setValues(vals);
   return changed;
 }
@@ -10390,21 +10422,80 @@ function sbmDoctorLatestHistoryIdForArticle_(articleId,url){
 
 /** RC8 Final: Doctor経由の処置完了をSBMの共通モニタリング基盤へ確実に同期します。 */
 function sbmDoctorEnsureMonitoringSync_(articleId,url){
-  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB),updated=false;
   if(sh&&sh.getLastRow()>=2){
     var hm=sbmHeaderMap_(sh),idCol=hm['ArticleID'],urlCol=hm['記事URL'],workCol=hm['作業状態'];
     if(workCol&&(idCol||urlCol)){
       var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues(),norm=sbmNormalizeUrl_(url||'');
       for(var i=0;i<vals.length;i++){
         var match=(articleId&&idCol&&String(vals[i][idCol-1]||'')===String(articleId))||(norm&&urlCol&&sbmNormalizeUrl_(vals[i][urlCol-1]||'')===norm);
-        if(match){sh.getRange(i+2,workCol).setValue('👀 モニター中');break;}
+        if(match){sh.getRange(i+2,workCol).setValue('👀 モニター中');updated=true;break;}
       }
     }
+    if(updated){try{sbmStyleArticleDbSheet_(sh);}catch(eStyleArticle){}}
   }
   // 改善履歴を正本として改善の推移を即時再生成。日次処理を待たせません。
+  try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRoute){}
   try{sbmUpdateEffectivenessCore_(false);}catch(eEffect){sbmLog_('DoctorMonitoringSync','Warning','改善の推移更新: '+String(eEffect));}
-  try{sbmRefreshArticleDbView_();}catch(eView){}
   try{sbmRefreshHome_();}catch(eHome){}
+  return updated;
+}
+
+
+/**
+ * RC8 Official blocker repair:
+ * 過去RCでWriter結果までは保存されたのに、改善履歴・モニター同期が途中で止まったCaseを自己修復します。
+ * Writer結果JSONがCOMPLETEDであることを確認できるCaseだけを対象にするため、未処置記事を誤って完了扱いしません。
+ */
+function sbmDoctorReconcileCompletedTreatments_(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),caseSh=ss.getSheetByName(SBM_SHEETS.DOCTOR_CASES);
+  if(!caseSh||caseSh.getLastRow()<2)return 0;
+  var hm=sbmHeaderMap_(caseSh),vals=caseSh.getRange(2,1,caseSh.getLastRow()-1,caseSh.getLastColumn()).getValues(),repaired=0;
+  for(var i=0;i<vals.length;i++){
+    var row=vals[i],raw=hm['Writer結果JSON']?String(row[hm['Writer結果JSON']-1]||'').trim():'',o=null;
+    if(!raw)continue;
+    try{o=JSON.parse(raw);}catch(eParse){continue;}
+    if(String(o.treatment_status||'').toUpperCase()!=='COMPLETED')continue;
+    var articleId=String(o.article_id|| (hm['記事ID']?row[hm['記事ID']-1]:'') ||'').trim();
+    var articleUrl=String(o.article_url|| (hm['記事URL']?row[hm['記事URL']-1]:'') ||'').trim();
+    var hid=hm['改善履歴ID']?String(row[hm['改善履歴ID']-1]||'').trim():'';
+    if(!hid)hid=sbmDoctorLatestHistoryIdForArticle_(articleId,articleUrl);
+    if(!hid){
+      // 履歴自体が無い旧Caseだけ、保存済みWriter結果から一度だけ再登録します。
+      try{
+        var feedback=sbmDoctorTreatmentResultAsFeedback_(o),normalized=sbmNormalizeImprovementFeedback_(JSON.stringify(feedback)),registered=sbmRegisterImprovementFeedback(normalized);
+        if(registered&&registered.ok!==false)hid=sbmDoctorLatestHistoryIdForArticle_(articleId,articleUrl);
+      }catch(eRegister){sbmLog_('DoctorReconcileRegister','Warning',String(eRegister));}
+    }
+    if(hid&&hm['改善履歴ID'])row[hm['改善履歴ID']-1]=hid;
+    if(hm['状態コード'])row[hm['状態コード']-1]='MONITORING';
+    if(hm['状態'])row[hm['状態']-1]='モニター中';
+    if(hm['更新日時'])row[hm['更新日時']-1]=sbmNowText_();
+    vals[i]=row;
+    if(hid||sbmDoctorLatestHistoryIdForArticle_(articleId,articleUrl)){
+      sbmDoctorEnsureMonitoringSync_(articleId,articleUrl);
+      try{sbmDoctorRemoveCandidateArticle_(articleId,articleUrl);}catch(eRemove){}
+      repaired++;
+    }
+  }
+  if(repaired)caseSh.getRange(2,1,vals.length,vals[0].length).setValues(vals);
+
+  // 旧RCでCase側のWriter結果JSONや改善履歴IDが欠落していても、改善履歴にDoctor経路が残っていれば
+  // その履歴を正本として記事管理をモニター中へ復元します。
+  try{
+    var historyRows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[];
+    historyRows.forEach(function(h){
+      var route=String(h['改善経路']||h['改善方法']||'').trim();
+      if(route.indexOf('Doctor→')!==0)return;
+      var aid=String(h['ArticleID']||'').trim(),u=String(h['記事URL']||'').trim();
+      if(sbmDoctorEnsureMonitoringSync_(aid,u))repaired++;
+      try{sbmDoctorRemoveCandidateArticle_(aid,u);}catch(eRemoveHistory){}
+    });
+  }catch(eHistoryRepair){sbmLog_('DoctorHistoryMonitoringRepair','Warning',String(eHistoryRepair));}
+
+  try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRoute2){}
+  try{sbmUpdateEffectivenessCore_(false);}catch(eEffect2){}
+  return repaired;
 }
 
 function sbmDoctorStoreWriterTreatmentResult_(o){

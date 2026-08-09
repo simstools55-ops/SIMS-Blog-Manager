@@ -1,17 +1,37 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-08T23:23:09.294349+00:00",
-  "file_count": 943,
+  "generated_at": "2026-08-09T08:57:52.656569+00:00",
+  "file_count": 958,
   "files": [
     {
-      "path": ".github/workflows/deploy.yml",
+      "path": "github/workflows/deploy.yml",
       "sha256": "a46b738669c8923e17c0491f663edac1a6b335edcb960489d67f0669e8eb35f5",
       "size": 915
     },
     {
-      "path": ".gitignore",
+      "path": "gitignore",
       "sha256": "ad8cf3990ef9272f621f2d0906590be8e9cde9d68cc6b1729c73fcefdb726622",
       "size": 5
+    },
+    {
+      "path": "pytest_cache/.gitignore",
+      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
+      "size": 37
+    },
+    {
+      "path": "pytest_cache/CACHEDIR.TAG",
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
+      "size": 191
+    },
+    {
+      "path": "pytest_cache/README.md",
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+      "size": 302
+    },
+    {
+      "path": "pytest_cache/v/cache/nodeids",
+      "sha256": "e0344bc1ba627d73ef7119bfcd4fae11403657ae7e44cdb13a4f26d5e89e0fe5",
+      "size": 990
     },
     {
       "path": "CHANGELOG.md",
@@ -304,6 +324,21 @@
       "size": 794
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix4.md",
+      "sha256": "507a98ae7a542488d010231f4a3768d87c74fefc29059fc1e253938c495e71b0",
+      "size": 658
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix5.md",
+      "sha256": "ce07ea781c0a2f8fee5bc5bddab1bad747d4bf413ea85e044e55360c5ddfc670",
+      "size": 1126
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix6.md",
+      "sha256": "f7c9829e057e45c3898abdbf4e112d4b7e3d8b64a8d0b4c532951e561c8518ab",
+      "size": 1442
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final.md",
       "sha256": "bc66cdc002ded22a41a4679df7523acc18793157eb8744aa7f47ae7c164fa4a7",
       "size": 1174
@@ -465,8 +500,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "9e77865814bcfefa154ad779004a20d439a5c70a1fec472894d5b657c9dcb644",
-      "size": 676808
+      "sha256": "256e3f0f2fae24c44ed1ae717ee1fc1f66591243a0213682c3287075fdd3d119",
+      "size": 689645
     },
     {
       "path": "apps-script/appsscript.json",
@@ -805,8 +840,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "9e77865814bcfefa154ad779004a20d439a5c70a1fec472894d5b657c9dcb644",
-      "size": 676808
+      "sha256": "256e3f0f2fae24c44ed1ae717ee1fc1f66591243a0213682c3287075fdd3d119",
+      "size": 689645
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -1029,14 +1064,14 @@
       "size": 586
     },
     {
-      "path": "docs/daily-workflow.md",
-      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
-      "size": 3541
-    },
-    {
       "path": "docs/daily-workflow/index.md",
       "sha256": "b15344b77c83320624803171b9af513858018a21e9e26eadae7d482605a22969",
       "size": 1515
+    },
+    {
+      "path": "docs/daily-workflow.md",
+      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
+      "size": 3541
     },
     {
       "path": "docs/download.md",
@@ -1049,24 +1084,24 @@
       "size": 395
     },
     {
-      "path": "docs/faq.md",
-      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
-      "size": 183
-    },
-    {
       "path": "docs/faq/index.md",
       "sha256": "c4edd348ff675a992460e04c6b5264fd9c45dc39fc0bc77a596604119285a967",
       "size": 1672
     },
     {
-      "path": "docs/getting-started.md",
-      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
-      "size": 252
+      "path": "docs/faq.md",
+      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
+      "size": 183
     },
     {
       "path": "docs/getting-started/index.md",
       "sha256": "de8a1159c73ce595fc2dbec7be18628974c24e2527b5057538a08f5c2e3cf083",
       "size": 1229
+    },
+    {
+      "path": "docs/getting-started.md",
+      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
+      "size": 252
     },
     {
       "path": "docs/google-cloud-api-guide.md",
@@ -1119,16 +1154,6 @@
       "size": 198
     },
     {
-      "path": "docs/setup-guide.md",
-      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
-      "size": 571
-    },
-    {
-      "path": "docs/setup.html",
-      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
-      "size": 1951
-    },
-    {
       "path": "docs/setup/article-db-foundation.md",
       "sha256": "c3f85876300981507686c5fb4c0aac18c3fb09c0524fa355766f3295e57462e3",
       "size": 1458
@@ -1164,6 +1189,16 @@
       "size": 588
     },
     {
+      "path": "docs/setup-guide.md",
+      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
+      "size": 571
+    },
+    {
+      "path": "docs/setup.html",
+      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
+      "size": 1951
+    },
+    {
       "path": "docs/spreadsheet-guide.md",
       "sha256": "6c089cbe99ff4104887698da7daea77a2c874590f1572c99cb23b2dfffaa023f",
       "size": 1052
@@ -1177,16 +1212,6 @@
       "path": "docs/todays-improvement.html",
       "sha256": "febaa74b6beb8d716a2cdf0c349f88414a32e69802d4f5244c7a032dc9e43599",
       "size": 1813
-    },
-    {
-      "path": "docs/troubleshooting.html",
-      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
-      "size": 1791
-    },
-    {
-      "path": "docs/troubleshooting.md",
-      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
-      "size": 241
     },
     {
       "path": "docs/troubleshooting/common-errors.md",
@@ -1212,6 +1237,16 @@
       "path": "docs/troubleshooting/urlfetch-auth.md",
       "sha256": "06482d76ef7657d8cf4a052cb3993def516933b7b22e1aa850e61758184802c7",
       "size": 525
+    },
+    {
+      "path": "docs/troubleshooting.html",
+      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
+      "size": 1791
+    },
+    {
+      "path": "docs/troubleshooting.md",
+      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
+      "size": 241
     },
     {
       "path": "docs/user-guide/data-list.md",
@@ -1249,14 +1284,14 @@
       "size": 533
     },
     {
-      "path": "docs/user-guide/todays-improvement.md",
-      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
-      "size": 551
-    },
-    {
       "path": "docs/user-guide/todays-improvement/index.md",
       "sha256": "ca2c1a7470c3d201da9861849acfe59709698122d8ec4b6c91c7643713010140",
       "size": 1495
+    },
+    {
+      "path": "docs/user-guide/todays-improvement.md",
+      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
+      "size": 551
     },
     {
       "path": "integration/SBM_BATCH_INTEGRATION.md",
@@ -2204,6 +2239,11 @@
       "size": 348
     },
     {
+      "path": "shared/FILE_MANIFEST.txt",
+      "sha256": "5c15ebc90a6e0ba56042b899acd52cce24af6a3c5c0c23c6f32835fa226abe08",
+      "size": 10431
+    },
+    {
       "path": "shared/LICENSE",
       "sha256": "ce0c69a4019923878282e03bb1ce789260e592199a0fbbab67e77fefe0e97664",
       "size": 158
@@ -2397,6 +2437,11 @@
       "path": "shared/RELEASE_NOTES_v3.5.0.md",
       "sha256": "7ab2d2772db0d0fcd8e283496f8c6f2b8d29b6d9c65a8128774d9f8e37de5bf4",
       "size": 798
+    },
+    {
+      "path": "shared/SHA256SUMS.txt",
+      "sha256": "8fe8bda6e69eef4e05f41f1d9f8bee52a12fc7f0ad943f82e17d62dbfc648640",
+      "size": 28251
     },
     {
       "path": "shared/SNAPSHOT_MANIFEST.json",
@@ -3719,6 +3764,16 @@
       "size": 773
     },
     {
+      "path": "tests/__pycache__/conftest.cpython-313-pytest-9.0.2.pyc",
+      "sha256": "d9e689bca3fcca83763e7b3d817f18ddf517adfe80b7334b83e64375a727a941",
+      "size": 661
+    },
+    {
+      "path": "tests/__pycache__/test_rc8_final_freeze_contract.cpython-313-pytest-9.0.2.pyc",
+      "sha256": "1fd4c261c56f9f0b5ad746c8a92ecfe5dc6840690b1d571a4626c6a84418ab6d",
+      "size": 14400
+    },
+    {
       "path": "tests/conftest.py",
       "sha256": "adfbcbfe7b77edd48cb54c03b14ab643f48a151e92775d2bd84a147418fcf354",
       "size": 161
@@ -4280,8 +4335,8 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_candidate_worklist_test.js",
-      "sha256": "8544210fefec697d3daa9a3fe4af6cbd537b40d5540876ca6819e31a9f1f3da4",
-      "size": 1366
+      "sha256": "707047ba9fda25df42c833b072a2e9cce1e26f6ae2e1f7b62ed932b9420e9642",
+      "size": 1362
     },
     {
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
@@ -4304,9 +4359,24 @@
       "size": 807
     },
     {
+      "path": "tests/product5100_rc8_final_hotfix4_test.js",
+      "sha256": "fdb97a466919959934404cbf463dafa52adc7ff4da355e4e9f7154d31c349177",
+      "size": 1214
+    },
+    {
+      "path": "tests/product5100_rc8_final_hotfix5_test.js",
+      "sha256": "d2f73d5c687c8ff8dac6bc0972d4f06bd0565199e60f0088daba1a9fde8d3258",
+      "size": 1596
+    },
+    {
+      "path": "tests/product5100_rc8_final_hotfix6_test.js",
+      "sha256": "6fa4e7b19af8f1adcfa11c9dd740d5aed5bca5c95e3be18cf650a4791ff3c01a",
+      "size": 2104
+    },
+    {
       "path": "tests/product5100_rc8_final_ux_static_test.js",
-      "sha256": "4923b808c02c87634d96e45142acd243fee661bd13ff0fa0ce212e8fed438a55",
-      "size": 1562
+      "sha256": "57eabcefc87f45fddd5ecec666d5ad41c6824dec8d821c12b3a78ef419127dbc",
+      "size": 1550
     },
     {
       "path": "tests/product5100_rc8_release_candidate_last_test.js",
@@ -4447,6 +4517,11 @@
       "path": "tests/product599_next_action_routing_test.js",
       "sha256": "c1d83447179b05a63d01645caee4e4469c4d55110a2c1afd6b44badc19f71251",
       "size": 218
+    },
+    {
+      "path": "tests/release/__pycache__/test_release_candidate_integrity.cpython-313-pytest-9.0.2.pyc",
+      "sha256": "8aa9c216653edd81ad123f242eabfe2af5beade27269bd560c448a488f38855a",
+      "size": 5543
     },
     {
       "path": "tests/release/test_release_candidate_integrity.py",
