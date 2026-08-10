@@ -8218,6 +8218,8 @@ function onOpen() {
   } catch (eUrl) {
     try { sbmLog_('OnOpenCanonicalUrl', 'Warning', String(eUrl)); } catch (ignoreUrl) {}
   }
+  // RC8 UI guard: old Doctor tabs are migrated before the user can open them.
+  try { sbmDoctorEnsureLatestUserViews_(); } catch (eDoctorUi) { try { sbmLog_('OnOpenDoctorUiGuard','Warning',String(eDoctorUi)); } catch(ignoreDoctorUi) {} }
 
   var ui = SpreadsheetApp.getUi();
 
@@ -8313,7 +8315,7 @@ function onOpen() {
 
 
 /* ========================================================================== *
- * Product 5.7.1 RC1: SIMS Doctor 半年健康診断 基盤
+ * Product 5.10.0 RC8: SIMS Doctor ブログ健康診断 基盤
  * ========================================================================== */
 
 const SBM_DOCTOR_HEALTH_DAYS = 180;
@@ -8339,6 +8341,30 @@ function sbmDoctorEnsureMedicalSheets_() {
   });
 }
 
+/** RC8 UI guard: legacy Doctor user views are migrated to the latest RC8 layout on open. */
+function sbmDoctorEnsureLatestUserViews_(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  try{
+    var legacy=ss.getSheetByName('Doctor_精密診断紹介状');
+    var current=ss.getSheetByName('Doctor_精密診断候補');
+    var stale=false;
+    if(legacy) stale=true;
+    if(current){
+      var heads=[];
+      try{heads=current.getRange(6,1,1,Math.max(1,current.getLastColumn())).getDisplayValues()[0].map(function(v){return String(v||'').trim();});}catch(eHeads){}
+      var expected=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR'];
+      for(var i=0;i<expected.length;i++){if(heads[i]!==expected[i]){stale=true;break;}}
+      if(heads.indexOf('状態')>=0||heads.indexOf('診断理由')>=0||heads.indexOf('優先')>=0)stale=true;
+    }
+    var snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+    if(stale && snap && snap.getLastRow()>1){
+      sbmDoctorRebuildCandidateViewFromSnapshot_();
+    }else if(legacy && !snap){
+      try{legacy.hideSheet();}catch(eHideLegacy){}
+    }
+  }catch(e){try{sbmLog_('DoctorLatestUserViews','Warning',String(e));}catch(ignore){}}
+}
+
 function sbmDoctorPrepareHealthCheckScreen_(){
   // RC8 final: health-check execution must never move the user's active sheet.
   // The staged runner works in the modal dialog and opens Doctor_健康診断書 only after completion.
@@ -8348,6 +8374,8 @@ function sbmDoctorPrepareHealthCheckScreen_(){
 function sbmDoctorRunHealthCheck() {
   try {
     sbmDoctorPrepareHealthCheckScreen_();
+    // Do not render or activate Doctor sheets while the staged runner is working.
+    // Any legacy Doctor tab is migrated onOpen; completion rebuilds the latest RC8 views.
     try { sbmEnsureArticleListDisplayCompleteness_(20,40); } catch(eCompleteness) { sbmLog_('DoctorPreflightArticleListCompleteness','Warning',String(eCompleteness)); }
     sbmDoctorAssertSafeToExport_();
     if (!sbmIsSetupComplete_() || sbmGetSetting_('ConnectionStatus','') !== 'OK') return sbmAlert_('ブログ健康診断を始められません','初回セットアップとSearch Console接続を完了してください。');
@@ -9581,7 +9609,7 @@ function sbmDoctorComparisonWindow_(improvement,performance){
 }
 
 /**
- * Product 5.7.1 RC6: 結合セルを使わないDoctor診断書レイアウト
+ * Product 5.10.0 RC8: Doctor健康診断書レイアウト
  * 利用者にはブログ全体の状態、Doctor所見、精密診断の目的を日本語で表示します。
  */
 function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
@@ -9996,7 +10024,7 @@ function sbmDoctorUpgradeReferralHumanView_(sh){
 }
 function sbmDoctorOpenHealthReport(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Doctor_健康診断書');
-  if(!sh) return sbmAlert_('ブログ健康診断書','まだ健康診断書は作成されていません。先にブログ全体の健康診断を実行してください。');
+  if(!sh) return sbmAlert_('ブログ健康診断書','まだ健康診断書は作成されていません。先にブログ健康診断を実行してください。');
   sbmDoctorPolishHealthReportView_(sh);
   sh.showSheet(); SpreadsheetApp.getActiveSpreadsheet().setActiveSheet(sh); sh.activate();
 }
@@ -10072,25 +10100,27 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
 
 function sbmDoctorOpenDetailedCandidates(){
   try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){sbmLog_('DoctorCandidateReconcile','Warning',String(eReconcile));}
-  var ss=SpreadsheetApp.getActiveSpreadsheet();
-  var sh=ss.getSheetByName('Doctor_精密診断候補')||ss.getSheetByName('Doctor_精密診断紹介状');
-  if(!sh) return sbmAlert_('精密診断候補','まだ精密診断候補は作成されていません。先にブログ全体の健康診断を実行してください。');
-  // Hotfix: 旧数値型テーブルを残したまま「重症度」を書き込まない。最新スナップショットから通常グリッドへ再生成します。
-  try{sh=sbmDoctorRebuildCandidateViewFromSnapshot_()||sh;}catch(eRebuild){sbmLog_('DoctorCandidateOpenRebuild','Warning',String(eRebuild));}
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=null;
+  // Always render from the latest health snapshot first. Never expose a legacy 5-column sheet.
+  try{sh=sbmDoctorRebuildCandidateViewFromSnapshot_();}catch(eRebuild){sbmLog_('DoctorCandidateOpenRebuild','Warning',String(eRebuild));}
+  if(!sh) sh=ss.getSheetByName('Doctor_精密診断候補');
+  if(!sh) return sbmAlert_('精密診断候補','まだ精密診断候補は作成されていません。先にブログ健康診断を実行してください。');
   sbmDoctorEnsureReferralSelectionColumn_(sh);
   sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
 }
 
 function sbmDoctorCreateRequestFromDetailedCandidate(){
   try{
-    var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断候補')||ss.getSheetByName('Doctor_精密診断紹介状');
+    var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=null;
+    try{sh=sbmDoctorRebuildCandidateViewFromSnapshot_();}catch(eLatest){sbmLog_('DoctorCandidateRequestRebuild','Warning',String(eLatest));}
+    if(!sh)sh=ss.getSheetByName('Doctor_精密診断候補');
     if(!sh)throw new Error('精密診断候補がありません。先にブログ健康診断を完了してください。');
     var col=sbmDoctorReferralHeaderMap_(sh),last=sh.getLastRow();
     if(last<7)throw new Error('診断対象の記事がありません。');
     if(!col['選択'])throw new Error('候補一覧の選択欄を準備できませんでした。シートを閉じてもう一度開いてください。');
     var checks=sh.getRange(7,col['選択'],last-6,1).getValues(),selected=[];
     checks.forEach(function(v,i){if(v[0]===true)selected.push(i+7);});
-    if(selected.length===0)throw new Error('A列の「選択」にチェックを入れてください。旧レイアウトの場合は、メニューの「4．精密診断候補を見る」を開き直すと自動修復されます。');
+    if(selected.length===0)throw new Error('A列の「選択」にチェックを入れてください。');
     if(selected.length>1)throw new Error('一度に依頼できるのは1記事です。チェックを1件だけ残してください。');
     var row=selected[0];
     var idCol=col['記事ID']||col['ArticleID'];
@@ -10459,7 +10489,7 @@ function sbmDoctorRegisterCaseResult(){
     var o=sbmDoctorPromptJson_('Doctor診断結果を登録','通常は精密診断ダイアログ下段へ貼り付けてください。このメニューは診断記録だけを保存する予備機能です。');
     if(!o)return;
     var n=sbmDoctorNormalizeCaseResult_(o),saved=sbmDoctorStoreCaseResult_(o,n);
-    sbmAlert_('Doctor診断結果を登録しました','CaseID：'+n.caseId+'\n状態：'+saved.label+'\n\nWriter紹介状は、精密診断紹介状ダイアログの下段から登録した場合に自動生成されます。');
+    sbmAlert_('Doctor診断結果を登録しました','CaseID：'+n.caseId+'\n状態：'+saved.label+'\n\nWriter紹介状は、Doctor診断結果からWriter処置へ進む場合に自動生成されます。');
   }catch(e){sbmAlert_('Doctor診断結果を登録できません',String(e.message||e));}
 }
 function sbmDoctorOpenCases(){var sh=sbmDoctorEnsureCaseSheet_();sh.showSheet();SpreadsheetApp.getActive().setActiveSheet(sh);}
