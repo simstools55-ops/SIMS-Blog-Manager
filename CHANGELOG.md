@@ -1001,3 +1001,9 @@
 - Separate internal URL identity keys from user-visible URLs.
 - Prefer Search Console page URL representation for operational sheets.
 - Preserve existing URL representation when an article is not present in the current GSC fetch.
+
+## 5.10.0-RC8 Doctor Request UX Fix
+- SIMS Doctorメニューから「健康診断の進み具合を見る」を削除し、健康診断→診断書→精密診断候補→Doctor依頼の4ステップへ整理。
+- 精密診断候補の記事タイトルを折り返し表示し、一覧性を保つ固定行高へ調整。
+- 精密診断候補からDoctor依頼文を作る直前の候補再生成を廃止し、チェックが消える不具合を修正。
+- Doctor依頼作成時は現在表示中の候補シートをそのまま読み取り、選択状態を維持。

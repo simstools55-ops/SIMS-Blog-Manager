@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-09T12:51:36.430923+00:00",
-  "file_count": 962,
+  "generated_at": "2026-08-10T07:31:15.227446Z",
+  "file_count": 969,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -15,8 +15,13 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "eace5b6fbcec115519261d3125339386da6c5f9e12940390d0649680f688b39c",
-      "size": 51533
+      "sha256": "c868bd081dba78dc9d734b990cf46a2f40538db09a0cd4f1e698fc60c4618020",
+      "size": 52107
+    },
+    {
+      "path": "FILE_MANIFEST.txt",
+      "sha256": "d78f05eabdac7c4d13bff33794941dc8ea4cdf71df5188fbc658903a4b877372",
+      "size": 42183
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -289,6 +294,11 @@
       "size": 937
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Doctor-Request-UX-Fix.md",
+      "sha256": "20a2f8173ac100b1c5682dbfd32c889507a099871ce698973a9a74a8d530b124",
+      "size": 664
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Freeze-Candidate.md",
       "sha256": "034bd624bb6ea412118f1c6f5c35a147d907bba5e22e51d569659165d6f2e299",
       "size": 1386
@@ -347,6 +357,16 @@
       "path": "RELEASE_NOTES_v5.10.0-RC8-Release-Candidate-Last.md",
       "sha256": "472643187436acf79d0fd6bf40d1968e4ff6bbeed703d7f42ef550758b1ec631",
       "size": 1405
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Staged-Runner-UI-Guard.md",
+      "sha256": "5a1cf203459ca5d2610a271f79136f641d7282668729ea0aac0667617b741b05",
+      "size": 512
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-UI-Guard2.md",
+      "sha256": "78797b4a44d9167ed398708cffc83d8896825c8e26689d93ad55b11052ffec29",
+      "size": 660
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-URL-Canonicalization.md",
@@ -510,8 +530,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "36fde86f8ae9e21da6e70f8d7d824aa227e381a454f5d83db20047cc2c3a11b4",
-      "size": 703075
+      "sha256": "890dfbfc1a7db08d27791cea0b7db6bc9035b1d665d6fa74957c2bc9047d343d",
+      "size": 704741
     },
     {
       "path": "apps-script/appsscript.json",
@@ -850,8 +870,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "36fde86f8ae9e21da6e70f8d7d824aa227e381a454f5d83db20047cc2c3a11b4",
-      "size": 703075
+      "sha256": "890dfbfc1a7db08d27791cea0b7db6bc9035b1d665d6fa74957c2bc9047d343d",
+      "size": 704741
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -1074,14 +1094,14 @@
       "size": 586
     },
     {
-      "path": "docs/daily-workflow.md",
-      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
-      "size": 3541
-    },
-    {
       "path": "docs/daily-workflow/index.md",
       "sha256": "b15344b77c83320624803171b9af513858018a21e9e26eadae7d482605a22969",
       "size": 1515
+    },
+    {
+      "path": "docs/daily-workflow.md",
+      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
+      "size": 3541
     },
     {
       "path": "docs/download.md",
@@ -1094,24 +1114,24 @@
       "size": 395
     },
     {
-      "path": "docs/faq.md",
-      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
-      "size": 183
-    },
-    {
       "path": "docs/faq/index.md",
       "sha256": "c4edd348ff675a992460e04c6b5264fd9c45dc39fc0bc77a596604119285a967",
       "size": 1672
     },
     {
-      "path": "docs/getting-started.md",
-      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
-      "size": 252
+      "path": "docs/faq.md",
+      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
+      "size": 183
     },
     {
       "path": "docs/getting-started/index.md",
       "sha256": "de8a1159c73ce595fc2dbec7be18628974c24e2527b5057538a08f5c2e3cf083",
       "size": 1229
+    },
+    {
+      "path": "docs/getting-started.md",
+      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
+      "size": 252
     },
     {
       "path": "docs/google-cloud-api-guide.md",
@@ -1164,16 +1184,6 @@
       "size": 198
     },
     {
-      "path": "docs/setup-guide.md",
-      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
-      "size": 571
-    },
-    {
-      "path": "docs/setup.html",
-      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
-      "size": 1951
-    },
-    {
       "path": "docs/setup/article-db-foundation.md",
       "sha256": "c3f85876300981507686c5fb4c0aac18c3fb09c0524fa355766f3295e57462e3",
       "size": 1458
@@ -1209,6 +1219,16 @@
       "size": 588
     },
     {
+      "path": "docs/setup-guide.md",
+      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
+      "size": 571
+    },
+    {
+      "path": "docs/setup.html",
+      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
+      "size": 1951
+    },
+    {
       "path": "docs/spreadsheet-guide.md",
       "sha256": "6c089cbe99ff4104887698da7daea77a2c874590f1572c99cb23b2dfffaa023f",
       "size": 1052
@@ -1222,16 +1242,6 @@
       "path": "docs/todays-improvement.html",
       "sha256": "febaa74b6beb8d716a2cdf0c349f88414a32e69802d4f5244c7a032dc9e43599",
       "size": 1813
-    },
-    {
-      "path": "docs/troubleshooting.html",
-      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
-      "size": 1791
-    },
-    {
-      "path": "docs/troubleshooting.md",
-      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
-      "size": 241
     },
     {
       "path": "docs/troubleshooting/common-errors.md",
@@ -1257,6 +1267,16 @@
       "path": "docs/troubleshooting/urlfetch-auth.md",
       "sha256": "06482d76ef7657d8cf4a052cb3993def516933b7b22e1aa850e61758184802c7",
       "size": 525
+    },
+    {
+      "path": "docs/troubleshooting.html",
+      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
+      "size": 1791
+    },
+    {
+      "path": "docs/troubleshooting.md",
+      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
+      "size": 241
     },
     {
       "path": "docs/user-guide/data-list.md",
@@ -1294,14 +1314,14 @@
       "size": 533
     },
     {
-      "path": "docs/user-guide/todays-improvement.md",
-      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
-      "size": 551
-    },
-    {
       "path": "docs/user-guide/todays-improvement/index.md",
       "sha256": "ca2c1a7470c3d201da9861849acfe59709698122d8ec4b6c91c7643713010140",
       "size": 1495
+    },
+    {
+      "path": "docs/user-guide/todays-improvement.md",
+      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
+      "size": 551
     },
     {
       "path": "integration/SBM_BATCH_INTEGRATION.md",
@@ -4335,8 +4355,13 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_candidate_worklist_test.js",
-      "sha256": "c6200a9f1ac99b073375c318a15439a27e8441f687520b9233b46f9e2933b896",
+      "sha256": "ecf10e7134bd1f76aba5858ab02669a06453591bd30acbb592c3450121b25f08",
       "size": 1393
+    },
+    {
+      "path": "tests/product5100_rc8_doctor_request_ux_fix_test.js",
+      "sha256": "2bddb6d0c13337ce882f25e7fa84c2ff2ab26016138b7af20f7265bc488aaf2b",
+      "size": 1068
     },
     {
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
@@ -4400,13 +4425,23 @@
     },
     {
       "path": "tests/product5100_rc8_release_candidate_last_test.js",
-      "sha256": "a33a746b6f54287da7756deb926381d5bb0bf0cc488afa47dfc9a5edc9750422",
-      "size": 1445
+      "sha256": "0f8c6ab370982e2517b9abedb30a79f250544ee19f0ee493620a7035e61f6c43",
+      "size": 1436
+    },
+    {
+      "path": "tests/product5100_rc8_staged_runner_ui_guard_test.js",
+      "sha256": "c4a92b69accaae81715a5922a48d69399627ca0220ea17974be6eea6b01cf519",
+      "size": 1347
     },
     {
       "path": "tests/product5100_rc8_typed_column_referral_hotfix_test.js",
       "sha256": "5cfe0ef6726c26bb6d67402f0b509ce18eda66ad1155f9dbbd41a38075055384",
       "size": 1443
+    },
+    {
+      "path": "tests/product5100_rc8_ui_guard2_test.js",
+      "sha256": "84166db5fac381be1460ab77092227a44ee25d20ce6bfca052a21cd6db35ba52",
+      "size": 1277
     },
     {
       "path": "tests/product5100_rc8_unified_improvement_workflow_test.js",
@@ -4420,7 +4455,7 @@
     },
     {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
-      "sha256": "b9cf47223c4d96954aac369949dc498afa5170c191a12e8c6376a9cd1a3f253b",
+      "sha256": "a3e8d5c75ed3974724a7bfd2fbcbfda6419f26ccb0bf3bb9cc40718cd015366f",
       "size": 1444
     },
     {

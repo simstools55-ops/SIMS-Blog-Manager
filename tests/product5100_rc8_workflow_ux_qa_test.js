@@ -6,7 +6,7 @@ const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8')
 function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
 ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'RC8 version');
 ok(code.includes("1．Homeを確認する")&&code.includes("2．日次処理を実行"),'main daily flow numbering');
-ok(code.includes("4．精密診断候補を見る")&&code.includes("5．チェックした記事のDoctor依頼文を作る"),'Doctor candidate flow labels');
+ok(code.includes("3．精密診断候補を見る")&&code.includes("4．チェックした記事のDoctor依頼文を作る"),'Doctor candidate flow labels');
 ok(!code.includes("6．Doctor対応一覧を確認する"),'redundant Doctor worklist removed');
 ok(code.includes("setValue('SIMS Doctor　精密診断候補')"),'candidate purpose visible in title');
 ok(code.includes('sbmOpenImprovementHistory();'),'Doctor completion joins improvement history');
