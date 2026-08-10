@@ -13,3 +13,6 @@ GitHub／ローカル更新時は、既存の `distribution` フォルダーを�
 4. 「SIMS-Blog-Manager → シートの作成・修復」を1回実行します。
 
 Platform用システムシートは非表示で追加されます。既存データは削除しません。
+
+## Health check QA note (UAT7)
+During a blog health check, do not run daily processing or another heavy SBM operation in another blog at the same time. Google Spreadsheet service load is shared outside this individual spreadsheet and cannot be locked across separate SBM copies. The same SBM file blocks health check and daily processing from running together.
