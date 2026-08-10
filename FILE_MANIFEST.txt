@@ -1,6 +1,7 @@
 .github/workflows/deploy.yml
 .gitignore
 CHANGELOG.md
+FILE_MANIFEST.txt
 GITHUB_RELEASE_NOTES.md
 HOW_TO_PUBLISH.md
 LICENSE
@@ -55,6 +56,7 @@ RELEASE_NOTES_v5.10.0-RC6.md
 RELEASE_NOTES_v5.10.0-RC7.md
 RELEASE_NOTES_v5.10.0-RC8-Doctor-Candidate-Worklist-UX.md
 RELEASE_NOTES_v5.10.0-RC8-Doctor-Header-Layout-Hotfix.md
+RELEASE_NOTES_v5.10.0-RC8-Doctor-Request-UX-Fix.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Freeze-Candidate.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix1.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix2.md
@@ -63,10 +65,13 @@ RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix4.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix5.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix6.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix7.md
+RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT1.md
 RELEASE_NOTES_v5.10.0-RC8-Final.md
 RELEASE_NOTES_v5.10.0-RC8-GSC-URL-Display-Policy.md
 RELEASE_NOTES_v5.10.0-RC8-Health-Staged-Runner.md
 RELEASE_NOTES_v5.10.0-RC8-Release-Candidate-Last.md
+RELEASE_NOTES_v5.10.0-RC8-Staged-Runner-UI-Guard.md
+RELEASE_NOTES_v5.10.0-RC8-UI-Guard2.md
 RELEASE_NOTES_v5.10.0-RC8-URL-Canonicalization.md
 RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md
 RELEASE_NOTES_v5.10.0-RC8.md
@@ -865,6 +870,7 @@ tests/product5100_rc6_ui_ux_refresh_test.js
 tests/product5100_rc7_human_view_workflow_test.js
 tests/product5100_rc8_compact_doctor_ui_test.js
 tests/product5100_rc8_doctor_candidate_worklist_test.js
+tests/product5100_rc8_doctor_request_ux_fix_test.js
 tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js
 tests/product5100_rc8_final_hotfix1_test.js
 tests/product5100_rc8_final_hotfix2_test.js
@@ -872,13 +878,16 @@ tests/product5100_rc8_final_hotfix3_test.js
 tests/product5100_rc8_final_hotfix4_test.js
 tests/product5100_rc8_final_hotfix5_test.js
 tests/product5100_rc8_final_hotfix6_test.js
+tests/product5100_rc8_final_uat1_regression_test.js
 tests/product5100_rc8_final_ux_static_test.js
 tests/product5100_rc8_gsc_display_url_policy_test.js
 tests/product5100_rc8_health_staged_runner_test.js
 tests/product5100_rc8_official_blocker_final_test.js
 tests/product5100_rc8_official_candidate_table_test.js
 tests/product5100_rc8_release_candidate_last_test.js
+tests/product5100_rc8_staged_runner_ui_guard_test.js
 tests/product5100_rc8_typed_column_referral_hotfix_test.js
+tests/product5100_rc8_ui_guard2_test.js
 tests/product5100_rc8_unified_improvement_workflow_test.js
 tests/product5100_rc8_url_canonicalization_test.js
 tests/product5100_rc8_workflow_ux_qa_test.js

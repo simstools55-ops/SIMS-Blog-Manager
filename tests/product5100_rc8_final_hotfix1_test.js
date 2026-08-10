@@ -17,6 +17,6 @@ has("return 'Doctor→Merge'");
 has('function sbmDoctorRebuildCandidateViewFromSnapshot_()');
 has("ss.deleteSheet(old1)");
 has("cand.getRange(7,2,out.length,1).setNumberFormat('@')");
-has("var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR'");
+has("headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR'");
 assert(!code.includes("if(headers[1]==='優先')sh.getRange(6,2).setValue('重症度');") || code.includes('sbmDoctorRebuildCandidateViewFromSnapshot_'), 'legacy upgrader must be bypassed by rebuild');
 console.log('product5100_rc8_final_hotfix1_test: PASS');

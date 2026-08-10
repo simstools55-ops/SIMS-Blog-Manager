@@ -6,7 +6,7 @@ ok(!code.includes(".addItem('4．修正前を確認','sbmShowSelectedRollbackDet
 ok(!code.includes('function sbmShowSelectedRollbackDetail()'),'rollback viewer removed');
 ok(code.includes("1．ブログ健康診断を実行") && code.includes("2．健康診断書を開く") && code.includes("3．精密診断候補を見る"),'health-check terminology simplified');
 ok(code.includes('sbmDoctorOpenHealthReport();') && !code.includes('if(selected>0)sbmDoctorOpenDetailedCandidates();else sbmDoctorOpenHealthReport();'),'health check finishes on report');
-ok(code.includes("cand.getRange(7,3,out.length,6).setWrap(false)"),'candidate comparison rows stay compact');
+ok(code.includes("cand.getRange(7,3,out.length,1).setWrap(true)") && code.includes("cand.getRange(7,4,out.length,5).setWrap(false)"),'candidate title wraps while metrics stay compact');
 ok(code.includes("else if (sh.getName() === SBM_SHEETS.FEEDBACK_HISTORY) keyHeader = '記事タイトル';"),'history checkbox includes Doctor rows without date');
 ok(code.includes('if (history) history.hideSheet();'),'history rebuild hidden from user');
 ok(code.includes('sbmDoctorPrepareHealthCheckScreen_();'),'health check uses stable neutral screen');

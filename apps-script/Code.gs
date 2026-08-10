@@ -8582,9 +8582,7 @@ function sbmDoctorRunScreening_(silent) {
   sh.getRange(2,1,vals.length,vals[0].length).setValues(vals);
   run.statusCode='COMPLETED'; run.phase='完了'; run.nextStep='健康診断書を確認し、必要な記事だけ精密診断'; run.processedCount=eligible; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
   sbmDoctorBuildHealthReportSheets_(run.healthCheckId, run, {excluded:excluded,eligible:eligible,selected:selected,candidateTotal:candidates.length,lowSample:lowSample,healthy:healthy});
-  // RC8 final guard: candidate view must always be rebuilt by the latest 8-column renderer.
-  // Do not activate the candidate sheet here; the health report is the only completion destination.
-  try { sbmDoctorRebuildCandidateViewFromSnapshot_(); } catch(eCandidateView) { sbmLog_('DoctorCandidateFinalRebuild','Warning',String(eCandidateView)); }
+  // RC8 Final QA: 候補ビューは健康診断完了時には生成しません。メニュー3を開いた時だけ最新状態から生成します。
   sbmDoctorDeleteContinuationTriggers_();
   if(!silent){
     sbmAlert_('ブログ健康診断が完了しました','登録記事：'+run.targetCount+'件\n詳しい診断が必要な記事：'+selected+'件\n経過を見る記事：'+lowSample+'件\n大きな問題が見つからなかった記事：'+healthy+'件\n\nまず健康診断書を確認してください。\n精密診断が必要な場合は、健康診断書を確認した後に「3．精密診断候補を見る」を開きます。'+(selected>0?'':'\n\n今回は精密診断の対象がないため、通常のSBM運用を続けてください。'));
@@ -9685,52 +9683,9 @@ function sbmDoctorBuildHealthReportSheets_(healthCheckId, run, counts) {
   report.setRowHeights(1,2,30); report.setRowHeights(4,6,28); report.setRowHeight(10,64); report.setRowHeight(11,72); report.setRowHeight(12,42); report.setRowHeight(13,44);
   report.getRange('A1:B13').setFontFamily('Arial').setVerticalAlignment('middle');
 
-  // RC8: 利用者が「どの記事を、なぜ診断するか」を選ぶ候補一覧。
-  var candName='Doctor_精密診断候補';
-  // RC8 Final Hotfix 1: このシートは健康診断スナップショットから再生成できる派生ビューです。
-  // 旧「優先」数値列をGoogle Sheetsのテーブルが数値型として保持している場合、単なるclear()では型が残ります。
-  // そこで候補ビューだけを作り直し、重症度（文字列）を確実に保存できる通常グリッドに戻します。
-  var old=ss.getSheetByName('Doctor_精密診断紹介状');
-  var cand=ss.getSheetByName(candName);
-  try{
-    if(cand){ if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===cand.getSheetId()){report.showSheet();ss.setActiveSheet(report);} ss.deleteSheet(cand); }
-    if(old){ if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old.getSheetId()){report.showSheet();ss.setActiveSheet(report);} ss.deleteSheet(old); }
-  }catch(eDeleteCandidate){sbmLog_('DoctorCandidateRecreate','Warning',String(eDeleteCandidate));}
-  cand=ss.insertSheet(candName);
-  cand.setFrozenRows(0); cand.setFrozenColumns(0);
-  cand.showSheet(); cand.setHiddenGridlines(true);
-  try { cand.showColumns(1, Math.min(cand.getMaxColumns(), 20)); } catch(eShow2) {}
-  cand.getRange('A1:H1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
-  cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Doctorメニューの「4．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
-
-  var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL'];
-  cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
-  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){return String(r[hm['詳細検査']-1])==='精密診断候補';}),hm).filter(function(r){return sbmDoctorIsUntreatedCurrentCandidate_(String(r[hm['記事ID']-1]||''),String(r[hm['記事URL']-1]||''));}).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
-  var out=selectedRows.map(function(r){
-    var code=String(r[hm['一次検査コード']-1]||''), m=sbmDoctorCandidateMetrics_(code,r,hm);
-    var articleId=String(r[hm['記事ID']-1]||''), articleUrl=String(r[hm['記事URL']-1]||'');
-    return [false,sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),String(r[hm['記事タイトル']-1]||''),m.trend,m.clicks,m.impressions,m.position,m.ctr,articleId,articleUrl];
-  });
-  if(out.length) cand.getRange(7,1,out.length,out[0].length).setValues(out);
-  else { cand.getRange('A7:H8').setBackground('#f7f7f7'); cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。').setHorizontalAlignment('left').setVerticalAlignment('middle'); }
-  cand.setFrozenRows(6);
-  [62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});
-  cand.setColumnWidth(9,110); cand.setColumnWidth(10,220); try { cand.hideColumns(9,2); } catch(eHide) {}
-  if(out.length){
-    cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);
-    var sevRange=cand.getRange(7,2,out.length,1), sevVals=sevRange.getDisplayValues();
-    sevVals.forEach(function(v,i){
-      var t=String(v[0]||''); var cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('center');
-      if(t.indexOf('緊急')>=0) cell.setBackground('#f4c7c3').setFontColor('#b31412');
-      else if(t.indexOf('重症')>=0) cell.setBackground('#fce8b2').setFontColor('#7a3e00');
-      else if(t.indexOf('中等症')>=0) cell.setBackground('#fff2cc').setFontColor('#5f4b00');
-      else cell.setBackground('#d9ead3').setFontColor('#274e13');
-    });
-  }
-  cand.getDataRange().setVerticalAlignment('middle').setFontFamily('Arial');
-  cand.getRange(6,1,1,8).setWrap(false); if(out.length){cand.getRange(7,3,out.length,6).setWrap(false).setVerticalAlignment('middle');}
-  cand.setRowHeight(1,36); cand.setRowHeight(2,44); cand.setRowHeight(3,6); cand.setRowHeight(4,6); cand.setRowHeight(5,6); cand.setRowHeight(6,28);
-  if(out.length) cand.setRowHeights(7,out.length,34);
+  // RC8 Final QA: 健康診断完了時は健康診断書だけを表示します。
+  // 精密診断候補はメニュー「3．精密診断候補を見る」を開いた時点で最新スナップショットから再生成します。
+  // これにより候補シート→Home→候補シートという途中画面のちらつきを防ぎます。
 }
 
 function sbmDoctorSelectionReason_(code,row,hm){
@@ -10070,6 +10025,19 @@ function sbmDoctorReferralHeaderMap_(sh){
  * RC8 Final Hotfix 1: 最新の健康診断スナップショットから精密診断候補ビューだけを再生成します。
  * 候補シートは派生ビューなので、旧テーブル型情報を捨てても診断データは失われません。
  */
+/** RC8 Final QA: 精密診断候補の傾向～CTRを状態別に薄く色分けします。 */
+function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rowCount){
+  if(!sheet||!rowCount)return;
+  var trends=sheet.getRange(startRow,4,rowCount,1).getDisplayValues();
+  trends.forEach(function(v,i){
+    var t=String(v[0]||''),range=sheet.getRange(startRow+i,4,1,5);
+    if(t.indexOf('急減')>=0||t.indexOf('低下')>=0) range.setBackground('#fce8e6').setFontColor('#8a1c16');
+    else if(t.indexOf('停滞')>=0) range.setBackground('#fff4d6').setFontColor('#6b4f00');
+    else if(t.indexOf('改善余地')>=0) range.setBackground('#e8f0fe').setFontColor('#174ea6');
+    else range.setBackground('#f1f3f4').setFontColor('#3c4043');
+  });
+}
+
 function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(), snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
   if(!snap||snap.getLastRow()<2)return null;
@@ -10084,7 +10052,8 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   }),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
   var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
   try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
-  var cand=ss.insertSheet(candName), headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL'];
+  var cand=ss.insertSheet(candName);
+  var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL'];
   cand.setHiddenGridlines(true);
   cand.getRange('A1:H1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
   cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Doctorメニューの「4．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
@@ -10093,7 +10062,7 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   if(out.length)cand.getRange(7,1,out.length,out[0].length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
   cand.setFrozenRows(6);[62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});cand.setColumnWidth(9,110);cand.setColumnWidth(10,220);try{cand.hideColumns(9,2);}catch(eHide){}
   cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setVerticalAlignment('middle').setFontFamily('Arial');
-  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');cand.getRange(7,3,out.length,1).setWrap(true);cand.getRange(7,4,out.length,5).setWrap(false);cand.setRowHeights(7,out.length,46);var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('center');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#d9ead3').setFontColor('#274e13');});}
+  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');cand.getRange(7,3,out.length,1).setWrap(true);cand.getRange(7,4,out.length,5).setWrap(false);cand.setRowHeights(7,out.length,46);var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#d9ead3').setFontColor('#274e13');});sbmDoctorApplyCandidateStatusColors_(cand,7,out.length);}
   return cand;
 }
 
