@@ -1,0 +1,25 @@
+SIMS-Blog-Manager Product 5.10.0 RC8 Final QA-UAT5
+
+REG-DOCTOR-CANDIDATE-BACKFILL-001: PASS
+- Untreated full detailed-diagnosis pool is re-ranked whenever the candidate sheet opens.
+- Candidate sheet is capped at DoctorDetailedDiagnosisLimit (default 10).
+- Processed / improving / monitoring articles are excluded, then lower-ranked articles backfill the list.
+
+REG-HEALTH-SUMMARY-MISMATCH-001: PASS (static/regression)
+- Health snapshot page aggregation excludes query/fragment URL variants.
+- Multiple raw URLs that normalize to one canonical key are not summed.
+- Representative canonical row is selected instead of multiplying impressions.
+
+REG-DIST-CLEAN-001: PASS
+- distribution allowlist: Code.gs, README-FIRST.md, appsscript.json, two spreadsheet templates.
+- ASCII-only distribution filenames.
+- README requires deleting/replacing the distribution folder rather than overlay copying.
+
+RC8 JavaScript regression files: 30/30 PASS
+Python targeted release/freeze tests: 10/10 PASS
+Release audit: PASS
+apps-script/Code.gs == distribution/Code.gs: PASS
+
+Remaining real-sheet UAT:
+1. Open Doctor detailed candidates and verify up to 10 untreated articles are shown.
+2. Re-run blog health check to regenerate health snapshot and compare an affected article's 180-day impressions with Doctor daily/page evidence.

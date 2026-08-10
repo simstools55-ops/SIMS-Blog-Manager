@@ -1,6 +1,11 @@
-# SIMS-Blog-Manager Product 5.10.0 RC1
+# SIMS-Blog-Manager Product 5.10.0 RC8 Final QA-UAT5
 
 既存スプレッドシートを継続利用できます。
+
+## 重要：distribution更新方法
+
+旧版の日本語ファイル名や文字化けファイルを残さないため、**既存の `distribution` フォルダーへ上書きコピーしないでください。**
+GitHub／ローカル更新時は、既存の `distribution` フォルダーを一度削除し、このZIPの `distribution` フォルダーで丸ごと置換してください。
 
 1. `Code.gs`でApps Scriptを全置換します。
 2. `appsscript.json`を必要に応じて更新します。

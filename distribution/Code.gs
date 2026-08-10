@@ -8645,13 +8645,21 @@ function sbmDoctorFetchPageMetrics_(range) {
   var data=sbmSearchConsoleApiRequest_(property,{startDate:range.startDate,endDate:range.endDate,dimensions:['page'],rowLimit:SBM_DOCTOR_HEALTH_PAGE_LIMIT,startRow:0});
   var map={};
   (data.rows||[]).forEach(function(r){
-    var url=sbmNormalizeUrl_(r.keys&&r.keys[0]?r.keys[0]:'');
+    var raw=String(r.keys&&r.keys[0]?r.keys[0]:'').trim();
+    // RC8 Final QA UAT5: 健康診断は記事のCanonical URL本体だけを集計する。
+    // ?utm= / preview / tracking 等のURLバリアントを正規化後に合算すると、
+    // クリックはほぼ同じまま表示回数だけ数倍になる SUMMARY_ROWS_MISMATCH を起こす。
+    if(!raw || raw.indexOf('?')>=0 || raw.indexOf('#')>=0) return;
+    var url=sbmNormalizeUrl_(raw);
     if(!url || !sbmIsValidArticleUrl_(url)) return;
     var imps=Number(r.impressions||0), clicks=Number(r.clicks||0), pos=Number(r.position||0);
-    if(!map[url]) map[url]={url:url,clicks:0,impressions:0,posSum:0};
-    map[url].clicks+=clicks; map[url].impressions+=imps; map[url].posSum+=pos*imps;
+    var candidate={url:url,source_url:raw,clicks:clicks,impressions:imps,ctr:imps?clicks/imps:0,position:pos};
+    // 末尾スラッシュ等で同一Canonical Keyが複数返った場合も合算しない。
+    // canonical代表として実績の大きい1行だけを採用する。
+    var prev=map[url];
+    if(!prev || candidate.clicks>prev.clicks || (candidate.clicks===prev.clicks && candidate.impressions>prev.impressions)) map[url]=candidate;
   });
-  return Object.keys(map).map(function(url){var x=map[url]; return {url:url,clicks:x.clicks,impressions:x.impressions,ctr:x.impressions?x.clicks/x.impressions:0,position:x.impressions?x.posSum/x.impressions:0};});
+  return Object.keys(map).map(function(url){return map[url];});
 }
 
 function sbmDoctorMergeSnapshotMetrics_(healthCheckId, period, prefix, metrics) {
@@ -10084,11 +10092,23 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   if(!hm['詳細検査'])return null;
   var latestHealthCheckId=sbmDoctorLatestHealthCheckIdFromRows_(allRows,hm);
   var current=latestHealthCheckId?allRows.filter(function(r){return String(r[hm['健康診断ID']-1]||'')===latestHealthCheckId;}):allRows;
-  var selectedRows=sbmDoctorDedupeCandidateRows_(current.filter(function(r){
-    if(String(r[hm['詳細検査']-1]||'')!=='精密診断候補')return false;
+  // RC8 Final QA UAT5: 健康診断時の上位10件だけを固定在庫にしない。
+  // 処理済み・改善中・モニター中を除外した後、精密診断が必要な全記事から再順位付けして最大N件を補充する。
+  var detailCodes={'RECENT_DROP':1,'LONG_TERM_DECLINE':1,'CTR_OPPORTUNITY':1,'POSITION_OPPORTUNITY':1,'LONG_TERM_STAGNATION':1};
+  var pool=sbmDoctorDedupeCandidateRows_(current.filter(function(r){
+    var code=String(r[hm['一次検査コード']-1]||'');
+    if(!detailCodes[code])return false;
+    if(hm['Doctor診断対象']&&String(r[hm['Doctor診断対象']-1]||'')==='対象外')return false;
     var id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||'');
     return sbmDoctorIsUntreatedCurrentCandidate_(id,url);
-  }),hm).sort(function(a,b){return Number(a[hm['精密診断順位']-1]||999)-Number(b[hm['精密診断順位']-1]||999);});
+  }),hm);
+  pool.sort(function(a,b){
+    var sa=sbmDoctorCandidateScore_({priorityJa:String(a[hm['優先度']-1]||''),code:String(a[hm['一次検査コード']-1]||'')},{full:{i:Number(a[hm['180日表示']-1]||0),c:Number(a[hm['180日クリック']-1]||0)}});
+    var sb=sbmDoctorCandidateScore_({priorityJa:String(b[hm['優先度']-1]||''),code:String(b[hm['一次検査コード']-1]||'')},{full:{i:Number(b[hm['180日表示']-1]||0),c:Number(b[hm['180日クリック']-1]||0)}});
+    return sb-sa || Number(b[hm['180日表示']-1]||0)-Number(a[hm['180日表示']-1]||0) || Number(b[hm['180日クリック']-1]||0)-Number(a[hm['180日クリック']-1]||0);
+  });
+  var candidateLimit=Math.max(1,Math.min(20,Number(sbmGetSetting_('DoctorDetailedDiagnosisLimit','10')||10)));
+  var selectedRows=pool.slice(0,candidateLimit);
   var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
   try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
   var cand=ss.insertSheet(candName);
