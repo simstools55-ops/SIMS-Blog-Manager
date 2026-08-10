@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-10T11:48:23.576491Z",
-  "file_count": 972,
+  "generated_at": "2026-08-10T13:00:03.188823Z",
+  "file_count": 973,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -20,8 +20,8 @@
     },
     {
       "path": "FILE_MANIFEST.txt",
-      "sha256": "3c553a890510797b64e4163e44bf772d07ea4379f8d53063363a400206b91a21",
-      "size": 42652
+      "sha256": "21df4df6eb6514762f2874d56b1838fb2a0ebd2b8022604bc9e65c64f898d4d2",
+      "size": 42763
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -344,6 +344,11 @@
       "size": 1063
     },
     {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT3.md",
+      "sha256": "2863cfdb5f1122eeffafc536663314605977fd4329498b7934a920254e260b42",
+      "size": 797
+    },
+    {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final.md",
       "sha256": "bc66cdc002ded22a41a4679df7523acc18793157eb8744aa7f47ae7c164fa4a7",
       "size": 1174
@@ -504,11 +509,6 @@
       "size": 90
     },
     {
-      "path": "SHA256SUMS.txt",
-      "sha256": "9e811ed3e38c8e7bb9bf18b86dbf452f587f6a7f4a6620b54ea9da1d7cd4dffd",
-      "size": 108615
-    },
-    {
       "path": "SHARED_VERSION",
       "sha256": "76120c1f2c4311c2154c22a6b58e00e411e0ebe76afae0daf608d9196c61f114",
       "size": 6
@@ -535,8 +535,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "2b7e1e5446f1affd3b29d1efdbc2fc10e6e99df5fafee0cec1ac473669d1e9db",
-      "size": 703905
+      "sha256": "83ecb0dbd4daedf60ea3a7c99e2a49d3f8fe4a7cd3e3c861b4dd2092c0c09bb9",
+      "size": 704504
     },
     {
       "path": "apps-script/appsscript.json",
@@ -875,8 +875,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "2b7e1e5446f1affd3b29d1efdbc2fc10e6e99df5fafee0cec1ac473669d1e9db",
-      "size": 703905
+      "sha256": "83ecb0dbd4daedf60ea3a7c99e2a49d3f8fe4a7cd3e3c861b4dd2092c0c09bb9",
+      "size": 704504
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -4412,6 +4412,11 @@
       "path": "tests/product5100_rc8_final_uat2_candidate_visual_regression_test.js",
       "sha256": "36c7dcab89306ddc287f20b3630c9aeaeb291be92e60a8b2bf67a015eaa54b31",
       "size": 1440
+    },
+    {
+      "path": "tests/product5100_rc8_final_uat3_full_response_article_jump_test.js",
+      "sha256": "7da28cd1e717748cd27c3d17e6706f44ec081b77d5b983a14559d075e723db53",
+      "size": 1402
     },
     {
       "path": "tests/product5100_rc8_final_ux_static_test.js",

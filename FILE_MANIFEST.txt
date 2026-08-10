@@ -66,6 +66,7 @@ RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix5.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix6.md
 RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix7.md
 RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT1.md
+RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT3.md
 RELEASE_NOTES_v5.10.0-RC8-Final.md
 RELEASE_NOTES_v5.10.0-RC8-GSC-URL-Display-Policy.md
 RELEASE_NOTES_v5.10.0-RC8-Health-Staged-Runner.md
@@ -880,6 +881,7 @@ tests/product5100_rc8_final_hotfix5_test.js
 tests/product5100_rc8_final_hotfix6_test.js
 tests/product5100_rc8_final_uat1_regression_test.js
 tests/product5100_rc8_final_uat2_candidate_visual_regression_test.js
+tests/product5100_rc8_final_uat3_full_response_article_jump_test.js
 tests/product5100_rc8_final_ux_static_test.js
 tests/product5100_rc8_gsc_display_url_policy_test.js
 tests/product5100_rc8_health_staged_runner_test.js
