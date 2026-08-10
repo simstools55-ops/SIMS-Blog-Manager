@@ -6,8 +6,8 @@ const health=(code.match(/function sbmDoctorBuildHealthReportSheets_\([\s\S]*?\n
 ok(!health.includes("insertSheet(candName)"),'REG-HEALTH-003: health report builder does not create candidate sheet');
 const step=(code.match(/function sbmDoctorProcessHealthRunStep_\([\s\S]*?\n\}/)||[''])[0];
 ok(!step.includes('DoctorCandidateFinalRebuild'),'REG-HEALTH-003: completion does not rebuild candidate before report');
-ok(code.includes("getRange(7,3,out.length,1).setWrap(true)"),'candidate title wraps');
+ok(code.includes("cand.getDataRange().setWrap(true)"),'all candidate cells wrap');
 ok(code.includes("setHorizontalAlignment('left')"),'severity is left aligned');
 ok(code.includes('function sbmDoctorApplyCandidateStatusColors_'),'candidate status color helper exists');
-ok(code.includes("t.indexOf('急減')>=0||t.indexOf('低下')>=0") && code.includes("t.indexOf('停滞')>=0") && code.includes("t.indexOf('改善余地')>=0"),'trend-through-CTR status colors cover decline/stagnation/opportunity');
+ok(code.includes("function classifyDelta(delta,badWhenPositive,sev)") && code.includes("ratio(bC,aC)") && code.includes("ratio(bI,aI)") && code.includes("(aP-bP)/bP") && code.includes("ratio(bR,aR)"),'metric colors use real click/impression/position/CTR deltas');
 console.log('PASS product5100_rc8_final_uat1_regression_test');

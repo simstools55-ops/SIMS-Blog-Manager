@@ -6,4 +6,4 @@ ok(!code.includes(".addItem('2．健康診断の進み具合を見る'"),'health
 const fn=(code.match(/function sbmDoctorCreateRequestFromDetailedCandidate\(\)\{[\s\S]*?\n\}/)||[''])[0];
 ok(fn.includes("getSheetByName('Doctor_精密診断候補')"),'request reads current candidate sheet');
 ok(!fn.includes('sbmDoctorRebuildCandidateViewFromSnapshot_'),'request does not rebuild candidate sheet before reading checkbox');
-ok(code.includes("getRange(7,3,out.length,1).setWrap(true)") && code.includes("setRowHeights(7,out.length,46)"),'candidate article titles wrap with compact two-line height');
+ok(code.includes("cand.getDataRange().setWrap(true)") && code.includes("autoResizeRows(7,out.length)"),'candidate cells wrap with automatic row height');

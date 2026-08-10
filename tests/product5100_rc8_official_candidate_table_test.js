@@ -12,8 +12,8 @@ ok(code.includes("m.clicks,m.impressions,m.position,m.ctr"),'four performance me
 ok(code.includes("return sbmDoctorIsUntreatedCurrentCandidate_(id,url)"),'only untreated articles rendered');
 ok(!code.includes("'選定理由','状態','記事ID'"),'legacy reason/state visible columns removed');
 ok(code.includes("cand.getRange('A1:H1').merge()"),'header spans visible eight columns');
-ok(code.includes("cand.getRange(7,3,out.length,1).setWrap(true)"),'article title wraps');
-ok(code.includes("cand.getRange(7,4,out.length,5).setWrap(false)"),'metric cells stay compact');
-ok(code.includes("sbmDoctorApplyCandidateStatusColors_(cand,7,out.length)"),'trend-through-CTR status colors applied');
+ok(code.includes("cand.getDataRange().setWrap(true)"),'all candidate cells wrap');
+ok(!code.includes("cand.getRange(7,4,out.length,5).setWrap(false)"),'metric cells are not forced to no-wrap');
+ok(code.includes("sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm)"),'metric-aware status colors applied');
 ok(code===dist,'distribution mirrors Apps Script');
 console.log('PASS product5100_rc8_official_candidate_table_test');

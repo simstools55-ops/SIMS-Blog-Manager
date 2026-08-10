@@ -10025,16 +10025,50 @@ function sbmDoctorReferralHeaderMap_(sh){
  * RC8 Final Hotfix 1: 最新の健康診断スナップショットから精密診断候補ビューだけを再生成します。
  * 候補シートは派生ビューなので、旧テーブル型情報を捨てても診断データは失われません。
  */
-/** RC8 Final QA: 精密診断候補の傾向～CTRを状態別に薄く色分けします。 */
-function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rowCount){
-  if(!sheet||!rowCount)return;
-  var trends=sheet.getRange(startRow,4,rowCount,1).getDisplayValues();
-  trends.forEach(function(v,i){
-    var t=String(v[0]||''),range=sheet.getRange(startRow+i,4,1,5);
-    if(t.indexOf('急減')>=0||t.indexOf('低下')>=0) range.setBackground('#fce8e6').setFontColor('#8a1c16');
-    else if(t.indexOf('停滞')>=0) range.setBackground('#fff4d6').setFontColor('#6b4f00');
-    else if(t.indexOf('改善余地')>=0) range.setBackground('#e8f0fe').setFontColor('#174ea6');
-    else range.setBackground('#f1f3f4').setFontColor('#3c4043');
+/**
+ * RC8 Final QA UAT2: 精密診断候補の色は「傾向名」ではなく各指標の実データで判定します。
+ * 悪化=赤系、改善=緑系、注意=黄系、中立=無色/薄灰。悪化色の強さは重症度も加味します。
+ */
+function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rows,hm){
+  if(!sheet||!rows||!rows.length)return;
+  function n(row,k){return hm[k]?Number(row[hm[k]-1]||0):0;}
+  function ratio(before,after){return before>0?(after-before)/before:null;}
+  function severityRank(text){text=String(text||'');if(text.indexOf('緊急')>=0)return 3;if(text.indexOf('重症')>=0)return 2;if(text.indexOf('中等症')>=0)return 1;return 0;}
+  function palette(kind,level){
+    if(kind==='good')return level>=2?['#b7e1cd','#0d652d']:['#e6f4ea','#137333'];
+    if(kind==='bad')return level>=3?['#f4c7c3','#b31412']:level===2?['#fce8e6','#a50e0e']:['#fef0e7','#b06000'];
+    if(kind==='warn')return ['#fff4d6','#6b4f00'];
+    if(kind==='info')return ['#e8f0fe','#174ea6'];
+    return ['#ffffff','#3c4043'];
+  }
+  function apply(cell,kind,level){var p=palette(kind,level);cell.setBackground(p[0]).setFontColor(p[1]);}
+  function classifyDelta(delta,badWhenPositive,sev){
+    if(delta===null||!isFinite(delta)||Math.abs(delta)<0.03)return ['neutral',0];
+    var bad=badWhenPositive?delta>0:delta<0,mag=Math.abs(delta),level=mag>=0.50?Math.max(sev,3):mag>=0.25?Math.max(sev,2):mag>=0.10?Math.max(sev,1):1;
+    return [bad?'bad':'good',level];
+  }
+  rows.forEach(function(row,i){
+    var r=startRow+i,code=String(row[hm['一次検査コード']-1]||''),sevText=sheet.getRange(r,2).getDisplayValue(),sev=severityRank(sevText);
+    var trendCell=sheet.getRange(r,4),clickCell=sheet.getRange(r,5),impCell=sheet.getRange(r,6),posCell=sheet.getRange(r,7),ctrCell=sheet.getRange(r,8);
+    // 傾向セルは記事全体の重症度を示す。
+    apply(trendCell,sev>=2?'bad':sev===1?'warn':'neutral',sev);
+    if(code==='RECENT_DROP'||code==='LONG_TERM_DECLINE'){
+      var recent=code==='RECENT_DROP';
+      var bC=n(row,recent?'前28日クリック':'前半90日クリック'),aC=n(row,recent?'直近28日クリック':'後半90日クリック');
+      var bI=n(row,recent?'前28日表示':'前半90日表示'),aI=n(row,recent?'直近28日表示':'後半90日表示');
+      var bP=n(row,recent?'前28日平均順位':'前半90日平均順位'),aP=n(row,recent?'直近28日平均順位':'後半90日平均順位');
+      var bR=n(row,recent?'前28日CTR':'前半90日CTR'),aR=n(row,recent?'直近28日CTR':'後半90日CTR');
+      var c=classifyDelta(ratio(bC,aC),false,sev),im=classifyDelta(ratio(bI,aI),false,sev),po=classifyDelta(bP>0&&aP>0?(aP-bP)/bP:null,true,sev),ct=classifyDelta(ratio(bR,aR),false,sev);
+      apply(clickCell,c[0],c[1]);apply(impCell,im[0],im[1]);apply(posCell,po[0],po[1]);apply(ctrCell,ct[0],ct[1]);
+    }else if(code==='CTR_OPPORTUNITY'){
+      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,'neutral',0);apply(ctrCell,sev>=2?'bad':'warn',sev);
+    }else if(code==='POSITION_OPPORTUNITY'){
+      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,sev>=2?'bad':'warn',sev);apply(ctrCell,'neutral',0);
+    }else if(code==='LONG_TERM_STAGNATION'){
+      apply(clickCell,'warn',sev);apply(impCell,'warn',sev);apply(posCell,'warn',sev);apply(ctrCell,'warn',sev);
+    }else{
+      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,'neutral',0);apply(ctrCell,'neutral',0);
+    }
   });
 }
 
@@ -10061,8 +10095,8 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm);return [false,sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),String(r[hm['記事タイトル']-1]||''),m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url];});
   if(out.length)cand.getRange(7,1,out.length,out[0].length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
   cand.setFrozenRows(6);[62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});cand.setColumnWidth(9,110);cand.setColumnWidth(10,220);try{cand.hideColumns(9,2);}catch(eHide){}
-  cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setVerticalAlignment('middle').setFontFamily('Arial');
-  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');cand.getRange(7,3,out.length,1).setWrap(true);cand.getRange(7,4,out.length,5).setWrap(false);cand.setRowHeights(7,out.length,46);var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#d9ead3').setFontColor('#274e13');});sbmDoctorApplyCandidateStatusColors_(cand,7,out.length);}
+  cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
+  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#d9ead3').setFontColor('#274e13');});sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm);try{cand.autoResizeRows(7,out.length);}catch(eResize){cand.setRowHeights(7,out.length,46);}}
   return cand;
 }
 

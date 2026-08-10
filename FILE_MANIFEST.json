@@ -1,7 +1,7 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-10T11:00:07.075204Z",
-  "file_count": 971,
+  "generated_at": "2026-08-10T11:48:23.576491Z",
+  "file_count": 972,
   "files": [
     {
       "path": ".github/workflows/deploy.yml",
@@ -20,8 +20,8 @@
     },
     {
       "path": "FILE_MANIFEST.txt",
-      "sha256": "14de297829429d1ab75fcccb4dda6a0e4cdcb06ae5faa28de7346e96953ebf20",
-      "size": 42583
+      "sha256": "3c553a890510797b64e4163e44bf772d07ea4379f8d53063363a400206b91a21",
+      "size": 42652
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -505,8 +505,8 @@
     },
     {
       "path": "SHA256SUMS.txt",
-      "sha256": "087335bb257336c77a92ffef060e194263d9c905f023920dd0371e9a9ec02187",
-      "size": 107121
+      "sha256": "9e811ed3e38c8e7bb9bf18b86dbf452f587f6a7f4a6620b54ea9da1d7cd4dffd",
+      "size": 108615
     },
     {
       "path": "SHARED_VERSION",
@@ -535,8 +535,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "60134a02e82fd8d8a79f47a552a5ffe7e27270335388b1880e0f329ae8b85836",
-      "size": 701163
+      "sha256": "2b7e1e5446f1affd3b29d1efdbc2fc10e6e99df5fafee0cec1ac473669d1e9db",
+      "size": 703905
     },
     {
       "path": "apps-script/appsscript.json",
@@ -875,8 +875,8 @@
     },
     {
       "path": "distribution/コード.gs",
-      "sha256": "60134a02e82fd8d8a79f47a552a5ffe7e27270335388b1880e0f329ae8b85836",
-      "size": 701163
+      "sha256": "2b7e1e5446f1affd3b29d1efdbc2fc10e6e99df5fafee0cec1ac473669d1e9db",
+      "size": 703905
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -4365,8 +4365,8 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_request_ux_fix_test.js",
-      "sha256": "2bddb6d0c13337ce882f25e7fa84c2ff2ab26016138b7af20f7265bc488aaf2b",
-      "size": 1068
+      "sha256": "28afba01e504b23768ea280eaaeee0892a07401c9999fce1e61d2b21c52936b7",
+      "size": 1047
     },
     {
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
@@ -4405,8 +4405,13 @@
     },
     {
       "path": "tests/product5100_rc8_final_uat1_regression_test.js",
-      "sha256": "7e3b08aa9362c590a31cbc26e931502b7dd323a44679079139fe587c39c1b9ad",
-      "size": 1304
+      "sha256": "efaefcc20af63581ef6d814003b7d81902ca7fb581f220facafbf9dc73a5e7a8",
+      "size": 1332
+    },
+    {
+      "path": "tests/product5100_rc8_final_uat2_candidate_visual_regression_test.js",
+      "sha256": "36c7dcab89306ddc287f20b3630c9aeaeb291be92e60a8b2bf67a015eaa54b31",
+      "size": 1440
     },
     {
       "path": "tests/product5100_rc8_final_ux_static_test.js",
@@ -4430,13 +4435,13 @@
     },
     {
       "path": "tests/product5100_rc8_official_candidate_table_test.js",
-      "sha256": "f17163ab79b292385b9b633211a768196e235cd995379254fbfe1b7d0b315bfa",
-      "size": 1691
+      "sha256": "a926f2a0fb9c3d627cbda4f42e4d5878377dab6a982e90eafccac94123792484",
+      "size": 1698
     },
     {
       "path": "tests/product5100_rc8_release_candidate_last_test.js",
-      "sha256": "2ee6be6398df96dba030ce1646055e4538e69501f8a916169f206fc3c1b38841",
-      "size": 1512
+      "sha256": "7531a811d19b8364aab12ce514534f93680e821ba7e5db3f75af15794c721b6a",
+      "size": 1477
     },
     {
       "path": "tests/product5100_rc8_staged_runner_ui_guard_test.js",
