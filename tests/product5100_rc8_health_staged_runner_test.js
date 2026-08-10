@@ -7,7 +7,7 @@ function must(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}con
 must(code.includes('function sbmDoctorShowHealthCheckRunnerDialog_()'),'health staged runner dialog exists');
 must(code.includes('function sbmDoctorRunHealthStageFromDialog()'),'health single-stage server runner exists');
 must(code.includes('google.script.run.withSuccessHandler') && code.includes('.sbmDoctorRunHealthStageFromDialog();'),'dialog automatically chains stages');
-must(code.includes("sbmDoctorRunScreening_(true)"),'screening runs silently inside staged workflow');
+must(code.includes("sbmDoctorRunScreeningBatch_(true)"),'screening runs in batched staged workflow');
 must(code.includes('sbmDoctorOpenHealthReport();'),'completion opens health report');
 must(code.includes("FETCHING_FIRST:'FULL_DONE'") && code.includes("FETCHING_SECOND:'FIRST_DONE'"),'interrupted running phases recover from saved checkpoint');
 must(!/function sbmDoctorRunHealthCheck\(\)[\s\S]{0,5000}sbmDoctorExecuteHealthCheckToCompletion_\(\)/.test(code),'menu health check no longer runs all stages in one server execution');

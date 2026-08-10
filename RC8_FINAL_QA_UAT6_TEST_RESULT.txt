@@ -1,0 +1,174 @@
+PASS product5100_rc8_compact_doctor_ui_test
+PASS product5100_rc8_doctor_candidate_worklist_test
+PASS: Doctor menu uses compact 4-step flow
+PASS: health progress menu removed
+PASS: request reads current candidate sheet
+PASS: request does not rebuild candidate sheet before reading checkbox
+PASS: candidate cells wrap with automatic row height
+PASS product5100_rc8_doctor_sheet_header_layout_hotfix_test
+PASS candidate requires ID+URL agreement when both exist
+PASS candidate visible title cross-check exists
+PASS identity mismatch fails closed
+PASS ARTICLE_DB array count uses rank/work correct columns
+PASS improving and monitoring counts stored separately
+product5100_rc8_final_hotfix1_test: PASS
+product5100_rc8_final_hotfix2_test: PASS
+PASS: latest health-check scoping helper exists
+PASS: candidate dedupe helper exists
+PASS: candidate rebuild uses latest health check only
+PASS: candidate rows dedupe before render
+PASS: severity uses sample-size-aware helper
+PASS: severity considers absolute sample size
+PASS: 結果登録待ちは再選択不可
+PASS: Writer処置中も再選択不可
+PASS: Doctor処置完了のモニター同期ヘルパー
+PASS: 記事DBをモニター中へ強制同期
+PASS: 改善の推移を即時再生成
+PASS: 選定理由にクリック絶対値
+PASS: 選定理由に表示回数絶対値
+PASS: 選定理由に順位変化
+PASS product5100_rc8_final_hotfix4_test
+PASS: 候補を未処理Doctor案件だけに限定する判定
+PASS: 候補ビュー生成時に未処理判定を適用
+PASS: Doctor送信/処置完了時に候補から除外するヘルパー
+PASS: Doctor依頼作成時に候補から即時除外
+PASS: Doctorケースから改善経路を復元する同期処理
+PASS: Doctor→Writer経路を復元
+PASS: Doctor→Creator経路の将来互換
+PASS: Doctor→Merge経路の将来互換
+PASS: 改善の推移生成前に改善経路を同期
+PASS: 改善の推移に改善経路を表示
+PASS: Doctor処置完了記事を記事管理でモニター中へ同期
+PASS product5100_rc8_final_hotfix5_test
+PASS: 保存済みDoctor処置結果の自己修復処理がある
+PASS: 完了済みWriter結果だけを自己修復対象にする
+PASS: 既存Doctor改善履歴を正本にモニター状態を復元する
+PASS: 記事管理をモニター中へ同期する
+PASS: Doctor→Writer改善経路を保存する
+PASS: 結果登録時に改善の推移を即時同期する
+PASS: 結果登録メッセージに改善の推移反映を明示する
+PASS: 改善の推移を開く前にDoctor旧データを自己修復する
+PASS: 記事一覧を開く前にDoctor旧データを自己修復する
+PASS: 改善履歴を開く前にDoctor旧データを自己修復する
+PASS: 起動時から改善の推移を装飾済みにする
+PASS: Writer結果保存済み記事は精密診断候補へ戻さない
+PASS: 旧結果登録待ち状態も新規候補から除外する
+PASS product5100_rc8_final_hotfix6_test
+PASS: REG-UI-Doctor-Menu: obsolete health progress menu absent
+PASS: REG-HEALTH-003: health report builder does not create candidate sheet
+PASS: REG-HEALTH-003: completion does not rebuild candidate before report
+PASS: all candidate cells wrap
+PASS: severity is left aligned
+PASS: candidate status color helper exists
+PASS: metric colors use real click/impression/position/CTR deltas
+PASS product5100_rc8_final_uat1_regression_test
+PASS: REG-UI-DOCTOR-WRAP-001: all candidate cells wrap
+PASS: REG-UI-DOCTOR-WRAP-001: wrapped data rows auto-resize
+PASS: severity remains left aligned
+PASS: REG-UI-DOCTOR-COLOR-001: delta classifier exists
+PASS: click and impression colors use actual deltas
+PASS: position and CTR colors use actual deltas
+PASS: bad-color intensity uses severity
+PASS: good/bad/warn palettes are distinct
+PASS: non-delta diagnosis types get targeted highlighting
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_final_uat2_candidate_visual_regression_test
+PASS product5100_rc8_final_uat3_full_response_article_jump_test
+PASS REG-DOCTOR-CANDIDATE-BACKFILL-001: full detail-code pool exists
+PASS candidate limit remains configurable/default 10
+PASS candidate view backfills from ranked untreated pool
+PASS candidate view no longer freezes health-check top-N inventory
+PASS product5100_rc8_final_uat5_candidate_backfill_test
+PASS REG-DIST-CLEAN-001: distribution contains only allowlisted files
+PASS REG-DIST-FILENAME-001: distribution filenames are ASCII
+PASS overlay extraction cleanup is explicitly required
+PASS distribution Code.gs mirrors source
+PASS product5100_rc8_final_uat5_distribution_clean_test
+PASS REG-HEALTH-SUMMARY-MISMATCH-001: parameter/fragment variants excluded from health snapshot
+PASS canonical duplicates are selected, not summed
+PASS normalized variants are not accumulated
+PASS impressions cannot multiply through normalized variants
+PASS product5100_rc8_final_uat5_health_canonical_metrics_test
+PASS: REG-HEALTH-STAGED-RUNNER-004: heavy completeness work is not before runner dialog
+PASS: preflight is a separate staged step
+PASS: 180-day fetch starts only after preflight checkpoint
+PASS: screening has batched implementation
+PASS: screening batch defaults to 60 articles
+PASS: report finalization is a separate server call after screening batches
+PASS: runner exposes finalization checkpoint
+PASS: monolithic screening call removed from staged runner
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_final_uat6_health_runner_regression_test
+PASS product5100_rc8_final_ux_static_test
+PASS product5100_rc8_gsc_display_url_policy_test
+PASS: health staged runner dialog exists
+PASS: health single-stage server runner exists
+PASS: dialog automatically chains stages
+PASS: screening runs in batched staged workflow
+PASS: completion opens health report
+PASS: interrupted running phases recover from saved checkpoint
+PASS: menu health check no longer runs all stages in one server execution
+PASS: user-facing progress terminology avoids primary/secondary exam wording
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_health_staged_runner_test
+PASS: GSC-missing Doctor article restoration helper exists
+PASS: restored Doctor article is monitoring
+PASS: GSC-missing status is explicit without deleting article
+PASS: monitor sync restores missing article before updating
+PASS: Doctor result registration restores missing article before feedback registration
+PASS: history is decorated during onOpen
+PASS: unused AI column is hidden
+PASS: history style forces real checkboxes instead of FALSE/TRUE
+PASS: effect sheet retains Doctor improvement route
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_official_blocker_final_test
+PASS: visible eight-column candidate comparison plus hidden identity
+PASS: ArticleID and URL stay hidden
+PASS: structured metrics helper exists
+PASS: trend categories are structured
+PASS: four performance metrics rendered separately
+PASS: only untreated articles rendered
+PASS: legacy reason/state visible columns removed
+PASS: header spans visible eight columns
+PASS: all candidate cells wrap
+PASS: metric cells are not forced to no-wrap
+PASS: metric-aware status colors applied
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_official_candidate_table_test
+PASS: rollback menu removed
+PASS: rollback viewer removed
+PASS: health-check terminology simplified
+PASS: health check finishes on report
+PASS: all candidate cells wrap
+PASS: history checkbox includes Doctor rows without date
+PASS: history rebuild hidden from user
+PASS: health check uses stable neutral screen
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_release_candidate_last_test
+PASS: health staged runner entry exists
+PASS: health staged runner step exists
+PASS: health completion opens health report
+PASS: health completion does not expose candidate rebuild
+PASS: candidate rebuild remains available on explicit open
+PASS product5100_rc8_staged_runner_ui_guard_test
+PASS product5100_rc8_typed_column_referral_hotfix_test
+PASS product5100_rc8_ui_guard2_test
+PASS product5100_rc8_unified_improvement_workflow_test
+PASS: canonical URL helper block exists
+PASS: trailing slash canonicalized
+PASS: no-slash URL remains canonical
+PASS: slash variants compare equal
+PASS: host/query/fragment canonicalized
+PASS: root URL retains slash and default https port removed
+PASS: article DB lookup uses canonical comparison
+PASS: today work-state map uses canonical URL keys
+PASS: one-time operational URL migration exists
+PASS: URL migration is version guarded
+PASS: URL migration runs on open
+PASS: distribution mirrors Apps Script
+PASS product5100_rc8_url_canonicalization_test
+PASS product5100_rc8_workflow_ux_qa_test
+RC8 JS FILES PASS=31 FAIL=0
+..........                                                               [100%]
+10 passed in 0.08s
+release audit passed
