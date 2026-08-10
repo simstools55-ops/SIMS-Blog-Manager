@@ -49,15 +49,15 @@ Google Search Consoleのデータを使い、改善する記事の選定、改�
 
 `distribution/`には、利用開始に必要なファイルだけを収録しています。
 
-- `コード.gs`
+- `Code.gs`
 - `appsscript.json`
 - `SIMS-Blog-Manager-template-Product5.3-Official.xlsx`
-- `はじめにお読みください.md`
+- `README-FIRST.md`
 
 ## 初回導入
 
 1. テンプレートをGoogleドライブへアップロードし、Googleスプレッドシートとして開きます。
-2. Apps Scriptの`コード.gs`を配布版の内容で全置換します。
+2. Apps Scriptの`Code.gs`を配布版の内容で全置換します。
 3. `appsscript.json`を設定します。
 4. スプレッドシートを再読み込みします。
 5. **SIMS-Blog-Manager → シートの作成・修復**を1回実行します。
@@ -65,7 +65,7 @@ Google Search Consoleのデータを使い、改善する記事の選定、改�
 
 ## 既存スプレッドシートの更新
 
-既存データはそのまま継続利用できます。`コード.gs`を更新して再読み込みし、**シートの作成・修復**を1回実行してください。
+既存データはそのまま継続利用できます。`Code.gs`を更新して再読み込みし、**シートの作成・修復**を1回実行してください。
 
 ## リポジトリ構成
 

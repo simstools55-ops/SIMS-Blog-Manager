@@ -10,9 +10,9 @@ Googleドライブへアップロードし、Googleスプレッドシートと�
 
 ## Apps Script
 
-`apps-script/コード.gs`
+`apps-script/Code.gs`
 
-Apps Scriptの `コード.gs` に貼り付けます。
+Apps Scriptの `Code.gs` に貼り付けます。
 
 ## 利用者が見る画面
 

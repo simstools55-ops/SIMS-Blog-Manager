@@ -10,4 +10,4 @@
 ## QA
 - Hotfix 3専用回帰テスト追加。
 - RC8 Hotfix 2 / Unified Workflow / Final UX / RC7 Human View / RC6 UI UX 回帰PASS。
-- apps-script/Code.gs と distribution/コード.gs の一致確認済み。
+- apps-script/Code.gs と distribution/Code.gs の一致確認済み。

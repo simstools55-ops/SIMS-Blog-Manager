@@ -24,6 +24,6 @@ ok(code.includes('function sbmEnsureCanonicalOperationalUrlsOnce_'), 'one-time o
 ok(code.includes("props.setProperty('SBM_CANONICAL_URL_STORAGE_VERSION', version)"), 'URL migration is version guarded');
 ok(code.includes('sbmEnsureCanonicalOperationalUrlsOnce_();'), 'URL migration runs on open');
 
-const dist = fs.readFileSync(path.join(root, 'distribution', 'コード.gs'), 'utf8');
+const dist = fs.readFileSync(path.join(root, 'distribution', 'Code.gs'), 'utf8');
 ok(dist === code, 'distribution mirrors Apps Script');
 console.log('PASS product5100_rc8_url_canonicalization_test');

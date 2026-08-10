@@ -38,5 +38,5 @@ SIMS-Blog-Manager-Product-5.2.1-Distribution.zip
 
 - マニュアルサイトのバージョンが5.2.1
 - ダウンロードファイルの展開が正常
-- `コード.gs`と`apps-script/Code.gs`が一致
+- `Code.gs`と`apps-script/Code.gs`が一致
 - テンプレート名がProduct 5.1 Official

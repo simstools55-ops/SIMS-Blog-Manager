@@ -16,7 +16,7 @@ SIMS Editorial Platform v1.0のControl Plane基盤を追加した後方互換Rel
 ## 更新方法
 
 1. GitHub Repositoryへ上書きします。
-2. Apps Scriptのコードを`distribution/コード.gs`で全置換します。
+2. Apps Scriptのコードを`distribution/Code.gs`で全置換します。
 3. スプレッドシートを再読み込みします。
 4. `SIMS-Blog-Manager → シートの作成・修復`を1回実行します。
 

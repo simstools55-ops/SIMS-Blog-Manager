@@ -1,6 +1,6 @@
 ## Product 5.7.0 RC2への更新
 
-1. `apps-script/Code.gs` または `distribution/コード.gs` を既存Apps Scriptへ上書きします。
+1. `apps-script/Code.gs` または `distribution/Code.gs` を既存Apps Scriptへ上書きします。
 2. スプレッドシートを再読み込みします。
 3. メニューに `SIMS Doctor` が追加されたことを確認します。
 

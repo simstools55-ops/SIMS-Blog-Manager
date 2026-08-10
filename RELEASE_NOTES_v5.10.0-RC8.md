@@ -23,7 +23,7 @@ RC7で実運用レベルに達したDoctor・Writer・SBM連携ロジックを�
 
 - `tests/release/test_release_candidate_integrity.py` の旧 `1.0.0-RC12` 固定判定を、現在のProductリポジトリVERSION形式に追従する検証へ変更。
 - RC8専用の静的回帰テストを追加。
-- `apps-script/Code.gs` と `distribution/コード.gs` の完全一致を検証。
+- `apps-script/Code.gs` と `distribution/Code.gs` の完全一致を検証。
 
 ## 非対象
 

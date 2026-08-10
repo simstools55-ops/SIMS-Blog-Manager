@@ -28,4 +28,4 @@
 - RC6 UI/UX regression: PASS
 - Home layout regression: PASS
 - RC5 guided confirmation regression: PASS
-- apps-script/Code.gs and distribution/コード.gs byte-identical: PASS
+- apps-script/Code.gs and distribution/Code.gs byte-identical: PASS

@@ -2,7 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
-const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
+const dist=fs.readFileSync(path.join(root,'distribution','Code.gs'),'utf8');
 function must(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}console.log('PASS:',msg)}
 must(code.includes('function sbmDoctorShowHealthCheckRunnerDialog_()'),'health staged runner dialog exists');
 must(code.includes('function sbmDoctorRunHealthStageFromDialog()'),'health single-stage server runner exists');

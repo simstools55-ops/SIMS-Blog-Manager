@@ -1,6 +1,6 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
-const dist=fs.readFileSync('distribution/コード.gs','utf8');
+const dist=fs.readFileSync('distribution/Code.gs','utf8');
 function ok(c,m){if(!c){console.error('FAIL:',m);process.exitCode=1}else console.log('PASS:',m)}
 ok(!code.includes(".addItem('4．修正前を確認','sbmShowSelectedRollbackDetail')"),'rollback menu removed');
 ok(!code.includes('function sbmShowSelectedRollbackDetail()'),'rollback viewer removed');

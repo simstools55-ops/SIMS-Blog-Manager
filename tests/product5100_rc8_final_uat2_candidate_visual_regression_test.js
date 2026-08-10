@@ -1,6 +1,6 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
-const dist=fs.readFileSync('distribution/コード.gs','utf8');
+const dist=fs.readFileSync('distribution/Code.gs','utf8');
 function ok(v,m){if(!v){console.error('FAIL:',m);process.exit(1);}console.log('PASS:',m);}
 ok(code.includes("cand.getDataRange().setWrap(true)"),'REG-UI-DOCTOR-WRAP-001: all candidate cells wrap');
 ok(code.includes("autoResizeRows(7,out.length)"),'REG-UI-DOCTOR-WRAP-001: wrapped data rows auto-resize');

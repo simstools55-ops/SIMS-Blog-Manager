@@ -1,27 +1,42 @@
 {
   "version": "5.10.0-RC8",
-  "generated_at": "2026-08-10T13:00:03.188823Z",
-  "file_count": 973,
+  "generated_at": "2026-08-10T20:09:27.588500Z",
+  "file_count": 981,
   "files": [
     {
-      "path": ".github/workflows/deploy.yml",
+      "path": "github/workflows/deploy.yml",
       "sha256": "a46b738669c8923e17c0491f663edac1a6b335edcb960489d67f0669e8eb35f5",
       "size": 915
     },
     {
-      "path": ".gitignore",
+      "path": "gitignore",
       "sha256": "ad8cf3990ef9272f621f2d0906590be8e9cde9d68cc6b1729c73fcefdb726622",
       "size": 5
+    },
+    {
+      "path": "pytest_cache/.gitignore",
+      "sha256": "3ed731b65d06150c138e2dadb0be0697550888a6b47eb8c45ecc9adba8b8e9bd",
+      "size": 37
+    },
+    {
+      "path": "pytest_cache/CACHEDIR.TAG",
+      "sha256": "37dc88ef9a0abeddbe81053a6dd8fdfb13afb613045ea1eb4a5c815a74a3bde4",
+      "size": 191
+    },
+    {
+      "path": "pytest_cache/README.md",
+      "sha256": "73fd6fccdd802c419a6b2d983d6c3173b7da97558ac4b589edec2dfe443db9ad",
+      "size": 302
+    },
+    {
+      "path": "pytest_cache/v/cache/nodeids",
+      "sha256": "3861c679e4c46df68393eab543fc2310f6013ffea7f0f6275793812cb19c17dc",
+      "size": 608
     },
     {
       "path": "CHANGELOG.md",
       "sha256": "e443281627f2d66309eb974182bf308e1272c716e52441e6bd3c3fe93f114259",
       "size": 52294
-    },
-    {
-      "path": "FILE_MANIFEST.txt",
-      "sha256": "21df4df6eb6514762f2874d56b1838fb2a0ebd2b8022604bc9e65c64f898d4d2",
-      "size": 42763
     },
     {
       "path": "GITHUB_RELEASE_NOTES.md",
@@ -30,8 +45,8 @@
     },
     {
       "path": "HOW_TO_PUBLISH.md",
-      "sha256": "8190c0ea59da3c3bba1ea44c51527b27a76a8b33da81f2efeec21c9096553fd4",
-      "size": 867
+      "sha256": "d7e4651bef2e1def121b64f37de152c7554377e5f5efb72f803d419d9a2007b7",
+      "size": 862
     },
     {
       "path": "LICENSE",
@@ -45,8 +60,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "8ae3bc43929dd0ff5aaefeb716457da17334bd52b5dcccd68b5d96a6e02b0302",
-      "size": 6328
+      "sha256": "40c94ec5d44fddb358374254fe6f39a2141522870584defcb76276c6140ec9c4",
+      "size": 6292
     },
     {
       "path": "RELEASE_NOTES_5.10.0-RC8-OFFICIAL-BLOCKER-FINAL.md",
@@ -285,8 +300,8 @@
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Doctor-Candidate-Worklist-UX.md",
-      "sha256": "df98fcc72e55a74c8b1c4a039f90750c3bd35610252ddd707ec9b2891fc958bb",
-      "size": 1753
+      "sha256": "a7a10e151bd3cef676ad2a8534a6c7e49629e7d54ac4dde5c0fb6cae710a5cfc",
+      "size": 1748
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Doctor-Header-Layout-Hotfix.md",
@@ -315,8 +330,8 @@
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix3.md",
-      "sha256": "db4080b699c4e3ea22d4c8729b5aab0ca2672a993bfc74f953c5e562f2fe4528",
-      "size": 794
+      "sha256": "18c6fe11bf924769a1731b8dca722fcabeba378acd78ab432af0e2deba0c0aa5",
+      "size": 789
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final-Hotfix4.md",
@@ -347,6 +362,11 @@
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT3.md",
       "sha256": "2863cfdb5f1122eeffafc536663314605977fd4329498b7934a920254e260b42",
       "size": 797
+    },
+    {
+      "path": "RELEASE_NOTES_v5.10.0-RC8-Final-QA-UAT4.md",
+      "sha256": "87215e87763f9ad9a7a07639a0aa9c23d9e7e108c9ec679ab9edb20f4b28f102",
+      "size": 938
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Final.md",
@@ -385,13 +405,13 @@
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8-Unified-Improvement-Workflow-Hotfix.md",
-      "sha256": "2ce6818ebb023349bb6ce5d5139e4f5a41b23cd13475e5dc05dccd3e1aae00c3",
-      "size": 2074
+      "sha256": "2cae22e89b170879f1bcc2fe74e0191ef70064b1a2cb71fb08edceae263c66af",
+      "size": 2069
     },
     {
       "path": "RELEASE_NOTES_v5.10.0-RC8.md",
-      "sha256": "52d72af6cccdbc83776206fc30650cf269772689b7ff6af3c565f344c3271666",
-      "size": 3196
+      "sha256": "8d50c028710944f780eba896350f8a26582f8a7c6b44bf59d65b62d9a20c1108",
+      "size": 3191
     },
     {
       "path": "RELEASE_NOTES_v5.7.1-RC10.md",
@@ -420,8 +440,8 @@
     },
     {
       "path": "RELEASE_NOTES_v5.7.1-RC6.md",
-      "sha256": "d7f1381f3ab781789de47427038a52df32d1a000e93665e71832158d3a9f32f4",
-      "size": 665
+      "sha256": "8ddf39ba47bb0f78c80cc0d072519ba146417d80c9884e98aeb95c9569cb2048",
+      "size": 660
     },
     {
       "path": "RELEASE_NOTES_v5.7.1-RC7.md",
@@ -460,8 +480,8 @@
     },
     {
       "path": "RELEASE_NOTES_v5.9.0-RC1.md",
-      "sha256": "37ff621b64060f21f9396fb0d41c37ce04c2576f66bcfe3e1a058f5b4e91b1e7",
-      "size": 884
+      "sha256": "7fb7fb493048549c3e5b14581d42d86e1f0fd01de2eb73b0fc5442435802ecfa",
+      "size": 879
     },
     {
       "path": "RELEASE_NOTES_v5.9.1.md",
@@ -520,13 +540,13 @@
     },
     {
       "path": "UPDATE_GUIDE.md",
-      "sha256": "31c23e6ec5ab2d524e9e60c7ba47264fa81736062ac8e139eca5bc8e2670d3a3",
-      "size": 712
+      "sha256": "2bf4d5d988bcd568ff6788ed9b463cb9f45d935e1840ef8f0ff55efdf3fe912a",
+      "size": 707
     },
     {
       "path": "VERIFICATION.md",
-      "sha256": "5ff42509ba7ec8e721fcf49d249b549b6e515573df7f2b4476d0675e2023835c",
-      "size": 344
+      "sha256": "196415579e3ad07d7f3625713f3f2f4a39a8fb9335a147241f0f1b2e6f259007",
+      "size": 339
     },
     {
       "path": "VERSION",
@@ -535,8 +555,8 @@
     },
     {
       "path": "apps-script/Code.gs",
-      "sha256": "83ecb0dbd4daedf60ea3a7c99e2a49d3f8fe4a7cd3e3c861b4dd2092c0c09bb9",
-      "size": 704504
+      "sha256": "5682b173b94fa675ce5053b30b10af1eb7010bfbe3d02fee0e75b9211ab68936",
+      "size": 705615
     },
     {
       "path": "apps-script/appsscript.json",
@@ -854,6 +874,16 @@
       "size": 410
     },
     {
+      "path": "distribution/Code.gs",
+      "sha256": "5682b173b94fa675ce5053b30b10af1eb7010bfbe3d02fee0e75b9211ab68936",
+      "size": 705615
+    },
+    {
+      "path": "distribution/README-FIRST.md",
+      "sha256": "d98bae6526b170d1dfe0400106addd24147b4c70aeb7a636842be8c1451c26b3",
+      "size": 464
+    },
+    {
       "path": "distribution/SIMS-Blog-Manager-template-Product5.0-Official.xlsx",
       "sha256": "b44977f138d312238fe02cef79db8bb364807eb33080a645c06fb23239f2550e",
       "size": 29438
@@ -867,16 +897,6 @@
       "path": "distribution/appsscript.json",
       "sha256": "0a7859457963ec47e1d9e4d39a6bf73165e710f26dc1f44c3057be03e007267a",
       "size": 362
-    },
-    {
-      "path": "distribution/はじめにお読みください.md",
-      "sha256": "9ea8645e91903f5c92a8b88a69a6f4b206956ac1eb67dfb589a6580dcc8919ee",
-      "size": 469
-    },
-    {
-      "path": "distribution/コード.gs",
-      "sha256": "83ecb0dbd4daedf60ea3a7c99e2a49d3f8fe4a7cd3e3c861b4dd2092c0c09bb9",
-      "size": 704504
     },
     {
       "path": "docs/Architecture/article_snapshot_observation.md",
@@ -1099,19 +1119,19 @@
       "size": 586
     },
     {
-      "path": "docs/daily-workflow.md",
-      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
-      "size": 3541
-    },
-    {
       "path": "docs/daily-workflow/index.md",
       "sha256": "b15344b77c83320624803171b9af513858018a21e9e26eadae7d482605a22969",
       "size": 1515
     },
     {
+      "path": "docs/daily-workflow.md",
+      "sha256": "e49fb76ec206de1c22dc117a2a75096490ea793b28d0bd8c26feaafdc5efbdec",
+      "size": 3541
+    },
+    {
       "path": "docs/download.md",
-      "sha256": "17aa7736f674d9b918e46e9c0529e4e3a2cf648752b32ed24bedcd7c632f8d18",
-      "size": 559
+      "sha256": "5b6219649401f296e82ff8f9e3b37ca8c8440f798576323d1932908a98c18757",
+      "size": 549
     },
     {
       "path": "docs/error_codes.md",
@@ -1119,24 +1139,24 @@
       "size": 395
     },
     {
-      "path": "docs/faq.md",
-      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
-      "size": 183
-    },
-    {
       "path": "docs/faq/index.md",
       "sha256": "c4edd348ff675a992460e04c6b5264fd9c45dc39fc0bc77a596604119285a967",
       "size": 1672
     },
     {
-      "path": "docs/getting-started.md",
-      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
-      "size": 252
+      "path": "docs/faq.md",
+      "sha256": "fb8895bbeb5106b1e6ea587b54862e32f3887e693486a86fc8aaf7c8b53a8cd7",
+      "size": 183
     },
     {
       "path": "docs/getting-started/index.md",
       "sha256": "de8a1159c73ce595fc2dbec7be18628974c24e2527b5057538a08f5c2e3cf083",
       "size": 1229
+    },
+    {
+      "path": "docs/getting-started.md",
+      "sha256": "8908455958fb09919997b642de3396b3150a85b0200258e1e7c2ff2433fec22d",
+      "size": 252
     },
     {
       "path": "docs/google-cloud-api-guide.md",
@@ -1145,8 +1165,8 @@
     },
     {
       "path": "docs/google-spreadsheet-template.md",
-      "sha256": "e19e01a7e32a4ae0151b70ceee52c08e22ade05bd927ec654cdecddf19e63497",
-      "size": 1762
+      "sha256": "ce9bc28e2617c64e6e9dea2743364198e1fbe45283e2527cc4d3119a3369848c",
+      "size": 1757
     },
     {
       "path": "docs/home-dashboard.md",
@@ -1189,16 +1209,6 @@
       "size": 198
     },
     {
-      "path": "docs/setup-guide.md",
-      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
-      "size": 571
-    },
-    {
-      "path": "docs/setup.html",
-      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
-      "size": 1951
-    },
-    {
       "path": "docs/setup/article-db-foundation.md",
       "sha256": "c3f85876300981507686c5fb4c0aac18c3fb09c0524fa355766f3295e57462e3",
       "size": 1458
@@ -1234,6 +1244,16 @@
       "size": 588
     },
     {
+      "path": "docs/setup-guide.md",
+      "sha256": "d9e647f0852c4d4e6b99a7820c29991ddbedfab5b510adae174a3f81207f18ee",
+      "size": 571
+    },
+    {
+      "path": "docs/setup.html",
+      "sha256": "f9dea44ae69454e616131ade0f13a5cc98a1ee8852e5aeb2930fb499c6572b33",
+      "size": 1951
+    },
+    {
       "path": "docs/spreadsheet-guide.md",
       "sha256": "6c089cbe99ff4104887698da7daea77a2c874590f1572c99cb23b2dfffaa023f",
       "size": 1052
@@ -1249,19 +1269,9 @@
       "size": 1813
     },
     {
-      "path": "docs/troubleshooting.html",
-      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
-      "size": 1791
-    },
-    {
-      "path": "docs/troubleshooting.md",
-      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
-      "size": 241
-    },
-    {
       "path": "docs/troubleshooting/common-errors.md",
-      "sha256": "cc1949572ecbbe7f9439dacc86e6dba2ef7fb529a81c2118264288fb96e170d6",
-      "size": 1241
+      "sha256": "41cf3aedd2ea16c8bf4dcb6f0b7f5bb3d4a4eb0b64f5aeb2450264b40b096422",
+      "size": 1236
     },
     {
       "path": "docs/troubleshooting/empty-queue.md",
@@ -1282,6 +1292,16 @@
       "path": "docs/troubleshooting/urlfetch-auth.md",
       "sha256": "06482d76ef7657d8cf4a052cb3993def516933b7b22e1aa850e61758184802c7",
       "size": 525
+    },
+    {
+      "path": "docs/troubleshooting.html",
+      "sha256": "d5ce22144e1921c884c95ed3947b49b4ab7895133c758574a14819d2d5283817",
+      "size": 1791
+    },
+    {
+      "path": "docs/troubleshooting.md",
+      "sha256": "b80ab072be7802f0f5daf0da094bb8fa570aae41237bd81f60cf10cba1524cc5",
+      "size": 241
     },
     {
       "path": "docs/user-guide/data-list.md",
@@ -1319,14 +1339,14 @@
       "size": 533
     },
     {
-      "path": "docs/user-guide/todays-improvement.md",
-      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
-      "size": 551
-    },
-    {
       "path": "docs/user-guide/todays-improvement/index.md",
       "sha256": "ca2c1a7470c3d201da9861849acfe59709698122d8ec4b6c91c7643713010140",
       "size": 1495
+    },
+    {
+      "path": "docs/user-guide/todays-improvement.md",
+      "sha256": "33608c8347948f51e3f1004f164412bda5ea59b5ba76ade16af7cfc28d4521e9",
+      "size": 551
     },
     {
       "path": "integration/SBM_BATCH_INTEGRATION.md",
@@ -2000,8 +2020,8 @@
     },
     {
       "path": "product/RELEASE_NOTES.md",
-      "sha256": "1f73f97564ae3371ee030cf47d0ca06097276ea906c66bcad5db025b5fd9252f",
-      "size": 3708
+      "sha256": "81681798793c57d29ffdef59f4d8f965613d5550930ba07439ac39352a43e357",
+      "size": 3703
     },
     {
       "path": "product/Release/FILE_INVENTORY_v1.0.0-RC1.json",
@@ -3675,8 +3695,8 @@
     },
     {
       "path": "tests/PRODUCT5_3_1_SITE_DAILY_UAT.md",
-      "sha256": "435e9b59e4ac81b1ef0df32ea003cc5076f34cb05fb08a6d2f6b2b1919a52d35",
-      "size": 1201
+      "sha256": "7f88dc7d7b8467c0085de2164b1be40e7d1cea6d046045f3abd7eef85bfe97cd",
+      "size": 1196
     },
     {
       "path": "tests/PRODUCT5_3_2_FEEDBACK_ARRAY_UAT.md",
@@ -3797,6 +3817,16 @@
       "path": "tests/UAT_CHECKLIST.md",
       "sha256": "33651497415d61dad621e6e803e1a50fe9675d90851d81557f19af67e753ae2c",
       "size": 773
+    },
+    {
+      "path": "tests/__pycache__/conftest.cpython-313-pytest-9.0.2.pyc",
+      "sha256": "94e6394c5d7911a80e626b2b8f4053f04ea8cc5085abc7ebed4fb3c057ebc887",
+      "size": 664
+    },
+    {
+      "path": "tests/__pycache__/test_rc8_final_freeze_contract.cpython-313-pytest-9.0.2.pyc",
+      "sha256": "8630bd97a618f403958ddb0edd5d6c96a99fbff2d69737296f709e564c630a0f",
+      "size": 14395
     },
     {
       "path": "tests/conftest.py",
@@ -4335,8 +4365,8 @@
     },
     {
       "path": "tests/product5100_rc4_writer_result_dialog_hotfix_test.js",
-      "sha256": "39bb268bf6b53eb0ae27312ef7e7a3a53bf9bcd8cf975fe4c8009125554d9adc",
-      "size": 1028
+      "sha256": "7e7e5082f0d5e0519c9135e70af7940ec1830d6d347b7e6ee95fec5a66c9be7b",
+      "size": 1018
     },
     {
       "path": "tests/product5100_rc5_guided_user_confirmation_test.js",
@@ -4345,13 +4375,13 @@
     },
     {
       "path": "tests/product5100_rc6_ui_ux_refresh_test.js",
-      "sha256": "8b534a99062bdc88308e74df8130aae7c1860b2ab83feac55756d55b0ce76461",
-      "size": 1691
+      "sha256": "1035701d6d855b727152c3a5c03097f4472ab0feed8cb7800f20f3cec11021f1",
+      "size": 1686
     },
     {
       "path": "tests/product5100_rc7_human_view_workflow_test.js",
-      "sha256": "c0beba254e39ea901609eea39428002fb4f1233f74358c0b5640c263a676d92f",
-      "size": 2083
+      "sha256": "ce067a1b5d4197fe938ba7c68a0b1f107c6d0dec589f75f15636b27bf5c976f7",
+      "size": 2078
     },
     {
       "path": "tests/product5100_rc8_compact_doctor_ui_test.js",
@@ -4360,8 +4390,8 @@
     },
     {
       "path": "tests/product5100_rc8_doctor_candidate_worklist_test.js",
-      "sha256": "ecf10e7134bd1f76aba5858ab02669a06453591bd30acbb592c3450121b25f08",
-      "size": 1393
+      "sha256": "d18b707776606e25d6416f28538024a54a61756b5cff2d86051b207235b71d97",
+      "size": 1388
     },
     {
       "path": "tests/product5100_rc8_doctor_request_ux_fix_test.js",
@@ -4372,6 +4402,16 @@
       "path": "tests/product5100_rc8_doctor_sheet_header_layout_hotfix_test.js",
       "sha256": "823db1548a25eead0b94b8114aac976f71738468040d27dae78d5c47040ecb63",
       "size": 646
+    },
+    {
+      "path": "tests/product5100_rc8_final_candidate_identity_guard_test.js",
+      "sha256": "219bc4f2ffabf97facd0701699f9963e1acb2cdb5a87d2a0252a2bc7f90f0d0b",
+      "size": 503
+    },
+    {
+      "path": "tests/product5100_rc8_final_home_workstate_count_test.js",
+      "sha256": "5aa567539f80a2f9ae59bc7328a2aa76eabb426a853d8763e7ba50e83b5d1794",
+      "size": 557
     },
     {
       "path": "tests/product5100_rc8_final_hotfix1_test.js",
@@ -4410,8 +4450,8 @@
     },
     {
       "path": "tests/product5100_rc8_final_uat2_candidate_visual_regression_test.js",
-      "sha256": "36c7dcab89306ddc287f20b3630c9aeaeb291be92e60a8b2bf67a015eaa54b31",
-      "size": 1440
+      "sha256": "aa806536477b2ef8beb8f8ad29e7e98f442afa9a4bffe680711191d04534ae01",
+      "size": 1435
     },
     {
       "path": "tests/product5100_rc8_final_uat3_full_response_article_jump_test.js",
@@ -4430,23 +4470,23 @@
     },
     {
       "path": "tests/product5100_rc8_health_staged_runner_test.js",
-      "sha256": "0ac91fa36d46752fdca64a319449c0efbcdde656520317de1a404038746dff6c",
-      "size": 1501
+      "sha256": "21dac2d518d2632e39a73c7c3fa6f02077285bce575a47537187e8ed52d23345",
+      "size": 1496
     },
     {
       "path": "tests/product5100_rc8_official_blocker_final_test.js",
-      "sha256": "f6deb185c40e4268858731d0c0d5187d079669dbf28d0f0a1d07cf78d0eee87a",
-      "size": 1695
+      "sha256": "02a86f6827cbf8d04e77ea18c90b2ffd5fe16ebbdab625edd1c0f6756002aa05",
+      "size": 1690
     },
     {
       "path": "tests/product5100_rc8_official_candidate_table_test.js",
-      "sha256": "a926f2a0fb9c3d627cbda4f42e4d5878377dab6a982e90eafccac94123792484",
-      "size": 1698
+      "sha256": "92ce41ee53ffbe08b87aeb308e7de926f3dad8d9a65c1538d903de302347d771",
+      "size": 1693
     },
     {
       "path": "tests/product5100_rc8_release_candidate_last_test.js",
-      "sha256": "7531a811d19b8364aab12ce514534f93680e821ba7e5db3f75af15794c721b6a",
-      "size": 1477
+      "sha256": "e9933c6ed072ee1f99f20a81ade8eb0ec85da95c2f1e205748c2f7b886e407b3",
+      "size": 1472
     },
     {
       "path": "tests/product5100_rc8_staged_runner_ui_guard_test.js",
@@ -4455,8 +4495,8 @@
     },
     {
       "path": "tests/product5100_rc8_typed_column_referral_hotfix_test.js",
-      "sha256": "4977bed46a7bf2120b38bf46d5136dfb40fadd9a17bd2e0ab83a6cc907cb6251",
-      "size": 1687
+      "sha256": "88be7001e0fe46aa890ff4c2ace9e9720fe0f186ce1cb1963fea0bba510195f5",
+      "size": 1682
     },
     {
       "path": "tests/product5100_rc8_ui_guard2_test.js",
@@ -4465,18 +4505,18 @@
     },
     {
       "path": "tests/product5100_rc8_unified_improvement_workflow_test.js",
-      "sha256": "c1e3a4eacfbd11209ca9cbf4fa9d61e5cc0e467d7d3850bf83fa8c2b84cbb6cd",
-      "size": 1803
+      "sha256": "b20a1a4c90d00c8890f6e1587c4c739f4dcaeaad44b5fdf5955f64448bb8f82f",
+      "size": 1798
     },
     {
       "path": "tests/product5100_rc8_url_canonicalization_test.js",
-      "sha256": "9419d4b49a8bcdf249f43b3cea2843c7b23b2f4523d78db659f6a3e16f18e344",
-      "size": 2094
+      "sha256": "656d18f176f48dd4ce6daeb019cebc9c55ca2eaa9156864cc363ce8126f0431e",
+      "size": 2089
     },
     {
       "path": "tests/product5100_rc8_workflow_ux_qa_test.js",
-      "sha256": "a3e8d5c75ed3974724a7bfd2fbcbfda6419f26ccb0bf3bb9cc40718cd015366f",
-      "size": 1444
+      "sha256": "2fec08a6801fb2f4891b6ad191a5a3662c6bb451cd67d92a199d60296937f4c3",
+      "size": 1439
     },
     {
       "path": "tests/product5610_mapping_guard_test.js",
@@ -4515,13 +4555,13 @@
     },
     {
       "path": "tests/product569_static_test.js",
-      "sha256": "8879ffb8ffae9ec375666734a192934cb81bbebcb3c735c0983029fd8e68f7b1",
-      "size": 785
+      "sha256": "7c69876411d50e5fdc322509e3570178fbe8ba79c6a9d6407e3d9de0c103e588",
+      "size": 780
     },
     {
       "path": "tests/product570_doctor_outpatient_static_test.js",
-      "sha256": "1420975f32953228df80ff44a794a805adb1a51248cad79c4bc9ba77e00a5372",
-      "size": 884
+      "sha256": "db3918b4d19c23dd44d4ef5de4133cbcdfcc40c1821007b8e118213307c496a7",
+      "size": 874
     },
     {
       "path": "tests/product571_doctor_health_static_test.js",
@@ -4530,8 +4570,8 @@
     },
     {
       "path": "tests/product571_rc10_evidence_v2_static_test.js",
-      "sha256": "88cf7367846098b8d13b8fd5455b72a3c39fa50722ae56a92c9a2e92f6d14ef3",
-      "size": 1002
+      "sha256": "48add46f8c3f4ab61d87185b84b22d246a4847adf641c8adccc968764fb53758",
+      "size": 992
     },
     {
       "path": "tests/product571_rc11_evidence_integrity_static_test.js",
@@ -4540,8 +4580,8 @@
     },
     {
       "path": "tests/product571_rc7_doctor_evidence_static_test.js",
-      "sha256": "56b827b86c7e833e32d9cf41cbb14439630af4180260d79e7eaf8aaa7a111365",
-      "size": 907
+      "sha256": "445ee6c9809900d80ddbc23dd9feb3fe1273a6d6ef2cc932f053cb87c61b2a8c",
+      "size": 897
     },
     {
       "path": "tests/product580_doctor_workflow_static_test.js",
@@ -4590,8 +4630,8 @@
     },
     {
       "path": "tests/product598_doctor_dialog_workflow_test.js",
-      "sha256": "7074a5f8111e7c4cf2d86225bba2f5516cac7dd44101dc58aa7a20bbef3f4fad",
-      "size": 1430
+      "sha256": "45c3bc1d0394bed9b6c13ec8a79b6a85a46229b80c20614aeba9af95b55ba2cd",
+      "size": 1425
     },
     {
       "path": "tests/product599_next_action_routing_test.js",
@@ -4620,8 +4660,8 @@
     },
     {
       "path": "tests/test_rc8_final_freeze_contract.py",
-      "sha256": "8a14183218db3a40bc4e4fe8facc19ad9be90502e558f1aa738e09c25e3fc638",
-      "size": 2182
+      "sha256": "8245a6e5e8bdb6502976f0bf6a63852542514e8445f5fd1e6dd8c5ef78055436",
+      "size": 2177
     },
     {
       "path": "tests/unit/test_article_snapshot_models.py",

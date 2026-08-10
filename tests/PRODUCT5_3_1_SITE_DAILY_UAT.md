@@ -3,7 +3,7 @@
 ## 自動検証
 
 - [x] Apps Script構文検査
-- [x] 開発用Code.gsと配布用コード.gsの一致
+- [x] 開発用Code.gsと配布用Code.gsの一致
 - [x] 固定されたv5.2.1判定が残っていない
 - [x] 依頼文にSiteID、SiteName、SiteURLが含まれる
 - [x] JSON例にsite_id、site_name、site_urlが含まれる

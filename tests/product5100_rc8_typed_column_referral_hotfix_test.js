@@ -2,7 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
-const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
+const dist=fs.readFileSync(path.join(root,'distribution','Code.gs'),'utf8');
 function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
 const start=code.indexOf('function sbmDoctorBuildHealthReportSheets_(');
 const end=code.indexOf('function sbmDoctorSelectionReason_',start);

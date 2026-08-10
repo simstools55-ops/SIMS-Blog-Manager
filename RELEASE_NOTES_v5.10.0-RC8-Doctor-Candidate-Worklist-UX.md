@@ -27,4 +27,4 @@ RC8実機確認で判明したDoctor系シートの役割不明瞭・一覧性�
 ## QA
 - Product 5.10.0 RC1-RC8 JavaScript regression tests PASS.
 - Apps Script syntax check PASS.
-- `apps-script/Code.gs` and `distribution/コード.gs` are identical.
+- `apps-script/Code.gs` and `distribution/Code.gs` are identical.

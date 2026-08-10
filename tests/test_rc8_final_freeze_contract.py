@@ -1,7 +1,7 @@
 from pathlib import Path
 
 CODE = Path('apps-script/Code.gs').read_text(encoding='utf-8')
-DIST = Path('distribution/コード.gs').read_text(encoding='utf-8')
+DIST = Path('distribution/Code.gs').read_text(encoding='utf-8')
 
 
 def test_distribution_matches_source():

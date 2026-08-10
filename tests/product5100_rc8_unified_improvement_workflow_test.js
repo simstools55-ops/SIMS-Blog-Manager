@@ -1,6 +1,6 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
-const dist=fs.readFileSync('distribution/コード.gs','utf8');
+const dist=fs.readFileSync('distribution/Code.gs','utf8');
 function ok(v,m){if(!v){console.error('FAIL:',m);process.exit(1)}}
 ok(!code.includes(".addItem('6．Doctor対応一覧を確認する'"),'Doctor worklist menu retired');
 ok(code.includes('function sbmRetireDoctorWorklistSheets_'),'legacy Doctor worklist retirement helper');

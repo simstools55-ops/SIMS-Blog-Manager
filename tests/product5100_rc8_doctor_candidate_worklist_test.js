@@ -2,7 +2,7 @@ const fs=require('fs');
 const path=require('path');
 const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
-const dist=fs.readFileSync(path.join(root,'distribution','コード.gs'),'utf8');
+const dist=fs.readFileSync(path.join(root,'distribution','Code.gs'),'utf8');
 function ok(v,m){if(!v){console.error('FAIL:',m);process.exit(1)}}
 ok(code.includes("3．精密診断候補を見る"),'candidate menu label');
 ok(!code.includes("6．Doctor対応一覧を確認する"),'Doctor worklist menu retired');

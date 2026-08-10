@@ -14,7 +14,7 @@
 2. Googleスプレッドシートとして開く
 3. ファイル名を `SIMS-Blog-Manager Product 5.1 Template` にする
 4. Apps Scriptを開く
-5. `apps-script/コード.gs` の内容を貼り付ける
+5. `apps-script/Code.gs` の内容を貼り付ける
 6. 保存する
 
 ### 2. 共有設定を行う
