@@ -8916,7 +8916,7 @@ function sbmDoctorShowHealthCheckRunnerDialog_(){
     '<div class="bar"><div id="fill" class="fill"></div></div><div class="pct"><span id="spinner" class="spinner"></span><span id="pct">準備中…</span></div>'+ 
     '<div id="box" class="box"><div id="step" class="step">STEP 1 / 8　開始準備</div><div id="detail">処理を開始しています。</div><div id="meta" class="meta">最終更新：--</div><div id="timings" class="meta" style="margin-top:8px;border-top:1px solid #dfe7e1;padding-top:7px">工程時間：計測中</div></div>'+ 
     '<div id="note" class="small">処理中はこのダイアログを閉じないでください。別ブログの日次処理など、重い処理の同時実行も避けてください。</div><button id="retry" class="btn" style="display:none">続きから再開</button><button id="close" class="btn secondary" style="display:none">閉じる</button>'+ 
-    '<script>var retryCount=0,terminal=false,waiting=false,watch=null;function el(i){return document.getElementById(i)}var timingLines=[];function paint(r){var p=Math.max(0,Math.min(100,Number(r.progress||0)));el("fill").style.width=p+"%";el("pct").textContent="進捗 "+p+"%";el("step").textContent=(r.stepLabel||r.stage||"処理中");el("detail").textContent=r.message||"";el("meta").textContent="最終更新："+(r.lastSuccessAt||"処理開始直後");if(r&&r.timing&&Number(r.timing.total||0)>=0){timingLines.push(String(r.timing.label||"工程")+" "+Math.round(Number(r.timing.total||0))+"秒");if(timingLines.length>10)timingLines.shift();el("timings").textContent="工程時間："+timingLines.join(" / ");}}function setWaiting(v){waiting=v;if(v){clearTimeout(watch);watch=setTimeout(function(){if(waiting&&!terminal){el("meta").textContent="サーバーからの応答を待っています。処理は継続中です。";}},90000);}}function next(){if(terminal)return;setWaiting(true);google.script.run.withSuccessHandler(function(r){setWaiting(false);paint(r||{});if(r&&r.done){terminal=true;el("spinner").style.display="none";el("box").className="box done";el("note").textContent="健康診断が完了しました。健康診断書を表示します。";setTimeout(function(){google.script.run.withSuccessHandler(function(){google.script.host.close();}).sbmDoctorOpenHealthReport();},300);return;}retryCount=0;setTimeout(next,350);}).withFailureHandler(function(e){setWaiting(false);var msg=(e&&e.message)?e.message:String(e||"処理が停止しました");el("spinner").style.display="none";el("box").className="box err";el("step").textContent="処理を一時停止しました";el("detail").textContent=msg;el("note").textContent="保存済みの工程から再開できます。";if(retryCount<1 && /時間|timeout|maximum execution|exceeded|停止/i.test(msg)){retryCount++;setTimeout(function(){el("spinner").style.display="inline-block";next();},1500);return;}el("retry").style.display="inline-block";el("close").style.display="inline-block";}).sbmDoctorRunHealthStageFromDialog();}el("retry").onclick=function(){el("retry").style.display="none";el("close").style.display="none";el("spinner").style.display="inline-block";el("box").className="box";retryCount=0;next();};el("close").onclick=function(){google.script.host.close();};next();</script></body></html>';
+    '<script>var retryCount=0,terminal=false,waiting=false,watch=null;function el(i){return document.getElementById(i)}var timingLines=[];function paint(r){var p=Math.max(0,Math.min(100,Number(r.progress||0)));el("fill").style.width=p+"%";el("pct").textContent="進捗 "+p+"%";el("step").textContent=(r.stepLabel||r.stage||"処理中");el("detail").textContent=r.message||"";el("meta").textContent="最終更新："+(r.lastSuccessAt||"処理開始直後");if(r&&r.timing&&Number(r.timing.total||0)>=0){timingLines.push(String(r.timing.label||"工程")+" "+Math.round(Number(r.timing.total||0))+"秒");if(timingLines.length>10)timingLines.shift();el("timings").textContent="工程時間："+timingLines.join(" / ");}}function setWaiting(v){waiting=v;if(v){clearTimeout(watch);watch=setTimeout(function(){if(waiting&&!terminal){el("meta").textContent="サーバーからの応答を待っています。処理は継続中です。";}},90000);}}function next(){if(terminal)return;setWaiting(true);google.script.run.withSuccessHandler(function(r){setWaiting(false);paint(r||{});if(r&&r.done){terminal=true;el("spinner").style.display="inline-block";el("box").className="box done";el("step").textContent="健康診断が完了しました";el("detail").textContent="健康診断書を表示しています。画面が切り替わるまでそのままお待ちください。";el("note").textContent="健康診断書の表示処理中です。";setTimeout(function(){google.script.run.withSuccessHandler(function(){el("spinner").style.display="none";google.script.host.close();}).withFailureHandler(function(e){el("spinner").style.display="none";el("box").className="box err";el("detail").textContent=(e&&e.message)?e.message:String(e||"健康診断書を表示できませんでした");el("close").style.display="inline-block";}).sbmDoctorOpenHealthReport();},150);return;}retryCount=0;setTimeout(next,350);}).withFailureHandler(function(e){setWaiting(false);var msg=(e&&e.message)?e.message:String(e||"処理が停止しました");el("spinner").style.display="none";el("box").className="box err";el("step").textContent="処理を一時停止しました";el("detail").textContent=msg;el("note").textContent="保存済みの工程から再開できます。";if(retryCount<1 && /時間|timeout|maximum execution|exceeded|停止/i.test(msg)){retryCount++;setTimeout(function(){el("spinner").style.display="inline-block";next();},1500);return;}el("retry").style.display="inline-block";el("close").style.display="inline-block";}).sbmDoctorRunHealthStageFromDialog();}el("retry").onclick=function(){el("retry").style.display="none";el("close").style.display="none";el("spinner").style.display="inline-block";el("box").className="box";retryCount=0;next();};el("close").onclick=function(){google.script.host.close();};next();</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(660).setHeight(470),'ブログ健康診断');
 }
 
@@ -9093,15 +9093,34 @@ function sbmDoctorRunScreeningBatch_(silent) {
   var state=sbmDoctorLoadHealthScreenState_(run.healthCheckId);
   if(!state || run.statusCode!=='SCREENING'){
     state={cursor:0,excluded:0,eligible:0,healthy:0,lowSample:0};
-    run.statusCode='SCREENING'; run.phase='健康状態を判定中'; run.nextStep='記事を分割判定'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+    run.statusCode='SCREENING'; run.phase='記事ごとの健康状態を分析中'; run.nextStep='記事の健康状態を判定'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
     sbmDoctorSaveHealthScreenState_(run.healthCheckId,state);
   }
 
-  var tContextPerf=new Date(); var context=sbmDoctorSelectionContextLite_(); perf.context=sbmSecondsSince_(tContextPerf);
-  var batchSize=Math.max(20,Math.min(60,Number(sbmGetSetting_('DoctorHealthScreenBatchSize','40')||40)));
+  var tContextPerf=new Date();
+  var context=sbmDoctorSelectionContextLite_();
+  perf.context=sbmSecondsSince_(tContextPerf);
+
   var start=Number(state.cursor||0);
-  // 全記事判定済みなら、次のgoogle.script.run呼び出しで帳票生成だけを行う。
-  if(start>=current.length){var tFinalPerf=new Date(),fr=sbmDoctorFinalizeScreening_(silent,state);perf.finalize=sbmSecondsSince_(tFinalPerf);fr.timing=perf;return fr;}
+
+  // RC8 Final QA-UAT32:
+  // 500記事以下は全件を1回で判定し、そのまま候補選定・健康診断書作成まで完了する。
+  // 大規模ブログだけ分割を残し、実行時間上限への安全余裕を確保する。
+  var batchSize;
+  if(current.length<=500){
+    batchSize=current.length;
+  }else{
+    batchSize=Math.max(100,Math.min(250,Number(sbmGetSetting_('DoctorHealthLargeScreenBatchSize','200')||200)));
+  }
+
+  if(start>=current.length){
+    var tFinalOnly=new Date();
+    var frOnly=sbmDoctorFinalizeScreening_(silent,state);
+    perf.finalize=sbmSecondsSince_(tFinalOnly);
+    frOnly.timing=perf;
+    return frOnly;
+  }
+
   var finish=Math.min(current.length,start+batchSize);
   var tClassPerf=new Date();
   for(var i=start;i<finish;i++){
@@ -9127,7 +9146,8 @@ function sbmDoctorRunScreeningBatch_(silent) {
       state.excluded++;
     }else{
       state.eligible++;
-      row[hm['Doctor診断対象']-1]='対象'; row[hm['対象外理由']-1]='';
+      row[hm['Doctor診断対象']-1]='対象';
+      row[hm['対象外理由']-1]='';
       var m={
         full:{c:Number(row[hm['180日クリック']-1]||0),i:Number(row[hm['180日表示']-1]||0),ctr:Number(row[hm['180日CTR']-1]||0),p:Number(row[hm['180日平均順位']-1]||0)},
         first:{c:Number(row[hm['前半90日クリック']-1]||0),i:Number(row[hm['前半90日表示']-1]||0),ctr:Number(row[hm['前半90日CTR']-1]||0),p:Number(row[hm['前半90日平均順位']-1]||0)},
@@ -9136,34 +9156,58 @@ function sbmDoctorRunScreeningBatch_(silent) {
         previous:{c:Number(row[hm['前28日クリック']-1]||0),i:Number(row[hm['前28日表示']-1]||0),ctr:Number(row[hm['前28日CTR']-1]||0),p:Number(row[hm['前28日平均順位']-1]||0)}
       };
       var sc=sbmDoctorScreenMetrics_(m);
-      row[hm['一次検査コード']-1]=sc.code; row[hm['一次検査結果']-1]=sc.label;
-      row[hm['詳細検査']-1]=sc.needsDetail?'候補':'不要'; row[hm['優先度']-1]=sc.priorityJa;
-      row[hm['診断の根拠']-1]=sc.reasons.join('／'); row[hm['データ品質']-1]=sc.quality;
-      row[hm['取得状態']-1]='健康診断完了'; row[hm['精密診断順位']-1]='';
-      if(sc.code==='LOW_SAMPLE')state.lowSample++; else if(!sc.needsDetail)state.healthy++;
+      row[hm['一次検査コード']-1]=sc.code;
+      row[hm['一次検査結果']-1]=sc.label;
+      row[hm['詳細検査']-1]=sc.needsDetail?'候補':'不要';
+      row[hm['優先度']-1]=sc.priorityJa;
+      row[hm['診断の根拠']-1]=sc.reasons.join('／');
+      row[hm['データ品質']-1]=sc.quality;
+      row[hm['取得状態']-1]='健康診断完了';
+      row[hm['精密診断順位']-1]='';
+      if(sc.code==='LOW_SAMPLE')state.lowSample++;
+      else if(!sc.needsDetail)state.healthy++;
     }
     vals[item.idx]=row;
   }
   perf.classify=sbmSecondsSince_(tClassPerf);
-  // current health-check rows are contiguous in snapshot; write one rectangular batch only.
+
   var tWritePerf=new Date();
   if(finish>start){
     var firstAbs=current[start].idx+2;
-    var batchRows=[]; for(var j=start;j<finish;j++)batchRows.push(current[j].row);
+    var batchRows=[];
+    for(var j=start;j<finish;j++) batchRows.push(current[j].row);
     sh.getRange(firstAbs,1,batchRows.length,batchRows[0].length).setValues(batchRows);
   }
   perf.write=sbmSecondsSince_(tWritePerf);
+
   var tSavePerf=new Date();
   state.cursor=finish;
   sbmDoctorSaveHealthScreenState_(run.healthCheckId,state);
-  run.processedCount=finish; run.phase='健康状態を判定中 '+finish+' / '+current.length+'件'; run.nextStep=finish<current.length?'残りの記事を判定':'候補順位と診断書を作成'; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
+  run.processedCount=finish;
+  run.phase=finish<current.length
+    ? '記事ごとの健康状態を分析中 '+finish+' / '+current.length+'件'
+    : '記事判定完了・精密診断候補を選定中';
+  run.nextStep=finish<current.length?'残りの記事を判定':'精密診断候補を選定し、健康診断書を作成';
+  run.lastSuccessAt=sbmNowText_();
+  run.updatedAt=sbmNowText_();
+  sbmDoctorSaveHealthRun_(run);
   perf.save=sbmSecondsSince_(tSavePerf);
-  if(finish<current.length) return {done:false,message:'健康状態を '+finish+' / '+current.length+'件 判定しました。次の分割処理へ進みます。',timing:perf};
 
-  // 判定完了と帳票生成を分離し、最後のバッチが実行上限を超えないようにする。
-  run.phase='健康状態の判定完了'; run.nextStep='健康診断書を作成'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
-  perf.save=sbmSecondsSince_(tSavePerf);
-  return {done:false,message:'全記事の判定が完了しました。次のSTEPで健康診断書を作成します。',timing:perf};
+  if(finish<current.length){
+    return {
+      done:false,
+      message:'健康状態を '+finish+' / '+current.length+'件 判定しました。残りの記事を続けて分析します。',
+      timing:perf
+    };
+  }
+
+  // 500記事以下ではここまで1回で到達する。
+  // 最後のサーバー往復を増やさず、そのまま候補確定・診断書作成まで実施。
+  var tFinalPerf=new Date();
+  var fr=sbmDoctorFinalizeScreening_(silent,state);
+  perf.finalize=sbmSecondsSince_(tFinalPerf);
+  fr.timing=perf;
+  return fr;
 }
 
 function sbmDoctorFinalizeScreening_(silent,state){
@@ -9433,8 +9477,8 @@ function sbmDoctorHealthStepLabel_(run){
   if(c==='FETCHING_SECOND'||c==='SECOND_DONE')return 'STEP 4 / 8　後半90日のデータ取得';
   if(c==='FETCHING_RECENT'||c==='RECENT_DONE')return 'STEP 5 / 8　直近28日のデータ取得';
   if(c==='FETCHING_PREVIOUS'||c==='PREVIOUS_DONE')return 'STEP 6 / 8　比較期間のデータ取得';
-  if(c==='SCREENING'&&phase.indexOf('判定完了')<0)return 'STEP 7 / 8　記事ごとの健康状態を分析';
-  if(c==='SCREENING'||c==='COMPLETED')return 'STEP 8 / 8　精密診断候補と健康診断書を作成';
+  if(c==='SCREENING'&&phase.indexOf('判定完了')<0 && phase.indexOf('候補')<0)return 'STEP 7 / 8　記事ごとの健康状態を分析';
+  if(c==='SCREENING'||c==='COMPLETED')return 'STEP 8 / 8　精密診断候補を選定し、健康診断書を作成';
   return sbmDoctorHealthStatusJa_(c);
 }
 function sbmDoctorHealthStageLine_(code){

@@ -1,0 +1,44 @@
+RC8 Final QA-UAT32
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+UAT31 real-sheet baseline:
+- recorded stages total: about 135 sec
+- preparation: 7 sec
+- 180-day stage: 19 sec
+- first 90d: 7 sec
+- second 90d: 6 sec
+- recent 28d: 6 sec
+- previous 28d: 7 sec
+- screening: many 40-row calls, mostly 4-11 sec each
+- final report creation: about 7 sec
+- user observed about 10 sec from diagnosis completion to health-report display
+
+UAT32:
+- <=500 articles: screen all articles in one server call.
+- Final screening call immediately continues into candidate ranking + health-report creation.
+- >500 articles: retain safe 100-250 row batching, default 200.
+- Keep spinner visible until Health Report sheet actually opens.
+- Show user-facing '健康診断書を表示しています' message during final display.
+
+No changes to:
+- diagnosis rules
+- GSC periods
+- candidate-ranking rules
+- Health Report content
+- UAT31 snapshot optimization
+
+Automated verification:
+- RC8 JavaScript regression: 57/57 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Blog Health Check on the 427-article blog.
+2. Confirm screening does not cycle through many 40-row steps.
+3. Record total elapsed time and saved timing report.
+4. Confirm final spinner/message remains visible until Health Report appears.
+5. Confirm Health Report and Detailed Diagnosis candidates are correct.
