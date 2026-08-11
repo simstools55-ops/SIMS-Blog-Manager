@@ -8,7 +8,7 @@ ok(code.includes("1．ブログ健康診断を実行") && code.includes("2．健
 ok(code.includes('sbmDoctorOpenHealthReport();') && !code.includes('if(selected>0)sbmDoctorOpenDetailedCandidates();else sbmDoctorOpenHealthReport();'),'health check finishes on report');
 ok(code.includes("cand.getDataRange().setWrap(true)") && !code.includes("cand.getRange(7,4,out.length,5).setWrap(false)"),'all candidate cells wrap');
 ok(code.includes("else if (sh.getName() === SBM_SHEETS.FEEDBACK_HISTORY) keyHeader = '記事タイトル';"),'history checkbox includes Doctor rows without date');
-ok(code.includes('if (history) history.hideSheet();'),'history rebuild hidden from user');
+ok(!code.includes("function sbmOpenImprovementHistory() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'history open is lightweight and does not trigger Doctor reconciliation');
 ok(code.includes('sbmDoctorPrepareHealthCheckScreen_();'),'health check uses stable neutral screen');
 ok(code===dist,'distribution mirrors Apps Script');
 if(!process.exitCode)console.log('PASS product5100_rc8_release_candidate_last_test');

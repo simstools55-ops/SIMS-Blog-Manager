@@ -8,9 +8,13 @@ must(code.includes("setValue('👀 モニター中')"),'記事管理をモニタ
 must(code.includes("improvement_method:'Doctor→Writer'"),'Doctor→Writer改善経路を保存する');
 must(code.includes("try{sbmUpdateEffectivenessCore_(false);}catch(eEffectSync)"),'結果登録時に改善の推移を即時同期する');
 must(code.includes("・改善の推移へ反映しました"),'結果登録メッセージに改善の推移反映を明示する');
-must(code.includes("try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}\n  sbmUpdateEffectivenessSilent_();"),'改善の推移を開く前にDoctor旧データを自己修復する');
+const effectOpen=code.slice(code.indexOf('function sbmOpenEffectiveness()'),code.indexOf('function sbmUpdateEffectiveness()',code.indexOf('function sbmOpenEffectiveness()')));
+must(!effectOpen.includes('sbmDoctorReconcileCompletedTreatments_'),'改善の推移を開くだけではDoctor旧データ自己修復を実行しない');
 must(code.includes("function sbmOpenAllBlogArticles() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'記事一覧を開く前にDoctor旧データを自己修復する');
-must(code.includes("function sbmOpenImprovementHistory() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'改善履歴を開く前にDoctor旧データを自己修復する');
+const historyStart=code.indexOf('function sbmOpenImprovementHistory()');
+const historyEnd=code.indexOf('利用者向けメニューの最終構成。',historyStart);
+const historyOpen=code.slice(historyStart,historyEnd);
+must(!historyOpen.includes('sbmDoctorReconcileCompletedTreatments_'),'改善履歴を開くだけではDoctor旧データ自己修復を実行しない');
 must(code.includes("try { sbmStyleEffectSheetV2_(); } catch(eEffectStyle)"),'起動時から改善の推移を装飾済みにする');
 must(code.includes("if(writerResult)return false"),'Writer結果保存済み記事は精密診断候補へ戻さない');
 must(code.includes("'PUBLICATION_PENDING'"),'旧結果登録待ち状態も新規候補から除外する');

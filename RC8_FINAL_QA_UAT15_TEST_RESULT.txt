@@ -1,0 +1,26 @@
+RC8 Final QA-UAT15
+
+Result: STATIC REGRESSION PASS / REAL-SHEET UAT REQUIRED
+
+Implemented:
+- Improvement Trend open is lightweight: view existing sheet only; no repair/full recalculation on open.
+- Improvement History open is lightweight: view existing sheet only; no Doctor reconciliation/history repair/rebuild on open.
+- Daily processing explicitly removes monitoring/completed articles from Today's Improvements.
+- Today's Improvements internal candidate maximum aligned to UI contract: 10.
+- Health Staged Runner frozen; no health-processing code changes.
+
+Automated verification:
+- RC8 JavaScript regression: 40/40 PASS
+- Python freeze/Doctor guard: 8/8 PASS
+- JavaScript syntax: PASS
+- apps-script/Code.gs == distribution/Code.gs: PASS
+- distribution filenames ASCII only: PASS
+- Release audit: PASS
+- ZIP integrity: PASS
+
+Required real-sheet UAT:
+1. Open Improvement Trend; it should appear quickly without recalculation wait.
+2. Open Improvement History; it should appear quickly without reconciliation wait.
+3. Run daily processing; completed/monitoring articles must disappear from Today's Improvements.
+4. Vacated Today slots should be replenished to the configured display count, with up to 10 candidates available.
+5. Health Check behavior must remain unchanged from the previously passed 427-article run.
