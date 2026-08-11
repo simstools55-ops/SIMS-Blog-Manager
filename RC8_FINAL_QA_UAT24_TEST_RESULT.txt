@@ -1,0 +1,28 @@
+RC8 Final QA-UAT24
+
+Static result: PASS / REAL-SHEET PROFILING REQUIRED
+
+Scope:
+- Display UAT23 STEP3 profiling data in the Daily Processing completion dialog.
+- No processing behavior changes.
+
+Automated verification:
+- RC8 JavaScript regression: 49/49 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Daily Processing on the 427-article blog.
+2. Record STEP1 and STEP2 times as usual.
+3. At completion, copy these STEP3 values:
+   - STEP3 total
+   - History before
+   - Effectiveness update
+   - History after
+   - Completion-state save
+   - Home refresh
+   - Final settings / cleanup
+4. Use the largest value to select the UAT25 optimization target.
