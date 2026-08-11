@@ -8698,6 +8698,7 @@ function onOpen() {
   ui.createMenu('SIMS Doctor')
     .addItem('1．ブログ健康診断を実行','sbmDoctorRunHealthCheck')
     .addItem('2．健康診断書を開く','sbmDoctorOpenHealthReport')
+    .addItem('健康診断の工程時間を確認','sbmDoctorShowLatestHealthTimingReport')
     .addItem('3．精密診断候補を見る','sbmDoctorOpenDetailedCandidates')
     .addItem('4．チェックした記事のDoctor依頼文を作る','sbmDoctorCreateRequestFromDetailedCandidate')
     .addSeparator()
@@ -8828,6 +8829,86 @@ function sbmDoctorRunHealthCheck() {
  * RC8: 健康診断は利用者の1回の操作で完了させる。
  * google.script.run をSTEPごとに呼び分けることで、Apps Script 1実行の時間上限を跨がない。
  */
+
+function sbmDoctorGetLatestHealthTimingReport_() {
+  var run=sbmDoctorGetHealthRun_();
+  if(!run||!run.healthCheckId) throw new Error('保存済みの健康診断が見つかりません。');
+  var props=PropertiesService.getDocumentProperties();
+  var key='SBM_DOCTOR_HEALTH_TIMINGS_'+String(run.healthCheckId||'');
+  var list=[];
+  try{list=JSON.parse(props.getProperty(key)||'[]')||[];}catch(e){list=[];}
+  return {
+    ok:true,
+    healthCheckId:String(run.healthCheckId||''),
+    statusCode:String(run.statusCode||''),
+    stage:sbmDoctorHealthStatusJa_(run.statusCode),
+    createdAt:String(run.createdAt||''),
+    updatedAt:String(run.updatedAt||''),
+    timings:list
+  };
+}
+
+function sbmDoctorShowLatestHealthTimingReport() {
+  var report=sbmDoctorGetLatestHealthTimingReport_();
+  var rows=report.timings||[];
+  function sec(v){return Math.max(0,Math.round(Number(v||0)));}
+  function partsText(parts){
+    parts=parts||{};
+    var out=[];
+    var labels={
+      articleInfo:'記事情報補完',
+      safety:'安全確認',
+      sheets:'Doctorシート準備',
+      save:'状態保存',
+      startSave:'開始状態保存',
+      api:'Search Console API',
+      snapshot:'Snapshot統合',
+      count:'対象件数確認',
+      doneSave:'完了状態保存',
+      screening:'記事健康状態判定'
+    };
+    Object.keys(labels).forEach(function(k){
+      if(parts[k]!==undefined && parts[k]!==null) out.push(labels[k]+' '+sec(parts[k])+'秒');
+    });
+    if(parts.detail){
+      var d=parts.detail, map={read:'Snapshot読込',context:'判定コンテキスト',classify:'判定計算',write:'バッチ書込',save:'状態保存',finalize:'診断書作成'};
+      Object.keys(map).forEach(function(k){
+        if(d[k]!==undefined && d[k]!==null) out.push(map[k]+' '+sec(d[k])+'秒');
+      });
+    }
+    return out.join(' / ');
+  }
+
+  var total=0,maxIndex=-1,maxSeconds=-1;
+  rows.forEach(function(r,i){
+    var n=Number(r.seconds||0);
+    total+=n;
+    if(n>maxSeconds){maxSeconds=n;maxIndex=i;}
+  });
+
+  var html='<!DOCTYPE html><html><head><base target="_top"><style>'+
+    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124}h2{margin:0 0 8px;font-size:20px}'+
+    '.meta{color:#5f6368;font-size:12px;margin-bottom:12px}.summary{background:#f1f8f4;border-left:4px solid #0b8043;padding:10px 12px;margin:12px 0}'+
+    'table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid #e0e0e0;padding:8px;text-align:left;vertical-align:top}th{background:#f8f9fa}'+
+    '.slow{font-weight:bold;color:#b3261e}.parts{color:#5f6368;font-size:12px;line-height:1.5}.foot{margin-top:12px;color:#5f6368;font-size:12px}</style></head><body>'+
+    '<h2>ブログ健康診断・工程時間</h2>'+
+    '<div class="meta">HealthCheckID: '+report.healthCheckId+' / 状態: '+report.stage+'</div>';
+
+  if(!rows.length){
+    html+='<div class="summary">保存済みの工程時間がありません。</div>';
+  }else{
+    html+='<div class="summary">記録工程の合計：約'+sec(total)+'秒 / 最長工程：<b>'+String(rows[maxIndex].label||'工程')+' '+sec(rows[maxIndex].seconds)+'秒</b></div>';
+    html+='<table><thead><tr><th>#</th><th>工程</th><th>時間</th><th>内訳</th><th>記録時刻</th></tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      var cls=i===maxIndex?' class="slow"':'';
+      html+='<tr><td>'+(i+1)+'</td><td'+cls+'>'+String(r.label||'工程')+'</td><td'+cls+'>'+sec(r.seconds)+'秒</td><td><div class="parts">'+partsText(r.parts)+'</div></td><td>'+String(r.at||'')+'</td></tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='<div class="foot">保存済みの計測結果を表示しているだけです。健康診断やSearch Console取得は実行していません。</div></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(980).setHeight(620),'健康診断の工程時間');
+}
+
 function sbmDoctorShowHealthCheckRunnerDialog_(){
   var html='<!doctype html><html><head><base target="_top"><style>'+ 
     'body{font-family:Arial,"Noto Sans JP",sans-serif;margin:0;padding:22px;color:#202124}.title{font-size:22px;font-weight:700;margin-bottom:8px}.sub{color:#5f6368;margin-bottom:16px;line-height:1.6}.bar{height:14px;background:#e8eaed;border-radius:8px;overflow:hidden}.fill{height:100%;width:0;background:#0b8043;transition:width .25s}.pct{font-weight:700;margin:10px 0;display:flex;align-items:center;gap:10px}.spinner{width:18px;height:18px;border:3px solid #dfe7df;border-top-color:#0b8043;border-radius:50%;animation:spin .85s linear infinite;flex:none}@keyframes spin{to{transform:rotate(360deg)}}.box{background:#f6f9f7;border:1px solid #dfe7e1;border-radius:8px;padding:14px;margin-top:14px;line-height:1.65}.step{font-weight:700}.small{font-size:12px;color:#5f6368;margin-top:10px;line-height:1.55}.done{background:#e6f4ea;border-color:#b7dfc4}.err{background:#fce8e6;border-color:#f3b7b1}.btn{margin-top:16px;padding:9px 18px;border:0;border-radius:6px;background:#0b8043;color:white;cursor:pointer}.btn.secondary{background:#5f6368;margin-left:8px}.meta{font-size:12px;color:#5f6368;margin-top:8px}</style></head><body>'+ 

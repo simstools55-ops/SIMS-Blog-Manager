@@ -1,0 +1,17 @@
+RC8 Final QA-UAT30
+
+Static result: PASS / SAVED-TIMING UAT REQUIRED
+
+Automated verification:
+- RC8 JavaScript regression: 55/55 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Apply UAT30 and reload.
+2. SIMS Doctor → 健康診断の工程時間を確認.
+3. Do not rerun health check.
+4. Capture the timing table, especially the longest row and internal breakdown.
