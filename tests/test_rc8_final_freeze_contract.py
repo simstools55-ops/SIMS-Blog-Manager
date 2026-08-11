@@ -39,9 +39,9 @@ def test_improvement_history_and_effect_share_route_field():
     assert "improvement_method:'Doctor→Writer'" in CODE
 
 
-def test_doctor_writer_does_not_change_article_rank_and_uses_common_work_state():
+def test_doctor_writer_does_not_change_article_rank_and_uses_treatment_work_state():
     save = CODE[CODE.index('function sbmDoctorSaveGeneratedWriterRequest_'):CODE.index('function sbmDoctorRegisterResultAndBuildNext')]
-    assert "'✏️ 改善中'" in save
+    assert "'🛠️ 処置中'" in save
     assert '記事ランク' not in save
     assert "'👀 モニター中'" in CODE
     assert "'✔️ 完了'" in CODE

@@ -22,3 +22,10 @@
 - [ ] REG-DOCTOR-CANDIDATE-URGENCY-001: 緊急/重症/中等症 is propagated to Doctor request urgency and health_screening_severity.
 - [ ] REG-DOCTOR-CANDIDATE-REMOVE-001: only the successfully requested row is removed from the candidate sheet.
 - [ ] REG-UI-DOCTOR-COLOR-BLUE-001: positive metric highlighting uses light blue rather than green.
+
+## QA-UAT10 Final Closure
+- [ ] REG-CURRENT-PERFORMANCE-28D-MISMATCH-001: Doctor依頼のcurrent_performance直近28日がEvidence日別28日と一致する。
+- [ ] REG-LONG-RUNNING-UX-001: 数秒以上かかる主要処理は早期に進捗ダイアログを表示し、何をしているかを利用者向けに説明する。
+- [ ] REG-WORKSTATE-MONITOR-UNIFICATION-001: 利用者向け「改善中」は残らず、処置完了後はモニター中へ統一される。
+- [ ] REG-MEASUREMENT-WAITING-LABEL-001: 未測定の利用者表示は「測定待ち」に統一される。
+- [ ] REG-HOME-MONITOR-COUNT-002: Homeのモニター中件数が記事管理の対象件数と一致する。

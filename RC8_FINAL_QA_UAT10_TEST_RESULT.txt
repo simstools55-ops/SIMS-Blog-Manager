@@ -1,0 +1,30 @@
+RC8 Final QA-UAT10
+
+Result: STATIC REGRESSION PASS / REAL-SHEET UAT REQUIRED
+
+Changes covered:
+- current_performance recent 28d uses Evidence daily 28d source of truth
+- long-running UX progress dialog
+- Doctor candidate 3 real processing stages + spinner
+- article information acquisition progress dialog
+- effectiveness refresh progress dialog
+- improvement-in-progress user state retired; legacy values migrate to monitoring
+- Doctor-to-Writer pending treatment uses treatment state
+- unmeasured user label unified to measurement waiting
+- Home monitoring count unified
+
+Automated verification:
+- RC8 JavaScript regression suite: PASS (35)
+- Targeted Python tests: PASS (8/8)
+- JavaScript syntax check: PASS
+- Release audit: PASS
+- apps-script/Code.gs == distribution/Code.gs: PASS
+- distribution file names: ASCII only
+
+Required real-sheet UAT before Freeze:
+1. Open detailed diagnosis candidates and confirm dialog appears promptly, spinner moves, STEP 1/3 -> 2/3 -> 3/3 progresses, and sheet opens automatically.
+2. Generate one Doctor request and confirm current_performance recent 28d equals Evidence recent_28_days.
+3. Confirm existing article-management rows formerly shown as "改善中" are shown as "モニター中"; Doctor-to-Writer pending case may show "処置中".
+4. Confirm new improvement records show "測定待ち" rather than "未測定".
+5. Confirm Home monitoring count equals article-management monitoring count, including migrated legacy rows.
+6. Re-run RC8 Final Regression Checklist after any further code change.
