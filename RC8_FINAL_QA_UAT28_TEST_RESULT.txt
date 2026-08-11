@@ -1,0 +1,36 @@
+RC8 Final QA-UAT28
+
+Static result: PASS / REAL-SHEET PROFILING REQUIRED
+
+Purpose:
+- Profile Blog Health Check before optimization.
+- Keep staged runner, health logic, screening rules, candidate ranking and report content unchanged.
+
+Temporary user-visible timing:
+- The Health Check dialog accumulates completed stage times.
+- Labels are user-readable: preparation, 180d, first 90d, second 90d, recent 28d, previous 28d, screening/report.
+- QA timing UI will be removed after optimization.
+
+Known suspect:
+- PREPARING still runs sbmEnsureArticleListDisplayCompleteness_(20,40), the same family of network-completeness work that made Article List slow.
+
+Automated verification:
+- RC8 JavaScript regression: 53/53 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Blog Health Check on the 427-article blog.
+2. Let it finish without closing the dialog.
+3. Record the accumulated 工程時間 line, especially:
+   - 開始準備
+   - 180日集計
+   - 前半90日集計
+   - 後半90日集計
+   - 直近28日集計
+   - その前28日集計
+   - 記事の健康状態を判定 (each batch/finalization)
+4. Report any visible sheet/Home flicker.

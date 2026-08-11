@@ -10,7 +10,7 @@ must(code.includes("run.statusCode='PREFLIGHT_DONE'"),'preflight is a separate s
 must(code.includes("'PREFLIGHT_DONE': {periodKey:'full'"),'180-day fetch starts only after preflight checkpoint');
 must(code.includes('function sbmDoctorRunScreeningBatch_'),'screening has batched implementation');
 must(code.includes("DoctorHealthScreenBatchSize','40'"),'screening batch defaults to 40 articles');
-must(code.includes("if(start>=current.length) return sbmDoctorFinalizeScreening_"),'report finalization is a separate server call after screening batches');
+must(code.includes("if(start>=current.length){var tFinalPerf=new Date(),fr=sbmDoctorFinalizeScreening_"),'report finalization is a separate server call after screening batches');
 must(code.includes("全記事の判定が完了しました。次のSTEPで健康診断書を作成します。"),'runner exposes finalization checkpoint');
 must(!/if\(run\.statusCode==='PREVIOUS_DONE'\)[\s\S]{0,300}sbmDoctorRunScreening_\(true\)/.test(code),'monolithic screening call removed from staged runner');
 must(code===dist,'distribution mirrors Apps Script');
