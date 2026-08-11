@@ -8729,6 +8729,22 @@ function onOpen() {
 const SBM_DOCTOR_HEALTH_DAYS = 180;
 const SBM_DOCTOR_HEALTH_PAGE_LIMIT = 25000;
 
+function sbmDoctorEnsureMedicalSheetStructure_() {
+  var names = [
+    ['DOCTOR_HEALTH_SNAPSHOT', SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT],
+    ['DOCTOR_HEALTH_RECORD', SBM_SHEETS.DOCTOR_HEALTH_RECORD],
+    ['DOCTOR_TREATMENT_QUEUE', SBM_SHEETS.DOCTOR_TREATMENT_QUEUE],
+    ['DOCTOR_HEALTH_RUN', SBM_SHEETS.DOCTOR_HEALTH_RUN],
+    ['DOCTOR_CASES', SBM_SHEETS.DOCTOR_CASES]
+  ];
+  names.forEach(function(pair){
+    var sh=sbmGetOrCreateSheet_(pair[1]);
+    // 構造確認だけ。全範囲装飾・autoResizeは健康診断の実行時に行わない。
+    sbmEnsureHeaders_(sh,SBM_HEADERS[pair[0]]);
+    try{sh.hideSheet();}catch(ignoreHide){}
+  });
+}
+
 function sbmDoctorEnsureMedicalSheets_() {
   var names = [
     ['DOCTOR_HEALTH_SNAPSHOT', SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT],
@@ -8799,7 +8815,8 @@ function sbmDoctorRunHealthCheck() {
       if(answer!==ui.Button.OK)return;
       var id='HC-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss');
       run={healthCheckId:id,statusCode:'PREPARING',phase:'準備中',startDate:period.full.startDate,endDate:period.full.endDate,targetCount:articleCount,processedCount:0,nextStep:'180日集計',lastSuccessAt:'',retryCount:0,lastError:'',createdAt:sbmNowText_(),updatedAt:sbmNowText_()};
-      sbmDoctorSaveHealthRun_(run); sbmDoctorClearSnapshotForRun_(id);
+      // 新規IDなので同一IDのSnapshot削除は不要。開始ダイアログを最優先する。
+      sbmDoctorSaveHealthRun_(run);
     }
     sbmDoctorShowHealthCheckRunnerDialog_();
   } catch(e) {
@@ -8858,11 +8875,11 @@ function sbmDoctorRunHealthStageFromDialog(){
   try{
     if(run.statusCode==='PREPARING'){
       timing.label='開始準備';
-      var tComplete=new Date();
-      try { sbmEnsureArticleListDisplayCompleteness_(20,40); } catch(eCompleteness) { sbmLog_('DoctorPreflightArticleListCompleteness','Warning',String(eCompleteness)); }
-      timing.parts.articleInfo=sbmSecondsSince_(tComplete);
+      // UAT29: 健康診断の開始準備では外部記事情報補完を行わない。
+      // 記事タイトル・メインクエリ補完は明示的な記事情報取得処理の責務。
+      timing.parts.articleInfo=0;
       var tSafe=new Date(); sbmDoctorAssertSafeToExport_(); timing.parts.safety=sbmSecondsSince_(tSafe);
-      var tSheets=new Date(); sbmDoctorEnsureMedicalSheets_(); timing.parts.sheets=sbmSecondsSince_(tSheets);
+      var tSheets=new Date(); sbmDoctorEnsureMedicalSheetStructure_(); timing.parts.sheets=sbmSecondsSince_(tSheets);
       run.statusCode='PREFLIGHT_DONE'; run.phase='事前確認完了'; run.nextStep='180日集計'; run.lastSuccessAt=sbmNowText_(); run.updatedAt=sbmNowText_();
       var tSave=new Date(); sbmDoctorSaveHealthRun_(run); timing.parts.save=sbmSecondsSince_(tSave);
       timing.total=sbmSecondsSince_(stageStarted); sbmDoctorSaveHealthStageTiming_(run,timing);
@@ -9244,12 +9261,15 @@ function sbmDoctorHealthPeriodFromRun_(run){
 }
 
 function sbmDoctorSaveHealthRun_(run) {
-  sbmDoctorEnsureMedicalSheets_(); var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_RUN); var h=SBM_HEADERS.DOCTOR_HEALTH_RUN;
+  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_RUN);
+  sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_RUN);
+  var h=SBM_HEADERS.DOCTOR_HEALTH_RUN;
   var row=[run.healthCheckId,run.statusCode,run.phase,run.startDate,run.endDate,run.targetCount||0,run.processedCount||0,run.nextStep||'',run.lastSuccessAt||'',run.retryCount||0,run.lastError||'',run.createdAt||sbmNowText_(),run.updatedAt||sbmNowText_()];
   var last=sh.getLastRow(), found=0;
   if(last>1){var ids=sh.getRange(2,1,last-1,1).getDisplayValues(); for(var i=ids.length-1;i>=0;i--){if(ids[i][0]===run.healthCheckId){found=i+2;break;}}}
   if(found) sh.getRange(found,1,1,h.length).setValues([row]); else sh.appendRow(row);
   try{sh.hideSheet();}catch(e){}
+  // active health-check idだけを保存。Doctor全シート再装飾は行わない。
   sbmSetSetting_('DoctorActiveHealthCheckId',run.healthCheckId,'現在のDoctorブログ健康診断ID');
 }
 function sbmDoctorGetHealthRun_() {

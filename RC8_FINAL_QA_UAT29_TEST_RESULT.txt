@@ -1,0 +1,28 @@
+RC8 Final QA-UAT29
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+UAT28 real-sheet evidence:
+- Runner dialog: ~45 sec after start.
+- STEP1: still waiting after 3 minutes.
+- Visible menu/sheet flicker several times.
+
+UAT29 changes:
+- Remove article-info completion from Health PREPARING.
+- Replace full Doctor sheet restyling with lightweight structure-only guard.
+- Health-run saves no longer restyle five Doctor sheets.
+- New unique health-check run does not clear/rewrite snapshot unnecessarily.
+- UAT28 temporary timing UI remains for verification.
+
+Expected real-sheet target:
+- Runner dialog after confirmation: 1-5 sec.
+- STEP1 / 開始準備: under 10 sec.
+- No visible menu/Home flicker from full Doctor styling.
+
+Automated verification:
+- RC8 JavaScript regression: 54/54 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
