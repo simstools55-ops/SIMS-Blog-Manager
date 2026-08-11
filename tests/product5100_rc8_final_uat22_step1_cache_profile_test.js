@@ -23,6 +23,6 @@ must(s2.includes('step2SelectSec'),'STEP2 candidate selection is timed');
 must(s2.includes('step2TodayWriteSec'),'STEP2 Today sheet write is timed');
 must(s2.includes('step2WorkStateSec'),'STEP2 work-state write is timed');
 
-must(code.includes('URL正規化 "+formatTime(t.normalize)'), 'dialog shows detailed STEP1 breakdown');
+must(!code.includes('URL正規化 "+formatTime(t.normalize)'), 'Final UI hides detailed STEP1 QA breakdown while internal timing remains');
 
 console.log('UAT22 STEP1 cache/profile regression: PASS');

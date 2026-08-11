@@ -1,0 +1,33 @@
+RC8 Final QA-UAT26
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- Article Management / Article List view-only fast path.
+- Remove QA-only STEP1 and STEP3 detail from user-facing Daily Processing dialogs.
+- Keep internal profiling data for regression diagnosis.
+- UAT25 daily fast-processing logic remains unchanged.
+
+Root cause:
+- Opening Article Management ran sbmEnsureArticleListDisplayCompleteness_(12,20).
+- That could fetch up to 12 article pages and main queries and scan/update the full Article DB.
+- View action therefore mixed navigation with network/data-repair work.
+
+Fix:
+- Article list open now show/activate only.
+- Completeness-fetch function remains available for explicit data-completion workflows.
+- No restyling, network fetch, GSC query lookup, or full DB write on simple view.
+
+Automated verification:
+- RC8 JavaScript regression: 51/51 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Open Article List / Article Management and measure display time.
+2. Target: about 1-3 seconds.
+3. Confirm existing layout, colors, checkboxes, row order, ArticleID, work state, main query and titles are unchanged.
+4. Run Daily Processing once only if desired to confirm its dialog no longer shows QA-only STEP1/STEP3 details.

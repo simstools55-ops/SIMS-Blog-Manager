@@ -20,6 +20,6 @@ must(s1.includes('DailyStep1TimingWorkWriteSec'),'作業シート保存時間を
 must(s1.includes("profiler.finish('完了'"),'Profilerを完了保存');
 must(s1.includes('前の処理がまだ終了していません'),'ロック中の利用者向け説明を改善');
 
-must(code.includes('STEP1完了 "+formatTime(fetch&&fetch.elapsedSeconds)'), 'STEP2画面にSTEP1内訳を表示');
+must(!code.includes('STEP1完了 "+formatTime(fetch&&fetch.elapsedSeconds)'), 'Final UI does not expose STEP1 QA breakdown');
 
 console.log('UAT20 STEP1 profiler regression: PASS');
