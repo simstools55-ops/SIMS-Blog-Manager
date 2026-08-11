@@ -1,0 +1,23 @@
+RC8 Final QA-UAT25
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- STEP3 Settings read/write batching only.
+- No functional SEO / workflow / Doctor / Health changes.
+
+Automated verification:
+- RC8 JavaScript regression: 50/50 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Daily Processing on the 427-article blog.
+2. Record STEP1 / STEP2 / STEP3 / total.
+3. In STEP3 detail record:
+   history before / effectiveness / history after /
+   completion-state save / Home / final settings & cleanup.
+4. Confirm Home counts, monitoring count, Today queue and improvement views remain correct.

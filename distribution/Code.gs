@@ -100,12 +100,13 @@ function sbmShowImprovementRefactorStatus_() {
  * LastSuccessfulDailyUpdateEpoch は日次処理が最後まで正常終了した時だけ更新します。
  * Homeの表示と起動時判定は必ずこの値を共用します。
  */
-function sbmGetLastSuccessfulDailyUpdateDate_() {
-  var epoch = Number(sbmGetSetting_('LastSuccessfulDailyUpdateEpoch', 0) || 0);
+function sbmGetLastSuccessfulDailyUpdateDate_(settingsMap) {
+  settingsMap = settingsMap || null;
+  var epoch = Number((settingsMap && Object.prototype.hasOwnProperty.call(settingsMap,'LastSuccessfulDailyUpdateEpoch') ? settingsMap['LastSuccessfulDailyUpdateEpoch'] : sbmGetSetting_('LastSuccessfulDailyUpdateEpoch', 0)) || 0);
   if (isFinite(epoch) && epoch > 0) return new Date(epoch);
 
   // Product 5.3.0以前からの移行時だけ旧値を日本時間として安全に読み取ります。
-  var legacy = String(sbmGetSetting_('LastArticleDbFetchAt', '') || '').trim();
+  var legacy = String((settingsMap && Object.prototype.hasOwnProperty.call(settingsMap,'LastArticleDbFetchAt') ? settingsMap['LastArticleDbFetchAt'] : sbmGetSetting_('LastArticleDbFetchAt', '')) || '').trim();
   var m = legacy.match(/^(\d{4})[-\/]?(\d{1,2})[-\/]?(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
   if (!m) return null;
   var utcMillis = Date.UTC(Number(m[1]), Number(m[2])-1, Number(m[3]), Number(m[4]||0)-9, Number(m[5]||0), Number(m[6]||0));
@@ -114,8 +115,8 @@ function sbmGetLastSuccessfulDailyUpdateDate_() {
   return d;
 }
 
-function sbmDailyUpdateStatus_() {
-  var last = sbmGetLastSuccessfulDailyUpdateDate_();
+function sbmDailyUpdateStatus_(settingsMap) {
+  var last = sbmGetLastSuccessfulDailyUpdateDate_(settingsMap);
   var todayKey = sbmDateText_(new Date());
   var lastKey = last ? sbmDateText_(last) : '';
   return {
@@ -130,17 +131,21 @@ function sbmDailyUpdateStatus_() {
 function sbmMarkDailyUpdateCompleted_(completedAt) {
   var d = completedAt instanceof Date ? completedAt : new Date();
   var epoch = d.getTime();
-  sbmSetSetting_('LastSuccessfulDailyUpdateEpoch', String(epoch), '日次処理が最後まで正常終了した日時（Unixミリ秒）。Home表示と未実行判定の共通値');
-  // 旧バージョンとの互換用。判定には使用しません。
-  sbmSetSetting_('LastFetchDate', sbmDateText_(d), '最終取得日（互換用）');
-  sbmSetSetting_('LastArticleDbFetchAt', Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'), '記事DBの最終取得日時（表示互換用）');
+  sbmSetSettingsBatch_([
+    {key:'LastSuccessfulDailyUpdateEpoch',value:String(epoch),desc:'日次処理が最後まで正常終了した日時（Unixミリ秒）。Home表示と未実行判定の共通値'},
+    {key:'LastFetchDate',value:sbmDateText_(d),desc:'最終取得日（互換用）'},
+    {key:'LastArticleDbFetchAt',value:Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'),desc:'記事DBの最終取得日時（表示互換用）'}
+  ]);
 }
 
-function sbmGetDailyRuntimeState_() {
+function sbmGetDailyRuntimeState_(settingsMap) {
   var props = PropertiesService.getDocumentProperties();
+  settingsMap = settingsMap || null;
   function pv(key, fallback) {
     var v = props.getProperty(key);
-    return v === null || v === '' ? sbmGetSetting_(key, fallback) : v;
+    if (v !== null && v !== '') return v;
+    if (settingsMap && Object.prototype.hasOwnProperty.call(settingsMap,key)) return settingsMap[key];
+    return sbmGetSetting_(key, fallback);
   }
   var running = String(pv('DailyUpdateRunning','NO')) === 'YES';
   var startedEpoch = Number(pv('DailyUpdateStartedEpoch',0) || 0);
@@ -153,7 +158,7 @@ function sbmGetDailyRuntimeState_() {
       DailyUpdateActionMessage:'処理応答が停止したため安全停止しました。保存済みの工程から再開できます。下の「続きを実行」を押してください。'
     });
   }
-  var daily = sbmDailyUpdateStatus_();
+  var daily = sbmDailyUpdateStatus_(settingsMap);
   var phase = String(pv('DailyUpdatePhase', running ? 'FETCH' : '') || '');
   var progress = Number(pv('DailyUpdateProgress', running ? 5 : (daily.completedToday ? 100 : 0)) || 0);
   var message = String(pv('DailyUpdateMessage','') || '');
@@ -194,12 +199,15 @@ function sbmGetDailyRuntimeState_() {
 function sbmPersistDailyRuntime_(values) {
   values = values || {};
   var props = PropertiesService.getDocumentProperties();
-  var propertyValues = {};
-  Object.keys(values).forEach(function(key) { propertyValues[key] = String(values[key] == null ? '' : values[key]); });
-  if (Object.keys(propertyValues).length) props.setProperties(propertyValues, false);
+  var propertyValues = {}, batch=[];
   Object.keys(values).forEach(function(key) {
-    try { sbmSetSetting_(key, propertyValues[key], '日次処理の実行状態'); } catch(ignore) {}
+    propertyValues[key] = String(values[key] == null ? '' : values[key]);
+    batch.push({key:key,value:propertyValues[key],desc:'日次処理の実行状態'});
   });
+  if (Object.keys(propertyValues).length) props.setProperties(propertyValues, false);
+  if (batch.length) {
+    try { sbmSetSettingsBatch_(batch); } catch(ignore) {}
+  }
 }
 
 function sbmDailyPhaseLabel_(phase) {
@@ -542,16 +550,18 @@ function sbmRunDailyFinalizeStageFromDialog() {
     var tFinalSettings3 = new Date();
     var flowStarted = Number(sbmGetSetting_('DailyStepFlowStartedEpoch', started.getTime()) || started.getTime());
     var totalElapsed = Math.max(0, Math.round((Date.now() - flowStarted) / 1000));
-    sbmSetSetting_('DailyFinalizeStageElapsedSeconds', String(finalizeElapsed), '日次処理STEP3の所要時間（秒）');
-    sbmSetSetting_('DailyTotalElapsedSeconds', String(totalElapsed), '日次処理全体の所要時間（秒）');
-    sbmSetSetting_('DailyStep3TimingProgressSec', String(step3ProgressSec), 'STEP3 進捗保存秒');
-    sbmSetSetting_('DailyStep3TimingBeforeHistorySec', String(step3BeforeHistorySec), 'STEP3 履歴事前読込秒');
-    sbmSetSetting_('DailyStep3TimingEffectSec', String(step3EffectSec), 'STEP3 改善の推移更新秒');
-    sbmSetSetting_('DailyStep3TimingAfterHistorySec', String(step3AfterHistorySec), 'STEP3 履歴事後読込秒');
-    sbmSetSetting_('DailyStep3TimingSummaryReadSec', String(step3SummaryReadSec), 'STEP3 STEP2集計読込秒');
-    sbmSetSetting_('DailyStep3TimingMarkCompleteSec', String(step3MarkCompleteSec), 'STEP3 完了日保存秒');
-    sbmSetSetting_('DailyStep3TimingRuntimeSec', String(step3RuntimeSec), 'STEP3 実行状態保存秒');
-    sbmSetSetting_('DailyStep3TimingHomeSec', String(step3HomeSec), 'STEP3 Home更新秒');
+    sbmSetSettingsBatch_([
+      {key:'DailyFinalizeStageElapsedSeconds',value:String(finalizeElapsed),desc:'日次処理STEP3の所要時間（秒）'},
+      {key:'DailyTotalElapsedSeconds',value:String(totalElapsed),desc:'日次処理全体の所要時間（秒）'},
+      {key:'DailyStep3TimingProgressSec',value:String(step3ProgressSec),desc:'STEP3 進捗保存秒'},
+      {key:'DailyStep3TimingBeforeHistorySec',value:String(step3BeforeHistorySec),desc:'STEP3 履歴事前読込秒'},
+      {key:'DailyStep3TimingEffectSec',value:String(step3EffectSec),desc:'STEP3 改善の推移更新秒'},
+      {key:'DailyStep3TimingAfterHistorySec',value:String(step3AfterHistorySec),desc:'STEP3 履歴事後読込秒'},
+      {key:'DailyStep3TimingSummaryReadSec',value:String(step3SummaryReadSec),desc:'STEP3 STEP2集計読込秒'},
+      {key:'DailyStep3TimingMarkCompleteSec',value:String(step3MarkCompleteSec),desc:'STEP3 完了日保存秒'},
+      {key:'DailyStep3TimingRuntimeSec',value:String(step3RuntimeSec),desc:'STEP3 実行状態保存秒'},
+      {key:'DailyStep3TimingHomeSec',value:String(step3HomeSec),desc:'STEP3 Home更新秒'}
+    ]);
     var step3FinalSettingsSec = sbmSecondsSince_(tFinalSettings3);
 
     var step3TimingSummary =
@@ -4021,6 +4031,58 @@ function sbmFindRowByValue_(sheetName, headerName, value) { var sh=SpreadsheetAp
 function sbmSetObjectValues_(sh,row,updates) { var map=sbmHeaderMap_(sh); Object.keys(updates).forEach(function(k){ if(map[k]) sh.getRange(row,map[k]).setValue(updates[k]); }); }
 function sbmAppendObject_(sheetName, headers, obj) { var sh=sbmGetOrCreateSheet_(sheetName); sbmEnsureHeaders_(sh, headers); var map=sbmHeaderMap_(sh); var row=new Array(Math.max(headers.length,sh.getLastColumn())).fill(''); headers.forEach(function(h){ var c=map[h]; if(c) row[c-1]= obj[h] !== undefined ? obj[h] : ''; }); sh.appendRow(row); return sh.getLastRow(); }
 function sbmGetSetting_(key, def) { var rows=sbmRowsAsObjects_(SBM_SHEETS.SETTINGS); for(var i=0;i<rows.length;i++){ if(String(rows[i].Key)===String(key)) return rows[i].Value; } return def; }
+
+function sbmGetSettingsMap_() {
+  var out = {};
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.SETTINGS);
+  if (!sh || sh.getLastRow() < 2) return out;
+  var width = Math.max(sh.getLastColumn(), SBM_HEADERS.SETTINGS.length);
+  var headers = sh.getRange(1,1,1,width).getValues()[0].map(function(v){return String(v||'').trim();});
+  var keyCol = headers.indexOf('Key'), valueCol = headers.indexOf('Value');
+  if (keyCol < 0 || valueCol < 0) return out;
+  var vals = sh.getRange(2,1,sh.getLastRow()-1,width).getValues();
+  vals.forEach(function(r){
+    var k = String(r[keyCol]||'');
+    if (k && !Object.prototype.hasOwnProperty.call(out,k)) out[k] = r[valueCol];
+  });
+  return out;
+}
+
+function sbmSetSettingsBatch_(entries) {
+  entries = entries || [];
+  if (!entries.length) return 0;
+  var sh = sbmGetOrCreateSheet_(SBM_SHEETS.SETTINGS);
+  sbmEnsureHeaders_(sh, SBM_HEADERS.SETTINGS);
+  var width = SBM_HEADERS.SETTINGS.length;
+  var headers = sh.getRange(1,1,1,width).getValues()[0].map(function(v){return String(v||'').trim();});
+  var keyCol=headers.indexOf('Key'), valueCol=headers.indexOf('Value'), descCol=headers.indexOf('Description'), updatedCol=headers.indexOf('UpdatedAt');
+  if(keyCol<0||valueCol<0) return 0;
+  var currentRows=Math.max(0,sh.getLastRow()-1);
+  var vals=currentRows?sh.getRange(2,1,currentRows,width).getValues():[];
+  var rowByKey={};
+  vals.forEach(function(r,i){
+    var k=String(r[keyCol]||'');
+    if(k && rowByKey[k]===undefined) rowByKey[k]=i;
+  });
+  var now=sbmNowText_(), changed=0;
+  entries.forEach(function(e){
+    if(!e || e.key===undefined || e.key===null) return;
+    var key=String(e.key), idx=rowByKey[key];
+    if(idx===undefined){
+      var nr=new Array(width).fill('');
+      nr[keyCol]=key;
+      vals.push(nr);
+      idx=vals.length-1;
+      rowByKey[key]=idx;
+    }
+    vals[idx][valueCol]=e.value==null?'':String(e.value);
+    if(descCol>=0) vals[idx][descCol]=String(e.desc||'');
+    if(updatedCol>=0) vals[idx][updatedCol]=now;
+    changed++;
+  });
+  if(vals.length) sh.getRange(2,1,vals.length,width).setValues(vals);
+  return changed;
+}
 function sbmSetSettingIfEmpty_(key, value, desc) { var current=sbmGetSetting_(key, null); if(current === null || current === '') sbmSetSetting_(key,value,desc); }
 function sbmSetSetting_(key,value,desc) { var sh=sbmGetOrCreateSheet_(SBM_SHEETS.SETTINGS); sbmEnsureHeaders_(sh, SBM_HEADERS.SETTINGS); var row=sbmFindRowByValue_(SBM_SHEETS.SETTINGS,'Key',key); if(row) sbmSetObjectValues_(sh,row,{Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); else sbmAppendObject_(SBM_SHEETS.SETTINGS, SBM_HEADERS.SETTINGS, {Key:key,Value:value,Description:desc||'',UpdatedAt:sbmNowText_()}); }
 function sbmFindBriefByUrl_(url) { var rows = sbmRowsAsObjects_(SBM_SHEETS.BRIEF); for (var i=0;i<rows.length;i++){ if(sbmUrlEquals_(rows[i].URL||'', url||'')) return rows[i]; } return null; }
@@ -7358,6 +7420,7 @@ function sbmHomeLayoutNeedsRebuild_(sh) {
 
 function sbmRefreshHome_() {
   try{sbmMigrateLegacyMonitoringLabels_();}catch(eLegacyLabels){}
+  var settingsMap = sbmGetSettingsMap_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
   if (!sh || String(sh.getRange('H1').getValue()) !== ('v' + SBM_VERSION) || sbmHomeLayoutNeedsRebuild_(sh)) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
@@ -7377,22 +7440,22 @@ function sbmRefreshHome_() {
     if (String(r['管理フラグ'] || '') === '要確認') work.needsReview++;
   });
 
-  var blogName = String(sbmGetSetting_('BlogName', ''));
-  var blogUrl = String(sbmGetSetting_('BlogUrl', ''));
+  var blogName = String(settingsMap['BlogName'] || '');
+  var blogUrl = String(settingsMap['BlogUrl'] || '');
   sh.getRange('B2:D2').setValue(blogName || '未設定');
-  var dailyStatus = sbmDailyUpdateStatus_();
+  var dailyStatus = sbmDailyUpdateStatus_(settingsMap);
   sh.getRange('F2:H2').setValue(dailyStatus.displayText === '未更新' ? 'ー' : dailyStatus.displayText);
   sh.getRange('B3').setValue(rows.length + '件');
   if (blogUrl) sh.getRange('D3:H3').setFormula('=HYPERLINK("' + blogUrl.replace(/"/g,'""') + '","' + blogUrl.replace(/"/g,'""') + '")');
   else sh.getRange('D3:H3').clearContent();
-  var runtimeState = sbmGetDailyRuntimeState_();
+  var runtimeState = sbmGetDailyRuntimeState_(settingsMap);
   var statusText = runtimeState.running ? '▶ 実行中' : (runtimeState.completedToday ? '○ 本日完了' : (runtimeState.continuationRequired ? '◇ 続行待ち' : (runtimeState.label === 'エラー' ? '▲ エラー' : '● 未実施')));
   sh.getRange('B4:H4').setValue(statusText);
   sh.getRange('A4:H4').setBackground(runtimeState.running ? '#dbeafe' : (runtimeState.completedToday ? '#e6f4ea' : (runtimeState.continuationRequired ? '#fef7e0' : (runtimeState.label === 'エラー' ? '#fce8e6' : '#fff2cc'))));
   sh.getRange('B4:H4').setFontColor(runtimeState.running ? '#174ea6' : (runtimeState.completedToday ? '#0b8043' : '#b3261e')).setFontWeight(runtimeState.completedToday ? 'normal' : 'bold');
 
   function arrow(current, key) {
-    var prev = Number(sbmGetSetting_(key, current));
+    var prev = Number(Object.prototype.hasOwnProperty.call(settingsMap,key) ? settingsMap[key] : current);
     if (current > prev) return '↗';
     if (current < prev) return '↘';
     return '→';
