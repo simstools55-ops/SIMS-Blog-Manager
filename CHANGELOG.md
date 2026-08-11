@@ -1,3 +1,9 @@
+## 5.10.0-RC8 Final QA-UAT13
+- 精密診断候補STEP 2から重いDoctor/Writer履歴自己修復・効果測定再計算を分離。
+- 記事管理・Doctor Cases・健康診断スナップショットを一括読込し、候補除外をキャッシュ化。
+- STEP 3の候補抽出をArticleID/Canonical URLのO(1)判定へ変更し、427記事規模での待ち時間Regressionを修正。
+
+
 ## 5.10.0-RC8 Final Freeze Candidate
 - 記事一覧のH1/記事タイトル欠損を相互補完し、日次処理・Doctor一次検査前にも自動修復。
 - メインクエリの「取得待ち／検索実績なし」を外部連携用の実クエリと分離。

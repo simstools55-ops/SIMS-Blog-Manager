@@ -9,7 +9,7 @@ ok(code.includes("cand.hideColumns(9,3)"),'ArticleID, URL and candidate key stay
 ok(code.includes("function sbmDoctorCandidateMetrics_"),'structured metrics helper exists');
 ok(code.includes("trend:'長期流入低下'")&&code.includes("trend:'直近流入急減'"),'trend categories are structured');
 ok(code.includes("m.clicks,m.impressions,m.position,m.ctr"),'four performance metrics rendered separately');
-ok(code.includes("return sbmDoctorIsUntreatedCurrentCandidate_(id,url)"),'only untreated articles rendered');
+ok(code.includes("return sbmDoctorIsUntreatedCurrentCandidateCached_(candidateContext,id,url)"),'only untreated articles rendered');
 ok(!code.includes("'選定理由','状態','記事ID'"),'legacy reason/state visible columns removed');
 ok(code.includes("cand.getRange('A1:H1').merge()"),'header spans visible eight columns');
 ok(code.includes("cand.getDataRange().setWrap(true)"),'all candidate cells wrap');

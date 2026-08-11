@@ -7,7 +7,7 @@ function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
 const start=code.indexOf('function sbmDoctorBuildHealthReportSheets_(');
 const end=code.indexOf('function sbmDoctorSelectionReason_',start);
 const build=code.slice(start,end);
-const rstart=code.indexOf('function sbmDoctorRebuildCandidateViewFromSnapshot_()');
+const rstart=code.indexOf('function sbmDoctorRebuildCandidateViewFromSnapshot_(');
 const rend=code.indexOf('function sbmDoctorOpenDetailedCandidates()',rstart);
 const rebuild=code.slice(rstart,rend);
 ok(start>=0&&end>start,'health report builder exists');

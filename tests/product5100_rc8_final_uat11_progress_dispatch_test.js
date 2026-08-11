@@ -1,7 +1,7 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
 function ok(c,m){if(!c){console.error('FAIL:',m);process.exit(1)}console.log('PASS:',m)}
-ok(code.includes('runner.sbmRunProgressWorker_(ws[idx])'),'progress dialog uses explicit server dispatcher');
+ok(code.includes('runner.sbmRunProgressWorker(ws[idx])'),'progress dialog uses public server dispatcher');
 ok(!code.includes('runner[ws[idx]]()'),'unsupported dynamic google.script.run call removed');
 ok(code.includes("case 'sbmDoctorCandidateProgressStep1_': return sbmDoctorCandidateProgressStep1_();"),'Doctor candidate step 1 is dispatchable');
 ok(code.includes("case 'sbmDoctorCandidateProgressStep2_': return sbmDoctorCandidateProgressStep2_();"),'Doctor candidate step 2 is dispatchable');

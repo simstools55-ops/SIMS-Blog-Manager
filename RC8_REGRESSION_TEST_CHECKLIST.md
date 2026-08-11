@@ -32,3 +32,10 @@
 
 
 - [ ] REG-LONG-RUNNING-UX-003: HTML progress dialog must call a public Apps Script entrypoint (no trailing underscore); detailed-candidate STEP 1 must advance.
+
+## QA-UAT13 Doctor Candidate Performance
+- [ ] REG-DOCTOR-CANDIDATE-PERF-001: 精密診断候補STEP 2では `sbmDoctorReconcileCompletedTreatments_()` を実行しない。
+- [ ] REG-DOCTOR-CANDIDATE-PERF-002: 精密診断候補STEP 2では「改善の推移」等の効果測定再計算を行わない。
+- [ ] REG-DOCTOR-CANDIDATE-PERF-003: 記事管理・Doctor Cases・最新健康診断を一括読込し、除外ArticleID/正規化URLをSTEP 3へキャッシュする。
+- [ ] REG-DOCTOR-CANDIDATE-PERF-004: STEP 3の候補抽出は記事ごとのシート再検索をせず、キャッシュ済み除外集合で判定する。
+- [ ] 実機: 427記事ブログでSTEP 1→2→3が順次進み、STEP 2が分単位で停滞しない。

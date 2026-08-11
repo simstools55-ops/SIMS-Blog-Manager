@@ -5,5 +5,5 @@ ok(code.includes('function sbmDoctorRunHealthCheck()'),'health staged runner ent
 ok(code.includes('function sbmDoctorRunHealthStageFromDialog()'),'health staged runner step exists');
 ok(code.includes("sbmDoctorOpenHealthReport();"),'health completion opens health report');
 ok(!code.includes("DoctorCandidateFinalRebuild"),'health completion does not expose candidate rebuild');
-ok(code.includes('function sbmDoctorRebuildCandidateViewFromSnapshot_()'),'candidate rebuild remains available on explicit open');
+ok(code.includes('function sbmDoctorRebuildCandidateViewFromSnapshot_('),'candidate rebuild remains available on explicit open');
 console.log('PASS product5100_rc8_staged_runner_ui_guard_test');

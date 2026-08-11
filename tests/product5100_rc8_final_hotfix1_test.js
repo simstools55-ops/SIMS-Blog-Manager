@@ -14,7 +14,7 @@ has("return 'Doctor→Writer'");
 has("return 'Doctor→Creator'");
 has("return 'Doctor→Merge'");
 // Candidate typed-column hotfix
-has('function sbmDoctorRebuildCandidateViewFromSnapshot_()');
+has('function sbmDoctorRebuildCandidateViewFromSnapshot_(');
 has("ss.deleteSheet(old1)");
 has("cand.getRange(7,2,out.length,1).setNumberFormat('@')");
 has("headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR'");
