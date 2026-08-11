@@ -22,7 +22,7 @@ ok(code.includes("if(sbmUrlEquals_(rows[i]['記事URL']||'', url||''))"), 'artic
 ok(code.includes("var shown={}; candidates.slice(0,count).forEach(function(c){var k=sbmNormalizeUrl_(c.url||'')"), 'today work-state map uses canonical URL keys');
 ok(code.includes('function sbmEnsureCanonicalOperationalUrlsOnce_'), 'one-time operational URL migration exists');
 ok(code.includes("props.setProperty('SBM_CANONICAL_URL_STORAGE_VERSION', version)"), 'URL migration is version guarded');
-ok(code.includes('sbmEnsureCanonicalOperationalUrlsOnce_();'), 'URL migration runs on open');
+const initStart=code.indexOf('function sbmInitializeSheets(showAlert)'); const initEnd=code.indexOf('function sbmOpenHome',initStart); ok(code.slice(initStart,initEnd).includes('sbmEnsureCanonicalOperationalUrlsOnce_();'), 'URL migration runs during explicit sheet repair');
 
 const dist = fs.readFileSync(path.join(root, 'distribution', 'Code.gs'), 'utf8');
 ok(dist === code, 'distribution mirrors Apps Script');

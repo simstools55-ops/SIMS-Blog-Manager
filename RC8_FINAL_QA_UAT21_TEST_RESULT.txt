@@ -1,0 +1,27 @@
+RC8 Final QA-UAT21
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Root cause:
+- onOpen performed menu creation plus schema migration, URL policy migration,
+  Doctor view migration, full history/effect styling, Home refresh, Today candidate generation and flush.
+- Apps Script execution history showed onOpen timing out at about 30 seconds, so menus could fail to appear.
+
+Fix:
+- onOpen now creates user menus and activates the existing Home sheet only.
+- No schema repair, canonical migration, Doctor migration, full restyling, Home refresh,
+  Today generation or SpreadsheetApp.flush during onOpen.
+- Canonical policy migration remains available in explicit 'シートの作成・修復'.
+- Doctor legacy view migration moves to detailed-candidate staged STEP1, after progress dialog appears.
+
+Automated verification:
+- RC8 JavaScript regression: 46/46 PASS
+- JavaScript syntax: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Measure time until SIMS-Blog-Manager and SIMS Doctor menus appear.
+3. In Apps Script Executions, confirm onOpen completes rather than times out.
+4. Open Home, Today, Trend, History and Doctor candidate functions to confirm their previous behavior remains.

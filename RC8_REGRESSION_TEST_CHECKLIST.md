@@ -50,3 +50,8 @@
 - [ ] REG-VIEW-WRAPPER-LIGHTWEIGHT-001: 改善の推移/改善履歴のメニュー入口でDoctor全件修復・全件再計算を実行しない。
 - [ ] REG-VIEW-STYLE-PRESERVE-001: 軽量表示でも既定の列幅・ヘッダー・判定色などの装飾を維持する。
 - [ ] REG-TODAY-COMPLETED-CLEANUP-002: モニター中・完了・シート上の完了行は日次処理または今日の改善表示時に除外される。
+
+- [ ] REG-ONOPEN-FAST-MENU-001: 再読み込み時はメニュー生成と既存Home表示だけを行い、30秒タイムアウトしない。
+- [ ] REG-ONOPEN-NO-MAINTENANCE-001: onOpenでスキーマ修復・URL移行・Doctor UI移行・全シート装飾・Home再集計・Today候補生成を行わない。
+- [ ] REG-DOCTOR-VIEW-GUARD-STAGED-001: Doctor旧ビュー移行は精密診断候補ダイアログ表示後のSTEP1で実行する。
+- [ ] REG-CANONICAL-MIGRATION-REPAIR-001: Canonical URLポリシー移行は明示的な「シートの作成・修復」で実行できる。

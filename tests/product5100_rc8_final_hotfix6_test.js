@@ -15,7 +15,7 @@ const historyStart=code.indexOf('function sbmOpenImprovementHistory()');
 const historyEnd=code.indexOf('利用者向けメニューの最終構成。',historyStart);
 const historyOpen=code.slice(historyStart,historyEnd);
 must(!historyOpen.includes('sbmDoctorReconcileCompletedTreatments_'),'改善履歴を開くだけではDoctor旧データ自己修復を実行しない');
-must(code.includes("try { sbmStyleEffectSheetV2_(); } catch(eEffectStyle)"),'起動時から改善の推移を装飾済みにする');
+const onOpenFast=code.slice(code.indexOf('function onOpen()'),code.indexOf('function sbmGetDailyUpdateClientStatus()',code.indexOf('function onOpen()'))); must(!onOpenFast.includes('sbmStyleEffectSheetV2_'),'起動時に改善の推移を全装飾しない');
 must(code.includes("if(writerResult)return false"),'Writer結果保存済み記事は精密診断候補へ戻さない');
 must(code.includes("'PUBLICATION_PENDING'"),'旧結果登録待ち状態も新規候補から除外する');
 console.log('PASS product5100_rc8_final_hotfix6_test');

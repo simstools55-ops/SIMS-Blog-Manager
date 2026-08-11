@@ -6862,6 +6862,8 @@ function sbmStyleArticleDbSheet_(sh) {
 function sbmInitializeSheets(showAlert) {
   showAlert = showAlert !== false;
 
+  try { sbmEnsureCanonicalOperationalUrlsOnce_(); } catch(eCanonical) { sbmLog_('RepairCanonicalUrl','Warning',String(eCanonical)); }
+
   try { sbmMigrateArticleManagementSheet_(); } catch(e) {}
   try { sbmMigrateEffectSheetName_(); } catch(e) {}
   sbmRemoveRetiredSheets_();
@@ -8462,20 +8464,10 @@ function sbmSortArticlesByPosition(){ return sbmSortArticleDbBy_('position','掲
 function sbmSortArticlesByUpdated(){ return sbmSortArticleDbBy_('updated','最終取得日時の新しい順'); }
 
 function onOpen() {
-  try { sbmSetSetting_('Version', SBM_VERSION, 'システムバージョン'); } catch (eVersion) {}
-  try {
-    sbmEnsureOfficialSchemaOnce_();
-  } catch (e) {
-    try { sbmLog_('OnOpenOfficialSchema', 'Warning', String(e)); } catch (ignore) {}
-  }
-  try {
-    sbmEnsureCanonicalOperationalUrlsOnce_();
-  } catch (eUrl) {
-    try { sbmLog_('OnOpenCanonicalUrl', 'Warning', String(eUrl)); } catch (ignoreUrl) {}
-  }
-  // RC8 UI guard: old Doctor tabs are migrated before the user can open them.
-  try { sbmDoctorEnsureLatestUserViews_(); } catch (eDoctorUi) { try { sbmLog_('OnOpenDoctorUiGuard','Warning',String(eDoctorUi)); } catch(ignoreDoctorUi) {} }
-
+  // RC8 Final QA-UAT21:
+  // 起動時は「メニュー生成」と既存Homeの表示だけに限定する。
+  // スキーマ修復・URL正規化・Doctor UI移行・全シート再装飾・Home再集計・
+  // 今日の改善候補生成は、それぞれの正規操作時に実行する。
   var ui = SpreadsheetApp.getUi();
 
   // 製品管理メニューを最左翼に配置します。
@@ -8543,26 +8535,18 @@ function onOpen() {
     .addItem('個別診断：改善の推移から依頼する','sbmDoctorCreateRequestFromEffect')
     .addToUi();
 
-  // 配布版では開発者用メニューを生成しません。
-  try { sbmRetireDoctorWorklistSheets_(); } catch(e) {}
-
-  // 改善履歴・改善の推移は、利用者が開く前から装飾・チェックボックス・非表示列を完成させます。
-  try { sbmStyleHistorySheetV2_(); sbmApplyHistoryFinalStyle_(); } catch(eHistoryStyle) { try { sbmLog_('OnOpenHistoryStyle','Warning',String(eHistoryStyle)); } catch(ignoreHistoryStyle) {} }
-  try { sbmStyleEffectSheetV2_(); } catch(eEffectStyle) { try { sbmLog_('OnOpenEffectStyle','Warning',String(eEffectStyle)); } catch(ignoreEffectStyle) {} }
-
-  // Homeを描画・表示します。日次処理のダイアログは利用者がメニューから実行した場合だけ表示します。
+  // 既存Homeがあれば表示するだけ。再集計・再装飾・flushは行わない。
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var home = ss.getSheetByName(SBM_SHEETS.HOME);
     if (home) {
-      sbmRefreshHome_();
       home.showSheet();
       ss.setActiveSheet(home);
       home.activate();
-      SpreadsheetApp.flush();
     }
-  } catch (eHome) { try { sbmLog_('OnOpenHomeDisplay','Warning',String(eHome)); } catch(ignoreHome) {} sbmToast_('Homeの表示更新に失敗しました。System_Logを確認してください。','起動時エラー',8); }
-  try { sbmEnsureTodayRecommendations_('open'); } catch (eToday) {}
+  } catch (eHome) {
+    try { sbmLog_('OnOpenHomeDisplay','Warning',String(eHome)); } catch(ignoreHome) {}
+  }
 }
 
 
@@ -10518,6 +10502,7 @@ function sbmDoctorOpenDetailedCandidates(){
   return sbmShowAsyncProgressDialog_({title:'精密診断候補を準備しています',description:'最新の健康診断結果を確認し、処理済みの記事を除外して、優先度の高い記事を最大10件まで選んでいます。',workers:['sbmDoctorCandidateProgressStep1_','sbmDoctorCandidateProgressStep2_','sbmDoctorCandidateProgressStep3_'],steps:['最新の健康診断結果を確認','診断済み・モニター中の記事を除外','優先順位を整理して候補シートを作成']});
 }
 function sbmDoctorCandidateProgressStep1_(){
+  try{sbmDoctorEnsureLatestUserViews_();}catch(eDoctorView){try{sbmLog_('DoctorCandidateViewGuard','Warning',String(eDoctorView));}catch(ignoreDoctorView){}}
   var ss=SpreadsheetApp.getActiveSpreadsheet(),snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
   if(!snap||snap.getLastRow()<2)throw new Error('健康診断結果がありません。先にブログ健康診断を実行してください。');
   return true;
