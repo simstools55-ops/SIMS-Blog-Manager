@@ -9281,29 +9281,68 @@ function sbmDoctorFetchPageMetrics_(range) {
 }
 
 function sbmDoctorMergeSnapshotMetrics_(healthCheckId, period, prefix, metrics) {
-  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT); sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT);
-  var hm=sbmHeaderMap_(sh), articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB), artByUrl={};
-  articles.forEach(function(a){var u=sbmNormalizeUrl_(a['記事URL']); if(u) artByUrl[u]=a;});
-  var existing=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues():[];
+  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+  sbmEnsureHeaders_(sh,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT);
+  var hm=sbmHeaderMap_(sh), width=SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length;
+  var nowText=sbmNowText_();
+
+  var mm={};
+  (metrics||[]).forEach(function(m){
+    var u=sbmNormalizeUrl_(m.url);
+    if(u) mm[u]=m;
+  });
+
   if(prefix==='full') {
-    existing=existing.filter(function(row){return String(row[hm['健康診断ID']-1])!==healthCheckId;});
-    var mm={}; metrics.forEach(function(m){mm[sbmNormalizeUrl_(m.url)]=m;});
-    Object.keys(artByUrl).forEach(function(url){
-      var a=artByUrl[url]||{}, m=mm[url]||{url:url,clicks:0,impressions:0,ctr:0,position:0};
-      var row=new Array(SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).fill('');
-      row[hm['健康診断ID']-1]=healthCheckId; row[hm['サイトID']-1]=sbmGetSetting_('SiteID',''); row[hm['記事ID']-1]=a['ArticleID']||'';
-      row[hm['記事URL']-1]=url; row[hm['記事タイトル']-1]=a['H1タイトル']||a['記事タイトル']||'';
-      row[hm['SBM作業状態']-1]=a['作業状態']||'未着手'; row[hm['管理フラグ']-1]=a['管理フラグ']||'';
-      row[hm['対象期間開始']-1]=period.full.startDate; row[hm['対象期間終了']-1]=period.full.endDate; row[hm['対象日数']-1]=SBM_DOCTOR_HEALTH_DAYS;
-      sbmDoctorPutMetric_(row,hm,'180日',m); row[hm['取得状態']-1]='180日集計完了'; row[hm['取得日時']-1]=sbmNowText_(); existing.push(row);
+    // RC8 Final QA-UAT31:
+    // Snapshotは「現在の健康診断の作業領域」として扱い、過去診断分を保持し続けない。
+    // 正式な診断履歴は健康診断書・Health Record側で保持する。
+    var articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB), siteId=sbmGetSetting_('SiteID','');
+    var out=[];
+    articles.forEach(function(a){
+      var url=sbmNormalizeUrl_(a['記事URL']);
+      if(!url) return;
+      var m=mm[url]||{url:url,clicks:0,impressions:0,ctr:0,position:0};
+      var row=new Array(width).fill('');
+      row[hm['健康診断ID']-1]=healthCheckId;
+      row[hm['サイトID']-1]=siteId;
+      row[hm['記事ID']-1]=a['ArticleID']||'';
+      row[hm['記事URL']-1]=url;
+      row[hm['記事タイトル']-1]=a['H1タイトル']||a['記事タイトル']||'';
+      row[hm['SBM作業状態']-1]=a['作業状態']||'未着手';
+      row[hm['管理フラグ']-1]=a['管理フラグ']||'';
+      row[hm['対象期間開始']-1]=period.full.startDate;
+      row[hm['対象期間終了']-1]=period.full.endDate;
+      row[hm['対象日数']-1]=SBM_DOCTOR_HEALTH_DAYS;
+      sbmDoctorPutMetric_(row,hm,'180日',m);
+      row[hm['取得状態']-1]='180日集計完了';
+      row[hm['取得日時']-1]=nowText;
+      out.push(row);
     });
-  } else {
-    var mm2={}; metrics.forEach(function(m){mm2[sbmNormalizeUrl_(m.url)]=m;});
-    existing.forEach(function(row){if(String(row[hm['健康診断ID']-1])!==healthCheckId)return; var u=sbmNormalizeUrl_(row[hm['記事URL']-1]); sbmDoctorPutMetric_(row,hm,prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'前28日',mm2[u]||{clicks:0,impressions:0,ctr:0,position:0}); row[hm['取得状態']-1]=(prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'比較期間')+'集計完了'; row[hm['取得日時']-1]=sbmNowText_();});
+
+    var oldBody=Math.max(0,sh.getLastRow()-1);
+    if(oldBody) sh.getRange(2,1,oldBody,width).clearContent();
+    if(out.length) sh.getRange(2,1,out.length,width).setValues(out);
+    try{sh.hideSheet();}catch(eHideFull){}
+    return;
   }
-  sh.clearContents(); sh.getRange(1,1,1,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues([SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT]);
-  if(existing.length) sh.getRange(2,1,existing.length,SBM_HEADERS.DOCTOR_HEALTH_SNAPSHOT.length).setValues(existing);
-  try{sh.hideSheet();}catch(e){}
+
+  // UAT31: full工程でSnapshotは現行HealthCheckIDの行だけになっている。
+  // 以後はその427行だけを更新し、過去診断分を全件再書き込みしない。
+  var last=sh.getLastRow();
+  if(last<2) throw new Error('180日Snapshotが見つかりません。健康診断を最初から再実行してください。');
+  var current=sh.getRange(2,1,last-1,width).getValues();
+  var label=prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'前28日';
+  var stateLabel=(prefix==='first'?'前半90日':prefix==='second'?'後半90日':prefix==='recent'?'直近28日':'比較期間')+'集計完了';
+
+  current.forEach(function(row){
+    if(String(row[hm['健康診断ID']-1])!==String(healthCheckId)) return;
+    var u=sbmNormalizeUrl_(row[hm['記事URL']-1]);
+    sbmDoctorPutMetric_(row,hm,label,mm[u]||{clicks:0,impressions:0,ctr:0,position:0});
+    row[hm['取得状態']-1]=stateLabel;
+    row[hm['取得日時']-1]=nowText;
+  });
+  sh.getRange(2,1,current.length,width).setValues(current);
+  try{sh.hideSheet();}catch(eHide){}
 }
 
 function sbmDoctorPutMetric_(row,hm,label,m) {

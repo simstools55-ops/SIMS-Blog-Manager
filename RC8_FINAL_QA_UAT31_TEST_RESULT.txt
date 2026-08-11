@@ -1,0 +1,29 @@
+RC8 Final QA-UAT31
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- Optimize Doctor Health Snapshot merge only.
+- UAT29 PREPARING fast path remains unchanged.
+- Health diagnosis rules, GSC periods, screening, candidate selection and report content unchanged.
+- Timing diagnostics remain visible.
+
+Automated verification:
+- RC8 JavaScript regression: 56/56 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Blog Health Check once on the 427-article blog.
+2. Record dialog appearance time.
+3. Let it complete.
+4. Open SIMS Doctor → 健康診断の工程時間を確認.
+5. Report:
+   - 開始準備
+   - 180日集計 total and Snapshot統合
+   - each remaining period
+   - screening/finalization
+   - approximate total elapsed
