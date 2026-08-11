@@ -1,0 +1,18 @@
+RC8 Final QA-UAT27
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Automated verification:
+- RC8 JavaScript regression: 52/52 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Select 記事一覧 → 記事一覧を開く.
+3. Record display time.
+4. Target 1-3 seconds.
+5. Confirm article-management layout/data unchanged.

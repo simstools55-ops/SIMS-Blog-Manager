@@ -8590,7 +8590,7 @@ function sbmOpenImprovementStatus() {
 
 
 function sbmOpenAllBlogArticles() {
-  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
+  // RC8 Final QA-UAT27: 記事一覧表示ではDoctor保守・履歴同期・効果再計算を行わない。
   return sbmOpenArticleDb();
 }
 

@@ -10,7 +10,10 @@ must(code.includes("try{sbmUpdateEffectivenessCore_(false);}catch(eEffectSync)")
 must(code.includes("・改善の推移へ反映しました"),'結果登録メッセージに改善の推移反映を明示する');
 const effectOpen=code.slice(code.indexOf('function sbmOpenEffectiveness()'),code.indexOf('function sbmUpdateEffectiveness()',code.indexOf('function sbmOpenEffectiveness()')));
 must(!effectOpen.includes('sbmDoctorReconcileCompletedTreatments_'),'改善の推移を開くだけではDoctor旧データ自己修復を実行しない');
-must(code.includes("function sbmOpenAllBlogArticles() {\n  try{sbmDoctorReconcileCompletedTreatments_();}"),'記事一覧を開く前にDoctor旧データを自己修復する');
+const articleListStart=code.indexOf('function sbmOpenAllBlogArticles()');
+const articleListEnd=code.indexOf('function sbmOpenImprovementTrend()',articleListStart);
+const articleListOpen=code.slice(articleListStart,articleListEnd);
+must(!articleListOpen.includes('sbmDoctorReconcileCompletedTreatments_'),'記事一覧を開くだけではDoctor旧データ自己修復を実行しない');
 const historyStart=code.indexOf('function sbmOpenImprovementHistory()');
 const historyEnd=code.indexOf('利用者向けメニューの最終構成。',historyStart);
 const historyOpen=code.slice(historyStart,historyEnd);
