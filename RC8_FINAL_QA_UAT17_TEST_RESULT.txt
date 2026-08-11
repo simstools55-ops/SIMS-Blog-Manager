@@ -1,0 +1,25 @@
+RC8 Final QA-UAT17
+
+Observed real-sheet failures from UAT16:
+- Improvement Trend / History: ~10 seconds (improved, still not instant).
+- Today's Improvements: ~2 minutes.
+- Completed row remained.
+- No replacement candidate appeared.
+- Old checkbox validations remained in unused columns.
+
+UAT17 change:
+- Today's Improvements now uses a dedicated fast refresh path.
+- Reads only URL + Work State columns from Article Management for completion blocking.
+- Treats visible '完了' rows as completed even before relying on Article Management.
+- Reuses saved candidates; performs candidate selection only when the queue is short.
+- Rebuilds the visible queue after filtering, so completed rows disappear and vacancies refill.
+- Does not run Home refresh, Doctor reconciliation, full Article Management writeback,
+  full main-query repair, or full-sheet restyling when merely opening Today's Improvements.
+- Clears old data validations across the whole Today sheet to remove ghost checkboxes.
+
+Real-sheet UAT:
+1. Open Today's Improvements and measure opening time.
+2. Confirm the row marked 完了 disappears.
+3. Confirm a replacement article is added up to the configured display count.
+4. Confirm stray checkboxes in columns outside the current Today schema disappear.
+5. Trend / History are unchanged from UAT16; ~10 sec is recorded as a separate remaining performance item.

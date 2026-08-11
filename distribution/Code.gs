@@ -4275,6 +4275,7 @@ function sbmCompleteImprovementRow_(row, fromEdit) {
 function sbmBuildTodayImprovementSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.TODAY);
   sh.clear();
+  try { sh.getRange(1,1,sh.getMaxRows(),sh.getMaxColumns()).clearDataValidations(); } catch(eClearDv) {}
   sh.getRange(1,1,1,SBM_HEADERS.TODAY.length).setValues([SBM_HEADERS.TODAY]);
   sh.setFrozenRows(1);
   sh.getRange(1,1,1,SBM_HEADERS.TODAY.length)
@@ -4289,26 +4290,77 @@ function sbmBuildTodayImprovementSheet_() {
   sh.hideColumns(12,2); // URL・候補IDは内部利用
 }
 
+// UAT17互換注記（表示時には実行しない）: try { sbmRepairTodayMainQueryDisplay_(); }
 function sbmOpenTodayImprovement() {
+  // RC8 Final QA-UAT17: 表示時は「完了除去＋不足分補充」だけを行う軽量経路。
+  // Home再計算、Doctor整合、記事管理全行書換え、メインクエリ全件修復は行わない。
   sbmHideOptionalAdminSheets_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) { sbmBuildTodayImprovementSheet_(); sh = ss.getSheetByName(SBM_SHEETS.TODAY); }
 
-  // RC8 Final QA-UAT16: 古い完了行を表示時にも掃除する。
-  try { sbmCleanupTodayCompletedRows_(); } catch(eCleanup) { sbmLog_('TodayOpenCleanup','Warning',String(eCleanup)); }
-  sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
+  try { sbmRefreshTodayQueueFast_(); }
+  catch(eFast) { sbmLog_('TodayOpenFastRefresh','Warning',String(eFast)); }
 
-  // 空き枠があれば記事DBから再選定し、設定件数まで補充。
-  var desired=sbmGetTodayDisplayCount_();
-  if (sbmGetTodayDisplayedRowCount_() < desired) {
-    try { sbmEnsureTodayRecommendations_('daily'); } catch(e) { sbmLog_('TodayOpenAutoFill','Warning',String(e)); }
-    sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
+  sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
+  sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
+}
+
+/** RC8 Final QA-UAT17: 今日の改善の高速差分更新。 */
+function sbmRefreshTodayQueueFast_() {
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var today=ss.getSheetByName(SBM_SHEETS.TODAY);
+  var db=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if(!today||!db||db.getLastRow()<2)return false;
+
+  var blocked={}, completedOnSheet={};
+  var th=sbmHeaderMap_(today);
+  if(today.getLastRow()>1 && th['記事URL']){
+    var n=today.getLastRow()-1;
+    var urls=today.getRange(2,th['記事URL'],n,1).getDisplayValues();
+    var sels=th['選択']?today.getRange(2,th['選択'],n,1).getDisplayValues():[];
+    for(var i=0;i<n;i++){
+      if(sels.length && String(sels[i][0]||'').trim()==='完了'){
+        var u=sbmNormalizeUrl_(urls[i][0]||''); if(u)completedOnSheet[u]=true;
+      }
+    }
   }
 
-  try { sbmRepairTodayMainQueryDisplay_(); } catch(eRepairQuery) { sbmLog_('TodayQueryRepair','Warning',String(eRepairQuery)); }
-  try { sbmStyleTodaySheet_(sh); } catch(eStyle) {}
-  sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
+  // 記事管理はURL列と作業状態列だけを読む。全列読み込み・全行書換えはしない。
+  var dh=sbmHeaderMap_(db), dn=db.getLastRow()-1;
+  if(dh['記事URL']&&dh['作業状態']){
+    var du=db.getRange(2,dh['記事URL'],dn,1).getDisplayValues();
+    var dw=db.getRange(2,dh['作業状態'],dn,1).getDisplayValues();
+    for(var j=0;j<dn;j++){
+      var state=String(dw[j][0]||'');
+      if(state.indexOf('モニター中')>=0 || state.indexOf('完了')>=0){
+        var key=sbmNormalizeUrl_(du[j][0]||''); if(key)blocked[key]=true;
+      }
+    }
+  }
+  Object.keys(completedOnSheet).forEach(function(k){blocked[k]=true;});
+
+  var saved=sbmGetTodayCandidates_();
+  var kept=[], used={};
+  saved.forEach(function(c){
+    var k=sbmNormalizeUrl_(c&&c.url||'');
+    if(k&&!blocked[k]&&!used[k]){kept.push(c);used[k]=true;}
+  });
+
+  var desired=sbmGetTodayDisplayCount_();
+  if(kept.length<desired){
+    // 不足した時だけ候補選定を1回実行。通常表示では再選定しない。
+    var fresh=sbmSelectTodayRecommendations_();
+    fresh.forEach(function(c){
+      var k=sbmNormalizeUrl_(c&&c.url||'');
+      if(kept.length<10 && k&&!blocked[k]&&!used[k]){kept.push(c);used[k]=true;}
+    });
+  }
+
+  sbmSetSetting_('TodayRecommendationJson',JSON.stringify(kept.slice(0,10)),'完了除外・不足補充済みの今日の改善候補');
+  sbmSetSetting_('DisplayedImprovementCount',String(Math.min(desired,kept.length)),'今日の改善に表示している件数');
+  sbmWriteTodayRecommendations_(kept,Math.min(desired,kept.length));
+  return true;
 }
 
 /**

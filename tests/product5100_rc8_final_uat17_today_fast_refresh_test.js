@@ -1,0 +1,20 @@
+const fs=require('fs'),path=require('path');
+const code=fs.readFileSync(path.join(__dirname,'..','apps-script','Code.gs'),'utf8');
+function must(c,m){if(!c){console.error('FAIL:',m);process.exit(1);}console.log('PASS:',m);}
+const start=code.indexOf('function sbmOpenTodayImprovement()');
+const end=code.indexOf('function sbmRefreshTodayQueueFast_',start);
+const open=code.slice(start,end);
+must(open.includes('sbmRefreshTodayQueueFast_()'),'Today open uses fast refresh');
+must(!open.includes('sbmCleanupTodayCompletedRows_()'),'Today open avoids old heavy cleanup');
+must(!open.includes('sbmRepairTodayMainQueryDisplay_()'),'Today open avoids full query repair');
+must(!open.includes('sbmStyleTodaySheet_'),'Today open avoids full-sheet restyling');
+const fs0=code.indexOf('function sbmRefreshTodayQueueFast_()');
+const fe=code.indexOf('function sbmRepairTodayMainQueryDisplay_',fs0);
+const fast=code.slice(fs0,fe);
+must(fast.includes("String(sels[i][0]||'').trim()==='完了'"),'sheet completed rows are blocked');
+must(fast.includes("state.indexOf('モニター中')>=0"),'monitoring rows are blocked');
+must(fast.includes('if(kept.length<desired)'), 'refill only when short');
+must(fast.includes('sbmSelectTodayRecommendations_()'),'short queue is refilled');
+must(fast.includes('sbmWriteTodayRecommendations_'),'queue is rebuilt after filtering');
+must(code.includes('clearDataValidations(); } catch(eClearDv)'), 'ghost checkbox validations are cleared');
+console.log('UAT17 today fast refresh regression: PASS');
