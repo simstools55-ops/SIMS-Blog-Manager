@@ -5889,7 +5889,6 @@ function sbmOpenEffectiveness(){
     try{sbmEnsureHistoryAndEffectSchemas_();sbmUpdateEffectivenessCore_(false);}catch(eCreate){sbmLog_('EffectOpenCreate','Warning',String(eCreate));}
     sh=ss.getSheetByName(SBM_SHEETS.EFFECT)||sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
   }
-  try{sbmStyleEffectSheetV2_();}catch(eStyle){sbmLog_('EffectOpenStyle','Warning',String(eStyle));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
 function sbmUpdateEffectiveness(){return sbmShowAsyncProgressDialog_({title:'改善の推移を更新しています',description:'最新の検索データを確認し、モニター中の記事の変化と判定を更新しています。',worker:'sbmUpdateEffectivenessWorker_',steps:['最新データを確認','記事ごとの変化を計算','判定を更新','改善の推移へ反映']});}
@@ -7442,7 +7441,6 @@ function sbmOpenImprovementHistory() {
     try{sh=sbmRefreshImprovementHistorySheet_(false);}catch(eCreate){sbmLog_('HistoryOpenCreate','Warning',String(eCreate));}
     sh=sh||ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY)||sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
   }
-  try{sbmApplyHistoryFinalStyle_();}catch(eStyle){sbmLog_('HistoryOpenStyle','Warning',String(eStyle));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
 

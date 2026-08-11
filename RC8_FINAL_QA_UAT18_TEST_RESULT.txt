@@ -1,0 +1,12 @@
+RC8 Final QA-UAT18
+
+Static result: PASS
+RC8 JavaScript regression: 43/43 PASS
+JavaScript syntax: PASS
+Code.gs sync: PASS
+Distribution ASCII filenames: PASS
+
+Real-sheet UAT:
+1. Open 改善の推移 and record time; existing styling must remain.
+2. Open 改善履歴 and record time; existing styling must remain.
+3. Reconfirm 今日の改善 remains fast and UAT17 behavior is unchanged.
