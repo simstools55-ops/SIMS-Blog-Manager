@@ -1,0 +1,43 @@
+RC8 Final QA-UAT20
+
+Static result: PASS / REAL-SHEET PROFILING REQUIRED
+
+Purpose:
+- Diagnose why Daily Processing STEP1 takes ~3 minutes on the 427-article blog.
+- No Search Console algorithm change in this build.
+
+Measured substeps:
+1. Runtime state persistence
+2. Daily work-sheet clear
+3. Start-setting write
+4. Fetch-condition preparation
+5. Search Console API request
+6. URL normalization
+7. Article-status reference-map read
+8. Article-row build
+9. Sort
+10. Daily work-sheet write
+11. Timing/settings persistence
+
+User-visible profiling:
+- After STEP1 completes, STEP2 screen shows:
+  STEP1 total / API / URL processing / work-sheet save.
+- Full timing remains in Settings and Process Log/Profile.
+
+Lock UX:
+- If a previous server-side run is still active, the error now explains that closing
+  the dialog does not necessarily stop Apps Script execution and asks the user to wait.
+
+Automated verification:
+- RC8 JavaScript regression: 45/45 PASS
+- JavaScript syntax: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- Release audit: PASS
+- ZIP integrity: PASS
+
+Real-sheet profiling target:
+- Run Daily Processing once on the 427-article blog.
+- When STEP2 appears, record the STEP1 line:
+  STEP1 total / API / URL processing / save.
+- Continue to completion if possible and record STEP2 and STEP3 elapsed times.

@@ -310,7 +310,7 @@ function sbmOpenDailyUpdateDialog() {
     + 'function formatTime(sec){sec=Math.max(0,Number(sec||0));var m=Math.floor(sec/60),s=Math.round(sec%60);return (m?m+"分":"")+s+"秒";}'
     + 'function showRunning(title,text){if(terminal)return;el("spinner").style.display="block";el("message").className="box";el("message").innerHTML="<div class=stage>"+title+"</div>"+text;el("note").textContent="処理中です。完了までこの画面を閉じずにお待ちください。";}'
     + 'function showFailure(prefix,e,retry){if(terminal)return;el("spinner").style.display="none";el("message").className="box error";el("message").textContent=prefix+String.fromCharCode(10,10)+((e&&e.message)?e.message:String(e));el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";if(retry){el("runBtn").textContent="再実行する";el("runBtn").disabled=false;el("runBtn").style.display="inline-block";}}'
-    + 'function startDaily(){terminal=false;el("runBtn").disabled=true;el("runBtn").style.display="none";el("cancelBtn").style.display="none";showRunning("STEP 1 / 3　Search Consoleデータ取得中","Search Consoleから最新のページデータを取得しています。");google.script.run.withFailureHandler(function(e){showFailure("Search Consoleデータの取得に失敗しました。",e,true);}).withSuccessHandler(function(fetch){if(terminal)return;showRunning("STEP 2 / 3　データ分析・記事DB更新中","取得したデータを分析し、記事DBと記事ランクを更新しています。");google.script.run.withFailureHandler(function(e){showFailure("データ分析・記事DB更新に失敗しました。",e,true);}).withSuccessHandler(function(){if(terminal)return;showRunning("STEP 3 / 3　改善の推移・完了処理中","改善後の推移を更新し、日次処理の完了状態を確定しています。");google.script.run.withFailureHandler(function(e){showFailure("改善の推移・完了処理に失敗しました。",e,true);}).withSuccessHandler(function(r){showComplete(r||{});}).sbmRunDailyFinalizeStageFromDialog();}).sbmRunDailyAnalysisStageFromDialog();}).sbmRunDailyFetchStageFromDialog();}'
+    + 'function startDaily(){terminal=false;el("runBtn").disabled=true;el("runBtn").style.display="none";el("cancelBtn").style.display="none";showRunning("STEP 1 / 3　Search Consoleデータ取得中","Search Consoleから最新のページデータを取得しています。");google.script.run.withFailureHandler(function(e){showFailure("Search Consoleデータの取得に失敗しました。",e,true);}).withSuccessHandler(function(fetch){if(terminal)return;var t=(fetch&&fetch.timing)||{};var detail="STEP1完了 "+formatTime(fetch&&fetch.elapsedSeconds)+"｜API "+formatTime(t.api)+"｜URL処理 "+formatTime((Number(t.normalize||0)+Number(t.statusMap||0)+Number(t.buildRows||0)+Number(t.sort||0)))+"｜保存 "+formatTime(t.workWrite)+"。<br>取得したデータを分析し、記事DBと記事ランクを更新しています。";showRunning("STEP 2 / 3　データ分析・記事DB更新中",detail);google.script.run.withFailureHandler(function(e){showFailure("データ分析・記事DB更新に失敗しました。",e,true);}).withSuccessHandler(function(){if(terminal)return;showRunning("STEP 3 / 3　改善の推移・完了処理中","改善後の推移を更新し、日次処理の完了状態を確定しています。");google.script.run.withFailureHandler(function(e){showFailure("改善の推移・完了処理に失敗しました。",e,true);}).withSuccessHandler(function(r){showComplete(r||{});}).sbmRunDailyFinalizeStageFromDialog();}).sbmRunDailyAnalysisStageFromDialog();}).sbmRunDailyFetchStageFromDialog();}'
     + 'function showComplete(r){if(terminal)return;terminal=true;var updated=Math.max(0,Number(r.updated||0)),added=Math.max(0,Number(r.added||0)),total=Math.max(0,Number(r.total||0)),outside=Math.max(0,total-updated-added);el("spinner").style.display="none";el("message").className="box done";el("message").innerHTML="✓ 日次処理が完了しました。<div class=result><div class=group><div class=groupTitle>Search Console</div><div class=resultGrid><span>取得行</span><b>"+Number(r.rawRows||0).toLocaleString()+"件</b><span>有効な記事URL</span><b>"+Number(r.validRows||0).toLocaleString()+"件</b></div></div><div class=group><div class=groupTitle>記事DB</div><div class=resultGrid><span>更新記事</span><b>"+updated.toLocaleString()+"件</b><span>更新対象外</span><b>"+outside.toLocaleString()+"件</b><span>新規記事</span><b>"+added.toLocaleString()+"件</b><span>総記事数</span><b>"+total.toLocaleString()+"件</b></div><div class=groupNote>※更新対象外：今回のSearch Consoleデータ取得で対象とならなかった記事です。</div></div><div class=group><div class=groupTitle>改善効果</div><div class=resultGrid><span>モニタ中</span><b>"+Number(r.monitoringCount||0).toLocaleString()+"件</b></div></div><div class=group><div class=groupTitle>処理時間</div><div class=resultGrid><span>Search Console取得</span><b>"+formatTime(r.fetchElapsedSeconds)+"</b><span>分析・処理</span><b>"+formatTime(r.analysisElapsedSeconds)+"</b><span>全体所要時間</span><b>"+formatTime(r.totalElapsedSeconds)+"</b></div></div></div>";el("note").textContent="結果を確認して「閉じる」を押してください。";el("cancelBtn").textContent="閉じる";el("cancelBtn").style.display="inline-block";}'
     + '</script></body></html>';
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(790), '日次処理');
@@ -327,30 +327,73 @@ function sbmRunDailyUpdateFromDialog() {
 /** STEP 1: Search Consoleデータを取得し、非表示の作業シートへ保存します。 */
 function sbmRunDailyFetchStageFromDialog() {
   var lock = LockService.getDocumentLock();
-  if (!lock.tryLock(3000)) throw new Error('別の処理が実行中です。しばらく待ってから再度お試しください。');
+  if (!lock.tryLock(3000)) throw new Error('前の処理がまだ終了していません。画面を閉じてもサーバー側の処理が続く場合があります。数分待ってから再実行してください。');
   var started = new Date();
   var startedText = sbmNowText_();
   var profiler = sbmCreateProfiler_('日次処理 STEP1 Search Console取得');
   try {
+    var tRuntime = new Date();
     sbmPersistDailyRuntime_({DailyUpdateRunning:'YES',DailyUpdateContinuationRequired:'NO',DailyUpdatePhase:'FETCH',DailyUpdateProgress:'10',DailyUpdateMessage:'Search Consoleからデータを取得しています。',DailyUpdateStartedEpoch:String(started.getTime()),DailyUpdateHeartbeatEpoch:String(Date.now()),DailyUpdateLastError:''});
+    var runtimeSec = sbmSecondsSince_(tRuntime);
+
     // RC8 Final QA-UAT19: 進捗はダイアログで表示するため、開始時のHome全件再描画は行わない。
+    var tClear = new Date();
     sbmClearDailyWork_();
+    var clearSec = sbmSecondsSince_(tClear);
+
+    var tStartSetting = new Date();
     sbmSetSetting_('DailyStepFlowStartedEpoch', String(started.getTime()), '日次処理STEP方式の開始日時');
+    var startSettingSec = sbmSecondsSince_(tStartSetting);
+
+    var tFetch = new Date();
     var result = sbmFetchSearchConsolePageRowsForArticleDb_(profiler);
+    var fetchSec = sbmSecondsSince_(tFetch);
+
+    var tWorkWrite = new Date();
     sbmWriteDailyWorkRows_(result.rows || []);
+    var workWriteSec = sbmSecondsSince_(tWorkWrite);
+
     var elapsed = sbmSecondsSince_(started);
+    var tSettings = new Date();
     sbmSetSetting_('DailyFetchStageCompletedEpoch', String(Date.now()), '日次処理STEP1のSearch Console取得完了日時');
     sbmSetSetting_('DailyFetchStageRawRows', String(result.rawRows || 0), '日次処理STEP1のSearch Console取得行数');
     sbmSetSetting_('DailyFetchStageValidRows', String((result.rows || []).length), '日次処理STEP1の有効記事URL数');
     sbmSetSetting_('DailyFetchStageExcluded', String(result.excluded || 0), '日次処理STEP1の除外件数');
     sbmSetSetting_('DailyFetchStageElapsedSeconds', String(elapsed), '日次処理STEP1の所要時間（秒）');
+    var timing = result.timings || {};
+    sbmSetSetting_('DailyStep1TimingRuntimeSec', String(runtimeSec), 'STEP1 実行状態保存秒');
+    sbmSetSetting_('DailyStep1TimingClearWorkSec', String(clearSec), 'STEP1 作業シート初期化秒');
+    sbmSetSetting_('DailyStep1TimingStartSettingSec', String(startSettingSec), 'STEP1 開始設定保存秒');
+    sbmSetSetting_('DailyStep1TimingPrepSec', String(timing.prep||0), 'STEP1 取得条件準備秒');
+    sbmSetSetting_('DailyStep1TimingApiSec', String(timing.api||0), 'STEP1 Search Console API秒');
+    sbmSetSetting_('DailyStep1TimingNormalizeSec', String(timing.normalize||0), 'STEP1 URL正規化秒');
+    sbmSetSetting_('DailyStep1TimingStatusMapSec', String(timing.statusMap||0), 'STEP1 既存記事状態参照秒');
+    sbmSetSetting_('DailyStep1TimingBuildRowsSec', String(timing.buildRows||0), 'STEP1 記事行生成秒');
+    sbmSetSetting_('DailyStep1TimingSortSec', String(timing.sort||0), 'STEP1 ソート秒');
+    sbmSetSetting_('DailyStep1TimingWorkWriteSec', String(workWriteSec), 'STEP1 作業シート保存秒');
+    var settingsSaveSec = sbmSecondsSince_(tSettings);
+    var timingSummary =
+      'API ' + Number(timing.api||0) + '秒 / URL正規化 ' + Number(timing.normalize||0) + '秒 / 状態参照 ' + Number(timing.statusMap||0) +
+      '秒 / 行生成 ' + Number(timing.buildRows||0) + '秒 / ソート ' + Number(timing.sort||0) + '秒 / 作業シート保存 ' + Number(workWriteSec||0) +
+      '秒 / 設定保存 ' + Number(settingsSaveSec||0) + '秒 / 実行状態保存 ' + Number(runtimeSec||0) + '秒 / 作業初期化 ' + Number(clearSec||0) + '秒';
     sbmProcessLog_('日次処理 STEP1 Search Console取得', '完了', result.rawRows || 0, (result.rows || []).length, elapsed,
-      '除外 ' + Number(result.excluded || 0) + '件 / 作業シート保存 / ProfileRunId ' + profiler.runId, startedText, sbmNowText_());
-    return {ok:true, rawRows:Number(result.rawRows || 0), validRows:Number((result.rows || []).length), excluded:Number(result.excluded || 0), elapsedSeconds:Number(elapsed || 0)};
+      '除外 ' + Number(result.excluded || 0) + '件 / ' + timingSummary + ' / ProfileRunId ' + profiler.runId, startedText, sbmNowText_());
+    try { profiler.finish('完了', timingSummary); } catch(ignoreProfileFinish) {}
+    return {
+      ok:true, rawRows:Number(result.rawRows || 0), validRows:Number((result.rows || []).length), excluded:Number(result.excluded || 0),
+      elapsedSeconds:Number(elapsed || 0),
+      timing:{
+        runtime:Number(runtimeSec||0), clearWork:Number(clearSec||0), startSetting:Number(startSettingSec||0),
+        prep:Number(timing.prep||0), api:Number(timing.api||0), normalize:Number(timing.normalize||0),
+        statusMap:Number(timing.statusMap||0), buildRows:Number(timing.buildRows||0), sort:Number(timing.sort||0),
+        workWrite:Number(workWriteSec||0), settingsSave:Number(settingsSaveSec||0), fetchTotal:Number(fetchSec||0)
+      }
+    };
   } catch(e) {
     var elapsedErr = sbmSecondsSince_(started);
     sbmPersistDailyRuntime_({DailyUpdateRunning:'NO',DailyUpdatePhase:'ERROR',DailyUpdateLastError:String(e),DailyUpdateMessage:'Search Consoleデータの取得に失敗しました。'});
     sbmProcessLog_('日次処理 STEP1 Search Console取得', 'エラー', '', '', elapsedErr, String(e), startedText, sbmNowText_());
+    try { profiler.finish('エラー', String(e)); } catch(ignoreProfileError) {}
     throw e;
   } finally {
     lock.releaseLock();
@@ -1539,18 +1582,21 @@ function sbmCollectPageDataToArticleDbManual(silent) {
 }
 
 function sbmFetchSearchConsolePageRowsForArticleDb_(profiler) {
+  var timings = {prep:0, api:0, normalize:0, statusMap:0, buildRows:0, sort:0};
   var tPrep = new Date();
   var range = sbmSearchConsoleDateRange_();
   var property = sbmGetSetting_('SearchConsoleProperty','');
   var capturedAt = sbmNowText_();
   var limit = sbmNumber_(sbmGetSetting_('PageDataMaxRows', SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS)) || SBM_DEFAULTS.PAGE_FETCH_MAX_ROWS;
   limit = Math.max(100, Math.min(25000, limit));
-  if (profiler) profiler.lap('取得条件準備', limit, '', '期間 ' + range.startDate + '〜' + range.endDate + ' / page rowLimit=' + limit + ' / ' + sbmSecondsSince_(tPrep) + '秒');
+  timings.prep = sbmSecondsSince_(tPrep);
+  if (profiler) profiler.lap('取得条件準備', limit, '', '期間 ' + range.startDate + '〜' + range.endDate + ' / page rowLimit=' + limit + ' / ' + timings.prep + '秒');
 
   var tApi = new Date();
   var data = sbmSearchConsoleApiRequest_(property, {startDate: range.startDate, endDate: range.endDate, dimensions: ['page'], rowLimit: limit});
   var rows = data.rows || [];
-  if (profiler) profiler.lap('Search Console API page取得', limit, rows.length, 'API取得 ' + sbmSecondsSince_(tApi) + '秒');
+  timings.api = sbmSecondsSince_(tApi);
+  if (profiler) profiler.lap('Search Console API page取得', limit, rows.length, 'API取得 ' + timings.api + '秒');
 
   var tNormalize = new Date();
   var map = {};
@@ -1580,7 +1626,11 @@ function sbmFetchSearchConsolePageRowsForArticleDb_(profiler) {
     m.weightedPositionSum += pos * imps;
     m.originalCount++;
   });
+  timings.normalize = sbmSecondsSince_(tNormalize);
+  var tStatus = new Date();
   var statusMap = sbmBuildArticleStatusReferenceMap_();
+  timings.statusMap = sbmSecondsSince_(tStatus);
+  var tBuild = new Date();
   var out = Object.keys(map).map(function(url){
     var m = map[url];
     var ctr = m.impressions ? m.clicks / m.impressions : 0;
@@ -1588,9 +1638,17 @@ function sbmFetchSearchConsolePageRowsForArticleDb_(profiler) {
     var status = sbmClassifyArticleDbStatus_(url, m.clicks, m.impressions, ctr, pos, statusMap);
     return [false, sbmLegacyStatusToRank_(status), sbmLegacyStatusToWorkState_(status), m.url || url, '', '', m.clicks, m.impressions, ctr, pos, sbmDisplayDateText_(m.capturedAt), '', '記事詳細', '', '', m.capturedAt, m.originalCount, '', '', '', '×', '', '', sbmStatusLabel_(status), sbmDisplayDateText_(m.capturedAt), 0, '正常'];
   });
+  timings.buildRows = sbmSecondsSince_(tBuild);
+  var tSort = new Date();
   out = sbmSortArticleDbRows_(out);
-  if (profiler) profiler.lap('URL正規化・記事URL抽出', rows.length, out.length, '#付きURL ' + fragmentCount + '件 / 除外 ' + excluded + '件 / サンプル ' + invalidSamples.join(' | ') + ' / ' + sbmSecondsSince_(tNormalize) + '秒');
-  return {rawRows: rows.length, rows: out, excluded: excluded, fragmentCount: fragmentCount};
+  timings.sort = sbmSecondsSince_(tSort);
+  if (profiler) {
+    profiler.lap('URL正規化', rows.length, Object.keys(map).length, '#付きURL ' + fragmentCount + '件 / 除外 ' + excluded + '件 / ' + timings.normalize + '秒');
+    profiler.lap('既存記事状態参照', '', Object.keys(statusMap).length, timings.statusMap + '秒');
+    profiler.lap('記事行生成', Object.keys(map).length, out.length, timings.buildRows + '秒');
+    profiler.lap('記事行ソート', out.length, out.length, timings.sort + '秒');
+  }
+  return {rawRows: rows.length, rows: out, excluded: excluded, fragmentCount: fragmentCount, timings:timings};
 }
 
 
