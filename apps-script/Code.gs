@@ -4294,14 +4294,20 @@ function sbmOpenTodayImprovement() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) { sbmBuildTodayImprovementSheet_(); sh = ss.getSheetByName(SBM_SHEETS.TODAY); }
-  // シート上の候補が0件なら、記事DBの保存済みデータから設定件数を補充します。
-  if (sbmGetTodayDisplayedRowCount_() === 0) {
-    try { sbmEnsureTodayRecommendations_('open'); } catch(e) { sbmLog_('TodayOpenAutoFill','Warning',String(e)); }
+
+  // RC8 Final QA-UAT16: 古い完了行を表示時にも掃除する。
+  try { sbmCleanupTodayCompletedRows_(); } catch(eCleanup) { sbmLog_('TodayOpenCleanup','Warning',String(eCleanup)); }
+  sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
+
+  // 空き枠があれば記事DBから再選定し、設定件数まで補充。
+  var desired=sbmGetTodayDisplayCount_();
+  if (sbmGetTodayDisplayedRowCount_() < desired) {
+    try { sbmEnsureTodayRecommendations_('daily'); } catch(e) { sbmLog_('TodayOpenAutoFill','Warning',String(e)); }
     sh = ss.getSheetByName(SBM_SHEETS.TODAY) || sh;
   }
-  // RC8 Final Hotfix 1: 既存の「今日の改善」行にも記事DBと同じメインクエリ表示を強制適用します。
-  // 保存済み候補がある場合はシート再構築を省略するため、開くたびに空欄を自己修復します。
+
   try { sbmRepairTodayMainQueryDisplay_(); } catch(eRepairQuery) { sbmLog_('TodayQueryRepair','Warning',String(eRepairQuery)); }
+  try { sbmStyleTodaySheet_(sh); } catch(eStyle) {}
   sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
 }
 
@@ -4347,41 +4353,43 @@ function sbmRepairTodayMainQueryDisplay_() {
  * 次回の日次処理で候補JSON・表示シートから除外します。
  */
 function sbmCleanupTodayCompletedRows_() {
-  var ss=SpreadsheetApp.getActiveSpreadsheet(), db=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
-  if(!db||db.getLastRow()<2)return 0;
-  var dh=sbmHeaderMap_(db);
-  if(!dh['記事URL']||!dh['作業状態'])return 0;
-  var vals=db.getRange(2,1,db.getLastRow()-1,db.getLastColumn()).getValues(), blocked={};
-  vals.forEach(function(r){
-    var state=String(r[dh['作業状態']-1]||'').trim();
-    if(state.indexOf('モニター中')<0)return;
-    var key=sbmNormalizeUrl_(r[dh['記事URL']-1]||'');
-    if(key)blocked[key]=true;
-  });
+  var ss=SpreadsheetApp.getActiveSpreadsheet(), blocked=sbmTodayCompletedUrlMap_();
+
+  // 保存済み候補から、モニター中・完了済みを除外。
   var raw=String(sbmGetSetting_('TodayRecommendationJson','')||''), candidates=[];
   try{candidates=raw?JSON.parse(raw):[];}catch(e){candidates=[];}
   if(!Array.isArray(candidates))candidates=[];
-  var filtered=candidates.filter(function(c){return !blocked[sbmNormalizeUrl_(c&&c.url||'')];});
+  var filtered=candidates.filter(function(c){
+    var key=sbmNormalizeUrl_(c&&c.url||'');
+    return !(key&&blocked[key]);
+  });
   var removed=candidates.length-filtered.length;
-  if(removed){
-    sbmSetSetting_('TodayRecommendationJson',JSON.stringify(filtered),'モニター中を除外した今日の改善候補');
+  if(filtered.length!==candidates.length){
+    sbmSetSetting_('TodayRecommendationJson',JSON.stringify(filtered),'完了・モニター中を除外した今日の改善候補');
   }
 
+  // 表示シートでは、記事管理状態に加えて「選択」列が完了になっている旧行も除去。
   var today=ss.getSheetByName(SBM_SHEETS.TODAY);
   if(today&&today.getLastRow()>1){
     var th=sbmHeaderMap_(today);
     if(th['記事URL']){
       var rows=today.getRange(2,1,today.getLastRow()-1,today.getLastColumn()).getValues();
-      var kept=rows.filter(function(r){return !blocked[sbmNormalizeUrl_(r[th['記事URL']-1]||'')];});
+      var kept=rows.filter(function(r){
+        var url=sbmNormalizeUrl_(r[th['記事URL']-1]||'');
+        var selected=th['選択']?String(r[th['選択']-1]||'').trim():'';
+        var doneBySheet=(selected==='完了');
+        return !doneBySheet && !(url&&blocked[url]);
+      });
+      removed+=Math.max(0,rows.length-kept.length);
       if(kept.length!==rows.length){
         sbmBuildTodayImprovementSheet_();
+        var sh=ss.getSheetByName(SBM_SHEETS.TODAY);
         if(kept.length){
-          var sh=ss.getSheetByName(SBM_SHEETS.TODAY);
-          sh.getRange(2,1,kept.length,Math.min(kept[0].length,SBM_HEADERS.TODAY.length))
-            .setValues(kept.map(function(r){return r.slice(0,SBM_HEADERS.TODAY.length);}));
-          try{sbmApplySelectionUi_(sh);}catch(eUi){}
-          try{sbmStyleTodaySheet_(sh);}catch(eStyle){}
+          var width=SBM_HEADERS.TODAY.length;
+          sh.getRange(2,1,kept.length,width).setValues(kept.map(function(r){return r.slice(0,width);}));
         }
+        try{sbmApplySelectionUi_(sh);}catch(eUi){}
+        try{sbmStyleTodaySheet_(sh);}catch(eStyle){}
       }
     }
   }
@@ -5829,6 +5837,7 @@ function sbmOpenEffectiveness(){
     try{sbmEnsureHistoryAndEffectSchemas_();sbmUpdateEffectivenessCore_(false);}catch(eCreate){sbmLog_('EffectOpenCreate','Warning',String(eCreate));}
     sh=ss.getSheetByName(SBM_SHEETS.EFFECT)||sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);
   }
+  try{sbmStyleEffectSheetV2_();}catch(eStyle){sbmLog_('EffectOpenStyle','Warning',String(eStyle));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
 function sbmUpdateEffectiveness(){return sbmShowAsyncProgressDialog_({title:'改善の推移を更新しています',description:'最新の検索データを確認し、モニター中の記事の変化と判定を更新しています。',worker:'sbmUpdateEffectivenessWorker_',steps:['最新データを確認','記事ごとの変化を計算','判定を更新','改善の推移へ反映']});}
@@ -7381,6 +7390,7 @@ function sbmOpenImprovementHistory() {
     try{sh=sbmRefreshImprovementHistorySheet_(false);}catch(eCreate){sbmLog_('HistoryOpenCreate','Warning',String(eCreate));}
     sh=sh||ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY)||sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
   }
+  try{sbmApplyHistoryFinalStyle_();}catch(eStyle){sbmLog_('HistoryOpenStyle','Warning',String(eStyle));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
 
@@ -8270,8 +8280,7 @@ function sbmEnsureOfficialSchemaOnce_() {
 
 
 function sbmOpenImprovementStatus() {
-  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
-  sbmUpdateEffectivenessSilent_();
+  // RC8 Final QA-UAT16: 表示操作ではDoctor自己修復・効果測定再計算を行わない。
   return sbmOpenEffectiveness();
 }
 
@@ -8282,7 +8291,7 @@ function sbmOpenAllBlogArticles() {
 }
 
 function sbmOpenImprovementTrend() {
-  try{sbmDoctorReconcileCompletedTreatments_();}catch(eReconcile){}
+  // RC8 Final QA-UAT16: 表示操作ではDoctor自己修復を行わない。
   return sbmOpenImprovementHistory();
 }
 

@@ -1,0 +1,35 @@
+RC8 Final QA-UAT16
+
+Result: STATIC REGRESSION PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- Fix UAT15 real-sheet failures only.
+- Improvement Trend / Improvement History view speed and styling.
+- Today's Improvements stale completed rows.
+- Health Staged Runner unchanged.
+
+Root causes fixed:
+1. Heavy compatibility wrappers still ran Doctor reconciliation and effectiveness recalculation before lightweight open functions.
+2. UAT15 removed view-time style application together with heavy recalculation.
+3. Today cleanup checked only monitoring rows; legacy completed states and sheet-level '完了' rows could remain.
+
+Fixes:
+- Removed Doctor reconciliation and full-effect recalculation from view wrappers.
+- Reapply styling only on view; no data repair/recalculation.
+- Today cleanup uses canonical completed map (monitoring + completed) and sheet-level '完了'.
+- Today cleanup also runs when opening Today's Improvements and refills vacated slots.
+
+Automated verification:
+- RC8 JavaScript regression: 41/41 PASS
+- RC8 Python freeze/Doctor guard: 8/8 PASS
+- JavaScript syntax: PASS
+- Code.gs sync: PASS
+- distribution filenames ASCII only: PASS
+- Release audit: FAIL
+- ZIP integrity: PASS
+
+Required real-sheet UAT:
+1. Open Improvement Trend and confirm it opens quickly and retains normal styling.
+2. Open Improvement History and confirm it opens quickly and retains normal styling.
+3. Open Today's Improvements: old completed rows must disappear.
+4. Run daily processing: completed/monitoring rows must not return and vacated slots must refill.

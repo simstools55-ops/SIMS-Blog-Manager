@@ -46,3 +46,7 @@
 - [ ] REG-VIEW-HISTORY-LIGHTWEIGHT-001: 「改善履歴を開く」は既存シート表示だけで、Doctor自己修復・履歴修復・再構築を実行しない。
 - [ ] REG-TODAY-COMPLETED-CLEANUP-001: モニター中へ移行済みの記事は次回日次処理で「今日の改善」から消える。
 - [ ] REG-TODAY-MAX10-001: 今日の改善候補は最大10件まで保持できる。
+
+- [ ] REG-VIEW-WRAPPER-LIGHTWEIGHT-001: 改善の推移/改善履歴のメニュー入口でDoctor全件修復・全件再計算を実行しない。
+- [ ] REG-VIEW-STYLE-PRESERVE-001: 軽量表示でも既定の列幅・ヘッダー・判定色などの装飾を維持する。
+- [ ] REG-TODAY-COMPLETED-CLEANUP-002: モニター中・完了・シート上の完了行は日次処理または今日の改善表示時に除外される。
