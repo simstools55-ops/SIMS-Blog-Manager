@@ -1,0 +1,20 @@
+RC8 Final QA-UAT33
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Automated verification:
+- RC8 JavaScript regression: 58/58 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload.
+2. Open 改善履歴.
+3. Confirm green header and compact formatting.
+4. Confirm 1週, 2週, 3週, 4週, 最終判定, 状態 are visible.
+5. Confirm Doctor→Writer rows have 改善日.
+6. Confirm 7/11 and 7/12 completed records are understandable across later weeks.
+7. Confirm opening remains only a few seconds.

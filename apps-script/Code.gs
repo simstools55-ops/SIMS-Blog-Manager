@@ -5794,7 +5794,7 @@ function sbmAppendImprovementHistory_(data,row,before) {
   var articleTitle=String(row[SBM_HEADERS.ARTICLE_DB.indexOf('記事タイトル')]||data.new_values.article_title||before.title);
   var planSnapshot = sbmBuildImprovementPlanSnapshot_(data.article_url, data.article_id);
   var record={
-    '選択':false,'改善日':data.completed_at||sbmNowText_(),'記事タイトル':articleTitle,'改善概要':data.summary,'改善経路':data.improvement_method||'通常改善','使用AI':data.ai_name||'',
+    '選択':false,'改善日':String(data.completed_at||'').trim()||sbmNowText_(),'記事タイトル':articleTitle,'改善概要':data.summary,'改善経路':data.improvement_method||'通常改善','使用AI':data.ai_name||'',
     '1週':'測定待ち','2週':'測定待ち','3週':'測定待ち','4週':'測定待ち','最終判定':'測定待ち','状態':'測定待ち',
     'ArticleID':data.article_id,'記事URL':data.article_url,'変更箇所':changed,'変更後タイトル':data.new_values.article_title,
     '変更後SEOタイトル':data.new_values.seo_title,'変更後メタディスクリプション':data.new_values.description,'メインクエリ':data.new_values.main_query,
@@ -5974,11 +5974,119 @@ function sbmArrangeUserSheets_() {
 
 
 
-function sbmPolishImprovementHistoryView_(){
-  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY); if(!sh)return;
+
+function sbmRepairDoctorHistoryDates_(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  if(!sh||sh.getLastRow()<2)return 0;
   var hm=sbmHeaderMap_(sh);
-  try{ if(hm['使用AI']) sh.hideColumns(hm['使用AI']); }catch(ignore){}
-  try{ if(hm['改善経路']) sh.showColumns(hm['改善経路']); }catch(ignore2){}
+  if(!hm['改善日']||!hm['改善経路'])return 0;
+
+  var lastRow=sh.getLastRow(),lastCol=sh.getLastColumn();
+  var vals=sh.getRange(2,1,lastRow-1,lastCol).getValues();
+  var caseByHistoryId={},caseByArticle={};
+  var caseSh=ss.getSheetByName(SBM_SHEETS.DOCTOR_CASES);
+
+  if(caseSh&&caseSh.getLastRow()>1){
+    var chm=sbmHeaderMap_(caseSh);
+    var cvals=caseSh.getRange(2,1,caseSh.getLastRow()-1,caseSh.getLastColumn()).getValues();
+    cvals.forEach(function(r){
+      var hid=chm['改善履歴ID']?String(r[chm['改善履歴ID']-1]||'').trim():'';
+      var aid=chm['記事ID']?String(r[chm['記事ID']-1]||'').trim():'';
+      var raw=chm['Writer結果JSON']?String(r[chm['Writer結果JSON']-1]||'').trim():'';
+      var updated=chm['更新日時']?r[chm['更新日時']-1]:'';
+      var date='';
+      if(raw){
+        try{
+          var o=JSON.parse(raw);
+          date=String(o.completed_at||o.completedAt||'').trim();
+        }catch(ignoreJson){}
+      }
+      if(!date&&updated)date=updated;
+      var info={date:date};
+      if(hid)caseByHistoryId[hid]=info;
+      if(aid)caseByArticle[aid]=info;
+    });
+  }
+
+  var changed=0;
+  vals.forEach(function(row){
+    var route=String(row[hm['改善経路']-1]||'').trim();
+    if(route.indexOf('Doctor→')!==0)return;
+    var current=row[hm['改善日']-1];
+    if(current!==''&&current!==null)return;
+
+    var date='';
+    if(hm['AI改善結果JSON']){
+      var raw=String(row[hm['AI改善結果JSON']-1]||'').trim();
+      if(raw){
+        try{
+          var o=JSON.parse(raw);
+          date=String(o.completed_at||o.completedAt||'').trim();
+        }catch(ignoreRaw){}
+      }
+    }
+    if(!date){
+      var hid=hm['改善履歴ID']?String(row[hm['改善履歴ID']-1]||'').trim():'';
+      var aid=hm['ArticleID']?String(row[hm['ArticleID']-1]||'').trim():'';
+      var info=(hid&&caseByHistoryId[hid])||(aid&&caseByArticle[aid])||null;
+      if(info)date=String(info.date||'').trim();
+    }
+
+    if(date){
+      var d=sbmParseDate_(date);
+      row[hm['改善日']-1]=d||date;
+      changed++;
+    }
+  });
+
+  if(changed)sh.getRange(2,1,vals.length,lastCol).setValues(vals);
+  return changed;
+}
+
+function sbmPolishImprovementHistoryView_(){
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  if(!sh)return;
+  var hm=sbmHeaderMap_(sh), lastCol=sh.getLastColumn(), n=Math.max(0,sh.getLastRow()-1);
+  var visible=['選択','改善日','記事タイトル','改善概要','改善経路','1週','2週','3週','4週','最終判定','状態'];
+
+  sh.setFrozenRows(1);
+  try{sh.showColumns(1,sh.getMaxColumns());}catch(ignoreShow){}
+  for(var c=1;c<=lastCol;c++){
+    var h=String(sh.getRange(1,c).getDisplayValue()||'').trim();
+    if(visible.indexOf(h)<0){
+      try{sh.hideColumns(c);}catch(ignoreHide){}
+    }
+  }
+
+  sh.getRange(1,1,1,lastCol)
+    .setBackground('#0b8043')
+    .setFontColor('#ffffff')
+    .setFontWeight('bold')
+    .setVerticalAlignment('middle')
+    .setHorizontalAlignment('center')
+    .setWrap(false);
+  sh.setRowHeight(1,34);
+
+  var widths={
+    '選択':48,'改善日':92,'記事タイトル':280,'改善概要':300,'改善経路':105,
+    '1週':68,'2週':68,'3週':68,'4週':68,'最終判定':92,'状態':82
+  };
+  Object.keys(widths).forEach(function(h){
+    if(hm[h])sh.setColumnWidth(hm[h],widths[h]);
+  });
+
+  if(n){
+    sh.getRange(2,1,n,lastCol).setVerticalAlignment('middle');
+    if(hm['改善日'])sh.getRange(2,hm['改善日'],n,1).setNumberFormat('yyyy/M/d').setHorizontalAlignment('center').setWrap(false);
+    if(hm['記事タイトル'])sh.getRange(2,hm['記事タイトル'],n,1).setWrap(true).setVerticalAlignment('top');
+    if(hm['改善概要'])sh.getRange(2,hm['改善概要'],n,1).setWrap(true).setVerticalAlignment('top');
+    if(hm['改善経路'])sh.getRange(2,hm['改善経路'],n,1).setHorizontalAlignment('center').setWrap(false);
+    ['1週','2週','3週','4週','最終判定','状態'].forEach(function(h){
+      if(hm[h])sh.getRange(2,hm[h],n,1).setHorizontalAlignment('center').setWrap(true);
+    });
+    sh.setRowHeights(2,n,58);
+  }
+  try{sbmApplySelectionUi_(sh);}catch(eSelection){}
 }
 
 function sbmApplySelectionUiAll_() {
@@ -6574,27 +6682,10 @@ function sbmHistoryEffectButtonHtml_(historyId) {
 }
 
 function sbmStyleHistorySheetV2_(){
-  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY); sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh,SBM_HISTORY_HEADERS_V2);
-  sh.showSheet(); sh.setFrozenRows(1);
-  sh.getRange(1,1,1,SBM_HISTORY_HEADERS_V2.length).setBackground('#0b8043').setFontColor('#fff').setFontWeight('bold').setWrap(false).setVerticalAlignment('middle').setHorizontalAlignment('center');
-  sh.setRowHeight(1,34);
-  var hm=sbmHeaderMap_(sh);
-  var widths={'選択':52,'改善日':105,'記事タイトル':330,'改善概要':430,'改善経路':120,'使用AI':100,'1週':80};
-  Object.keys(widths).forEach(function(h){if(hm[h])sh.setColumnWidth(hm[h],widths[h]);});
-  // 利用者が使わない「使用AI」は内部保持したまま常時非表示にします。
-  if(hm['使用AI']){try{sh.hideColumns(hm['使用AI']);}catch(eAi){}}
-  // 週次詳細の2週以降と内部列は詳細ダイアログから参照するため、一覧では非表示にします。
-  if(hm['2週']){try{sh.hideColumns(hm['2週'],Math.max(1,sh.getMaxColumns()-hm['2週']+1));}catch(eHide){}}
-  if(sh.getLastRow()>1){
-    var n=sh.getLastRow()-1;
-    sh.getRange(2,1,n,Math.min(sh.getLastColumn(),7)).setVerticalAlignment('middle');
-    if(hm['記事タイトル'])sh.getRange(2,hm['記事タイトル'],n,1).setWrap(true).setVerticalAlignment('top');
-    if(hm['改善概要'])sh.getRange(2,hm['改善概要'],n,1).setWrap(true).setVerticalAlignment('top');
-    if(hm['改善経路'])sh.getRange(2,hm['改善経路'],n,1).setHorizontalAlignment('center').setWrap(false);
-    try{sh.autoResizeRows(2,n);}catch(eRows){}
-  }
-  // 初期表示時からFALSE/TRUEではなく実チェックボックスに固定します。
-  try{sbmApplySelectionUi_(sh);}catch(eSelection){}
+  var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
+  sbmEnsureHistoryAndEffectSchemasIfEmpty_(sh,SBM_HISTORY_HEADERS_V2);
+  sh.showSheet();
+  sbmPolishImprovementHistoryView_();
 }
 
 /**
@@ -7689,12 +7780,12 @@ function sbmRefreshHistoryAndEffectAfterRepair_() {
  */
 function sbmOpenImprovementHistory() {
   var ss=SpreadsheetApp.getActiveSpreadsheet(), sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
-  // RC8 Final QA-UAT15: 履歴を「見る」だけではDoctor自己修復・全履歴修復・再構築を行わない。
-  // 未作成の場合だけ従来の正規生成処理を実行する。
   if(!sh){
     try{sh=sbmRefreshImprovementHistorySheet_(false);}catch(eCreate){sbmLog_('HistoryOpenCreate','Warning',String(eCreate));}
     sh=sh||ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY)||sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
   }
+  try{sbmRepairDoctorHistoryDates_();}catch(eDate){sbmLog_('HistoryDoctorDateRepair','Warning',String(eDate));}
+  try{sbmPolishImprovementHistoryView_();}catch(ePolish){sbmLog_('HistoryOpenPolish','Warning',String(ePolish));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
 
