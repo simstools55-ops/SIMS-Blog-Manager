@@ -1,0 +1,20 @@
+RC8 Final QA-UAT11
+
+Result: STATIC REGRESSION PASS / REAL-SHEET UAT REQUIRED
+
+Hotfix:
+- Replaced unsupported dynamic google.script.run invocation with explicit server-side dispatcher.
+- Detailed diagnosis candidate progress dialog can now call STEP 1/3, STEP 2/3 and STEP 3/3 reliably.
+- Same dispatcher preserves article-information and effectiveness progress workers.
+
+Automated verification:
+- RC8 JavaScript regression suite: PASS (36)
+- JavaScript syntax check: PASS
+- apps-script/Code.gs == distribution/Code.gs: PASS
+- distribution file names: ASCII only
+
+Required real-sheet UAT:
+1. Open detailed diagnosis candidates.
+2. Confirm dialog appears promptly.
+3. Confirm STEP 1/3 advances to STEP 2/3 and STEP 3/3 within normal processing time.
+4. Confirm candidate sheet opens automatically.
