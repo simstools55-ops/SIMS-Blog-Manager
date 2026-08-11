@@ -1,0 +1,37 @@
+RC8 Final QA-UAT19
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- Daily processing fast path only.
+- Doctor, Health Staged Runner, UAT17 Today open fast path, and UAT18 view speed are frozen.
+
+Changes:
+- No Home redraw at STEP1 start.
+- Daily Article DB write preserves formatting and avoids full sheet restyling.
+- Home count settings are updated in STEP2 without Home redraw.
+- Today queue pre-clean removed from STEP2 because the queue is rebuilt from fresh candidates.
+- Today work-state application writes only the Work State column.
+- Home redraw remains in STEP3 only.
+
+Expected timing for ~427 articles:
+- STEP1: 20–60 sec typical; 60–120 sec acceptable when Search Console API is slow.
+- STEP2: 10–30 sec target.
+- STEP3: 5–20 sec target.
+- Total: 35–110 sec target.
+- STEP2/STEP3 taking multiple minutes = FAIL.
+
+Automated verification:
+- RC8 JavaScript regression: 44/44 PASS
+- JavaScript syntax: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- Release audit: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run daily processing on the 427-article blog.
+2. Record STEP1, STEP2, STEP3 elapsed times.
+3. Confirm Article Management retains layout/colors/checkbox usability.
+4. Confirm Today's Improvements is rebuilt correctly.
+5. Confirm Home counts are correct after STEP3.

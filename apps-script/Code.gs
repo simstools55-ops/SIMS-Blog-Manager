@@ -333,7 +333,7 @@ function sbmRunDailyFetchStageFromDialog() {
   var profiler = sbmCreateProfiler_('日次処理 STEP1 Search Console取得');
   try {
     sbmPersistDailyRuntime_({DailyUpdateRunning:'YES',DailyUpdateContinuationRequired:'NO',DailyUpdatePhase:'FETCH',DailyUpdateProgress:'10',DailyUpdateMessage:'Search Consoleからデータを取得しています。',DailyUpdateStartedEpoch:String(started.getTime()),DailyUpdateHeartbeatEpoch:String(Date.now()),DailyUpdateLastError:''});
-    try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(ignoreHomeStart) {}
+    // RC8 Final QA-UAT19: 進捗はダイアログで表示するため、開始時のHome全件再描画は行わない。
     sbmClearDailyWork_();
     sbmSetSetting_('DailyStepFlowStartedEpoch', String(started.getTime()), '日次処理STEP方式の開始日時');
     var result = sbmFetchSearchConsolePageRowsForArticleDb_(profiler);
@@ -369,7 +369,7 @@ function sbmRunDailyAnalysisStageFromDialog() {
     if (!rows.length) throw new Error('Search Console取得データが見つかりません。日次処理を最初から再実行してください。');
 
     var mergeResult = sbmMergeArticleDbDaily_(rows);
-    try{sbmCleanupTodayCompletedRows_();}catch(eCleanupToday){sbmLog_('DailyTodayCleanup','Warning',String(eCleanupToday));}
+    // RC8 Final QA-UAT19: 今日の改善はこの後に全件再選定・再描画するため、旧キューの事前掃除は不要。
     var candidates = sbmSelectTodayRecommendations_();
     var candidateCount = candidates.length;
     var displayedCount = 0;
@@ -1441,7 +1441,7 @@ function sbmWriteArticleDbObjects_(map) {
  * 記事DBの件数をHome用設定へ反映します。
  * rowsは配列行／オブジェクト行のどちらでも受け付けます。
  */
-function sbmUpdateHomeArticleDbCounts_(rows) {
+function sbmUpdateHomeArticleDbCounts_(rows, skipRefresh) {
   rows = rows || [];
   var total = rows.length;
   var counts = {ace:0,growth:0,stable:0,nurture:0,low:0,today:0,inProgress:0,monitoring:0};
@@ -1468,7 +1468,7 @@ function sbmUpdateHomeArticleDbCounts_(rows) {
   sbmSetSetting_('InProgressArticleCount', 0, '旧改善中記事数（RC8 Finalではモニター中へ統合）');
   sbmSetSetting_('MonitoringArticleCount', counts.monitoring, 'モニター中記事数');
   sbmSetSetting_('LastArticleDbRows', total, '記事DBの直近行数');
-  sbmRefreshHome_();
+  if (!skipRefresh) sbmRefreshHome_();
 }
 
 function sbmArticleDbInfoCompletionCounts_() {
@@ -1781,8 +1781,8 @@ function sbmMergeArticleDbDaily_(freshRows) {
     r['記事タイトル'] = r['記事タイトル'] || r['H1タイトル'];
     return SBM_HEADERS.ARTICLE_DB.map(function(h){ return r[h] !== undefined ? r[h] : ''; });
   });
-  sbmWriteArticleDb_(rows);
-  sbmUpdateHomeArticleDbCounts_(rows);
+  sbmWriteArticleDb_(rows,{dailyFast:true});
+  sbmUpdateHomeArticleDbCounts_(rows,true);
   sbmSetSetting_('LastDailyUpdatedCount', updated, '日次更新で数値を更新した既存記事数');
   sbmSetSetting_('LastDailyAddedCount', added, '日次更新で追加した新規記事数');
   sbmSetSetting_('LastDailyStale30Count', stale30, '30日以上データ未取得の記事数');
@@ -1814,15 +1814,34 @@ function sbmRepairFalseMassMissingFlags_() {
 }
 
 
-function sbmWriteArticleDb_(rows) {
+function sbmWriteArticleDb_(rows, options) {
+  options = options || {};
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB);
-  // 日次更新では書式・列幅を壊さず、値だけを書き換える。
-  var clearRows = Math.max(sh.getLastRow(), 1);
+  // 値だけを書き換え、既存の列幅・行高・色・入力規則は保持する。
+  var previousLastRow = Math.max(sh.getLastRow(), 1);
+  var clearRows = previousLastRow;
   var clearCols = Math.max(sh.getLastColumn(), SBM_HEADERS.ARTICLE_DB.length);
   sh.getRange(1, 1, clearRows, clearCols).clearContent();
   sbmEnsureHeaders_(sh, SBM_HEADERS.ARTICLE_DB);
   var normalized = sbmNormalizeRowsToWidth_(sbmSortArticleDbRows_(rows || []), SBM_HEADERS.ARTICLE_DB.length);
   if (normalized.length) sh.getRange(2, 1, normalized.length, SBM_HEADERS.ARTICLE_DB.length).setValues(normalized);
+
+  if (options.dailyFast === true) {
+    // 日次処理では全件装飾をしない。必要な数値書式・状態色だけを一括更新。
+    var hm = sbmHeaderMap_(sh), n = normalized.length;
+    if (n) {
+      if (hm['クリック数']) sh.getRange(2,hm['クリック数'],n,1).setNumberFormat('#,##0');
+      if (hm['表示回数']) sh.getRange(2,hm['表示回数'],n,1).setNumberFormat('#,##0');
+      if (hm['CTR']) sh.getRange(2,hm['CTR'],n,1).setNumberFormat('0.0%');
+      if (hm['掲載順位']) sh.getRange(2,hm['掲載順位'],n,1).setNumberFormat('0.0');
+      try { sbmApplyArticleDbRowColors_(sh); } catch(eColor) {}
+      // 記事数が増えた場合だけ、新しい末尾行へ選択チェックを補います。
+      if (n + 1 > previousLastRow && hm['選択']) {
+        try { sh.getRange(Math.max(2,previousLastRow+1),hm['選択'],(n+1)-Math.max(2,previousLastRow+1)+1,1).insertCheckboxes().setValue(false); } catch(eCheck) {}
+      }
+    }
+    return;
+  }
   sbmStyleArticleDbSheet_(sh);
 }
 
@@ -4667,15 +4686,20 @@ function sbmApplyTodayWorkState_(candidates, count) {
   var headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(function(v){return String(v||'').trim();});
   var urlCol=headers.indexOf('記事URL')+1, workCol=headers.indexOf('作業状態')+1;
   if (!urlCol || !workCol) return;
-  var vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues();
+  var n=sh.getLastRow()-1;
+  var urls=sh.getRange(2,urlCol,n,1).getValues();
+  var works=sh.getRange(2,workCol,n,1).getValues();
   var shown={}; candidates.slice(0,count).forEach(function(c){var k=sbmNormalizeUrl_(c.url||'');if(k)shown[k]=true;});
-  for(var i=0;i<vals.length;i++){
-    var url=sbmNormalizeUrl_(vals[i][urlCol-1]||'');
-    var work=String(vals[i][workCol-1]||'').trim();
-    if(shown[url] && (!work || work==='未着手' || work.indexOf('今日の改善')>=0)) vals[i][workCol-1]='🔥 今日の改善';
-    else if(!shown[url] && work.indexOf('今日の改善')>=0) vals[i][workCol-1]='未着手';
+  var changed=false;
+  for(var i=0;i<n;i++){
+    var url=sbmNormalizeUrl_(urls[i][0]||'');
+    var work=String(works[i][0]||'').trim();
+    var next=work;
+    if(shown[url] && (!work || work==='未着手' || work.indexOf('今日の改善')>=0)) next='🔥 今日の改善';
+    else if(!shown[url] && work.indexOf('今日の改善')>=0) next='未着手';
+    if(next!==work){works[i][0]=next;changed=true;}
   }
-  sh.getRange(2,1,vals.length,sh.getLastColumn()).setValues(vals);
+  if(changed) sh.getRange(2,workCol,n,1).setValues(works);
 }
 
 
