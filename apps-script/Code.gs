@@ -8421,7 +8421,12 @@ function sbmDoctorShowHealthCheckRunnerDialog_(){
 
 function sbmDoctorRecoverHealthRunForStage_(run){
   var code=String(run.statusCode||'');
-  var back={FETCHING_FULL:'PREFLIGHT_DONE',FETCHING_FIRST:'FULL_DONE',FETCHING_SECOND:'FIRST_DONE',FETCHING_RECENT:'SECOND_DONE',FETCHING_PREVIOUS:'RECENT_DONE',SCREENING:'PREVIOUS_DONE'};
+  // RC8 Final QA UAT8:
+  // SCREENING is a normal resumable state. Do NOT roll it back between dialog calls.
+  // Rolling SCREENING back to PREVIOUS_DONE reset the saved cursor and repeatedly
+  // processed the first batch (40 articles) forever.
+  var back={FETCHING_FULL:'PREFLIGHT_DONE',FETCHING_FIRST:'FULL_DONE',FETCHING_SECOND:'FIRST_DONE',FETCHING_RECENT:'SECOND_DONE',FETCHING_PREVIOUS:'RECENT_DONE'};
+  if(code==='SCREENING') return run;
   if(back[code]){
     run.statusCode=back[code]; run.phase=sbmDoctorHealthStatusJa_(back[code]); run.nextStep='保存済みの工程から再開'; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
   } else if(code==='RETRYABLE_ERROR'){
@@ -8430,7 +8435,11 @@ function sbmDoctorRecoverHealthRunForStage_(run){
     else if(phase.indexOf('後半')>=0) run.statusCode='FIRST_DONE';
     else if(phase.indexOf('直近')>=0) run.statusCode='SECOND_DONE';
     else if(phase.indexOf('その前')>=0||phase.indexOf('比較')>=0) run.statusCode='RECENT_DONE';
-    else if(phase.indexOf('判定')>=0||phase.indexOf('診断')>=0) run.statusCode='PREVIOUS_DONE';
+    else if(phase.indexOf('判定')>=0||phase.indexOf('診断')>=0) {
+      // Resume from the saved screening cursor instead of restarting batch 1.
+      var saved=sbmDoctorLoadHealthScreenState_(run.healthCheckId);
+      run.statusCode=saved?'SCREENING':'PREVIOUS_DONE';
+    }
     else run.statusCode='PREPARING';
     run.phase=sbmDoctorHealthStatusJa_(run.statusCode); run.lastError=''; run.updatedAt=sbmNowText_(); sbmDoctorSaveHealthRun_(run);
   }

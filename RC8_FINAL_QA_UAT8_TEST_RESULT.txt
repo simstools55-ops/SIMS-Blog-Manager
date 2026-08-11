@@ -1,0 +1,12 @@
+RC8 Final QA-UAT8
+
+REG-HEALTH-SCREEN-CURSOR-001: PASS
+- SCREENING state preserved between normal dialog calls
+- SCREENING not rolled back to PREVIOUS_DONE
+- saved cursor used after retryable screening error
+- cursor persisted after each screening batch
+- next batch starts from persisted cursor
+
+RC8 JavaScript regression suite: PASS (all product5100_rc8*.js)
+Code.gs / distribution/Code.gs sync: PASS
+distribution file names: ASCII only
