@@ -1455,7 +1455,7 @@ function sbmUpdateHomeArticleDbCounts_(rows) {
     else if (rank.indexOf('育成') >= 0) counts.nurture++;
     else if (rank.indexOf('低迷') >= 0) counts.low++;
     if (work.indexOf('今日の改善') >= 0) counts.today++;
-    else if (work.indexOf('改善中') >= 0 || work.indexOf('モニター中') >= 0) counts.monitoring++;
+    else if (work.indexOf('モニター中') >= 0) counts.monitoring++;
   });
   sbmSetSetting_('TotalArticleCount', total, '記事DBの総記事数');
   sbmSetSetting_('AceArticleCount', counts.ace, '記事DBのエース記事数');
@@ -7016,11 +7016,44 @@ function sbmMigrateLegacyMonitoringLabels_(){
   }catch(eHist){try{sbmLog_('LegacyMeasurementLabelMigration','Warning',String(eHist));}catch(ignoreHist){}}
 }
 
+
+/**
+ * RC8 Final QA-UAT14:
+ * 同一Product Version内でHomeレイアウトを変更した場合でも、旧レイアウトを自動検出して
+ * 一度だけ再構築します。Homeの表示ラベルと集計値の行ずれを防止します。
+ */
+function sbmHomeLayoutNeedsRebuild_(sh) {
+  if (!sh) return true;
+  try {
+    var expected = [
+      ['A14','改善状況'],
+      ['A15','今日の改善'],
+      ['A16','モニター中'],
+      ['A17','未取得記事'],
+      ['A18','改善確認完了'],
+      ['E14','モニター中の記事｜推移']
+    ];
+    for (var i=0;i<expected.length;i++) {
+      if (String(sh.getRange(expected[i][0]).getValue() || '').trim() !== expected[i][1]) return true;
+    }
+    // 旧Homeの「改善中」が残っていれば強制再構築。
+    var legacy = sh.getRange('A14:H19').getDisplayValues();
+    for (var r=0;r<legacy.length;r++) {
+      for (var c=0;c<legacy[r].length;c++) {
+        if (String(legacy[r][c] || '').indexOf('改善中') >= 0) return true;
+      }
+    }
+    return false;
+  } catch(e) {
+    return true;
+  }
+}
+
 function sbmRefreshHome_() {
   try{sbmMigrateLegacyMonitoringLabels_();}catch(eLegacyLabels){}
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== ('v' + SBM_VERSION)) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== ('v' + SBM_VERSION) || sbmHomeLayoutNeedsRebuild_(sh)) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -7029,7 +7062,7 @@ function sbmRefreshHome_() {
   rows.forEach(function(r) {
     var w = String(r['作業状態'] || '未着手');
     if (w.indexOf('今日の改善') >= 0) work.today++;
-    else if (w.indexOf('改善中') >= 0 || w.indexOf('モニター中') >= 0) work.monitor++;
+    else if (w.indexOf('モニター中') >= 0) work.monitor++;
     else if (w.indexOf('完了') >= 0) work.done++;
     else work.unstarted++;
     if (String(r['管理フラグ'] || '').indexOf('新規記事') >= 0) work.newArticles++;

@@ -1,0 +1,35 @@
+RC8 Final QA-UAT14
+
+Result: STATIC REGRESSION PASS / REAL-SHEET UAT REQUIRED
+
+Scope:
+- Home layout/state aggregation only.
+- No changes to Doctor, Health Staged Runner, detailed-diagnosis candidate generation, or Writer workflow.
+
+Root cause fixed:
+- Existing Home sheets were not rebuilt because the product version string remained v5.10.0-RC8.
+- New UAT10 values were therefore written into an old Home layout that still contained the legacy '改善中' row.
+- This caused label/value row mismatch and apparently incorrect counts.
+
+Fix:
+- Added Home layout schema detection.
+- If old labels/layout are detected, Home is rebuilt once even when the product version is unchanged.
+- User-facing Home no longer contains '改善中'.
+- Monitoring count is sourced directly from Article DB work-state 'モニター中'.
+
+Automated verification:
+- RC8 JavaScript regression files: PASS (39)
+- Python RC8 freeze contract: PASS (6)
+- JavaScript syntax check: PASS
+- apps-script/Code.gs == distribution/Code.gs: PASS
+- distribution file names: ASCII only
+- Release audit: PASS
+- ZIP integrity: PASS
+
+Required real-sheet UAT:
+1. Open/refresh Home.
+2. Confirm '改善中' row no longer exists.
+3. Confirm the left-side rows are:
+   今日の改善 / モニター中 / 未取得記事 / 改善確認完了
+4. Count Article DB rows whose work state is 'モニター中'.
+5. Confirm Home 'モニター中' count is exactly the same.

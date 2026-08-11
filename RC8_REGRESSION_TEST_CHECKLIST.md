@@ -39,3 +39,5 @@
 - [ ] REG-DOCTOR-CANDIDATE-PERF-003: 記事管理・Doctor Cases・最新健康診断を一括読込し、除外ArticleID/正規化URLをSTEP 3へキャッシュする。
 - [ ] REG-DOCTOR-CANDIDATE-PERF-004: STEP 3の候補抽出は記事ごとのシート再検索をせず、キャッシュ済み除外集合で判定する。
 - [ ] 実機: 427記事ブログでSTEP 1→2→3が順次進み、STEP 2が分単位で停滞しない。
+
+- [ ] REG-HOME-LAYOUT-SCHEMA-001: 同一バージョンでも旧Homeレイアウト（改善中行など）を検出し、新レイアウトへ自動再構築する。
