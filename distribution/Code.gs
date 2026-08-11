@@ -491,38 +491,83 @@ function sbmRunDailyAnalysisStageFromDialog() {
 /** STEP 3: 改善の推移を更新し、全工程成功後に日次処理を完了確定します。 */
 function sbmRunDailyFinalizeStageFromDialog() {
   var lock = LockService.getDocumentLock();
-  if (!lock.tryLock(3000)) throw new Error('別の処理が実行中です。しばらく待ってから再度お試しください。');
+  if (!lock.tryLock(3000)) throw new Error('前の処理がまだ終了していません。画面を閉じてもサーバー側の処理が続く場合があります。数分待ってから再実行してください。');
   var started = new Date();
   var startedText = sbmNowText_();
   try {
+    var tProgress3 = new Date();
     sbmSetDailyProgress_('FINALIZE',90,'改善の推移を更新し、日次処理の完了状態を確定しています。');
+    var step3ProgressSec = sbmSecondsSince_(tProgress3);
+
     var effectRows = 0;
     var measurementRecorded = 0;
+
+    var tBeforeHistory3 = new Date();
     var beforeHistory = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || [];
     var beforeCount = beforeHistory.reduce(function(total,h){ return total + sbmHistoryMeasurementState_(h).count; }, 0);
+    var step3BeforeHistorySec = sbmSecondsSince_(tBeforeHistory3);
+
+    var tEffect3 = new Date();
     effectRows = Number(sbmUpdateEffectivenessSilent_() || 0);
+    var step3EffectSec = sbmSecondsSince_(tEffect3);
+
+    var tAfterHistory3 = new Date();
     var afterHistory = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || [];
     var afterCount = afterHistory.reduce(function(total,h){ return total + sbmHistoryMeasurementState_(h).count; }, 0);
     measurementRecorded = Math.max(0, afterCount - beforeCount);
     var monitoringCount = afterHistory.reduce(function(total,h){
       return total + (sbmHistoryMeasurementState_(h).complete ? 0 : 1);
     }, 0);
+    var step3AfterHistorySec = sbmSecondsSince_(tAfterHistory3);
 
+    var tSummary3 = new Date();
     var summary = {};
     try { summary = JSON.parse(String(sbmGetSetting_('DailyStage2SummaryJson','{}') || '{}')); } catch(ignoreSummary) {}
+    var step3SummaryReadSec = sbmSecondsSince_(tSummary3);
+
+    var tComplete3 = new Date();
     var completedAt = new Date();
     sbmMarkDailyUpdateCompleted_(completedAt);
+    var step3MarkCompleteSec = sbmSecondsSince_(tComplete3);
+
+    var tRuntime3 = new Date();
     sbmPersistDailyRuntime_({DailyUpdateRunning:'NO',DailyUpdateContinuationRequired:'NO',DailyUpdatePhase:'DONE',DailyUpdateProgress:'100',DailyUpdateMessage:'日次処理が完了しました。',DailyUpdateHeartbeatEpoch:String(Date.now()),DailyUpdateLastError:''});
+    var step3RuntimeSec = sbmSecondsSince_(tRuntime3);
+
+    var tHome3 = new Date();
     try { sbmRefreshHome_(); SpreadsheetApp.flush(); } catch(eHome) { sbmLog_('DailyHomeRefresh','Warning',String(eHome)); }
+    var step3HomeSec = sbmSecondsSince_(tHome3);
 
     var finalizeElapsed = sbmSecondsSince_(started);
+    var tFinalSettings3 = new Date();
     var flowStarted = Number(sbmGetSetting_('DailyStepFlowStartedEpoch', started.getTime()) || started.getTime());
     var totalElapsed = Math.max(0, Math.round((Date.now() - flowStarted) / 1000));
     sbmSetSetting_('DailyFinalizeStageElapsedSeconds', String(finalizeElapsed), '日次処理STEP3の所要時間（秒）');
     sbmSetSetting_('DailyTotalElapsedSeconds', String(totalElapsed), '日次処理全体の所要時間（秒）');
+    sbmSetSetting_('DailyStep3TimingProgressSec', String(step3ProgressSec), 'STEP3 進捗保存秒');
+    sbmSetSetting_('DailyStep3TimingBeforeHistorySec', String(step3BeforeHistorySec), 'STEP3 履歴事前読込秒');
+    sbmSetSetting_('DailyStep3TimingEffectSec', String(step3EffectSec), 'STEP3 改善の推移更新秒');
+    sbmSetSetting_('DailyStep3TimingAfterHistorySec', String(step3AfterHistorySec), 'STEP3 履歴事後読込秒');
+    sbmSetSetting_('DailyStep3TimingSummaryReadSec', String(step3SummaryReadSec), 'STEP3 STEP2集計読込秒');
+    sbmSetSetting_('DailyStep3TimingMarkCompleteSec', String(step3MarkCompleteSec), 'STEP3 完了日保存秒');
+    sbmSetSetting_('DailyStep3TimingRuntimeSec', String(step3RuntimeSec), 'STEP3 実行状態保存秒');
+    sbmSetSetting_('DailyStep3TimingHomeSec', String(step3HomeSec), 'STEP3 Home更新秒');
+    var step3FinalSettingsSec = sbmSecondsSince_(tFinalSettings3);
+
+    var step3TimingSummary =
+      '進捗 ' + Number(step3ProgressSec||0) + '秒 / 履歴前 ' + Number(step3BeforeHistorySec||0) +
+      '秒 / 推移更新 ' + Number(step3EffectSec||0) + '秒 / 履歴後 ' + Number(step3AfterHistorySec||0) +
+      '秒 / 集計読込 ' + Number(step3SummaryReadSec||0) + '秒 / 完了保存 ' + Number(step3MarkCompleteSec||0) +
+      '秒 / 実行状態 ' + Number(step3RuntimeSec||0) + '秒 / Home ' + Number(step3HomeSec||0) +
+      '秒 / 最終設定 ' + Number(step3FinalSettingsSec||0) + '秒';
+
     sbmProcessLog_('日次処理 STEP3 改善の推移・完了処理', '完了', effectRows, measurementRecorded, finalizeElapsed,
-      '改善の推移 ' + effectRows + '件 / 今回測定 ' + measurementRecorded + '件 / 全体 ' + totalElapsed + '秒', startedText, sbmNowText_());
+      '改善の推移 ' + effectRows + '件 / 今回測定 ' + measurementRecorded + '件 / ' + step3TimingSummary + ' / 全体 ' + totalElapsed + '秒', startedText, sbmNowText_());
+
+    var tCleanup3 = new Date();
     sbmClearDailyWork_();
+    var step3CleanupSec = sbmSecondsSince_(tCleanup3);
+    try { sbmSetSetting_('DailyStep3TimingCleanupSec', String(step3CleanupSec), 'STEP3 作業シート後処理秒'); } catch(ignoreCleanupSetting) {}
 
     summary.ok = true;
     summary.effectRows = effectRows;
@@ -530,6 +575,18 @@ function sbmRunDailyFinalizeStageFromDialog() {
     summary.monitoringCount = Number(monitoringCount || 0);
     summary.finalizeElapsedSeconds = Number(finalizeElapsed || 0);
     summary.totalElapsedSeconds = Number(totalElapsed || 0);
+    summary.step3Timing = {
+      progress:Number(step3ProgressSec||0),
+      beforeHistory:Number(step3BeforeHistorySec||0),
+      effect:Number(step3EffectSec||0),
+      afterHistory:Number(step3AfterHistorySec||0),
+      summaryRead:Number(step3SummaryReadSec||0),
+      markComplete:Number(step3MarkCompleteSec||0),
+      runtime:Number(step3RuntimeSec||0),
+      home:Number(step3HomeSec||0),
+      finalSettings:Number(step3FinalSettingsSec||0),
+      cleanup:Number(step3CleanupSec||0)
+    };
     return summary;
   } catch(e) {
     var elapsedErr = sbmSecondsSince_(started);
@@ -617,12 +674,23 @@ function sbmContinueDailyUpdate_() {
 function sbmWriteDailyWorkRows_(rows) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var name = '__Daily_Update_Work';
-  var sh = ss.getSheetByName(name) || ss.insertSheet(name);
-  sh.clearContents();
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    var active = ss.getActiveSheet();
+    sh = ss.insertSheet(name);
+    try { sh.hideSheet(); } catch(ignoreHide) {}
+    try { if (active) ss.setActiveSheet(active); } catch(ignoreActive) {}
+  }
   var normalized = sbmNormalizeRowsToWidth_(rows || [], SBM_HEADERS.ARTICLE_DB.length);
   sh.getRange(1,1,1,SBM_HEADERS.ARTICLE_DB.length).setValues([SBM_HEADERS.ARTICLE_DB]);
-  if (normalized.length) sh.getRange(2,1,normalized.length,SBM_HEADERS.ARTICLE_DB.length).setValues(normalized);
-  try { sh.hideSheet(); } catch(ignore) {}
+  var oldBodyRows = Math.max(0, sh.getLastRow()-1);
+  if (normalized.length) {
+    sh.getRange(2,1,normalized.length,SBM_HEADERS.ARTICLE_DB.length).setValues(normalized);
+  }
+  if (oldBodyRows > normalized.length) {
+    sh.getRange(2+normalized.length,1,oldBodyRows-normalized.length,SBM_HEADERS.ARTICLE_DB.length).clearContent();
+  }
+  try { sh.hideSheet(); } catch(ignoreHide2) {}
 }
 
 function sbmReadDailyWorkRows_() {
@@ -633,8 +701,22 @@ function sbmReadDailyWorkRows_() {
 
 function sbmClearDailyWork_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName('__Daily_Update_Work');
-  if (sh) ss.deleteSheet(sh);
+  var name = '__Daily_Update_Work';
+  var sh = ss.getSheetByName(name);
+  if (!sh) {
+    // 初回だけ作成。以後は削除せず再利用する。
+    var active = ss.getActiveSheet();
+    sh = ss.insertSheet(name);
+    try { sh.hideSheet(); } catch(ignoreHide) {}
+    try { if (active) ss.setActiveSheet(active); } catch(ignoreActive) {}
+    return;
+  }
+  // RC8 Final QA-UAT23: シート構造を変えず、データ部だけ空にする。
+  var lastRow = sh.getLastRow();
+  if (lastRow > 1) {
+    try { sh.getRange(2,1,lastRow-1,SBM_HEADERS.ARTICLE_DB.length).clearContent(); } catch(eClear) {}
+  }
+  try { sh.hideSheet(); } catch(ignoreHide2) {}
 }
 
 function sbmHandleDailyUpdateError_(e) {

@@ -1,0 +1,19 @@
+RC8 Final QA-UAT23
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Automated verification:
+- RC8 JavaScript regression: 48/48 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Daily Processing once. Record STEP1 save and total.
+2. If this is the first UAT23 run and the work sheet had to be created, run it once more for the reusable-sheet measurement.
+3. Confirm Home no longer visibly refreshes during STEP1 / STEP1 boundary.
+4. Record STEP2 and total elapsed time.
+5. Read Process Log or Settings for STEP3:
+   history-before / effectiveness / history-after / runtime / Home / final settings / cleanup.
