@@ -1,0 +1,39 @@
+RC8 Final QA-UAT22
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+UAT21 real-sheet baseline:
+- STEP1 total: 113 sec
+- Search Console API: 1 sec
+- URL processing: 104 sec
+- Work-sheet save: 1 sec
+- STEP2 finished at about 204 sec from start
+- STEP3 finished at about 240 sec from start
+
+UAT22 fix:
+- MinImpressions is read once during STEP1 preparation and reused for all article classifications.
+- Removes hundreds of repeated Settings-sheet reads from article classification.
+- STEP1 UI now breaks processing into API / URL normalization / status-map read / article classification / sort / save.
+- STEP2 now records internal timing for DB merge / candidate selection / Today sheet write / work-state write.
+
+Expected real-sheet target for ~427 articles:
+- STEP1: 20-40 sec target.
+- Search Console API may vary independently.
+- STEP2 is still diagnostic in UAT22; its timing will guide UAT23 if needed.
+
+Automated verification:
+- RC8 JavaScript regression: 47/47 PASS
+- Python RC8 regression: NOT_RUN
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Run Daily Processing on the 427-article blog.
+2. When STEP2 begins, record:
+   STEP1 total / API / URL normalization / status read / article classification / sort / save.
+3. Continue to completion.
+4. Record STEP2 and total times.
+5. Confirm Home does not visibly rebuild during the STEP1 boundary; if it still does, note exactly when.
