@@ -29,3 +29,6 @@
 - [ ] REG-WORKSTATE-MONITOR-UNIFICATION-001: 利用者向け「改善中」は残らず、処置完了後はモニター中へ統一される。
 - [ ] REG-MEASUREMENT-WAITING-LABEL-001: 未測定の利用者表示は「測定待ち」に統一される。
 - [ ] REG-HOME-MONITOR-COUNT-002: Homeのモニター中件数が記事管理の対象件数と一致する。
+
+
+- [ ] REG-LONG-RUNNING-UX-003: HTML progress dialog must call a public Apps Script entrypoint (no trailing underscore); detailed-candidate STEP 1 must advance.
