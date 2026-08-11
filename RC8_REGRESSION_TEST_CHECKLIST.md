@@ -15,3 +15,10 @@
 - [ ] REG-HEALTH-011: 健康状態分析は軽量な記事管理コンテキストのみ読み、既定40件単位で処理する
 - [ ] REG-CONCURRENCY-001: 同一SBM内で健康診断と日次処理を同時実行させない
 - [ ] REG-CONCURRENCY-002: 別ブログで重い処理を同時実行しない旨を健康診断UIで案内する
+
+## RC8 Final QA-UAT9 — Doctor candidate handoff integrity
+- [ ] REG-DOCTOR-CANDIDATE-HANDOFF-002: checked row ArticleID/URL/title remains identical through Doctor request generation.
+- [ ] REG-DOCTOR-CANDIDATE-SNAPSHOT-GUARD-001: candidate row must match latest health snapshot; mismatch fails closed.
+- [ ] REG-DOCTOR-CANDIDATE-URGENCY-001: 緊急/重症/中等症 is propagated to Doctor request urgency and health_screening_severity.
+- [ ] REG-DOCTOR-CANDIDATE-REMOVE-001: only the successfully requested row is removed from the candidate sheet.
+- [ ] REG-UI-DOCTOR-COLOR-BLUE-001: positive metric highlighting uses light blue rather than green.

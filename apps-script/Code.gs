@@ -8933,14 +8933,7 @@ function sbmDoctorCreateAndSaveRequest_(sourceType, sourceSheet, sourceRow) {
   try {
     sbmDoctorAssertSafeToExport_();
     var context = sbmDoctorResolveContext_(sourceType, sourceSheet, sourceRow);
-    var payload = sbmDoctorBuildSingleCaseRequest_(context);
-    var validation = sbmDoctorValidateSingleCaseRequest_(payload);
-    if (!validation.valid) throw new Error(validation.errors.join('\n'));
-    var jsonText = JSON.stringify(payload, null, 2);
-    sbmDoctorRememberLastRequest_(payload);
-    sbmDoctorUpsertCaseFromRequest_(payload);
-    sbmDoctorShowCopyDialog_(payload, jsonText);
-    return {ok:true, requestId:payload.request.request_id};
+    return sbmDoctorCreateAndSaveResolvedRequest_(context);
   } catch (e) {
     try { sbmLog_('DoctorSingleCaseRequest', 'Error', String(e)); } catch (ignore) {}
     sbmAlert_('SIMS Doctor 外来診療依頼を作成できません', String(e && e.message ? e.message : e));
@@ -9050,7 +9043,9 @@ function sbmDoctorBuildSingleCaseRequest_(ctx) {
       requested_at:sbmDoctorIso_(now),
       trigger:trigger,
       chief_complaint:sbmDoctorChiefComplaint_(ctx.sourceType, judgement),
-      urgency:judgement.indexOf('悪化')>=0?'HIGH':'NORMAL',
+      urgency:ctx.candidateUrgency|| (judgement.indexOf('悪化')>=0?'HIGH':'NORMAL'),
+      health_screening_severity:ctx.candidateSeverity||null,
+      health_check_id:ctx.healthCheckId||null,
       source_sheet:ctx.sourceSheet,
       source_row:ctx.sourceRow
     },
@@ -9281,12 +9276,14 @@ function sbmDoctorWorkflowCode_(value) {
 }
 function sbmDoctorTriggerCode_(sourceType,judgement) {
   var s=String(judgement||'');
+  if (sourceType==='DETAILED_CANDIDATE') return 'SBM_HEALTH_DETAILED_DIAGNOSIS';
   if (sourceType!=='IMPROVEMENT_EFFECT') return 'SBM_MANUAL_REQUEST';
   if (s.indexOf('悪化')>=0) return 'SBM_WORSENING_DETECTED';
   if (s.indexOf('変化')>=0 || s.indexOf('維持')>=0) return 'SBM_NO_CHANGE_DETECTED';
   return 'SBM_MONITORING_REVIEW';
 }
 function sbmDoctorChiefComplaint_(sourceType,judgement) {
+  if (sourceType==='DETAILED_CANDIDATE') return 'ブログ健康診断で精密診断候補となったため、現在の状態・原因・必要な処置を詳しく診断したい。';
   if (sourceType==='IMPROVEMENT_EFFECT') return judgement?('改善の推移が「'+judgement+'」のため、原因と次の対応を診断したい。'):'改善後の推移について原因と次の対応を診断したい。';
   return 'この記事の現在の状態、低迷・重複・検索意図・今後の処置を個別診断したい。';
 }
@@ -10147,7 +10144,7 @@ function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rows,hm){
   function ratio(before,after){return before>0?(after-before)/before:null;}
   function severityRank(text){text=String(text||'');if(text.indexOf('緊急')>=0)return 3;if(text.indexOf('重症')>=0)return 2;if(text.indexOf('中等症')>=0)return 1;return 0;}
   function palette(kind,level){
-    if(kind==='good')return level>=2?['#b7e1cd','#0d652d']:['#e6f4ea','#137333'];
+    if(kind==='good')return level>=2?['#d2e3fc','#174ea6']:['#e8f0fe','#1967d2'];
     if(kind==='bad')return level>=3?['#f4c7c3','#b31412']:level===2?['#fce8e6','#a50e0e']:['#fef0e7','#b06000'];
     if(kind==='warn')return ['#fff4d6','#6b4f00'];
     if(kind==='info')return ['#e8f0fe','#174ea6'];
@@ -10211,16 +10208,16 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(){
   var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
   try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
   var cand=ss.insertSheet(candName);
-  var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL'];
+  var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL','候補キー'];
   cand.setHiddenGridlines(true);
   cand.getRange('A1:H1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
   cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Doctorメニューの「4．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
-  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm);return [false,sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),String(r[hm['記事タイトル']-1]||''),m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url];});
+  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm);var title=String(r[hm['記事タイトル']-1]||'');var sev=sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm);var key=String(id)+'|'+sbmNormalizeUrl_(url)+'|'+title;return [false,sev,title,m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url,key];});
   if(out.length)cand.getRange(7,1,out.length,out[0].length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
-  cand.setFrozenRows(6);[62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});cand.setColumnWidth(9,110);cand.setColumnWidth(10,220);try{cand.hideColumns(9,2);}catch(eHide){}
+  cand.setFrozenRows(6);[62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});cand.setColumnWidth(9,110);cand.setColumnWidth(10,220);cand.setColumnWidth(11,260);try{cand.hideColumns(9,3);}catch(eHide){}
   cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
-  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#d9ead3').setFontColor('#274e13');});sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm);try{cand.autoResizeRows(7,out.length);}catch(eResize){cand.setRowHeights(7,out.length,46);}}
+  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#e8f0fe').setFontColor('#174ea6');});sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm);try{cand.autoResizeRows(7,out.length);}catch(eResize){cand.setRowHeights(7,out.length,46);}}
   return cand;
 }
 
@@ -10235,11 +10232,44 @@ function sbmDoctorOpenDetailedCandidates(){
   sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
 }
 
+function sbmDoctorUrgencyFromCandidateSeverity_(severity){
+  var s=String(severity||'');
+  if(s.indexOf('緊急')>=0)return 'CRITICAL';
+  if(s.indexOf('重症')>=0)return 'HIGH';
+  if(s.indexOf('中等症')>=0)return 'NORMAL';
+  return 'LOW';
+}
+function sbmDoctorValidateCandidateAgainstHealthSnapshot_(articleId,url,title,severity){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
+  if(!snap||snap.getLastRow()<2)throw new Error('最新の健康診断スナップショットを確認できません。健康診断を再実行してください。');
+  var hm=sbmHeaderMap_(snap), rows=snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues();
+  var latestId=sbmDoctorLatestHealthCheckIdFromRows_(rows,hm), norm=sbmNormalizeUrl_(url||''), match=null;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    if(latestId&&String(r[hm['健康診断ID']-1]||'')!==latestId)continue;
+    var rid=String(r[hm['記事ID']-1]||'').trim(), ru=sbmNormalizeUrl_(r[hm['記事URL']-1]||''), rt=String(r[hm['記事タイトル']-1]||'').trim();
+    if(rid===String(articleId||'').trim() && ru===norm && rt===String(title||'').trim()){match=r;break;}
+  }
+  if(!match)throw new Error('選択した候補の表示内容と最新健康診断スナップショットが一致しません。誤診断防止のため停止しました。候補シートを開き直してください。');
+  var code=String(match[hm['一次検査コード']-1]||''), expected=sbmDoctorSeverityForRow_(code,String(match[hm['優先度']-1]||''),match,hm);
+  if(String(expected)!==String(severity||''))throw new Error('候補の重症度が最新健康診断と一致しません。誤診断防止のため停止しました。候補シートを開き直してください。');
+  return {row:match,code:code,severity:expected,healthCheckId:latestId};
+}
+function sbmDoctorCreateAndSaveResolvedRequest_(context){
+  var payload=sbmDoctorBuildSingleCaseRequest_(context);
+  var validation=sbmDoctorValidateSingleCaseRequest_(payload);
+  if(!validation.valid)throw new Error(validation.errors.join('\n'));
+  var jsonText=JSON.stringify(payload,null,2);
+  sbmDoctorRememberLastRequest_(payload);
+  sbmDoctorUpsertCaseFromRequest_(payload);
+  sbmDoctorShowCopyDialog_(payload,jsonText);
+  return {ok:true,requestId:payload.request.request_id,caseId:payload.case_id,articleId:payload.article.article_id};
+}
+
 function sbmDoctorCreateRequestFromDetailedCandidate(){
   try{
+    sbmDoctorAssertSafeToExport_();
     var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断候補');
-    // RC8 UX guard: 選択後に候補ビューを再生成するとチェック(TRUE)が消えるため、
-    // 依頼作成時は現在表示中の候補シートをそのまま読み取ります。
     if(!sh)throw new Error('精密診断候補がありません。先にブログ健康診断を完了してください。');
     var col=sbmDoctorReferralHeaderMap_(sh),last=sh.getLastRow();
     if(last<7)throw new Error('診断対象の記事がありません。');
@@ -10248,36 +10278,30 @@ function sbmDoctorCreateRequestFromDetailedCandidate(){
     checks.forEach(function(v,i){if(v[0]===true)selected.push(i+7);});
     if(selected.length===0)throw new Error('A列の「選択」にチェックを入れてください。');
     if(selected.length>1)throw new Error('一度に依頼できるのは1記事です。チェックを1件だけ残してください。');
-    var row=selected[0];
-    var idCol=col['記事ID']||col['ArticleID'];
-    var urlCol=col['記事URL']||col['URL'];
-    if(!idCol&&!urlCol)throw new Error('候補一覧に記事IDまたは記事URLの列がありません。ブログ健康診断を再実行してください。');
-    var articleId=idCol?String(sh.getRange(row,idCol).getDisplayValue()||'').trim():'';
-    var articleUrl=urlCol?String(sh.getRange(row,urlCol).getDisplayValue()||'').trim():'';
-    var visibleTitle=col['記事タイトル']?String(sh.getRange(row,col['記事タイトル']).getDisplayValue()||'').trim():'';
+    var row=selected[0], rowValues=sh.getRange(row,1,1,sh.getLastColumn()).getDisplayValues()[0];
+    function val(name){return col[name]?String(rowValues[col[name]-1]||'').trim():'';}
+    var articleId=val('記事ID')||val('ArticleID'), articleUrl=val('記事URL')||val('URL'), visibleTitle=val('記事タイトル'), severity=val('重症度'), candidateKey=val('候補キー');
+    if(!articleId||!articleUrl||!visibleTitle)throw new Error('選択行の記事ID・URL・タイトルを取得できません。候補シートを開き直してください。');
+    var expectedKey=String(articleId)+'|'+sbmNormalizeUrl_(articleUrl)+'|'+visibleTitle;
+    if(candidateKey&&candidateKey!==expectedKey)throw new Error('選択行の候補識別情報が一致しません。誤診断防止のため停止しました。候補シートを開き直してください。');
+    var health=sbmDoctorValidateCandidateAgainstHealthSnapshot_(articleId,articleUrl,visibleTitle,severity);
     var db=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);if(!db)throw new Error('記事管理シートがありません。');
-    var hm=sbmHeaderMap_(db),vals=db.getLastRow()>1?db.getRange(2,1,db.getLastRow()-1,db.getLastColumn()).getValues():[],dbRow=0;
-    var dbIdCol=hm['ArticleID']||hm['記事ID'],dbUrlCol=hm['記事URL']||hm['URL'],dbTitleCol=hm['記事タイトル']||hm['H1タイトル'];
-    var targetNorm=articleUrl?sbmNormalizeUrl_(articleUrl):'';
+    var hm=sbmHeaderMap_(db), vals=db.getLastRow()>1?db.getRange(2,1,db.getLastRow()-1,db.getLastColumn()).getValues():[], dbRow=0;
+    var dbIdCol=hm['ArticleID']||hm['記事ID'],dbUrlCol=hm['記事URL']||hm['URL'],dbTitleCol=hm['記事タイトル']||hm['H1タイトル'],targetNorm=sbmNormalizeUrl_(articleUrl);
     for(var i=0;i<vals.length;i++){
-      var id=dbIdCol?String(vals[i][dbIdCol-1]||'').trim():'';
-      var url=dbUrlCol?sbmNormalizeUrl_(vals[i][dbUrlCol-1]||''):'';
-      // RC8 Final QA: IDとURLが両方ある場合は両方一致を必須にする。
-      // OR照合だと片方の古い値・重複値だけで別記事を選ぶ危険がある。
-      var identityMatch=articleId&&targetNorm?(id===articleId&&url===targetNorm):(articleId?id===articleId:(targetNorm&&url===targetNorm));
-      if(identityMatch){dbRow=i+2;break;}
+      var id=dbIdCol?String(vals[i][dbIdCol-1]||'').trim():'',url=dbUrlCol?sbmNormalizeUrl_(vals[i][dbUrlCol-1]||''):'';
+      if(id===articleId&&url===targetNorm){dbRow=i+2;break;}
     }
-    if(!dbRow)throw new Error('選択した候補と記事管理の識別情報が一致しません。誤診断防止のため依頼を作成しません。記事ID：'+(articleId||'未取得')+' / URL：'+(articleUrl||'未取得'));
-    if(visibleTitle&&dbTitleCol){
-      var dbTitle=String(db.getRange(dbRow,dbTitleCol).getDisplayValue()||'').trim();
-      if(dbTitle&&dbTitle!==visibleTitle)throw new Error('選択した候補の記事タイトルと記事管理のタイトルが一致しません。誤診断防止のため停止しました。候補：'+visibleTitle+' / 記事管理：'+dbTitle);
-    }
-    var result=sbmDoctorCreateAndSaveRequest_('ARTICLE_LIST',db,dbRow);
+    if(!dbRow)throw new Error('選択した候補と記事管理のArticleID＋URLが一致しません。誤診断防止のため依頼を作成しません。');
+    var dbTitle=dbTitleCol?String(db.getRange(dbRow,dbTitleCol).getDisplayValue()||'').trim():'';
+    if(dbTitle&&dbTitle!==visibleTitle)throw new Error('選択した候補の記事タイトルと記事管理のタイトルが一致しません。誤診断防止のため停止しました。');
+    var context=sbmDoctorResolveContext_('ARTICLE_LIST',db,dbRow);
+    context.sourceType='DETAILED_CANDIDATE';context.sourceSheet=sh.getName();context.sourceRow=row;context.candidateSeverity=severity;context.candidateUrgency=sbmDoctorUrgencyFromCandidateSeverity_(severity);context.healthCheckId=health.healthCheckId;
+    var result=sbmDoctorCreateAndSaveResolvedRequest_(context);
     if(result&&result.ok){
-      // 精密診断候補は未処理だけの入口。Doctor依頼を作成した時点で候補ビューから外します。
-      try{sbmDoctorRemoveCandidateArticle_(articleId,articleUrl);}catch(eRemoveCandidate){}
-    }else{
-      try{sh.getRange(row,col['選択']).setValue(false);}catch(eResetCheck){}
+      // 作成した依頼のArticleIDが選択行と一致することを最後に確認してから、選択した行だけを候補から外す。
+      if(String(result.articleId||'')!==articleId)throw new Error('生成されたDoctor依頼の記事IDが選択行と一致しません。候補は変更していません。');
+      sh.deleteRow(row);
     }
     return result;
   }catch(e){sbmAlert_('Doctor診断依頼を作成できません',String(e.message||e));}

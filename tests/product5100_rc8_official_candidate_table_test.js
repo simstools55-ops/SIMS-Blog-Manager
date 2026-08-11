@@ -4,8 +4,8 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const dist=fs.readFileSync(path.join(root,'distribution','Code.gs'),'utf8');
 function ok(c,m){if(!c){console.error('FAIL:',m);process.exit(1)}else console.log('PASS:',m)}
-ok(code.includes("headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL']"),'visible eight-column candidate comparison plus hidden identity');
-ok(code.includes("cand.hideColumns(9,2)"),'ArticleID and URL stay hidden');
+ok(code.includes("headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL','候補キー']"),'visible eight-column candidate comparison plus hidden identity');
+ok(code.includes("cand.hideColumns(9,3)"),'ArticleID, URL and candidate key stay hidden');
 ok(code.includes("function sbmDoctorCandidateMetrics_"),'structured metrics helper exists');
 ok(code.includes("trend:'長期流入低下'")&&code.includes("trend:'直近流入急減'"),'trend categories are structured');
 ok(code.includes("m.clicks,m.impressions,m.position,m.ctr"),'four performance metrics rendered separately');

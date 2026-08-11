@@ -1,0 +1,18 @@
+RC8 Final QA-UAT9
+
+Doctor candidate handoff integrity: PASS (static regression)
+- exact ArticleID + normalized URL match required
+- visible title cross-check required
+- candidate identity key required
+- latest health snapshot cross-check required
+- health severity propagated into request
+- explicit health-candidate trigger preserved
+- generated request ArticleID checked before row removal
+- selected row alone removed after success
+- positive metric color changed to light blue
+
+RC8 JavaScript regression suite: PASS (34 product5100_rc8*.js files)
+Targeted Python tests: PASS (8)
+Release audit: PASS
+Code.gs / distribution/Code.gs sync: PASS
+distribution file names: ASCII only
