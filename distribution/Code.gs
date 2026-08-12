@@ -821,7 +821,7 @@ function sbmHandleRepairNextAction_(action) { return sbmHandleRepairNextAction(a
 /** 日常画面へ移動した際、必要時だけ開く管理シートを再び隠します。 */
 function sbmHideOptionalAdminSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  [SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.PROCESS_LOG].forEach(function(name){
+  [SBM_SHEETS.USER_SETTINGS, SBM_SHEETS.PROCESS_LOG, SBM_SHEETS.PROFILE_LOG].forEach(function(name){
     var sh = ss.getSheetByName(name);
     if (sh && ss.getActiveSheet().getName() !== name) { try { sh.hideSheet(); } catch(e) {} }
   });
@@ -4230,13 +4230,24 @@ function sbmCreateProfiler_(processName) {
 function sbmAppendProfileRows_(rows) {
   try {
     if (!rows || !rows.length) return;
-    var sh = sbmGetOrCreateSheet_(SBM_SHEETS.PROFILE_LOG);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var activeBefore = ss.getActiveSheet();
+    var activeName = activeBefore ? activeBefore.getName() : '';
+    var sh = ss.getSheetByName(SBM_SHEETS.PROFILE_LOG);
+    if (!sh) sh = ss.insertSheet(SBM_SHEETS.PROFILE_LOG);
     var wasEmpty = sh.getLastRow() < 1;
     sbmEnsureHeaders_(sh, SBM_HEADERS.PROFILE_LOG);
     var startRow = sh.getLastRow() + 1;
     sh.getRange(startRow, 1, rows.length, SBM_HEADERS.PROFILE_LOG.length).setValues(rows);
     sh.getRange(startRow, 7, rows.length, 1).setNumberFormat('0.0');
     if (wasEmpty) sbmStyleProfileLogSheet_(sh);
+
+    // RC8 Final Hotfix 8: profiler is an internal sheet. Creating/writing it must never
+    // steal the user's active sheet during daily processing.
+    if (activeBefore && activeName !== SBM_SHEETS.PROFILE_LOG) {
+      try { ss.setActiveSheet(activeBefore); } catch(ignoreRestoreProfileActive) {}
+      try { sh.hideSheet(); } catch(ignoreHideProfile) {}
+    }
   } catch(e) { console.error(e); }
 }
 
@@ -4796,8 +4807,12 @@ function sbmCompleteImprovementRow_(row, fromEdit) {
  */
 function sbmBuildTodayImprovementSheet_() {
   var sh = sbmGetOrCreateSheet_(SBM_SHEETS.TODAY);
-  sh.clear();
-  try { sh.getRange(1,1,sh.getMaxRows(),sh.getMaxColumns()).clearDataValidations(); } catch(eClearDv) {}
+  // RC8 Final Hotfix 8: avoid clearing the entire 1000-row sheet. Today uses at most
+  // 10 candidate rows plus a guide row, so clear only the previously used/small working area.
+  var clearRows = Math.max(15, sh.getLastRow() || 0);
+  var clearCols = Math.max(SBM_HEADERS.TODAY.length, sh.getLastColumn() || 0);
+  sh.getRange(1,1,Math.min(clearRows, sh.getMaxRows()),Math.min(clearCols, sh.getMaxColumns())).clear();
+  try { sh.getRange(1,1,Math.min(clearRows, sh.getMaxRows()),Math.min(clearCols, sh.getMaxColumns())).clearDataValidations(); } catch(eClearDv) {}
   sh.getRange(1,1,1,SBM_HEADERS.TODAY.length).setValues([SBM_HEADERS.TODAY]);
   sh.setFrozenRows(1);
   sh.getRange(1,1,1,SBM_HEADERS.TODAY.length)
@@ -4879,9 +4894,41 @@ function sbmRefreshTodayQueueFast_() {
     });
   }
 
-  sbmSetSetting_('TodayRecommendationJson',JSON.stringify(kept.slice(0,10)),'完了除外・不足補充済みの今日の改善候補');
-  sbmSetSetting_('DisplayedImprovementCount',String(Math.min(desired,kept.length)),'今日の改善に表示している件数');
-  sbmWriteTodayRecommendations_(kept,Math.min(desired,kept.length));
+  var target = kept.slice(0,10);
+  var targetShown = Math.min(desired,target.length);
+
+  // RC8 Final Hotfix 8: if the visible queue already matches the saved queue,
+  // opening Today is display-only. Do not rebuild formatting/check boxes on every open.
+  var visibleMatches = false;
+  if (th['記事URL']) {
+    var currentUrls = [];
+    if (today.getLastRow() > 1) {
+      var currentN = today.getLastRow() - 1;
+      var currentVals = today.getRange(2,th['記事URL'],currentN,1).getDisplayValues();
+      for (var k2=0;k2<currentVals.length;k2++) {
+        var cu = sbmNormalizeUrl_(currentVals[k2][0]||'');
+        if (cu) currentUrls.push(cu);
+      }
+    }
+    var expectedUrls = target.slice(0,targetShown).map(function(c){return sbmNormalizeUrl_(c&&c.url||'');}).filter(function(x){return !!x;});
+    visibleMatches = currentUrls.length === expectedUrls.length;
+    if (visibleMatches) {
+      for (var m=0;m<expectedUrls.length;m++) {
+        if (currentUrls[m] !== expectedUrls[m]) { visibleMatches=false; break; }
+      }
+    }
+  }
+
+  var savedJson = JSON.stringify(saved.slice(0,10));
+  var targetJson = JSON.stringify(target);
+  if (savedJson !== targetJson) {
+    sbmSetSetting_('TodayRecommendationJson',targetJson,'完了除外・不足補充済みの今日の改善候補');
+  }
+  var currentShown = Number(sbmGetSetting_('DisplayedImprovementCount',0)||0);
+  if (currentShown !== targetShown) {
+    sbmSetSetting_('DisplayedImprovementCount',String(targetShown),'今日の改善に表示している件数');
+  }
+  if (!visibleMatches) sbmWriteTodayRecommendations_(target,targetShown);
   return true;
 }
 
@@ -8653,14 +8700,8 @@ function sbmWriteTodayRecommendations_(candidates, count) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TODAY);
   if (!sh) return;
 
-  var lastCol = Math.max(sh.getLastColumn(), SBM_HEADERS.TODAY.length);
-  var maxRows = Math.max(sh.getMaxRows(), 2);
-
-  // 見出し以外を完全に初期化
-  var body = sh.getRange(2, 1, maxRows - 1, lastCol);
-  body.clearContent();
-  body.clearDataValidations();
-  body.clearFormat();
+  // sbmBuildTodayImprovementSheet_() already clears the small working area.
+  // Do not clear/format all 1000 rows again here.
 
   var shown = (candidates || []).slice(0, Math.min(Number(count || 0), (candidates || []).length));
 
