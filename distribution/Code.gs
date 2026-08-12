@@ -9279,12 +9279,10 @@ function onOpen() {
     .addSeparator()
     .addItem('初回セットアップ','sbmStartInitialSetup')
     .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
-    .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
+    .addItem('記事一覧を最新にする','sbmSupplementNewArticlesManual')
     .addItem('シートの作成・修復','sbmInitializeSheets')
-    .addItem('設定を開く','sbmOpenUserSettings')
+    .addItem('詳細設定を開く','sbmOpenUserSettings')
     .addSeparator()
-    .addItem('セットアップ画面を開く','sbmOpenSetup')
-    .addItem('Editorial Platformの状態','sbmPlatformShowStatus')
     .addItem('バージョン情報','sbmShowVersionInfo')
     .addToUi();
 

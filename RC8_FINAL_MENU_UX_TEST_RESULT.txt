@@ -1,0 +1,10 @@
+RC8 Final Menu UX Polish
+Result: PASS / real-sheet visual confirmation remains
+
+Verified:
+- JavaScript syntax: PASS
+- apps-script/distribution Code.gs sync: PASS
+- New menu labels: PASS
+- Old/redundant menu labels absent from menu definitions: PASS
+- Core menu entries retained: PASS
+- Product logic intentionally unchanged
