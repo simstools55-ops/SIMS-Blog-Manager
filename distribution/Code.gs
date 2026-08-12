@@ -2961,33 +2961,49 @@ function sbmSafeArticleTitleCell_(value, url) {
 
 var SBM_UAT44_PROFILE_ = null;
 
-function sbmCleanDataListText_(value, url) {
+function sbmCleanDataListText_(value, url, blogNameOverride) {
   var __allStarted=new Date();
-  value = String(value || '').trim();
-  url = sbmNormalizeUrl_(url || '');
-  if (!value) {
-    if (SBM_UAT44_PROFILE_) {
+  value=String(value||'').trim();
+  url=sbmNormalizeUrl_(url||'');
+
+  if(!value){
+    if(SBM_UAT44_PROFILE_){
       SBM_UAT44_PROFILE_.cleanCalls++;
-      SBM_UAT44_PROFILE_.cleanTotalMs += new Date().getTime()-__allStarted.getTime();
+      SBM_UAT44_PROFILE_.cleanTotalMs+=new Date().getTime()-__allStarted.getTime();
     }
     return '';
   }
+
+  var blogName='';
   var __settingStarted=new Date();
-  var blogName = String(sbmGetSetting_('BlogName','') || '').trim();
-  var __settingMs=new Date().getTime()-__settingStarted.getTime();
-  if (SBM_UAT44_PROFILE_) {
-    SBM_UAT44_PROFILE_.cleanCalls++;
-    SBM_UAT44_PROFILE_.settingCalls++;
-    SBM_UAT44_PROFILE_.settingMs += __settingMs;
+
+  if(blogNameOverride!==undefined&&blogNameOverride!==null){
+    blogName=String(blogNameOverride||'').trim();
+  }else{
+    blogName=String(sbmGetSetting_('BlogName','')||'').trim();
   }
+
+  var __settingMs=new Date().getTime()-__settingStarted.getTime();
+
+  if(SBM_UAT44_PROFILE_){
+    SBM_UAT44_PROFILE_.cleanCalls++;
+    if(blogNameOverride===undefined||blogNameOverride===null){
+      SBM_UAT44_PROFILE_.settingCalls++;
+      SBM_UAT44_PROFILE_.settingMs+=__settingMs;
+    }
+  }
+
   var result=value;
-  if (blogName && value === blogName) result='';
-  else if (url && value === url) result='';
-  else if (/^https?:\/\//i.test(value)) result='';
-  else if (/^\d+(\.\d+)?$/.test(value)) result='';
-  else if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(value)) result='';
-  else if (/^1900[-\/]0?1[-\/]0?\d/.test(value)) result='';
-  if (SBM_UAT44_PROFILE_) SBM_UAT44_PROFILE_.cleanTotalMs += new Date().getTime()-__allStarted.getTime();
+  if(blogName&&value===blogName)result='';
+  else if(url&&value===url)result='';
+  else if(/^https?:\/\//i.test(value))result='';
+  else if(/^\d+(\.\d+)?$/.test(value))result='';
+  else if(/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(value))result='';
+  else if(/^1900[-\/]0?1[-\/]0?\d/.test(value))result='';
+
+  if(SBM_UAT44_PROFILE_){
+    SBM_UAT44_PROFILE_.cleanTotalMs+=new Date().getTime()-__allStarted.getTime();
+  }
   return result;
 }
 
@@ -3433,6 +3449,8 @@ function sbmFetchArticleMetaInfoBatch_(urls, options) {
   options=options||{};
   var bypassCache=options.bypassCache===true;
   SBM_UAT44_PROFILE_={cleanCalls:0,settingCalls:0,settingMs:0,cleanTotalMs:0};
+  var setupSettings=sbmGetSettingsMap_();
+  var batchBlogName=String(setupSettings['BlogName']||'').trim();
   urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
   var results=new Array(urls.length),requests=[],requestIndexes=[];
   var cache=CacheService.getDocumentCache();
@@ -3501,16 +3519,16 @@ function sbmFetchArticleMetaInfoBatch_(urls, options) {
             diag.titleTagMs=new Date().getTime()-t0.getTime();
 
             t0=new Date();
-            var articleTitle=sbmPickArticleTitle_(html,titleTag,info.url);
+            var articleTitle=sbmPickArticleTitle_(html,titleTag,info.url,batchBlogName);
             diag.pickTitleMs=new Date().getTime()-t0.getTime();
 
             t0=new Date();
-            var cleanH1=sbmCleanDataListText_(articleTitle||'',info.url);
-            var cleanTitle=sbmCleanDataListText_(titleTag||'',info.url);
+            var cleanH1=sbmCleanDataListText_(articleTitle||'',info.url,batchBlogName);
+            var cleanTitle=sbmCleanDataListText_(titleTag||'',info.url,batchBlogName);
             diag.cleanTitleMs=new Date().getTime()-t0.getTime();
 
             t0=new Date();
-            var description=sbmCleanDataListText_(sbmExtractDescription_(html)||'',info.url);
+            var description=sbmCleanDataListText_(sbmExtractDescription_(html)||'',info.url,batchBlogName);
             diag.descriptionMs=new Date().getTime()-t0.getTime();
 
             obj={h1:cleanH1,titleTag:cleanTitle,metaDescription:description};
@@ -3702,7 +3720,7 @@ function sbmShowSetupArticleFetchDiagnostics(){
       '件 / fetchAll待機 '+sec(s.fetchAllElapsedMs)+' / 記事取得全体 '+sec(s.totalElapsedMs)+' / キャッシュ診断 '+(s.bypassCache?'無視':'通常')+'<br>'+
       '<b>HTML後処理 合計 '+sec(pt.parseMs)+'</b> ｜ getContentText '+sec(pt.contentTextMs)+' ｜ titleタグ '+sec(pt.titleTagMs)+
       ' ｜ 記事タイトル判定 '+sec(pt.pickTitleMs)+' ｜ タイトル整形 '+sec(pt.cleanTitleMs)+' ｜ description '+sec(pt.descriptionMs)+' ｜ キャッシュ保存 '+sec(pt.cachePutMs)+'<br>'+ 
-      '<b>UAT44・整形内部</b> ｜ cleanDataList呼出 '+Number((s.uat44Profile||{}).cleanCalls||0)+'回 ｜ BlogName設定参照 '+Number((s.uat44Profile||{}).settingCalls||0)+'回 / '+sec((s.uat44Profile||{}).settingMs)+' ｜ cleanDataList全体 '+sec((s.uat44Profile||{}).cleanTotalMs)+'</div>';
+      '<b>UAT45・整形内部</b> ｜ cleanDataList呼出 '+Number((s.uat44Profile||{}).cleanCalls||0)+'回 ｜ BlogName設定参照 '+Number((s.uat44Profile||{}).settingCalls||0)+'回 / '+sec((s.uat44Profile||{}).settingMs)+' ｜ cleanDataList全体 '+sec((s.uat44Profile||{}).cleanTotalMs)+'</div>';
 
     var sorted=rows.slice().sort(function(a,b){return Number(b.parseMs||0)-Number(a.parseMs||0);});
     html+='<table><thead><tr><th>#</th><th>URL</th><th>HTTP</th><th>通信個別</th><th>後処理</th><th>本文文字列化</th><th>title</th><th>記事タイトル判定</th><th>整形</th><th>description</th><th>cache</th></tr></thead><tbody>';
@@ -3823,26 +3841,14 @@ function sbmExtractDescription_(html) {
   return md ? sbmCleanHtmlText_(md) : '';
 }
 
-function sbmPickArticleTitle_(html, titleTag, url) {
-  html = String(html || '');
-  titleTag = sbmCleanHtmlText_(titleTag || '');
-  var candidates = [];
-  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'entry-title'));
-  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'post-title'));
-  candidates.push(sbmExtractTitleBySelector_(html, 'h1', 'article-title'));
-  candidates.push(sbmExtractMetaContent_(html, 'property', 'og:title'));
-  candidates.push(sbmExtractMetaContent_(html, 'name', 'twitter:title'));
-  candidates.push(sbmExtractTitleByClass_(html, 'entry-title'));
-  candidates.push(sbmExtractTitleByClass_(html, 'post-title'));
-  candidates.push(sbmExtractTitleByClass_(html, 'article-title'));
-  candidates.push(sbmExtractArticleH1_(html));
-  candidates.push(sbmStripSiteNameFromTitle_(titleTag, url));
-  candidates.push(sbmExtractFirstH1_(html));
-  for (var i=0; i<candidates.length; i++) {
-    var c = sbmCleanDataListText_(sbmCleanHtmlText_(candidates[i] || ''), url);
-    if (c && !sbmLooksLikeSiteName_(c, titleTag, url)) return c;
+function sbmPickArticleTitle_(html, titleTag, url, blogNameOverride) {
+  var firstH1=sbmExtractFirstH1_(html);
+  var articleH1=sbmExtractArticleH1_(html);
+  var candidate=articleH1||firstH1||'';
+  if(!candidate||sbmLooksLikeSiteName_(candidate,titleTag,url)){
+    candidate=sbmStripSiteNameFromTitle_(titleTag,url);
   }
-  return '';
+  return sbmCleanDataListText_(candidate,url,blogNameOverride);
 }
 
 function sbmExtractMetaContent_(html, attrName, attrValue) {

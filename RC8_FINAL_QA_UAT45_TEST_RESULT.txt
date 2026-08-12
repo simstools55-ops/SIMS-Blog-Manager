@@ -1,0 +1,30 @@
+RC8 Final QA-UAT45
+Result: PASS / REAL-SHEET UAT REQUIRED
+
+Optimization:
+- BlogName read once per metadata batch.
+- Cached BlogName reused in hot cleanup path.
+- Fallback retained for all other callers.
+
+Automated verification:
+- RC8 JavaScript regression: 70/70 PASS
+- Syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+UAT44 baseline:
+- Article retrieval total: 22.3s
+- HTML post-processing: 20.9s
+- BlogName setting reads: 96 / 19.5s
+
+Real-sheet UAT:
+Run STEP5診断のみ実行, then STEP5の記事取得診断を確認.
+Expected:
+- BlogName settings reads in optimized path: 0 or near 0
+- settings-read time: near 0
+- HTML post-processing: sharply reduced
+- article retrieval total: sharply reduced
+
+Next:
+RC8 Final Cleanup removes temporary diagnostics/test menus/instrumentation across all performance UAT areas.
