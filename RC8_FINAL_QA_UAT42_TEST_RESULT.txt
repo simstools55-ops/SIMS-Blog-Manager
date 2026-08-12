@@ -1,0 +1,38 @@
+RC8 Final QA-UAT42
+Result: PASS / REAL-SHEET UAT REQUIRED
+
+Purpose:
+Profile STEP5 local HTML post-processing after UAT41 showed fetchAll network wait was only about one second.
+
+Measured per URL:
+- getContentText
+- title tag extraction
+- article title selection
+- title cleanup
+- description extraction/cleanup
+- cache write
+- total HTML post-processing
+
+Compatibility:
+- UAT40 network diagnostic explanation retained.
+- Normal fetchAll rows still show no invented per-URL network time.
+- Fallback individual time remains displayable.
+
+Safety:
+- Diagnostic-only runner does not update Article DB.
+- No setup state changes.
+- Retrieval semantics unchanged.
+
+Automated verification:
+- RC8 JavaScript regression: 67/67 PASS
+- Syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Run STEP5診断のみ実行.
+3. Open STEP5の記事取得診断を確認.
+4. Capture the green summary and first several rows.
+5. Report article fetch / query fetch / total.

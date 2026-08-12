@@ -3425,7 +3425,7 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
       var cached=cache.get(key);
       if(cached){
         var c=JSON.parse(cached);
-        c._diag={source:'cache',elapsedMs:0,status:200,url:url};
+        c._diag={source:'cache',elapsedMs:0,status:200,url:url,parseMs:0};
         results[i]=c;
         return;
       }
@@ -3449,49 +3449,80 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
       batchElapsedMs=new Date().getTime()-batchStarted.getTime();
       responses=[];
     }
+
     requestIndexes.forEach(function(info,j){
       var obj={h1:'',titleTag:'',metaDescription:''},status=0,source='fetchAll';
+      var diag={source:source,status:0,url:info.url,contentTextMs:0,titleTagMs:0,pickTitleMs:0,cleanTitleMs:0,descriptionMs:0,cachePutMs:0,parseMs:0};
       try{
         var res=responses[j];
         if(res){
           status=res.getResponseCode();
+          diag.status=status;
           if(status>=200&&status<400){
+            var parseStarted=new Date();
+
+            var t0=new Date();
             var html=res.getContentText()||'';
+            diag.contentTextMs=new Date().getTime()-t0.getTime();
+
+            t0=new Date();
             var titleTag=sbmExtractTitleTag_(html);
+            diag.titleTagMs=new Date().getTime()-t0.getTime();
+
+            t0=new Date();
             var articleTitle=sbmPickArticleTitle_(html,titleTag,info.url);
-            obj={
-              h1:sbmCleanDataListText_(articleTitle||'',info.url),
-              titleTag:sbmCleanDataListText_(titleTag||'',info.url),
-              metaDescription:sbmCleanDataListText_(sbmExtractDescription_(html)||'',info.url)
-            };
+            diag.pickTitleMs=new Date().getTime()-t0.getTime();
+
+            t0=new Date();
+            var cleanH1=sbmCleanDataListText_(articleTitle||'',info.url);
+            var cleanTitle=sbmCleanDataListText_(titleTag||'',info.url);
+            diag.cleanTitleMs=new Date().getTime()-t0.getTime();
+
+            t0=new Date();
+            var description=sbmCleanDataListText_(sbmExtractDescription_(html)||'',info.url);
+            diag.descriptionMs=new Date().getTime()-t0.getTime();
+
+            obj={h1:cleanH1,titleTag:cleanTitle,metaDescription:description};
+
+            t0=new Date();
             try{cache.put(info.key,JSON.stringify(obj),21600);}catch(ignorePut){}
+            diag.cachePutMs=new Date().getTime()-t0.getTime();
+
+            diag.parseMs=new Date().getTime()-parseStarted.getTime();
           }
         }else{
           source='fallback';
           var oneStarted=new Date();
           obj=sbmFetchArticleMetaInfo_(info.url)||obj;
-          obj._diag={source:source,elapsedMs:new Date().getTime()-oneStarted.getTime(),status:status,url:info.url};
+          diag={source:source,elapsedMs:new Date().getTime()-oneStarted.getTime(),status:status,url:info.url,parseMs:0};
         }
       }catch(oneError){
         source='fallback';
         try{
           var fallbackStarted=new Date();
           obj=sbmFetchArticleMetaInfo_(info.url)||obj;
-          obj._diag={source:source,elapsedMs:new Date().getTime()-fallbackStarted.getTime(),status:status,url:info.url};
+          diag={source:source,elapsedMs:new Date().getTime()-fallbackStarted.getTime(),status:status,url:info.url,parseMs:0};
         }catch(ignoreFallback){}
       }
-      if(!obj._diag)obj._diag={source:source,elapsedMs:null,status:status,url:info.url};
+      diag.source=source;
+      obj._diag=diag;
       results[info.index]=obj;
     });
   }
 
   var totalElapsedMs=new Date().getTime()-preparedAt.getTime();
+  var totals={contentTextMs:0,titleTagMs:0,pickTitleMs:0,cleanTitleMs:0,descriptionMs:0,cachePutMs:0,parseMs:0};
+  results.forEach(function(r){
+    var d=(r&&r._diag)||{};
+    Object.keys(totals).forEach(function(k){totals[k]+=Number(d[k]||0);});
+  });
   results._diag={
     totalUrls:urls.length,
     networkUrls:requestIndexes.length,
     cacheHits:urls.length-requestIndexes.length,
     fetchAllElapsedMs:batchElapsedMs,
-    totalElapsedMs:totalElapsedMs
+    totalElapsedMs:totalElapsedMs,
+    parseTotals:totals
   };
   return results;
 }
@@ -3506,14 +3537,17 @@ function sbmSetupRecordArticleFetchDiagnostics_(urls, metas) {
         url:String(url||''),
         source:String(d.source||'fetchAll'),
         status:Number(d.status||0),
-        elapsedMs:d.elapsedMs===null||d.elapsedMs===undefined?'':Number(d.elapsedMs||0)
+        elapsedMs:d.elapsedMs===null||d.elapsedMs===undefined?'':Number(d.elapsedMs||0),
+        parseMs:Number(d.parseMs||0),
+        contentTextMs:Number(d.contentTextMs||0),
+        titleTagMs:Number(d.titleTagMs||0),
+        pickTitleMs:Number(d.pickTitleMs||0),
+        cleanTitleMs:Number(d.cleanTitleMs||0),
+        descriptionMs:Number(d.descriptionMs||0),
+        cachePutMs:Number(d.cachePutMs||0)
       });
     });
-    var payload={
-      at:sbmNowText_(),
-      summary:summary,
-      rows:rows
-    };
+    var payload={at:sbmNowText_(),summary:summary,rows:rows};
     PropertiesService.getDocumentProperties().setProperty('SBM_SETUP_ARTICLE_FETCH_DIAG',JSON.stringify(payload));
   }catch(ignoreDiag){}
 }
@@ -3614,29 +3648,33 @@ function sbmShowSetupStep5DiagnosticOnlyDialog() {
 function sbmShowSetupArticleFetchDiagnostics(){
   var data={};
   try{data=JSON.parse(PropertiesService.getDocumentProperties().getProperty('SBM_SETUP_ARTICLE_FETCH_DIAG')||'{}')||{};}catch(ignoreJson){}
-  var s=data.summary||{},rows=data.rows||[];
+  var s=data.summary||{},rows=data.rows||[],pt=s.parseTotals||{};
   var esc=function(v){return String(v===undefined||v===null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  var sec=function(ms){return (Math.round(Number(ms||0)/100)/10)+'秒';};
   var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>'+
     'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124}h2{margin:0 0 12px;color:#0b8043}'+
-    '.box{background:#eef7f1;border-left:4px solid #0f9d58;padding:10px 12px;margin-bottom:12px}'+
-    'table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #dadce0;padding:7px;text-align:left;vertical-align:top}th{background:#f8f9fa}'+
-    '.note{margin-top:12px;color:#5f6368;font-size:12px;line-height:1.5}</style></head><body><h2>STEP5・記事取得診断</h2>';
+    '.box{background:#eef7f1;border-left:4px solid #0f9d58;padding:10px 12px;margin-bottom:12px;line-height:1.7}'+
+    'table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #dadce0;padding:7px;text-align:left;vertical-align:top}th{background:#f8f9fa;position:sticky;top:0}'+
+    '.note{margin-top:12px;color:#5f6368;font-size:12px;line-height:1.5}.hot{font-weight:bold;color:#b31412}</style></head><body><h2>STEP5・記事取得診断</h2>';
   if(!rows.length){
-    html+='<p>保存済みの診断結果はありません。UAT40でSTEP5を実行してください。</p>';
+    html+='<p>保存済みの診断結果はありません。STEP5診断のみ実行を行ってください。</p>';
   }else{
     html+='<div class="box">対象 '+esc(s.totalUrls||rows.length)+'件 / ネットワーク取得 '+esc(s.networkUrls||0)+'件 / キャッシュ '+esc(s.cacheHits||0)+
-      '件 / fetchAll待機 '+Math.round(Number(s.fetchAllElapsedMs||0)/1000)+'秒 / 記事取得全体 '+Math.round(Number(s.totalElapsedMs||0)/1000)+'秒</div>';
-    html+='<table><thead><tr><th>#</th><th>URL</th><th>取得元</th><th>HTTP</th><th>個別時間</th></tr></thead><tbody>';
-    rows.forEach(function(r,i){
-      html+='<tr><td>'+(i+1)+'</td><td>'+esc(r.url)+'</td><td>'+esc(r.source)+'</td><td>'+esc(r.status||'')+'</td><td>'+
-        (r.elapsedMs===''?'—':(Math.round(Number(r.elapsedMs)/1000*10)/10+'秒'))+'</td></tr>';
+      '件 / fetchAll待機 '+sec(s.fetchAllElapsedMs)+' / 記事取得全体 '+sec(s.totalElapsedMs)+'<br>'+
+      '<b>HTML後処理 合計 '+sec(pt.parseMs)+'</b> ｜ getContentText '+sec(pt.contentTextMs)+' ｜ titleタグ '+sec(pt.titleTagMs)+
+      ' ｜ 記事タイトル判定 '+sec(pt.pickTitleMs)+' ｜ タイトル整形 '+sec(pt.cleanTitleMs)+' ｜ description '+sec(pt.descriptionMs)+' ｜ キャッシュ保存 '+sec(pt.cachePutMs)+'</div>';
+
+    var sorted=rows.slice().sort(function(a,b){return Number(b.parseMs||0)-Number(a.parseMs||0);});
+    html+='<table><thead><tr><th>#</th><th>URL</th><th>HTTP</th><th>通信個別</th><th>後処理</th><th>本文文字列化</th><th>title</th><th>記事タイトル判定</th><th>整形</th><th>description</th><th>cache</th></tr></thead><tbody>';
+    sorted.forEach(function(r,i){
+      html+='<tr><td>'+(i+1)+'</td><td>'+esc(r.url)+'</td><td>'+esc(r.status||'')+'</td><td>'+(r.elapsedMs===''?'—':sec(r.elapsedMs))+'</td><td class="'+(Number(r.parseMs||0)>=1000?'hot':'')+'">'+sec(r.parseMs)+'</td>'+
+        '<td>'+sec(r.contentTextMs)+'</td><td>'+sec(r.titleTagMs)+'</td><td>'+sec(r.pickTitleMs)+'</td><td>'+sec(r.cleanTitleMs)+'</td><td>'+sec(r.descriptionMs)+'</td><td>'+sec(r.cachePutMs)+'</td></tr>';
     });
     html+='</tbody></table>';
-    html+='<div class="note">fetchAll は複数URLを並列実行しますが、Google Apps Scriptから各URL単独の通信時間は取得できません。'+
-      'そのため、fetchAll取得行の「個別時間」は推測せず「—」と表示します。HTTPエラーやfallbackがあるURL、キャッシュ利用状況、バッチ全体の待機時間からボトルネックを判定します。</div>';
+    html+='<div class="note">fetchAll は複数URLを並列実行しますが、Google Apps Scriptから各URL単独の通信時間は取得できません。fetchAll取得の個別通信時間は推測しません。UAT42ではfetchAll後のローカル処理を実測しています。表は後処理時間の長い順です。記事DBは変更しません。</div>';
   }
   html+='</body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(900).setHeight(620),'STEP5・記事取得診断');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(1180).setHeight(680),'STEP5・記事取得診断');
 }
 
 function sbmFetchMainQueriesForUrlsBatch_(urls) {
