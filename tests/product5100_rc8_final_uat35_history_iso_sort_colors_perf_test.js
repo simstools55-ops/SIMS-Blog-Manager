@@ -14,13 +14,13 @@ must(prep.includes("sh.getRange(2,hm['改善日'],dateValues.length,1).setValues
 must(prep.includes(".sort({column:hm['改善日'],ascending:false})"),'シート側で改善日降順');
 
 const polish=fn('sbmPolishImprovementHistoryView_');
-must(polish.includes('SBM_HISTORY_VIEW_STYLE_UAT35_'),'静的レイアウトは一度だけ');
+must(polish.includes('SBM_HISTORY_VIEW_STYLE_UAT37_'),'静的レイアウトはUAT37仕様で一度だけ');
 must(polish.includes("'改善概要':390"),'改善概要390px');
 must(polish.includes("v==='大きく改善'"),'改善方向の文字色');
 must(polish.includes("v==='見直し候補'||v==='悪化'"),'見直し/悪化の文字色');
 must(polish.includes("v==='測定中'"),'測定中の文字色');
 must(polish.includes("v==='測定待ち'"),'測定待ちの文字色');
-must(polish.includes("v==='完了'"),'完了の文字色');
-must(polish.includes("getRangeList(doneRanges).setBackground('#f1f3f4')"),'完了行の薄灰背景');
+must(polish.includes("v==='改善完了'"),'改善完了の文字色');
+must(polish.includes("getRangeList(doneRanges).setBackground('#f1f3f4')"),'最終判定済み行の薄灰背景');
 must(!polish.includes('sh.getRange(1,c).getDisplayValue()'),'ヘッダー逐次読込なし');
 console.log('UAT35 history ISO/sort/colors/performance: PASS');

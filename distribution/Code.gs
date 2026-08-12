@@ -5795,7 +5795,7 @@ function sbmAppendImprovementHistory_(data,row,before) {
   var planSnapshot = sbmBuildImprovementPlanSnapshot_(data.article_url, data.article_id);
   var record={
     '選択':false,'改善日':String(data.completed_at||'').trim()||sbmNowText_(),'記事タイトル':articleTitle,'改善概要':data.summary,'改善経路':data.improvement_method||'通常改善','使用AI':data.ai_name||'',
-    '1週':'測定待ち','2週':'測定待ち','3週':'測定待ち','4週':'測定待ち','最終判定':'測定待ち','状態':'モニター中',
+    '1週':'測定待ち','2週':'測定待ち','3週':'測定待ち','4週':'測定待ち','最終判定':'経過観察中','状態':'モニター中',
     'ArticleID':data.article_id,'記事URL':data.article_url,'変更箇所':changed,'変更後タイトル':data.new_values.article_title,
     '変更後SEOタイトル':data.new_values.seo_title,'変更後メタディスクリプション':data.new_values.description,'メインクエリ':data.new_values.main_query,
     '改善規模':data.improvement_type,'確信度':data.confidence,'期待CTR効果':String((data.expected_effect||{}).ctr||''),
@@ -5901,35 +5901,63 @@ function sbmBuildFinalAssessment_(judgment, ctrDelta, posDelta, clickDelta) {
   return {summary:summary,proposal:proposal};
 }
 
+
+function sbmFinalImprovementOutcome_(judgment, complete){
+  // 利用者向け「最終判定」の正本。
+  // 途中評価（改善/見直し候補など）をそのまま最終結論には使わない。
+  if(!complete)return '経過観察中';
+
+  var v=String(judgment||'').trim();
+  if(v==='大きく改善'||v==='改善'||v==='改善傾向')return '改善完了';
+
+  // 4週間観察しても改善が十分でない、または悪化方向なら再処置対象。
+  if(v==='要確認'||v==='見直し候補'||v==='元に戻す検討'||v==='悪化'||
+     v==='経過観察'||v==='変化小')return '再改善必要';
+
+  // データ不足など、4週間経過しても確定できない場合は観察継続。
+  if(v==='データ不足'||v==='測定待ち'||v==='未測定'||v==='未判定'||v==='測定中'||v==='')return '経過観察中';
+
+  // 未知の旧ラベルは安全側で再改善対象にせず、観察継続。
+  return '経過観察中';
+}
+
+
 function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt,metrics) {
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), hm=sbmHeaderMap_(sh);
   var historyId=String(historyRow['改善履歴ID']||'').trim(), articleId=String(historyRow['ArticleID']||'').trim();
   var values=sh.getDataRange().getValues(), heads=values.shift().map(String), target=0;
   var idIdx=heads.indexOf('改善履歴ID'), articleIdx=heads.indexOf('ArticleID'), dateIdx=heads.indexOf('改善日');
   for(var i=0;i<values.length;i++){
-    var id= idIdx>=0 ? String(values[i][idIdx]||'').trim() : '';
-    if(historyId && id===historyId){target=i+2;break;}
-    if(!historyId && articleIdx>=0 && String(values[i][articleIdx]||'').trim()===articleId && dateIdx>=0 && String(values[i][dateIdx]||'')===String(historyRow['改善日']||'')){target=i+2;break;}
+    var id=idIdx>=0?String(values[i][idIdx]||'').trim():'';
+    if(historyId&&id===historyId){target=i+2;break;}
+    if(!historyId&&articleIdx>=0&&String(values[i][articleIdx]||'').trim()===articleId&&dateIdx>=0&&String(values[i][dateIdx]||'')===String(historyRow['改善日']||'')){target=i+2;break;}
   }
   if(!target)return {recorded:false,count:0};
-  var current=sbmRowRecord_(sh,target), state=sbmHistoryMeasurementState_(current);
+
+  var current=sbmRowRecord_(sh,target),state=sbmHistoryMeasurementState_(current);
   if(state.complete)return {recorded:false,count:4,complete:true};
-  var n=state.count+1, dateCol=hm[n+'回目測定日時'], judgeCol=hm[n+'週'], commentCol=hm[n+'回目SIMS寸評'];
+
+  var n=state.count+1,dateCol=hm[n+'回目測定日時'],judgeCol=hm[n+'週'],commentCol=hm[n+'回目SIMS寸評'];
   if(!dateCol||!judgeCol||!commentCol)return {recorded:false,count:state.count};
+
   var when=new Date(measuredAt.getTime());
   var observation=sbmBuildWeeklyObservation_(n,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta,metrics.impDelta);
   sh.getRange(target,dateCol).setValue(when).setNumberFormat('yyyy/M/d');
   sh.getRange(target,judgeCol).setValue(judgment);
   sh.getRange(target,commentCol).setValue(observation);
+
+  // 状態列は内部互換用として保持するが、利用者画面には表示しない。
   if(hm['状態'])sh.getRange(target,hm['状態']).setValue(n>=4?'完了':'モニター中');
+
   if(n>=4){
     var final=sbmBuildFinalAssessment_(judgment,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta);
-    if(hm['最終判定'])sh.getRange(target,hm['最終判定']).setValue(judgment);
+    if(hm['最終判定'])sh.getRange(target,hm['最終判定']).setValue(sbmFinalImprovementOutcome_(judgment,true));
     if(hm['最終総括'])sh.getRange(target,hm['最終総括']).setValue(final.summary);
     if(hm['最終改善提案'])sh.getRange(target,hm['最終改善提案']).setValue(final.proposal);
   }else if(hm['最終判定']){
-    sh.getRange(target,hm['最終判定']).setValue('測定待ち');
+    sh.getRange(target,hm['最終判定']).setValue('経過観察中');
   }
+
   SpreadsheetApp.flush();
   return {recorded:true,count:n,complete:n>=4,observation:observation};
 }
@@ -6016,7 +6044,7 @@ function sbmPrepareImprovementHistoryViewData_(){
     var route=routeIdx>=0?String(row[routeIdx]||'').trim():'';
     if(route.indexOf('Doctor→')!==0)return;
     var current=row[dateIdx];
-    if(!(current instanceof Date) || isNaN(current.getTime()))badDoctorNeeded=true;
+    if(!(current instanceof Date)||isNaN(current.getTime()))badDoctorNeeded=true;
   });
 
   var caseByHistoryId={},caseByArticle={};
@@ -6044,7 +6072,7 @@ function sbmPrepareImprovementHistoryViewData_(){
     }
   }
 
-  var changed=0,dateValues=[];
+  var changed=0,dateValues=[],finalValues=[];
   vals.forEach(function(row){
     var current=row[dateIdx],route=routeIdx>=0?String(row[routeIdx]||'').trim():'';
     var d=sbmParseImprovementHistoryDate_(current);
@@ -6071,14 +6099,35 @@ function sbmPrepareImprovementHistoryViewData_(){
     }
 
     if(d){
-      if(!(current instanceof Date) || isNaN(current.getTime()) || Math.abs(current.getTime()-d.getTime())>1000)changed++;
+      if(!(current instanceof Date)||isNaN(current.getTime())||Math.abs(current.getTime()-d.getTime())>1000)changed++;
       dateValues.push([d]);
     }else{
       dateValues.push([current]);
     }
+
+    // 既存行も最終判定の新しい意味へ移行する。
+    if(hm['最終判定']){
+      var count=0,latest='測定待ち';
+      for(var w=1;w<=4;w++){
+        var dateCol=hm[w+'回目測定日時'];
+        var weekCol=hm[w+'週'];
+        var measured=dateCol?row[dateCol-1]:'';
+        var weekJudge=weekCol?String(row[weekCol-1]||'').trim():'';
+        if(measured!==''&&measured!==null&&measured!==undefined){
+          count=w;
+          latest=weekJudge||latest;
+        }
+      }
+      var outcome=sbmFinalImprovementOutcome_(latest,count>=4);
+      finalValues.push([outcome]);
+      if(String(row[hm['最終判定']-1]||'').trim()!==outcome)changed++;
+    }
   });
 
   sh.getRange(2,hm['改善日'],dateValues.length,1).setValues(dateValues).setNumberFormat('yyyy/M/d');
+  if(hm['最終判定']&&finalValues.length){
+    sh.getRange(2,hm['最終判定'],finalValues.length,1).setValues(finalValues);
+  }
   sh.getRange(2,1,lastRow-1,lastCol).sort({column:hm['改善日'],ascending:false});
 
   return {changed:changed,rows:lastRow-1};
@@ -6104,11 +6153,13 @@ function sbmPolishImprovementHistoryView_(){
   var hm={};headers.forEach(function(h,i){if(h)hm[h]=i+1;});
 
   var props=PropertiesService.getDocumentProperties();
-  var styleKey='SBM_HISTORY_VIEW_STYLE_UAT35_'+String(sh.getSheetId());
+  // UAT37で表示列が変わるため、新しいスタイルキーで一度だけ再構築。
+  var styleKey='SBM_HISTORY_VIEW_STYLE_UAT37_'+String(sh.getSheetId());
   var styleReady=props.getProperty(styleKey)==='1';
 
   if(!styleReady){
-    var visible={'選択':1,'改善日':1,'記事タイトル':1,'改善概要':1,'改善経路':1,'1週':1,'2週':1,'3週':1,'4週':1,'最終判定':1,'状態':1};
+    // 状態列は利用者向け画面から廃止。最終判定が観察状況と最終結論を兼ねる。
+    var visible={'選択':1,'改善日':1,'記事タイトル':1,'改善概要':1,'改善経路':1,'1週':1,'2週':1,'3週':1,'4週':1,'最終判定':1};
 
     sh.setFrozenRows(1);
     try{sh.showColumns(1,sh.getMaxColumns());}catch(ignoreShow){}
@@ -6138,7 +6189,7 @@ function sbmPolishImprovementHistoryView_(){
 
     var widths={
       '選択':48,'改善日':100,'記事タイトル':280,'改善概要':390,'改善経路':105,
-      '1週':68,'2週':68,'3週':68,'4週':68,'最終判定':92,'状態':82
+      '1週':68,'2週':68,'3週':68,'4週':68,'最終判定':110
     };
     Object.keys(widths).forEach(function(h){
       if(hm[h])sh.setColumnWidth(hm[h],widths[h]);
@@ -6161,23 +6212,23 @@ function sbmPolishImprovementHistoryView_(){
   if(hm['改善概要'])sh.getRange(2,hm['改善概要'],n,1).setWrap(true).setVerticalAlignment('top');
   if(hm['改善経路'])sh.getRange(2,hm['改善経路'],n,1).setHorizontalAlignment('center').setWrap(false);
 
-  var firstJudge=hm['1週'],lastJudge=hm['状態'];
+  var firstJudge=hm['1週'],lastJudge=hm['最終判定'];
   if(firstJudge&&lastJudge&&lastJudge>=firstJudge){
     var judgeRange=sh.getRange(2,firstJudge,n,lastJudge-firstJudge+1);
-    var values=judgeRange.getDisplayValues();
-    var colors=[],weights=[];
+    var values=judgeRange.getDisplayValues(),colors=[],weights=[];
 
     function textStyle(v){
       v=String(v||'').trim();
+      if(v==='改善完了')return ['#0b8043','bold'];
+      if(v==='再改善必要')return ['#b31412','bold'];
+      if(v==='経過観察中')return ['#174ea6','bold'];
       if(v==='大きく改善')return ['#0b8043','bold'];
       if(v==='改善'||v==='改善傾向')return ['#0d652d','bold'];
       if(v==='経過観察'||v==='変化小')return ['#7a4f01','bold'];
       if(v==='要確認')return ['#b06000','bold'];
       if(v==='見直し候補'||v==='悪化'||v==='元に戻す検討')return ['#b31412','bold'];
       if(v==='データ不足')return ['#674ea7','bold'];
-      if(v==='モニター中'||v==='測定中')return ['#174ea6','bold'];
-      if(v==='完了')return ['#5f6368','bold'];
-      if(v==='測定待ち'||v==='未測定'||v==='未判定')return ['#80868b','normal'];
+      if(v==='測定待ち'||v==='未測定'||v==='未判定'||v==='測定中')return ['#80868b','normal'];
       return ['#202124','normal'];
     }
 
@@ -6191,14 +6242,16 @@ function sbmPolishImprovementHistoryView_(){
     judgeRange.setFontColors(colors).setFontWeights(weights).setHorizontalAlignment('center').setWrap(true);
   }
 
-  if(hm['状態']){
-    var states=sh.getRange(2,hm['状態'],n,1).getDisplayValues();
+  // 最終判定が出た行は「処置サイクルが一区切り」として薄いグレー背景。
+  if(hm['最終判定']){
+    var finals=sh.getRange(2,hm['最終判定'],n,1).getDisplayValues();
     var doneRanges=[],start=-1;
-    for(var i=0;i<states.length;i++){
-      var done=String(states[i][0]||'').trim()==='完了';
+    for(var i=0;i<finals.length;i++){
+      var v=String(finals[i][0]||'').trim();
+      var done=(v==='改善完了'||v==='再改善必要');
       if(done&&start<0)start=i;
-      if((!done||i===states.length-1)&&start>=0){
-        var end=(done&&i===states.length-1)?i:i-1;
+      if((!done||i===finals.length-1)&&start>=0){
+        var end=(done&&i===finals.length-1)?i:i-1;
         doneRanges.push('A'+(start+2)+':'+sbmColumnLetter_(lastCol)+(end+2));
         start=-1;
       }
@@ -6280,7 +6333,7 @@ function sbmUpdateEffectivenessCore_(showAlert){
     var currentJudgment=sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta,impDelta,elapsed,beforeClicks,beforeImp,currentImp);
     if(dueReached&&!state.complete){
       var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now,{ctrDelta:ctrDelta,posDelta:posDelta,clickDelta:clickDelta,impDelta:impDelta});
-      if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'週']=currentJudgment;h[(rec.count)+'回目SIMS寸評']=rec.observation;h['最終判定']=rec.complete?currentJudgment:'測定待ち';h['状態']=rec.complete?'完了':'モニター中';}
+      if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'週']=currentJudgment;h[(rec.count)+'回目SIMS寸評']=rec.observation;h['最終判定']=sbmFinalImprovementOutcome_(currentJudgment,rec.complete);h['状態']=rec.complete?'完了':'モニター中';}
       state=sbmHistoryMeasurementState_(h);due=sbmNextWeeklyDueDate_(h);
     }
     var judgment=state.count>0?state.latestJudgment:'測定待ち';
@@ -6419,7 +6472,7 @@ function sbmLegacyHistoryObjects_(){
     out.push({
       '選択':false,'改善日':improveDate,'記事タイトル':o['記事タイトル']||a['記事タイトル']||'',
       '改善概要':o['改善内容']||'','改善経路':'通常改善','使用AI':'','1回目測定日時':reviewDate,
-      '1週':o['状態']==='完了'?'完了':'測定待ち','2週':'測定待ち','3週':'測定待ち','4週':'測定待ち','最終判定':o['状態']==='完了'?'完了':'測定待ち','状態':o['状態']==='完了'?'完了':'モニター中','ArticleID':a['ArticleID']||'','記事URL':url,
+      '1週':o['状態']==='完了'?'完了':'測定待ち','2週':'測定待ち','3週':'測定待ち','4週':'測定待ち','最終判定':o['状態']==='完了'?sbmFinalImprovementOutcome_(o['4週']||o['最終判定'],true):'経過観察中','状態':o['状態']==='完了'?'完了':'モニター中','ArticleID':a['ArticleID']||'','記事URL':url,
       '変更箇所':o['修正内容']||'','変更後タイトル':'','変更後SEOタイトル':'','変更後メタディスクリプション':'',
       'メインクエリ':o['メインクエリ']||a['メインクエリ']||'','改善規模':'','確信度':'','期待CTR効果':'',
       '期待クリック効果':'','次のアクション':'monitor','維持した項目':'','作業時間（分）':o['所要時間']||'',
@@ -6616,7 +6669,7 @@ function sbmRepairImprovementHistoryData_(){
     if(aid) articleCounts[aid]=(articleCounts[aid]||0)+1;
     var measured=0; for(var wi=1;wi<=4;wi++){if(o[wi+'回目測定日時'])measured=wi;}
     if(!o['状態'])o['状態']=measured>=4?'完了':'モニター中';
-    if(!o['最終判定'])o['最終判定']=measured>=4?(o['4週']||'完了'):'測定待ち';
+    if(!o['最終判定'])o['最終判定']=sbmFinalImprovementOutcome_(o['4週']||'',measured>=4);
     for(var wj=1;wj<=4;wj++){if(!o[wj+'週'])o[wj+'週']='測定待ち';}
   });
 
@@ -7365,9 +7418,10 @@ function sbmRebuildImprovementHistoryList_() {
       if (hm['最終判定'] && hm['改善履歴ID']) {
         var historyId = String(row[hm['改善履歴ID'] - 1] || '').trim();
         if (historyId && effectByHistoryId[historyId]) {
-          if (String(row[hm['状態'] - 1] || '') === '完了') row[hm['最終判定'] - 1] = effectByHistoryId[historyId];
+          var isComplete=String(row[hm['状態'] - 1] || '') === '完了';
+          row[hm['最終判定'] - 1] = sbmFinalImprovementOutcome_(effectByHistoryId[historyId],isComplete);
         } else if (!String(row[hm['最終判定'] - 1] || '').trim()) {
-          row[hm['最終判定'] - 1] = '測定待ち';
+          row[hm['最終判定'] - 1] = '経過観察中';
         }
       }
     });
@@ -7595,7 +7649,7 @@ function sbmMigrateLegacyMonitoringLabels_(){
   try{
     var hs=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
     if(hs&&hs.getLastRow()>1){
-      var hh=sbmHeaderMap_(hs), judgmentNames=['1週','2週','3週','4週','最終判定'];
+      var hh=sbmHeaderMap_(hs), judgmentNames=['1週','2週','3週','4週'];
       judgmentNames.forEach(function(name){
         var c=hh[name];if(!c)return;
         var rg=hs.getRange(2,c,hs.getLastRow()-1,1),vals=rg.getValues(),changed=false;
@@ -7605,6 +7659,21 @@ function sbmMigrateLegacyMonitoringLabels_(){
         });
         if(changed)rg.setValues(vals);
       });
+      var finalCol=hh['最終判定'];
+      if(finalCol){
+        var finalRg=hs.getRange(2,finalCol,hs.getLastRow()-1,1),finalVals=finalRg.getValues(),finalChanged=false;
+        var stateColForFinal=hh['状態'];
+        var stateValsForFinal=stateColForFinal?hs.getRange(2,stateColForFinal,hs.getLastRow()-1,1).getValues():[];
+        var week4Col=hh['4週'];
+        var week4Vals=week4Col?hs.getRange(2,week4Col,hs.getLastRow()-1,1).getValues():[];
+        finalVals.forEach(function(r,idx){
+          var complete=stateValsForFinal.length?String(stateValsForFinal[idx][0]||'').trim()==='完了':false;
+          var basis=week4Vals.length?String(week4Vals[idx][0]||'').trim():String(r[0]||'').trim();
+          var outcome=sbmFinalImprovementOutcome_(basis,complete);
+          if(String(r[0]||'').trim()!==outcome){r[0]=outcome;finalChanged=true;}
+        });
+        if(finalChanged)finalRg.setValues(finalVals);
+      }
       var stateCol=hh['状態'];
       if(stateCol){
         var stateRg=hs.getRange(2,stateCol,hs.getLastRow()-1,1),stateVals=stateRg.getValues(),stateChanged=false;

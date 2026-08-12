@@ -16,7 +16,7 @@ must(prep.includes("dateValues.push([d])"),'改善日はDate型へ統一');
 const polish=fn('sbmPolishImprovementHistoryView_');
 must(polish.includes("'改善概要':390"),'改善概要幅を約30%拡大');
 must(polish.includes("setNumberFormat('yyyy/M/d')"),'改善日の表示書式を統一');
-must(polish.includes("==='完了'"),'完了行を判定');
+must(polish.includes("done=(v==='改善完了'||v==='再改善必要')"),'最終判定済み行を判定');
 must(polish.includes("setBackground('#f1f3f4')"),'完了行を薄いグレー表示');
 must(polish.includes("var headers=sh.getRange(1,1,1,lastCol).getDisplayValues()[0]"),'ヘッダーは一括取得');
 must(!polish.includes("sh.getRange(1,c).getDisplayValue()"),'列ごとのヘッダー読込を廃止');

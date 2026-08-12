@@ -21,9 +21,9 @@ must(migrate.includes("if(v==='未測定'||v==='測定待ち'||v==='測定中'){
 
 const weekly=fn('sbmRecordWeeklyMeasurement_');
 must(weekly.includes("n>=4?'完了':'モニター中'"),'途中状態はモニター中');
-must(weekly.includes("setValue('測定待ち')"),'途中の最終判定は測定待ち');
+must(weekly.includes("setValue('経過観察中')"),'途中の最終判定は経過観察中');
 must(!weekly.includes("setValue('測定中')"),'新規処理で測定中を生成しない');
 
-must(code.includes("'最終判定':'測定待ち','状態':'モニター中'"),'新規履歴の初期状態をモニター中');
-must(code.includes("h['最終判定']=rec.complete?currentJudgment:'測定待ち';h['状態']=rec.complete?'完了':'モニター中';"),'測定同期も統一');
+must(code.includes("'最終判定':'経過観察中','状態':'モニター中'"),'新規履歴の最終判定は経過観察中');
+must(code.includes("h['最終判定']=sbmFinalImprovementOutcome_(currentJudgment,rec.complete);h['状態']=rec.complete?'完了':'モニター中';"),'測定同期も正本最終判定へ統一');
 console.log('UAT36 Home labels / measurement-state semantics: PASS');

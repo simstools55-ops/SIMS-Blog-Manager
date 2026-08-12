@@ -1,0 +1,35 @@
+RC8 Final QA-UAT37
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Final judgment is now the single user-facing lifecycle conclusion:
+- Before a conclusive 4-week result: 経過観察中
+- 4-week result with clear improvement: 改善完了
+- 4-week result with insufficient improvement / worsening: 再改善必要
+- Data不足 / inconclusive after 4 weeks: 経過観察中
+
+Weekly columns remain detailed intermediate evaluations.
+
+The 状態 column is hidden from the user-facing Improvement History view.
+Its underlying data remains only for backward compatibility.
+
+Existing rows are migrated on view.
+Completed/finalized rows are shaded based on 最終判定, not 状態.
+
+Automated verification:
+- RC8 JavaScript regression: 62/62 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Open 改善履歴.
+3. Confirm 状態 column is not visible.
+4. Confirm rows still in weeks 1-3 show 最終判定=経過観察中.
+5. Confirm completed positive histories show 改善完了.
+6. Confirm completed weak/worse histories show 再改善必要.
+7. Confirm weekly columns still retain detailed labels such as 改善, 要確認, 見直し候補.
+8. Confirm finalized rows remain lightly shaded.
+9. Confirm display speed remains acceptable.
