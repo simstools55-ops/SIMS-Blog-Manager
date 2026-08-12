@@ -1,0 +1,16 @@
+SIMS-Blog-Manager Product 5.10.0-RC8 Final Hotfix 9
+Static / regression inspection result
+
+PASS: daily update guard uses sbmDoctorIsHealthRunActivelyRunning_().
+PASS: COMPLETED health run does not block daily update.
+PASS: RETRYABLE_ERROR health run does not block daily update.
+PASS: stale running health run (>30 minutes since updatedAt/lastSuccessAt/createdAt) does not block daily update.
+PASS: recent running health run (<=30 minutes) blocks daily update.
+PASS: stale health run is not deleted; restart evidence remains available.
+PASS: normal improvement feedback dialog disables register button immediately.
+PASS: normal improvement feedback dialog changes button label to '登録中...'.
+PASS: normal improvement feedback dialog shows inline busy spinner/status.
+PASS: registration failure restores the register button.
+PASS: Doctor->Writer treatment registration also changes button label to '登録中...'.
+PASS: Hotfix 8 Today-view/profile-sheet changes remain present.
+PASS: package filenames are ASCII-only.
