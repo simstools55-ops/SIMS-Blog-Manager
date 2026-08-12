@@ -1,0 +1,28 @@
+RC8 Final QA-UAT36
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Changes:
+- Home: 今日の改善 -> 改善候補.
+- Home order: 改善候補 -> モニター中 -> 改善確認完了 -> 未取得記事.
+- History judgement columns: future/unmeasured -> 測定待ち.
+- History 状態: active observation -> モニター中; after 4 measurements -> 完了.
+- Legacy 未測定/測定中 labels are migrated on refresh.
+- New processing no longer creates 測定中.
+
+Automated verification:
+- RC8 JavaScript regression: 61/61 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Confirm Home shows 改善候補.
+3. Confirm Home order is 改善候補 -> モニター中 -> 改善確認完了 -> 未取得記事.
+4. Open 改善履歴.
+5. Confirm 1週〜4週 / 最終判定 use 測定待ち for future measurements.
+6. Confirm 状態 uses モニター中 until four measurements complete.
+7. Confirm completed histories remain 完了.
+8. Confirm no visible 測定中 remains.
