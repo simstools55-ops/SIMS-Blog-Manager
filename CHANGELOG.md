@@ -1,3 +1,10 @@
+## 5.10.0-RC8.9
+- Version display/identity synchronized across Home, VERSION, product identity, and both Code.gs copies.
+- Adopted `major.minor.revision` for stable releases; RC validation uses `-RC<candidate>.<revision>`.
+- Preserved Hotfix9 fixes for stale health-run blocking and Writer registration progress feedback.
+- Preserved Hotfix8 fixes for internal processing-profile visibility and Today-view redraw reduction.
+- Distribution Code.gs is regenerated from apps-script/Code.gs and hash-checked before packaging.
+
 ## 5.10.0-RC8 Final QA-UAT13
 - 精密診断候補STEP 2から重いDoctor/Writer履歴自己修復・効果測定再計算を分離。
 - 記事管理・Doctor Cases・健康診断スナップショットを一括読込し、候補除外をキャッシュ化。

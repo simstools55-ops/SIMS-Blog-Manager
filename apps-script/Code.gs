@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.0-RC8';
+const SBM_VERSION = '5.10.0-RC8.9';
 // Product 5.10.0-RC8: staged health check + final Doctor UI + monitoring workflow baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -919,7 +919,7 @@ function sbmMigrateRc3Headers_() {
 }
 
 function sbmEnsureDefaultSettings_() {
-  sbmSetSettingIfEmpty_('Version', SBM_VERSION, 'システムバージョン');
+  sbmSetSetting_('Version', SBM_VERSION, 'システムバージョン');
   sbmSetSettingIfEmpty_('BlogName', '', '管理するブログ名');
   sbmSetSettingIfEmpty_('BlogUrl', '', 'ブログのトップページURL');
   sbmSetSettingIfEmpty_('SiteID', '', 'SIMS製品間でサイトを識別するID');

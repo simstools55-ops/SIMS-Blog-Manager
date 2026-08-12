@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const dist=fs.readFileSync(path.join(root,'distribution','Code.gs'),'utf8');
 function ok(cond,msg){if(!cond){console.error('FAIL:',msg);process.exit(1)}}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'RC8 version');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8.9';"),'RC8 version');
 ok(code.includes('改善中の記事｜推移'),'Home monitor heading');
 ok(code.includes('function sbmHomeJudgmentStyle_'),'Home judgment shared colors');
 ok(code.includes("value === '大きく改善'"),'positive judgment color');

@@ -1,7 +1,7 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
 function ok(v,m){if(!v)throw new Error(m)}
-ok(code.includes("const SBM_VERSION = '5.10.0-RC8';"),'version');
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8.9';"),'version');
 ok(code.includes("const SBM_SHARED_VERSION = '3.5.0';"),'shared version');
 ok(code.includes('Doctor may express treatment through actions_permitted'),'adapter policy');
 ok(code.includes('actions_permitted'),'permitted mapping');

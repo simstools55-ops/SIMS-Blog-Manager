@@ -1,6 +1,8 @@
-# SIMS-Blog-Manager Product 5.10.0-RC8 URL Canonicalization Fix
+# SIMS-Blog-Manager Product 5.10.0-RC8.9
 
-- Search Console/CMSの末尾スラッシュ差を同一記事として扱うURL Canonical Keyを強化。
-- 記事DB、今日の改善、改善履歴、改善の推移、Doctor系運用シートのURLを共通形式へ一度だけ移行。
-- 記事DB・改善ブリーフ・改善完了処理に残っていたURL直接比較をCanonical比較へ修正。
-- `/1238/` と `/1238` がDoctor→Writer→SBMの同期で別記事扱いされないことをRC8回帰テストへ追加。
+- Version management now uses `major.minor.revision`; RC validation adds a prerelease suffix such as `RC8.9`.
+- Home displays the complete running version (`v5.10.0-RC8.9`).
+- `VERSION`, `PRODUCT_IDENTITY.json`, `apps-script/Code.gs`, and `distribution/Code.gs` are synchronized.
+- Stale health-check runs no longer block daily processing; only a genuinely active recent run does.
+- Writer result registration shows `登録中...` immediately and prevents duplicate clicks.
+- The processing profile sheet remains internal, and Today view avoids unnecessary redraws when there is no change.
