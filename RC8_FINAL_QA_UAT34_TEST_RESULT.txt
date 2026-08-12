@@ -1,0 +1,36 @@
+RC8 Final QA-UAT34
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+UAT33 feedback:
+- History open ~30 sec.
+- Doctor dates restored but formatting inconsistent.
+- Improvement summary should be ~30% wider.
+- Doctor rows appeared at bottom instead of global date order.
+- Completed rows need visible distinction.
+
+UAT34:
+- Batch-read headers and Doctor Case data.
+- Normalize improvement dates to Date values and yyyy/M/d formatting.
+- Sort all history rows by improvement date descending regardless of route.
+- Expand 改善概要 from 300px to 390px.
+- Shade 状態=完了 rows light gray.
+- Keep 1週〜4週, 最終判定, 状態 visible.
+- No full history rebuild, effect recalculation, or autoResizeRows on open.
+
+Automated verification:
+- RC8 JavaScript regression: 59/59 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Open 改善履歴 and record display time.
+3. Confirm all rows are globally sorted by 改善日 descending.
+4. Confirm Doctor dates use the same yyyy/M/d format/alignment as normal rows.
+5. Confirm 改善概要 is ~30% wider.
+6. Confirm completed rows are shaded light gray.
+7. Confirm 1週〜4週, 最終判定, 状態 remain visible and readable.

@@ -5975,85 +5975,103 @@ function sbmArrangeUserSheets_() {
 
 
 
-function sbmRepairDoctorHistoryDates_(){
+function sbmPrepareImprovementHistoryViewData_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
-  if(!sh||sh.getLastRow()<2)return 0;
-  var hm=sbmHeaderMap_(sh);
-  if(!hm['改善日']||!hm['改善経路'])return 0;
+  if(!sh||sh.getLastRow()<2)return {changed:0,rows:0};
 
-  var lastRow=sh.getLastRow(),lastCol=sh.getLastColumn();
+  var lastRow=sh.getLastRow(),lastCol=sh.getLastColumn(),hm=sbmHeaderMap_(sh);
+  if(!hm['改善日'])return {changed:0,rows:lastRow-1};
+
   var vals=sh.getRange(2,1,lastRow-1,lastCol).getValues();
   var caseByHistoryId={},caseByArticle={};
-  var caseSh=ss.getSheetByName(SBM_SHEETS.DOCTOR_CASES);
 
+  // Doctor日付補完に必要なCase情報は1回だけまとめて読む。
+  var caseSh=ss.getSheetByName(SBM_SHEETS.DOCTOR_CASES);
   if(caseSh&&caseSh.getLastRow()>1){
     var chm=sbmHeaderMap_(caseSh);
     var cvals=caseSh.getRange(2,1,caseSh.getLastRow()-1,caseSh.getLastColumn()).getValues();
     cvals.forEach(function(r){
       var hid=chm['改善履歴ID']?String(r[chm['改善履歴ID']-1]||'').trim():'';
       var aid=chm['記事ID']?String(r[chm['記事ID']-1]||'').trim():'';
-      var raw=chm['Writer結果JSON']?String(r[chm['Writer結果JSON']-1]||'').trim():'';
-      var updated=chm['更新日時']?r[chm['更新日時']-1]:'';
-      var date='';
+      if(!hid&&!aid)return;
+      var date='',raw=chm['Writer結果JSON']?String(r[chm['Writer結果JSON']-1]||'').trim():'';
       if(raw){
         try{
           var o=JSON.parse(raw);
           date=String(o.completed_at||o.completedAt||'').trim();
         }catch(ignoreJson){}
       }
-      if(!date&&updated)date=updated;
+      if(!date&&chm['更新日時'])date=String(r[chm['更新日時']-1]||'').trim();
       var info={date:date};
       if(hid)caseByHistoryId[hid]=info;
       if(aid)caseByArticle[aid]=info;
     });
   }
 
-  var changed=0;
+  var changed=0,dateIdx=hm['改善日']-1,routeIdx=hm['改善経路']?hm['改善経路']-1:-1;
   vals.forEach(function(row){
-    var route=String(row[hm['改善経路']-1]||'').trim();
-    if(route.indexOf('Doctor→')!==0)return;
-    var current=row[hm['改善日']-1];
-    if(current!==''&&current!==null)return;
+    var current=row[dateIdx],d=sbmParseDate_(current);
 
-    var date='';
-    if(hm['AI改善結果JSON']){
-      var raw=String(row[hm['AI改善結果JSON']-1]||'').trim();
-      if(raw){
-        try{
-          var o=JSON.parse(raw);
-          date=String(o.completed_at||o.completedAt||'').trim();
-        }catch(ignoreRaw){}
+    // 旧Doctor行だけ、空欄なら保存済み結果から復元。
+    if(!d && (current===''||current===null) && routeIdx>=0){
+      var route=String(row[routeIdx]||'').trim();
+      if(route.indexOf('Doctor→')===0){
+        var date='';
+        if(hm['AI改善結果JSON']){
+          var raw=String(row[hm['AI改善結果JSON']-1]||'').trim();
+          if(raw){
+            try{
+              var o=JSON.parse(raw);
+              date=String(o.completed_at||o.completedAt||'').trim();
+            }catch(ignoreRaw){}
+          }
+        }
+        if(!date){
+          var hid=hm['改善履歴ID']?String(row[hm['改善履歴ID']-1]||'').trim():'';
+          var aid=hm['ArticleID']?String(row[hm['ArticleID']-1]||'').trim():'';
+          var info=(hid&&caseByHistoryId[hid])||(aid&&caseByArticle[aid])||null;
+          if(info)date=String(info.date||'').trim();
+        }
+        d=sbmParseDate_(date);
+        if(d){row[dateIdx]=d;changed++;}
       }
-    }
-    if(!date){
-      var hid=hm['改善履歴ID']?String(row[hm['改善履歴ID']-1]||'').trim():'';
-      var aid=hm['ArticleID']?String(row[hm['ArticleID']-1]||'').trim():'';
-      var info=(hid&&caseByHistoryId[hid])||(aid&&caseByArticle[aid])||null;
-      if(info)date=String(info.date||'').trim();
-    }
-
-    if(date){
-      var d=sbmParseDate_(date);
-      row[hm['改善日']-1]=d||date;
+    }else if(d && !(current instanceof Date)){
+      // 通常改善・Doctor改善を含め、改善日は全行Date型へ統一。
+      row[dateIdx]=d;
       changed++;
     }
   });
 
-  if(changed)sh.getRange(2,1,vals.length,lastCol).setValues(vals);
-  return changed;
+  // 通常改善 / Doctorを分けず改善日の新しい順。空欄・解析不能は末尾。
+  vals.sort(function(a,b){
+    var da=sbmParseDate_(a[dateIdx]),db=sbmParseDate_(b[dateIdx]);
+    var ta=da?da.getTime():0,tb=db?db.getTime():0;
+    if(tb!==ta)return tb-ta;
+    // 同日なら改善履歴IDの新しいものを上へ（IDが無ければ現順序相当）。
+    var ha=hm['改善履歴ID']?String(a[hm['改善履歴ID']-1]||''):'';
+    var hb=hm['改善履歴ID']?String(b[hm['改善履歴ID']-1]||''):'';
+    return hb.localeCompare(ha);
+  });
+
+  // 1回の書込みで日付補完・型統一・降順並べ替えを反映。
+  sh.getRange(2,1,vals.length,lastCol).setValues(vals);
+  return {changed:changed,rows:vals.length};
 }
 
 function sbmPolishImprovementHistoryView_(){
   var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   if(!sh)return;
-  var hm=sbmHeaderMap_(sh), lastCol=sh.getLastColumn(), n=Math.max(0,sh.getLastRow()-1);
-  var visible=['選択','改善日','記事タイトル','改善概要','改善経路','1週','2週','3週','4週','最終判定','状態'];
+  var lastCol=sh.getLastColumn(),n=Math.max(0,sh.getLastRow()-1);
+  var headers=sh.getRange(1,1,1,lastCol).getDisplayValues()[0].map(function(v){return String(v||'').trim();});
+  var hm={};headers.forEach(function(h,i){if(h)hm[h]=i+1;});
+  var visible={'選択':1,'改善日':1,'記事タイトル':1,'改善概要':1,'改善経路':1,'1週':1,'2週':1,'3週':1,'4週':1,'最終判定':1,'状態':1};
 
   sh.setFrozenRows(1);
+
+  // 1セルずつヘッダーを読み直さず、取得済みheadersだけで表示列を決定。
   try{sh.showColumns(1,sh.getMaxColumns());}catch(ignoreShow){}
   for(var c=1;c<=lastCol;c++){
-    var h=String(sh.getRange(1,c).getDisplayValue()||'').trim();
-    if(visible.indexOf(h)<0){
+    if(!visible[headers[c-1]]){
       try{sh.hideColumns(c);}catch(ignoreHide){}
     }
   }
@@ -6068,7 +6086,7 @@ function sbmPolishImprovementHistoryView_(){
   sh.setRowHeight(1,34);
 
   var widths={
-    '選択':48,'改善日':92,'記事タイトル':280,'改善概要':300,'改善経路':105,
+    '選択':48,'改善日':92,'記事タイトル':280,'改善概要':390,'改善経路':105,
     '1週':68,'2週':68,'3週':68,'4週':68,'最終判定':92,'状態':82
   };
   Object.keys(widths).forEach(function(h){
@@ -6076,16 +6094,42 @@ function sbmPolishImprovementHistoryView_(){
   });
 
   if(n){
-    sh.getRange(2,1,n,lastCol).setVerticalAlignment('middle');
-    if(hm['改善日'])sh.getRange(2,hm['改善日'],n,1).setNumberFormat('yyyy/M/d').setHorizontalAlignment('center').setWrap(false);
+    var body=sh.getRange(2,1,n,lastCol);
+    body.setVerticalAlignment('middle').setBackground(null).setFontColor('#202124');
+
+    if(hm['改善日'])sh.getRange(2,hm['改善日'],n,1)
+      .setNumberFormat('yyyy/M/d')
+      .setHorizontalAlignment('center')
+      .setWrap(false);
+
     if(hm['記事タイトル'])sh.getRange(2,hm['記事タイトル'],n,1).setWrap(true).setVerticalAlignment('top');
     if(hm['改善概要'])sh.getRange(2,hm['改善概要'],n,1).setWrap(true).setVerticalAlignment('top');
     if(hm['改善経路'])sh.getRange(2,hm['改善経路'],n,1).setHorizontalAlignment('center').setWrap(false);
+
     ['1週','2週','3週','4週','最終判定','状態'].forEach(function(h){
       if(hm[h])sh.getRange(2,hm[h],n,1).setHorizontalAlignment('center').setWrap(true);
     });
+
     sh.setRowHeights(2,n,58);
+
+    // 完了行は薄いグレーで一覧上すぐ判別できるようにする。
+    if(hm['状態']){
+      var states=sh.getRange(2,hm['状態'],n,1).getDisplayValues();
+      var runs=[],start=-1;
+      for(var i=0;i<states.length;i++){
+        var done=String(states[i][0]||'').trim()==='完了';
+        if(done&&start<0)start=i;
+        if((!done||i===states.length-1)&&start>=0){
+          var end=done&&i===states.length-1?i:i-1;
+          runs.push([start,end]);start=-1;
+        }
+      }
+      runs.forEach(function(r){
+        sh.getRange(r[0]+2,1,r[1]-r[0]+1,lastCol).setBackground('#f1f3f4').setFontColor('#5f6368');
+      });
+    }
   }
+
   try{sbmApplySelectionUi_(sh);}catch(eSelection){}
 }
 
@@ -7779,12 +7823,13 @@ function sbmRefreshHistoryAndEffectAfterRepair_() {
  * 改善履歴を開く際に一覧・書式・チェックボックスを必ず再反映します。
  */
 function sbmOpenImprovementHistory() {
-  var ss=SpreadsheetApp.getActiveSpreadsheet(), sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   if(!sh){
     try{sh=sbmRefreshImprovementHistorySheet_(false);}catch(eCreate){sbmLog_('HistoryOpenCreate','Warning',String(eCreate));}
     sh=sh||ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY)||sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY);
   }
-  try{sbmRepairDoctorHistoryDates_();}catch(eDate){sbmLog_('HistoryDoctorDateRepair','Warning',String(eDate));}
+  // UAT34: 日付補完・日付型統一・全履歴の降順整列を1回の一括処理で実施。
+  try{sbmPrepareImprovementHistoryViewData_();}catch(ePrep){sbmLog_('HistoryViewPrepare','Warning',String(ePrep));}
   try{sbmPolishImprovementHistoryView_();}catch(ePolish){sbmLog_('HistoryOpenPolish','Warning',String(ePolish));}
   sh.showSheet();ss.setActiveSheet(sh);sh.activate();
 }
