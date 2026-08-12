@@ -1,0 +1,38 @@
+RC8 Final QA-UAT38
+
+Static result: PASS / FRESH-SETUP REAL-SHEET UAT REQUIRED
+
+Audit conclusion:
+The largest avoidable internal bottleneck was STEP5 spreadsheet I/O:
+per-article, per-field writes could create hundreds of Spreadsheet calls per chunk.
+The setup wizard also repeatedly scanned Settings and Article DB, and refreshed Home
+before the setup workflow was actually complete.
+
+UAT38 optimizes internal Spreadsheet I/O only.
+External article HTML fetching and per-article Search Console main-query lookups are
+intentionally unchanged so their cost can be measured separately.
+
+Automated verification:
+- RC8 JavaScript regression: 63/63 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+Use a fresh/copy test spreadsheet suitable for initial setup.
+Measure:
+STEP1 blog information registration
+STEP2 API guide transition
+STEP3 Search Console connection test
+STEP4 Article DB initial creation
+STEP5 each article-info chunk
+STEP6 final Home update
+
+After completion:
+SIMS-Blog-Manager -> 初回セットアップの工程時間を確認
+
+Key question:
+If STEP5 remains dominant after Spreadsheet I/O batching, UAT39 should batch external
+metadata fetches and reduce per-article Search Console query calls.
