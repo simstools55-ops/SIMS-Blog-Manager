@@ -1,0 +1,29 @@
+RC8 Final QA-UAT41
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Purpose:
+Run STEP5 external-I/O diagnostics without restarting initial setup and without modifying Article DB.
+
+Safety:
+- Maximum 24 article URLs.
+- No Article DB writes.
+- No setup-state changes.
+- Uses existing UAT39 batch fetch functions.
+- Saves UAT40 fetch diagnostics.
+- Saves timing only.
+
+Automated verification:
+- RC8 JavaScript regression: 66/66 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. SIMS-Blog-Manager -> STEP5診断のみ実行.
+3. Wait for completion.
+4. Open STEP5の記事取得診断を確認.
+5. Open 初回セットアップの工程時間を確認.
+6. Confirm Article DB values did not change.

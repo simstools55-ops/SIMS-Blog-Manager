@@ -3518,6 +3518,99 @@ function sbmSetupRecordArticleFetchDiagnostics_(urls, metas) {
   }catch(ignoreDiag){}
 }
 
+
+function sbmRunSetupStep5DiagnosticOnly() {
+  var started=new Date();
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var sh=ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
+  if(!sh||sh.getLastRow()<2)throw new Error('記事DBがありません。初回セットアップのSTEP4完了後に実行してください。');
+
+  var hm=sbmHeaderMap_(sh);
+  if(!hm['記事URL'])throw new Error('記事DBに記事URL列がありません。');
+
+  var n=sh.getLastRow()-1;
+  var urls=sh.getRange(2,hm['記事URL'],n,1).getDisplayValues()
+    .map(function(r){return sbmNormalizeUrl_(r[0]||'');})
+    .filter(function(u){return !!u;});
+
+  // 診断目的なので過剰なアクセスを避け、最大24件に制限。
+  var limit=Math.min(24,urls.length);
+  urls=urls.slice(0,limit);
+  if(!urls.length)throw new Error('診断対象の記事URLがありません。');
+
+  var metaStarted=new Date();
+  var metas=sbmFetchArticleMetaInfoBatch_(urls);
+  var metaSeconds=sbmSecondsSince_(metaStarted);
+  sbmSetupRecordArticleFetchDiagnostics_(urls,metas);
+
+  var queryStarted=new Date();
+  var queries=sbmFetchMainQueriesForUrlsBatch_(urls);
+  var querySeconds=sbmSecondsSince_(queryStarted);
+
+  var success=0,errors=0;
+  urls.forEach(function(url,i){
+    var meta=metas[i]||{},query=queries[i]||'';
+    var ok=!!(meta.h1||meta.titleTag||meta.metaDescription||query);
+    if(ok)success++;else errors++;
+  });
+
+  var totalSeconds=sbmSecondsSince_(started);
+  var detail='診断のみ '+urls.length+'件 / 成功 '+success+' / エラー '+errors+
+    ' / 記事取得 '+metaSeconds+'秒 / クエリ取得 '+querySeconds+'秒';
+
+  try{
+    PropertiesService.getDocumentProperties().setProperty(
+      'SBM_SETUP_STEP5_DIAG_ONLY',
+      JSON.stringify({
+        at:sbmNowText_(),
+        total:urls.length,
+        success:success,
+        errors:errors,
+        articleFetchSeconds:metaSeconds,
+        queryFetchSeconds:querySeconds,
+        totalSeconds:totalSeconds
+      })
+    );
+  }catch(ignoreStore){}
+
+  sbmSetupRecordTiming_(5,totalSeconds,detail);
+
+  return {
+    ok:true,
+    total:urls.length,
+    success:success,
+    errors:errors,
+    articleFetchSeconds:metaSeconds,
+    queryFetchSeconds:querySeconds,
+    totalSeconds:totalSeconds
+  };
+}
+
+function sbmShowSetupStep5DiagnosticOnlyDialog() {
+  var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>'+
+    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:20px;color:#202124}h2{margin:0 0 12px;color:#0b8043}'+
+    '.box{background:#f8f9fa;border-left:4px solid #0b8043;padding:12px;margin:12px 0;line-height:1.7}'+
+    '.spin{display:inline-block;width:18px;height:18px;border:3px solid #dfe5e8;border-top-color:#0b8043;border-radius:50%;animation:s .8s linear infinite;vertical-align:middle;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}'+
+    '.ok{color:#0b8043;font-weight:bold}.err{color:#b31412;font-weight:bold}.note{font-size:12px;color:#5f6368;margin-top:12px}</style></head><body>'+
+    '<h2>STEP5・記事取得診断</h2>'+
+    '<div id="state" class="box"><span class="spin"></span>記事取得とSearch Consoleクエリ取得を診断しています。記事DBは変更しません。</div>'+
+    '<div id="result"></div>'+
+    '<div class="note">最大24記事だけを診断します。取得したタイトル・メタ・クエリは記事DBへ書き戻しません。</div>'+
+    '<script>'+
+    'google.script.run.withSuccessHandler(function(r){'+
+      'document.getElementById("state").innerHTML="<span class=ok>✓ 診断が完了しました。</span>";'+
+      'document.getElementById("result").innerHTML="<div class=box>対象 "+r.total+"件<br>成功 "+r.success+"件 / エラー "+r.errors+"件<br>記事取得 "+r.articleFetchSeconds+"秒<br>クエリ取得 "+r.queryFetchSeconds+"秒<br>全体 "+r.totalSeconds+"秒</div>";'+
+    '}).withFailureHandler(function(e){'+
+      'document.getElementById("state").innerHTML="<span class=err>診断に失敗しました。</span><br>"+((e&&e.message)?e.message:String(e));'+
+    '}).sbmRunSetupStep5DiagnosticOnly();'+
+    '</script></body></html>';
+
+  SpreadsheetApp.getUi().showModalDialog(
+    HtmlService.createHtmlOutput(html).setWidth(620).setHeight(430),
+    'STEP5・診断のみ実行'
+  );
+}
+
 function sbmShowSetupArticleFetchDiagnostics(){
   var data={};
   try{data=JSON.parse(PropertiesService.getDocumentProperties().getProperty('SBM_SETUP_ARTICLE_FETCH_DIAG')||'{}')||{};}catch(ignoreJson){}
@@ -9226,6 +9319,7 @@ function onOpen() {
     .addItem('初回セットアップ','sbmStartInitialSetup')
     .addItem('初回セットアップの工程時間を確認','sbmShowSetupTimingReport')
     .addItem('STEP5の記事取得診断を確認','sbmShowSetupArticleFetchDiagnostics')
+    .addItem('STEP5診断のみ実行','sbmShowSetupStep5DiagnosticOnlyDialog')
     .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
     .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
     .addItem('シートの作成・修復','sbmInitializeSheets')
