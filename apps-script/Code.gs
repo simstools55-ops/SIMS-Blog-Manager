@@ -3412,24 +3412,33 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
 }
 
 
-function sbmFetchArticleMetaInfoBatch_(urls) {
+function sbmFetchArticleMetaInfoBatch_(urls, options) {
+  options=options||{};
+  var bypassCache=options.bypassCache===true;
   urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
   var results=new Array(urls.length),requests=[],requestIndexes=[];
   var cache=CacheService.getDocumentCache();
   var preparedAt=new Date();
 
   urls.forEach(function(url,i){
-    if(!/^https?:\/\//i.test(url)){results[i]={h1:'',titleTag:'',metaDescription:'',_diag:{source:'invalid',elapsedMs:0}};return;}
+    if(!/^https?:\/\//i.test(url)){
+      results[i]={h1:'',titleTag:'',metaDescription:'',_diag:{source:'invalid',elapsedMs:0}};
+      return;
+    }
     var key='meta:'+Utilities.base64EncodeWebSafe(url).slice(0,180);
-    try{
-      var cached=cache.get(key);
-      if(cached){
-        var c=JSON.parse(cached);
-        c._diag={source:'cache',elapsedMs:0,status:200,url:url,parseMs:0};
-        results[i]=c;
-        return;
-      }
-    }catch(ignoreCache){}
+
+    if(!bypassCache){
+      try{
+        var cached=cache.get(key);
+        if(cached){
+          var c=JSON.parse(cached);
+          c._diag={source:'cache',elapsedMs:0,status:200,url:url,parseMs:0};
+          results[i]=c;
+          return;
+        }
+      }catch(ignoreCache){}
+    }
+
     requests.push({
       url:url,
       muteHttpExceptions:true,
@@ -3451,8 +3460,12 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
     }
 
     requestIndexes.forEach(function(info,j){
-      var obj={h1:'',titleTag:'',metaDescription:''},status=0,source='fetchAll';
-      var diag={source:source,status:0,url:info.url,contentTextMs:0,titleTagMs:0,pickTitleMs:0,cleanTitleMs:0,descriptionMs:0,cachePutMs:0,parseMs:0};
+      var obj={h1:'',titleTag:'',metaDescription:''},status=0,source=bypassCache?'fetchAll-bypass-cache':'fetchAll';
+      var diag={
+        source:source,status:0,url:info.url,contentTextMs:0,titleTagMs:0,pickTitleMs:0,
+        cleanTitleMs:0,descriptionMs:0,cachePutMs:0,parseMs:0
+      };
+
       try{
         var res=responses[j];
         if(res){
@@ -3504,6 +3517,7 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
           diag={source:source,elapsedMs:new Date().getTime()-fallbackStarted.getTime(),status:status,url:info.url,parseMs:0};
         }catch(ignoreFallback){}
       }
+
       diag.source=source;
       obj._diag=diag;
       results[info.index]=obj;
@@ -3516,10 +3530,12 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
     var d=(r&&r._diag)||{};
     Object.keys(totals).forEach(function(k){totals[k]+=Number(d[k]||0);});
   });
+
   results._diag={
     totalUrls:urls.length,
     networkUrls:requestIndexes.length,
-    cacheHits:urls.length-requestIndexes.length,
+    cacheHits:bypassCache?0:(urls.length-requestIndexes.length),
+    bypassCache:bypassCache,
     fetchAllElapsedMs:batchElapsedMs,
     totalElapsedMs:totalElapsedMs,
     parseTotals:totals
@@ -3567,13 +3583,14 @@ function sbmRunSetupStep5DiagnosticOnly() {
     .map(function(r){return sbmNormalizeUrl_(r[0]||'');})
     .filter(function(u){return !!u;});
 
-  // 診断目的なので過剰なアクセスを避け、最大24件に制限。
   var limit=Math.min(24,urls.length);
   urls=urls.slice(0,limit);
   if(!urls.length)throw new Error('診断対象の記事URLがありません。');
 
+  // UAT43: 診断時だけキャッシュを無視して初回取得相当を再現する。
+  // 通常のSTEP5は sbmFetchArticleMetaInfoBatch_(urls) のままなので影響しない。
   var metaStarted=new Date();
-  var metas=sbmFetchArticleMetaInfoBatch_(urls);
+  var metas=sbmFetchArticleMetaInfoBatch_(urls,{bypassCache:true});
   var metaSeconds=sbmSecondsSince_(metaStarted);
   sbmSetupRecordArticleFetchDiagnostics_(urls,metas);
 
@@ -3589,7 +3606,7 @@ function sbmRunSetupStep5DiagnosticOnly() {
   });
 
   var totalSeconds=sbmSecondsSince_(started);
-  var detail='診断のみ '+urls.length+'件 / 成功 '+success+' / エラー '+errors+
+  var detail='診断のみ（キャッシュ無視） '+urls.length+'件 / 成功 '+success+' / エラー '+errors+
     ' / 記事取得 '+metaSeconds+'秒 / クエリ取得 '+querySeconds+'秒';
 
   try{
@@ -3602,7 +3619,8 @@ function sbmRunSetupStep5DiagnosticOnly() {
         errors:errors,
         articleFetchSeconds:metaSeconds,
         queryFetchSeconds:querySeconds,
-        totalSeconds:totalSeconds
+        totalSeconds:totalSeconds,
+        bypassCache:true
       })
     );
   }catch(ignoreStore){}
@@ -3616,7 +3634,8 @@ function sbmRunSetupStep5DiagnosticOnly() {
     errors:errors,
     articleFetchSeconds:metaSeconds,
     queryFetchSeconds:querySeconds,
-    totalSeconds:totalSeconds
+    totalSeconds:totalSeconds,
+    bypassCache:true
   };
 }
 
@@ -3627,20 +3646,20 @@ function sbmShowSetupStep5DiagnosticOnlyDialog() {
     '.spin{display:inline-block;width:18px;height:18px;border:3px solid #dfe5e8;border-top-color:#0b8043;border-radius:50%;animation:s .8s linear infinite;vertical-align:middle;margin-right:8px}@keyframes s{to{transform:rotate(360deg)}}'+
     '.ok{color:#0b8043;font-weight:bold}.err{color:#b31412;font-weight:bold}.note{font-size:12px;color:#5f6368;margin-top:12px}</style></head><body>'+
     '<h2>STEP5・記事取得診断</h2>'+
-    '<div id="state" class="box"><span class="spin"></span>記事取得とSearch Consoleクエリ取得を診断しています。記事DBは変更しません。</div>'+
+    '<div id="state" class="box"><span class="spin"></span>キャッシュを無視して、初回取得相当の速度を診断しています。記事DBは変更しません。</div>'+
     '<div id="result"></div>'+
-    '<div class="note">最大24記事だけを診断します。取得したタイトル・メタ・クエリは記事DBへ書き戻しません。</div>'+
+    '<div class="note">最大24記事だけを診断します。通常のSTEP5ではキャッシュを使用します。この診断だけキャッシュを無視します。</div>'+
     '<script>'+
     'google.script.run.withSuccessHandler(function(r){'+
       'document.getElementById("state").innerHTML="<span class=ok>✓ 診断が完了しました。</span>";'+
-      'document.getElementById("result").innerHTML="<div class=box>対象 "+r.total+"件<br>成功 "+r.success+"件 / エラー "+r.errors+"件<br>記事取得 "+r.articleFetchSeconds+"秒<br>クエリ取得 "+r.queryFetchSeconds+"秒<br>全体 "+r.totalSeconds+"秒</div>";'+
+      'document.getElementById("result").innerHTML="<div class=box>対象 "+r.total+"件<br>成功 "+r.success+"件 / エラー "+r.errors+"件<br>記事取得 "+r.articleFetchSeconds+"秒<br>クエリ取得 "+r.queryFetchSeconds+"秒<br>全体 "+r.totalSeconds+"秒<br><b>キャッシュ：診断時のみ無視</b></div>";'+
     '}).withFailureHandler(function(e){'+
       'document.getElementById("state").innerHTML="<span class=err>診断に失敗しました。</span><br>"+((e&&e.message)?e.message:String(e));'+
     '}).sbmRunSetupStep5DiagnosticOnly();'+
     '</script></body></html>';
 
   SpreadsheetApp.getUi().showModalDialog(
-    HtmlService.createHtmlOutput(html).setWidth(620).setHeight(430),
+    HtmlService.createHtmlOutput(html).setWidth(620).setHeight(450),
     'STEP5・診断のみ実行'
   );
 }
@@ -3660,7 +3679,7 @@ function sbmShowSetupArticleFetchDiagnostics(){
     html+='<p>保存済みの診断結果はありません。STEP5診断のみ実行を行ってください。</p>';
   }else{
     html+='<div class="box">対象 '+esc(s.totalUrls||rows.length)+'件 / ネットワーク取得 '+esc(s.networkUrls||0)+'件 / キャッシュ '+esc(s.cacheHits||0)+
-      '件 / fetchAll待機 '+sec(s.fetchAllElapsedMs)+' / 記事取得全体 '+sec(s.totalElapsedMs)+'<br>'+
+      '件 / fetchAll待機 '+sec(s.fetchAllElapsedMs)+' / 記事取得全体 '+sec(s.totalElapsedMs)+' / キャッシュ診断 '+(s.bypassCache?'無視':'通常')+'<br>'+
       '<b>HTML後処理 合計 '+sec(pt.parseMs)+'</b> ｜ getContentText '+sec(pt.contentTextMs)+' ｜ titleタグ '+sec(pt.titleTagMs)+
       ' ｜ 記事タイトル判定 '+sec(pt.pickTitleMs)+' ｜ タイトル整形 '+sec(pt.cleanTitleMs)+' ｜ description '+sec(pt.descriptionMs)+' ｜ キャッシュ保存 '+sec(pt.cachePutMs)+'</div>';
 

@@ -1,0 +1,35 @@
+RC8 Final QA-UAT43
+Result: PASS / REAL-SHEET UAT REQUIRED
+
+Purpose:
+Reproduce first-fetch STEP5 performance without allowing prior metadata cache hits.
+
+Diagnostic-only behavior:
+- Maximum 24 URLs
+- bypassCache=true for article metadata batch
+- normal STEP5 unchanged
+- no Article DB writes
+- no setup state changes
+- successful responses may refresh normal cache afterward
+
+Automated verification:
+- RC8 JavaScript regression: 68/68 PASS
+- Syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Run STEP5診断のみ実行 once.
+3. Open STEP5の記事取得診断を確認.
+4. Capture:
+   - network count
+   - cache count
+   - fetchAll wait
+   - article total
+   - HTML post-processing total and breakdown
+5. Capture runner dialog:
+   - article fetch
+   - query fetch
+   - total
