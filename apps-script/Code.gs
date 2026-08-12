@@ -2959,19 +2959,36 @@ function sbmSafeArticleTitleCell_(value, url) {
 }
 
 
+var SBM_UAT44_PROFILE_ = null;
+
 function sbmCleanDataListText_(value, url) {
-  // データ一覧用: 取得できなかったタイトル・descriptionにURL/数値/日付などを入れない。
+  var __allStarted=new Date();
   value = String(value || '').trim();
   url = sbmNormalizeUrl_(url || '');
-  if (!value) return '';
+  if (!value) {
+    if (SBM_UAT44_PROFILE_) {
+      SBM_UAT44_PROFILE_.cleanCalls++;
+      SBM_UAT44_PROFILE_.cleanTotalMs += new Date().getTime()-__allStarted.getTime();
+    }
+    return '';
+  }
+  var __settingStarted=new Date();
   var blogName = String(sbmGetSetting_('BlogName','') || '').trim();
-  if (blogName && value === blogName) return '';
-  if (url && value === url) return '';
-  if (/^https?:\/\//i.test(value)) return '';
-  if (/^\d+(\.\d+)?$/.test(value)) return '';
-  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(value)) return '';
-  if (/^1900[-\/]0?1[-\/]0?\d/.test(value)) return '';
-  return value;
+  var __settingMs=new Date().getTime()-__settingStarted.getTime();
+  if (SBM_UAT44_PROFILE_) {
+    SBM_UAT44_PROFILE_.cleanCalls++;
+    SBM_UAT44_PROFILE_.settingCalls++;
+    SBM_UAT44_PROFILE_.settingMs += __settingMs;
+  }
+  var result=value;
+  if (blogName && value === blogName) result='';
+  else if (url && value === url) result='';
+  else if (/^https?:\/\//i.test(value)) result='';
+  else if (/^\d+(\.\d+)?$/.test(value)) result='';
+  else if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(value)) result='';
+  else if (/^1900[-\/]0?1[-\/]0?\d/.test(value)) result='';
+  if (SBM_UAT44_PROFILE_) SBM_UAT44_PROFILE_.cleanTotalMs += new Date().getTime()-__allStarted.getTime();
+  return result;
 }
 
 function sbmCleanDisplayTitle_(title, url) {
@@ -3415,6 +3432,7 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
 function sbmFetchArticleMetaInfoBatch_(urls, options) {
   options=options||{};
   var bypassCache=options.bypassCache===true;
+  SBM_UAT44_PROFILE_={cleanCalls:0,settingCalls:0,settingMs:0,cleanTotalMs:0};
   urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
   var results=new Array(urls.length),requests=[],requestIndexes=[];
   var cache=CacheService.getDocumentCache();
@@ -3538,8 +3556,10 @@ function sbmFetchArticleMetaInfoBatch_(urls, options) {
     bypassCache:bypassCache,
     fetchAllElapsedMs:batchElapsedMs,
     totalElapsedMs:totalElapsedMs,
-    parseTotals:totals
+    parseTotals:totals,
+    uat44Profile:SBM_UAT44_PROFILE_
   };
+  SBM_UAT44_PROFILE_=null;
   return results;
 }
 
@@ -3681,7 +3701,8 @@ function sbmShowSetupArticleFetchDiagnostics(){
     html+='<div class="box">対象 '+esc(s.totalUrls||rows.length)+'件 / ネットワーク取得 '+esc(s.networkUrls||0)+'件 / キャッシュ '+esc(s.cacheHits||0)+
       '件 / fetchAll待機 '+sec(s.fetchAllElapsedMs)+' / 記事取得全体 '+sec(s.totalElapsedMs)+' / キャッシュ診断 '+(s.bypassCache?'無視':'通常')+'<br>'+
       '<b>HTML後処理 合計 '+sec(pt.parseMs)+'</b> ｜ getContentText '+sec(pt.contentTextMs)+' ｜ titleタグ '+sec(pt.titleTagMs)+
-      ' ｜ 記事タイトル判定 '+sec(pt.pickTitleMs)+' ｜ タイトル整形 '+sec(pt.cleanTitleMs)+' ｜ description '+sec(pt.descriptionMs)+' ｜ キャッシュ保存 '+sec(pt.cachePutMs)+'</div>';
+      ' ｜ 記事タイトル判定 '+sec(pt.pickTitleMs)+' ｜ タイトル整形 '+sec(pt.cleanTitleMs)+' ｜ description '+sec(pt.descriptionMs)+' ｜ キャッシュ保存 '+sec(pt.cachePutMs)+'<br>'+ 
+      '<b>UAT44・整形内部</b> ｜ cleanDataList呼出 '+Number((s.uat44Profile||{}).cleanCalls||0)+'回 ｜ BlogName設定参照 '+Number((s.uat44Profile||{}).settingCalls||0)+'回 / '+sec((s.uat44Profile||{}).settingMs)+' ｜ cleanDataList全体 '+sec((s.uat44Profile||{}).cleanTotalMs)+'</div>';
 
     var sorted=rows.slice().sort(function(a,b){return Number(b.parseMs||0)-Number(a.parseMs||0);});
     html+='<table><thead><tr><th>#</th><th>URL</th><th>HTTP</th><th>通信個別</th><th>後処理</th><th>本文文字列化</th><th>title</th><th>記事タイトル判定</th><th>整形</th><th>description</th><th>cache</th></tr></thead><tbody>';

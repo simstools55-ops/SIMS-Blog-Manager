@@ -1,0 +1,6 @@
+UAT44 PASS / REAL-SHEET UAT REQUIRED
+Regression: 69/69 PASS
+Syntax: PASS
+Audit: PASS
+Code sync: PASS
+Temporary QA instrumentation: remove before RC8 Final.
