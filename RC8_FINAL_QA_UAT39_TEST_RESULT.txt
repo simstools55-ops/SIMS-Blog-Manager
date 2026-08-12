@@ -1,0 +1,31 @@
+RC8 Final QA-UAT39
+
+Static result: PASS / FRESH-SETUP REAL-SHEET UAT REQUIRED
+
+Purpose:
+Speed up STEP5 external communication after UAT38 removed Spreadsheet I/O bottlenecks.
+
+Implementation:
+- Parallel article HTML retrieval with UrlFetchApp.fetchAll.
+- Parallel per-article Search Console requests with UrlFetchApp.fetchAll.
+- Same request semantics as before: page equals, rowLimit 10, same date range.
+- Same main-query ranking logic.
+- Existing metadata cache preserved.
+- Individual-fetch fallback preserved on batch failure.
+- Timing detail now includes 記事取得 and クエリ取得.
+
+Automated verification:
+- RC8 JavaScript regression: 64/64 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Use a copy/fresh setup environment.
+2. Run initial setup through STEP5.
+3. Open 初回セットアップの工程時間を確認.
+4. Record STEP4 and STEP5.
+5. For STEP5, also record 記事取得 and クエリ取得.
+6. Confirm article title, SEO title, meta description and main query are populated as before.
+7. Confirm no unexpected fetch/API errors.

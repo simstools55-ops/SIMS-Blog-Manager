@@ -1438,25 +1438,36 @@ function sbmSupplementArticleDbSetupChunk_(batch, silent) {
     sbmEnsureHeaders_(sh,SBM_HEADERS.ARTICLE_DB);
     var data=sh.getDataRange().getValues(),heads=data.shift().map(String),hm={};
     heads.forEach(function(h,i){hm[String(h||'')]=i;});
-    var processed=0,success=0,errors=0;
+    var processed=0,success=0,errors=0,targets=[];
 
     sbmSetupSetSettingsBulk_([{key:'ArticleInfoBuildStatus',value:'処理中',desc:'記事情報補完の状態'}]);
 
-    for(var i=0;i<data.length;i++){
-      if(processed>=batch||sbmSecondsSince_(started)>=safeSeconds)break;
+    // UAT39: 先に対象URLを確定し、外部通信を2本のfetchAllへまとめる。
+    for(var i=0;i<data.length&&targets.length<batch;i++){
       var row=data[i];
       if(String(row[hm['記事情報補完済み']]||'')==='○')continue;
       var url=sbmNormalizeUrl_(row[hm['記事URL']]||'');
       if(!url)continue;
+      targets.push({rowIndex:i,url:url});
+    }
 
-      processed++;
-      var meta=sbmFetchArticleMetaInfo_(url)||{};
-      var query=sbmFetchMainQueryForUrl_(url)||'';
+    var urls=targets.map(function(t){return t.url;});
+    var externalStarted=new Date();
+    var metas=sbmFetchArticleMetaInfoBatch_(urls);
+    var metaSeconds=sbmSecondsSince_(externalStarted);
+    var queryStarted=new Date();
+    var queries=sbmFetchMainQueriesForUrlsBatch_(urls);
+    var querySeconds=sbmSecondsSince_(queryStarted);
+
+    targets.forEach(function(t,j){
+      var row=data[t.rowIndex],url=t.url;
+      var meta=metas[j]||{},query=queries[j]||'';
       var title=sbmCleanDataListText_(meta.h1||meta.titleTag||'',url);
       var seo=sbmCleanDataListText_(meta.titleTag||'',url);
       var desc=sbmCleanDataListText_(meta.metaDescription||'',url);
       var ok=!!(title||seo||desc||query);
       var now=sbmNowText_();
+      processed++;
 
       if(hm['記事タイトル']!==undefined)row[hm['記事タイトル']]=title;
       if(hm['SEOタイトル']!==undefined)row[hm['SEOタイトル']]=seo;
@@ -1466,11 +1477,9 @@ function sbmSupplementArticleDbSetupChunk_(batch, silent) {
       if(hm['補完日時']!==undefined)row[hm['補完日時']]=now;
       if(hm['補完エラー']!==undefined)row[hm['補完エラー']]=ok?'':'記事情報を取得できませんでした';
       if(hm['管理フラグ']!==undefined)row[hm['管理フラグ']]=ok?'正常':(row[hm['管理フラグ']]||'記事情報未取得');
-
       if(ok)success++;else errors++;
-    }
+    });
 
-    // UAT38: 記事ごとの複数setValueを廃止。処理した内容を一括で1回だけ保存。
     if(data.length)sh.getRange(2,1,data.length,heads.length).setValues(data);
 
     var completed=0;
@@ -1483,9 +1492,9 @@ function sbmSupplementArticleDbSetupChunk_(batch, silent) {
       {key:'ArticleInfoBuildStatus',value:finished?'完了':('続きあり（残り '+counts.remaining+'件）'),desc:'記事情報補完の状態'}
     ]);
 
-    // 各チャンクではHomeを再描画しない。STEP6で一度だけ更新。
     var sec=sbmSecondsSince_(started);
-    var detail='今回 '+processed+' / 成功 '+success+' / エラー '+errors+' / 残り '+counts.remaining;
+    var detail='今回 '+processed+' / 成功 '+success+' / エラー '+errors+' / 残り '+counts.remaining+
+      ' / 記事取得 '+metaSeconds+'秒 / クエリ取得 '+querySeconds+'秒';
     sbmSetupRecordTiming_(5,sec,detail);
     sbmProcessLog_('記事情報補完（初回セットアップ）','完了',counts.total,processed,sec,detail,startedText,sbmNowText_());
 
@@ -3399,6 +3408,122 @@ function sbmAggregateRawRowsByUrl_(rawRows) {
     m.position = m.impressions ? m.weightedPositionSum / m.impressions : 0;
   });
   return map;
+}
+
+
+function sbmFetchArticleMetaInfoBatch_(urls) {
+  urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
+  var results=new Array(urls.length),requests=[],requestIndexes=[];
+  var cache=CacheService.getDocumentCache();
+
+  urls.forEach(function(url,i){
+    if(!/^https?:\/\//i.test(url)){results[i]={h1:'',titleTag:'',metaDescription:''};return;}
+    var key='meta:'+Utilities.base64EncodeWebSafe(url).slice(0,180);
+    try{
+      var cached=cache.get(key);
+      if(cached){results[i]=JSON.parse(cached);return;}
+    }catch(ignoreCache){}
+    requests.push({
+      url:url,
+      muteHttpExceptions:true,
+      followRedirects:true,
+      headers:{'User-Agent':'Mozilla/5.0 SIMS-Blog-Manager'}
+    });
+    requestIndexes.push({index:i,url:url,key:key});
+  });
+
+  if(requests.length){
+    var responses=[];
+    try{responses=UrlFetchApp.fetchAll(requests);}catch(batchError){responses=[];}
+    requestIndexes.forEach(function(info,j){
+      var obj={h1:'',titleTag:'',metaDescription:''};
+      try{
+        var res=responses[j];
+        if(res){
+          var status=res.getResponseCode();
+          if(status>=200&&status<400){
+            var html=res.getContentText()||'';
+            var titleTag=sbmExtractTitleTag_(html);
+            var articleTitle=sbmPickArticleTitle_(html,titleTag,info.url);
+            obj={
+              h1:sbmCleanDataListText_(articleTitle||'',info.url),
+              titleTag:sbmCleanDataListText_(titleTag||'',info.url),
+              metaDescription:sbmCleanDataListText_(sbmExtractDescription_(html)||'',info.url)
+            };
+            try{cache.put(info.key,JSON.stringify(obj),21600);}catch(ignorePut){}
+          }
+        }else{
+          obj=sbmFetchArticleMetaInfo_(info.url)||obj;
+        }
+      }catch(oneError){
+        try{obj=sbmFetchArticleMetaInfo_(info.url)||obj;}catch(ignoreFallback){}
+      }
+      results[info.index]=obj;
+    });
+  }
+  return results.map(function(v){return v||{h1:'',titleTag:'',metaDescription:''};});
+}
+
+function sbmFetchMainQueriesForUrlsBatch_(urls) {
+  urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
+  var out=new Array(urls.length).fill('');
+  if(!urls.length)return out;
+
+  var range=sbmSearchConsoleDateRange_();
+  var property=sbmGetSetting_('SearchConsoleProperty','');
+  if(!property)return out;
+
+  var endpoint='https://www.googleapis.com/webmasters/v3/sites/'+encodeURIComponent(property)+'/searchAnalytics/query';
+  var token=ScriptApp.getOAuthToken();
+  var requests=[],indexes=[];
+  urls.forEach(function(url,i){
+    if(!url)return;
+    var body={
+      startDate:range.startDate,
+      endDate:range.endDate,
+      dimensions:['query'],
+      rowLimit:10,
+      dimensionFilterGroups:[{filters:[{dimension:'page',operator:'equals',expression:url}]}]
+    };
+    requests.push({
+      url:endpoint,
+      method:'post',
+      contentType:'application/json',
+      payload:JSON.stringify(body),
+      headers:{Authorization:'Bearer '+token},
+      muteHttpExceptions:true
+    });
+    indexes.push(i);
+  });
+
+  if(!requests.length)return out;
+  var responses=[];
+  try{responses=UrlFetchApp.fetchAll(requests);}catch(batchError){responses=[];}
+
+  indexes.forEach(function(originalIndex,j){
+    try{
+      var res=responses[j];
+      if(!res){
+        out[originalIndex]=sbmFetchMainQueryForUrl_(urls[originalIndex])||'';
+        return;
+      }
+      var status=res.getResponseCode();
+      if(status<200||status>=300){
+        out[originalIndex]=sbmFetchMainQueryForUrl_(urls[originalIndex])||'';
+        return;
+      }
+      var data=JSON.parse(res.getContentText()||'{}'),rows=data.rows||[];
+      rows.sort(function(a,b){
+        var as=sbmNumber_(a.clicks||0)*1000+sbmNumber_(a.impressions||0);
+        var bs=sbmNumber_(b.clicks||0)*1000+sbmNumber_(b.impressions||0);
+        return bs-as;
+      });
+      out[originalIndex]=rows.length&&rows[0].keys&&rows[0].keys[0]?String(rows[0].keys[0]):'';
+    }catch(oneError){
+      try{out[originalIndex]=sbmFetchMainQueryForUrl_(urls[originalIndex])||'';}catch(ignoreFallback){}
+    }
+  });
+  return out;
 }
 
 function sbmFetchArticleMetaInfo_(url) {
