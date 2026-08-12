@@ -1,0 +1,25 @@
+SIMS-Blog-Manager Product 5.10.0-RC8 Final Cleanup
+Result: PASS / REAL-SHEET SMOKE TEST REQUIRED
+
+Baseline:
+- QA-UAT45 before cleanup: 70/70 automated RC8 tests PASS
+- UAT45 real-sheet performance accepted by user
+
+Final cleanup verification:
+- Code.gs syntax: PASS
+- apps-script/distribution Code.gs sync: PASS
+- dedicated cleanup static test: PASS
+- runtime UAT residue audit: PASS
+- ZIP integrity: PASS
+
+Note:
+Historical tests for older product versions remain in the repository as development history.
+They are not used as the RC8 Final acceptance suite because many intentionally assert superseded UI/version behavior.
+
+Recommended real-sheet smoke test:
+1. Reload spreadsheet: menus appear normally and no performance/UAT menu remains.
+2. Home opens normally.
+3. Article list opens in a few seconds.
+4. Improvement history opens normally.
+5. Run daily processing once.
+6. Open Doctor health check and confirm normal progress/completion.

@@ -1,13 +1,21 @@
 # SIMS-Blog-Manager Product 5.10.0-RC8 Final
 
-RC8実機受入試験で確認されたUI/UX・データ品質の積み残しを解消したFreeze候補です。
+RC8 Final Cleanup.
 
-- 「今日の改善」のメインクエリ空欄を利用者向け表示で解消（取得待ち／検索実績なし）。
-- 改善履歴・改善推移の「改善方法」を「改善経路」へ整理。通常改善／Doctor→Writer／Doctor→Creator／Doctor→Mergeを記録可能。
-- 改善履歴の「使用AI」は内部保持のまま利用者画面では非表示。
-- Doctor健康診断書の「SBM対応中」を「改善管理中」へ変更。
-- Doctor健康診断書の傾向を、一次検査で数値化できる分類ごとに件数・割合で表示。
-- 鮮度・競合強化・カニバリ等は一次検査で推測せず、精密診断で追加判定することを明示。
-- Doctor精密診断候補の「優先」番号を「重症度」（緊急／重症／中等症／軽症）へ変更。
-- 選定理由を「診断カテゴリ｜数値根拠」の形式へ統一。
-- 精密診断候補上部の「次に行うこと」を折り返し表示し、セルはみ出しを防止。
+Removed temporary performance-verification UI and instrumentation added during RC8 UAT:
+- initial-setup timing report
+- STEP5 diagnostic-only execution/report
+- health-check timing report
+- UAT44/UAT45 profiling counters/displays
+- RC8 performance-UAT-only test artifacts
+
+Retained all accepted production optimizations, including:
+- fetchAll parallel article retrieval
+- in-memory BlogName reuse during metadata cleanup
+- fast article-list display
+- daily-processing optimizations
+- health-check batch judgement optimization
+- improvement-history display/format/sort improvements
+- retry/resume and safety behavior
+
+Accepted UAT45 baseline: 24 articles, article retrieval 3.2s, HTML post-processing 1.5s, BlogName settings reads 0.
