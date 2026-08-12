@@ -1454,6 +1454,7 @@ function sbmSupplementArticleDbSetupChunk_(batch, silent) {
     var urls=targets.map(function(t){return t.url;});
     var externalStarted=new Date();
     var metas=sbmFetchArticleMetaInfoBatch_(urls);
+    sbmSetupRecordArticleFetchDiagnostics_(urls,metas);
     var metaSeconds=sbmSecondsSince_(externalStarted);
     var queryStarted=new Date();
     var queries=sbmFetchMainQueriesForUrlsBatch_(urls);
@@ -3415,13 +3416,19 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
   urls=(urls||[]).map(function(u){return sbmNormalizeUrl_(u||'');});
   var results=new Array(urls.length),requests=[],requestIndexes=[];
   var cache=CacheService.getDocumentCache();
+  var preparedAt=new Date();
 
   urls.forEach(function(url,i){
-    if(!/^https?:\/\//i.test(url)){results[i]={h1:'',titleTag:'',metaDescription:''};return;}
+    if(!/^https?:\/\//i.test(url)){results[i]={h1:'',titleTag:'',metaDescription:'',_diag:{source:'invalid',elapsedMs:0}};return;}
     var key='meta:'+Utilities.base64EncodeWebSafe(url).slice(0,180);
     try{
       var cached=cache.get(key);
-      if(cached){results[i]=JSON.parse(cached);return;}
+      if(cached){
+        var c=JSON.parse(cached);
+        c._diag={source:'cache',elapsedMs:0,status:200,url:url};
+        results[i]=c;
+        return;
+      }
     }catch(ignoreCache){}
     requests.push({
       url:url,
@@ -3432,15 +3439,22 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
     requestIndexes.push({index:i,url:url,key:key});
   });
 
+  var batchStarted=new Date(),batchElapsedMs=0;
   if(requests.length){
     var responses=[];
-    try{responses=UrlFetchApp.fetchAll(requests);}catch(batchError){responses=[];}
+    try{
+      responses=UrlFetchApp.fetchAll(requests);
+      batchElapsedMs=new Date().getTime()-batchStarted.getTime();
+    }catch(batchError){
+      batchElapsedMs=new Date().getTime()-batchStarted.getTime();
+      responses=[];
+    }
     requestIndexes.forEach(function(info,j){
-      var obj={h1:'',titleTag:'',metaDescription:''};
+      var obj={h1:'',titleTag:'',metaDescription:''},status=0,source='fetchAll';
       try{
         var res=responses[j];
         if(res){
-          var status=res.getResponseCode();
+          status=res.getResponseCode();
           if(status>=200&&status<400){
             var html=res.getContentText()||'';
             var titleTag=sbmExtractTitleTag_(html);
@@ -3453,15 +3467,83 @@ function sbmFetchArticleMetaInfoBatch_(urls) {
             try{cache.put(info.key,JSON.stringify(obj),21600);}catch(ignorePut){}
           }
         }else{
+          source='fallback';
+          var oneStarted=new Date();
           obj=sbmFetchArticleMetaInfo_(info.url)||obj;
+          obj._diag={source:source,elapsedMs:new Date().getTime()-oneStarted.getTime(),status:status,url:info.url};
         }
       }catch(oneError){
-        try{obj=sbmFetchArticleMetaInfo_(info.url)||obj;}catch(ignoreFallback){}
+        source='fallback';
+        try{
+          var fallbackStarted=new Date();
+          obj=sbmFetchArticleMetaInfo_(info.url)||obj;
+          obj._diag={source:source,elapsedMs:new Date().getTime()-fallbackStarted.getTime(),status:status,url:info.url};
+        }catch(ignoreFallback){}
       }
+      if(!obj._diag)obj._diag={source:source,elapsedMs:null,status:status,url:info.url};
       results[info.index]=obj;
     });
   }
-  return results.map(function(v){return v||{h1:'',titleTag:'',metaDescription:''};});
+
+  var totalElapsedMs=new Date().getTime()-preparedAt.getTime();
+  results._diag={
+    totalUrls:urls.length,
+    networkUrls:requestIndexes.length,
+    cacheHits:urls.length-requestIndexes.length,
+    fetchAllElapsedMs:batchElapsedMs,
+    totalElapsedMs:totalElapsedMs
+  };
+  return results;
+}
+
+
+function sbmSetupRecordArticleFetchDiagnostics_(urls, metas) {
+  try{
+    var rows=[],summary=(metas&&metas._diag)||{};
+    (urls||[]).forEach(function(url,i){
+      var d=(metas&&metas[i]&&metas[i]._diag)||{};
+      rows.push({
+        url:String(url||''),
+        source:String(d.source||'fetchAll'),
+        status:Number(d.status||0),
+        elapsedMs:d.elapsedMs===null||d.elapsedMs===undefined?'':Number(d.elapsedMs||0)
+      });
+    });
+    var payload={
+      at:sbmNowText_(),
+      summary:summary,
+      rows:rows
+    };
+    PropertiesService.getDocumentProperties().setProperty('SBM_SETUP_ARTICLE_FETCH_DIAG',JSON.stringify(payload));
+  }catch(ignoreDiag){}
+}
+
+function sbmShowSetupArticleFetchDiagnostics(){
+  var data={};
+  try{data=JSON.parse(PropertiesService.getDocumentProperties().getProperty('SBM_SETUP_ARTICLE_FETCH_DIAG')||'{}')||{};}catch(ignoreJson){}
+  var s=data.summary||{},rows=data.rows||[];
+  var esc=function(v){return String(v===undefined||v===null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');};
+  var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>'+
+    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124}h2{margin:0 0 12px;color:#0b8043}'+
+    '.box{background:#eef7f1;border-left:4px solid #0f9d58;padding:10px 12px;margin-bottom:12px}'+
+    'table{border-collapse:collapse;width:100%;font-size:12px}th,td{border-bottom:1px solid #dadce0;padding:7px;text-align:left;vertical-align:top}th{background:#f8f9fa}'+
+    '.note{margin-top:12px;color:#5f6368;font-size:12px;line-height:1.5}</style></head><body><h2>STEP5・記事取得診断</h2>';
+  if(!rows.length){
+    html+='<p>保存済みの診断結果はありません。UAT40でSTEP5を実行してください。</p>';
+  }else{
+    html+='<div class="box">対象 '+esc(s.totalUrls||rows.length)+'件 / ネットワーク取得 '+esc(s.networkUrls||0)+'件 / キャッシュ '+esc(s.cacheHits||0)+
+      '件 / fetchAll待機 '+Math.round(Number(s.fetchAllElapsedMs||0)/1000)+'秒 / 記事取得全体 '+Math.round(Number(s.totalElapsedMs||0)/1000)+'秒</div>';
+    html+='<table><thead><tr><th>#</th><th>URL</th><th>取得元</th><th>HTTP</th><th>個別時間</th></tr></thead><tbody>';
+    rows.forEach(function(r,i){
+      html+='<tr><td>'+(i+1)+'</td><td>'+esc(r.url)+'</td><td>'+esc(r.source)+'</td><td>'+esc(r.status||'')+'</td><td>'+
+        (r.elapsedMs===''?'—':(Math.round(Number(r.elapsedMs)/1000*10)/10+'秒'))+'</td></tr>';
+    });
+    html+='</tbody></table>';
+    html+='<div class="note">fetchAll は複数URLを並列実行しますが、Google Apps Scriptから各URL単独の通信時間は取得できません。'+
+      'そのため、fetchAll取得行の「個別時間」は推測せず「—」と表示します。HTTPエラーやfallbackがあるURL、キャッシュ利用状況、バッチ全体の待機時間からボトルネックを判定します。</div>';
+  }
+  html+='</body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(900).setHeight(620),'STEP5・記事取得診断');
 }
 
 function sbmFetchMainQueriesForUrlsBatch_(urls) {
@@ -9143,6 +9225,7 @@ function onOpen() {
     .addSeparator()
     .addItem('初回セットアップ','sbmStartInitialSetup')
     .addItem('初回セットアップの工程時間を確認','sbmShowSetupTimingReport')
+    .addItem('STEP5の記事取得診断を確認','sbmShowSetupArticleFetchDiagnostics')
     .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
     .addItem('記事情報を取得','sbmSupplementNewArticlesManual')
     .addItem('シートの作成・修復','sbmInitializeSheets')

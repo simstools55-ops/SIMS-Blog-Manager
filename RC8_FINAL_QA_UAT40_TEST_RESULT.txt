@@ -1,0 +1,18 @@
+RC8 Final QA-UAT40
+Result: PASS / REAL-SHEET UAT REQUIRED
+Regression tests: 65/65 PASS
+Syntax: PASS
+Release audit: PASS
+Code.gs sync: PASS
+
+Real UAT:
+1. Run initial setup STEP5.
+2. Open SIMS-Blog-Manager -> STEP5の記事取得診断を確認.
+3. Report:
+   - 対象件数
+   - ネットワーク取得件数
+   - キャッシュ件数
+   - fetchAll待機秒
+   - 記事取得全体秒
+   - HTTPエラー/fallbackの有無
+4. Also report STEP5 total / 記事取得 / クエリ取得 from the setup timing dialog.
