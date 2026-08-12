@@ -8,10 +8,10 @@ must(!open.includes('sbmRebuildImprovementHistoryList_'),'開く処理で全履�
 
 const prep=fn('sbmPrepareImprovementHistoryViewData_');
 must(prep.includes("route.indexOf('Doctor→')===0"),'Doctor旧履歴の日付補完を維持');
-must(prep.includes("vals.sort(function(a,b)"),'全履歴を改善日で並べ替える');
-must(prep.includes("return tb-ta"),'改善日の降順');
-must(prep.includes("sh.getRange(2,1,vals.length,lastCol).setValues(vals)"),'整備結果は一括書込み');
-must(prep.includes("row[dateIdx]=d"),'改善日はDate型へ統一');
+must(prep.includes(".sort({column:hm['改善日'],ascending:false})"),'全履歴を改善日で並べ替える');
+must(prep.includes("ascending:false"),'改善日の降順');
+must(prep.includes("sh.getRange(2,hm['改善日'],dateValues.length,1).setValues(dateValues)"),'改善日列だけ一括書込み');
+must(prep.includes("dateValues.push([d])"),'改善日はDate型へ統一');
 
 const polish=fn('sbmPolishImprovementHistoryView_');
 must(polish.includes("'改善概要':390"),'改善概要幅を約30%拡大');

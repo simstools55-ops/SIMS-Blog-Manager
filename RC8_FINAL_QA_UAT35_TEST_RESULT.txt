@@ -1,0 +1,20 @@
+RC8 Final QA-UAT35
+
+Static result: PASS / REAL-SHEET UAT REQUIRED
+
+Automated verification:
+- RC8 JavaScript regression: 60/60 PASS
+- JavaScript syntax: PASS
+- Release audit: PASS
+- Code.gs sync: PASS
+- Distribution ASCII filenames: PASS
+- ZIP integrity: PASS
+
+Real-sheet UAT:
+1. Reload spreadsheet.
+2. Open 改善履歴 and record first-open time.
+3. Confirm Doctor dates display yyyy/M/d.
+4. Confirm all rows are globally sorted by 改善日 descending.
+5. Confirm weekly/final/state text colors.
+6. Confirm completed rows remain light gray.
+7. Close and reopen 改善履歴 and record second-open time.
