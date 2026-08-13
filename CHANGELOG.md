@@ -1022,3 +1022,10 @@
 - Doctor依頼作成時は現在表示中の候補シートをそのまま読み取り、選択状態を維持。
 
 - RC8 Final QA UAT1: 健康診断完了時の不要な候補/Home遷移を除去。精密診断候補のタイトル折返し、重症度左寄せ、傾向～CTRの状態色を固定。
+
+## 5.10.0-RC8.10 - Site Diagnosis Handoff Hotfix
+- Added an SBM intake for Site Diagnosis Doctor results.
+- Preserve Site Diagnosis batch/case identity and external Doctor CaseID in Doctor_Cases.
+- Validate SiteID, ArticleID and URL before accepting the result.
+- Extend SIMS_DOCTOR_CASE_RESULT_V2 normalization for Site Diagnosis case_context/workflow_handoff.
+- Generate Writer referral from SBM Evidence while keeping Site Diagnosis traceability.
