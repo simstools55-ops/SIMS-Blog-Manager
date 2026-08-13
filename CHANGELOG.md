@@ -1,3 +1,12 @@
+## 5.10.0-RC8.12 - Site Diagnosis Writer Return Hotfix
+
+- Added `6．Site DiagnosisのWriter処置結果を受け取る` to the SIMS Doctor menu.
+- Writer responses are received in a non-blocking HTML modal; full Writer output or the result JSON can be pasted.
+- The Site Diagnosis CaseID / BatchID stored in `Doctor_Cases` is validated before accepting the Writer result.
+- Reused the existing Writer result transaction to update improvement history, article monitoring state, effectiveness tracking, and review schedule.
+- Added SiteID / ArticleID mismatch guards and preserved the existing Site Diagnosis trace chain.
+- Synchronized the runtime `SBM_VERSION` with RC8.12.
+
 ## 5.10.0-RC8.11 - Site Diagnosis Intake Dialog Hotfix
 
 - Site Diagnosis Doctor result intake no longer uses `SpreadsheetApp.getUi().prompt()`.

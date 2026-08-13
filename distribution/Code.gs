@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.0-RC8.9';
+const SBM_VERSION = '5.10.0-RC8.12';
 // Product 5.10.0-RC8: staged health check + final Doctor UI + monitoring workflow baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -9372,6 +9372,7 @@ function onOpen() {
     .addItem('3．精密診断候補を見る','sbmDoctorOpenDetailedCandidates')
     .addItem('4．チェックした記事のDoctor依頼文を作る','sbmDoctorCreateRequestFromDetailedCandidate')
     .addItem('5．Site Diagnosisの診断結果を受け取る','sbmDoctorRegisterSiteDiagnosisResult')
+    .addItem('6．Site DiagnosisのWriter処置結果を受け取る','sbmDoctorRegisterSiteDiagnosisWriterResult')
     .addSeparator()
     .addItem('個別診断：記事一覧から依頼する','sbmDoctorCreateRequestFromArticleList')
     .addItem('個別診断：改善の推移から依頼する','sbmDoctorCreateRequestFromEffect')
@@ -12334,7 +12335,8 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
     // Doctor紹介で完了した処置も通常改善と同じ履歴・モニタリング基盤へ接続します。記事ランクは変更しません。
     // GSC非取得で記事管理行が消えていても、結果登録前に管理行を復元します。
     try{sbmDoctorEnsureArticleDbRowForMonitoring_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1],rec.hm['記事タイトル']?rec.values[rec.hm['記事タイトル']-1]:'');}catch(eRestoreBeforeRegister){sbmLog_('DoctorArticleDbRestoreBeforeRegister','Warning',String(eRestoreBeforeRegister));}
-    var feedback=sbmDoctorTreatmentResultAsFeedback_(o), normalized=sbmNormalizeImprovementFeedback_(JSON.stringify(feedback));
+    var feedbackSource=Object.assign({},o,{article_url:o.article_url||(rec.hm['記事URL']?rec.values[rec.hm['記事URL']-1]:'')});
+    var feedback=sbmDoctorTreatmentResultAsFeedback_(feedbackSource), normalized=sbmNormalizeImprovementFeedback_(JSON.stringify(feedback));
     var registered=sbmRegisterImprovementFeedback(normalized);if(!registered||registered.ok===false)throw new Error('処置結果は受け取りましたが、モニタリング登録に失敗しました：'+(registered&&registered.message?registered.message:'不明なエラー'));
     sbmDoctorEnsureMonitoringSync_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);
     rec.values[rec.hm['状態コード']-1]='MONITORING';rec.values[rec.hm['状態']-1]='モニター中';
@@ -12364,6 +12366,39 @@ function sbmDoctorRegisterWriterTreatmentResultFromDialog(raw){
 }
 function sbmDoctorRegisterWriterTreatmentResult(){
   try{var o=sbmDoctorPromptWriterResultJson_();if(!o)return;var saved=sbmDoctorStoreWriterTreatmentResult_(o);sbmAlert_('Writer治療結果を登録しました','CaseID：'+saved.caseId+'\n状態：'+saved.status);}catch(e){sbmAlert_('Writer治療結果を登録できません',String(e.message||e));}
+}
+
+
+/**
+ * Product 5.10.0 RC8.12: Site Diagnosis Writer return bridge.
+ * Long Writer responses are received in a non-blocking HTML dialog, then the
+ * existing Doctor/Writer monitoring transaction is reused. Site Diagnosis
+ * identity stored on Doctor_Cases remains the trace source of truth.
+ */
+function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){
+  try{
+    var text=sbmDoctorExtractJsonText_(String(raw||'').trim()),o;
+    if(!text)throw new Error('SIMS Writerの処置結果を貼り付けてください。回答全文でもJSONだけでも登録できます。');
+    try{o=JSON.parse(text);}catch(eParse){throw new Error('Writer処置結果JSONを読み取れませんでした。SIMS Writerの回答全文、または最後のJSONをそのまま貼り付けてください。');}
+    if(String(o.format||'')!=='SIMS_WRITER_TREATMENT_RESULT_V1')throw new Error('Site Diagnosis経路では SIMS_WRITER_TREATMENT_RESULT_V1 を貼り付けてください。');
+    var caseId=String(o.case_id||'').trim();if(!caseId)throw new Error('Writer結果にcase_idがありません。');
+    var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)throw new Error('対応するCaseIDがSBMにありません：'+caseId);
+    var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';
+    var siteDiagnosisBatchId=rec.hm['SiteDiagnosisBatchID']?String(rec.values[rec.hm['SiteDiagnosisBatchID']-1]||'').trim():'';
+    if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Diagnosis経路の案件ではありません。通常のDoctor処置結果登録を使用してください。');
+    var caseSiteId=rec.hm['サイトID']?String(rec.values[rec.hm['サイトID']-1]||'').trim():'';
+    var caseArticleId=rec.hm['記事ID']?String(rec.values[rec.hm['記事ID']-1]||'').trim():'';
+    if(String(o.site_id||'').trim()&&caseSiteId&&String(o.site_id).trim()!==caseSiteId)throw new Error('SiteIDがCaseと一致しません。\nCase：'+caseSiteId+'\nWriter結果：'+String(o.site_id));
+    if(String(o.article_id||'').trim()&&caseArticleId&&String(o.article_id).trim()!==caseArticleId)throw new Error('ArticleIDがCaseと一致しません。\nCase：'+caseArticleId+'\nWriter結果：'+String(o.article_id));
+    var saved=sbmDoctorStoreWriterTreatmentResult_(o);
+    var updated=sbmDoctorFindCaseRow_(caseId),historyId='';
+    if(updated&&updated.hm['改善履歴ID'])historyId=String(updated.values[updated.hm['改善履歴ID']-1]||'').trim();
+    return {ok:true,message:'Site DiagnosisのWriter処置結果を登録しました。\nCaseID：'+saved.caseId+'\nSite Diagnosis CaseID：'+siteDiagnosisCaseId+'\n状態：'+saved.status+(historyId?'\n改善履歴ID：'+historyId:''),caseId:saved.caseId,siteDiagnosisCaseId:siteDiagnosisCaseId,siteDiagnosisBatchId:siteDiagnosisBatchId,status:saved.status,historyId:historyId};
+  }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
+}
+function sbmDoctorRegisterSiteDiagnosisWriterResult(){
+  var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124;background:#f8f9fa}h2{font-size:18px;margin:0 0 8px}.note{font-size:12px;line-height:1.7;color:#5f6368;margin-bottom:12px}.flow{padding:9px 11px;margin-bottom:12px;border-radius:7px;background:#e8f0fe;color:#174ea6;font-size:12px;font-weight:700}textarea{box-sizing:border-box;width:100%;height:350px;padding:10px;font:12px/1.45 monospace;white-space:pre;border:1px solid #bdc1c6;border-radius:7px;background:#fff}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}button{padding:9px 16px;border:0;border-radius:6px;font-weight:700;cursor:pointer}.primary{background:#1a73e8;color:#fff}.secondary{background:#e8eaed;color:#202124}.status{font-size:12px;line-height:1.7;margin-top:12px;white-space:pre-wrap}.ok{color:#137333}.err{color:#b3261e}</style></head><body><h2>Site DiagnosisのWriter処置結果を受け取る</h2><div class="flow">Site Diagnosis → Doctor → SBM → Writer → SBM → モニター</div><div class="note">SIMS Writerの回答全文、または最後の <b>SIMS_WRITER_TREATMENT_RESULT_V1</b> JSONを貼り付けてください。入力中はApps Scriptを実行しません。「Writer処置結果を登録」を押すと、Site Diagnosis CaseIDを照合し、改善履歴・記事管理・改善の推移をモニター状態へ同期します。</div><textarea id="json" placeholder="SIMS Writerの回答全文、またはWriter処置結果JSONをここに貼り付けてください"></textarea><div class="actions"><button class="secondary" onclick="google.script.host.close()">キャンセル</button><button id="submit" class="primary" onclick="submitResult()">Writer処置結果を登録</button></div><div id="status" class="status"></div><script>function setStatus(text,cls){var s=document.getElementById("status");s.className="status "+(cls||"");s.textContent=text||""}function submitResult(){var raw=document.getElementById("json").value.trim();if(!raw){setStatus("Writerの回答またはJSONを貼り付けてください。","err");return}var b=document.getElementById("submit");b.disabled=true;b.textContent="登録中…";setStatus("登録しています。改善履歴・記事管理・改善の推移を同期しています…","");google.script.run.withSuccessHandler(function(r){b.disabled=false;b.textContent="Writer処置結果を登録";if(!r||!r.ok){setStatus(r&&r.message?r.message:"登録できませんでした。","err");return}setStatus(r.message||"登録しました。","ok")}).withFailureHandler(function(e){b.disabled=false;b.textContent="Writer処置結果を登録";setStatus(e&&e.message?e.message:String(e),"err")}).sbmDoctorSubmitSiteDiagnosisWriterResult(raw)}</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(620),'Site DiagnosisのWriter処置結果を受け取る');
 }
 
 

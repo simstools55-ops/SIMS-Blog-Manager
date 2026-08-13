@@ -1,0 +1,26 @@
+const fs=require('fs');
+const code=fs.readFileSync('distribution/Code.gs','utf8');
+function ok(v,msg){if(!v){console.error('FAIL:',msg);process.exit(1);}console.log('PASS:',msg);}
+ok(code.includes("const SBM_VERSION = '5.10.0-RC8.12';"),'runtime version is RC8.12');
+ok(code.includes(".addItem('6．Site DiagnosisのWriter処置結果を受け取る','sbmDoctorRegisterSiteDiagnosisWriterResult')"),'Site Diagnosis Writer return menu exists');
+ok(code.includes('function sbmDoctorRegisterSiteDiagnosisWriterResult(){'),'non-blocking Writer return dialog exists');
+ok(code.includes('function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){'),'server-side Site Diagnosis Writer handler exists');
+const start=code.indexOf('function sbmDoctorRegisterSiteDiagnosisWriterResult(){');
+const end=code.indexOf('/* ========================================================================== *',start);
+const dialog=code.slice(start,end);
+ok(dialog.includes('showModalDialog'),'Writer return uses HTML modal');
+ok(!dialog.includes('getUi().prompt('),'Writer return does not use blocking prompt');
+ok(dialog.includes('.sbmDoctorSubmitSiteDiagnosisWriterResult(raw)'),'dialog submits only after registration click');
+const hstart=code.indexOf('function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){');
+const hend=code.indexOf('function sbmDoctorRegisterSiteDiagnosisWriterResult(){',hstart);
+const handler=code.slice(hstart,hend);
+ok(handler.includes("'SIMS_WRITER_TREATMENT_RESULT_V1'"),'Writer contract is validated');
+ok(handler.includes("rec.hm['SiteDiagnosisCaseID']"),'Site Diagnosis CaseID is required from Doctor_Cases');
+ok(handler.includes("rec.hm['SiteDiagnosisBatchID']"),'Site Diagnosis BatchID is preserved/read');
+ok(handler.includes('SiteIDがCaseと一致しません'),'SiteID mismatch is blocked');
+ok(handler.includes('ArticleIDがCaseと一致しません'),'ArticleID mismatch is blocked');
+ok(handler.includes('sbmDoctorStoreWriterTreatmentResult_(o)'),'existing monitoring transaction is reused');
+ok(code.includes("article_url:o.article_url||(rec.hm['記事URL']?rec.values[rec.hm['記事URL']-1]:'')"),'case URL is preserved into improvement history when Writer omits article_url');
+ok(code.includes("rec.values[rec.hm['状態コード']-1]='MONITORING'"),'completed Writer result reaches MONITORING');
+ok(code.includes("sbmDoctorLatestHistoryIdForArticle_"),'improvement history linkage is retained');
+console.log('All RC8.12 Site Diagnosis Writer return tests passed.');
