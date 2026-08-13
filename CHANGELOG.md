@@ -1,3 +1,11 @@
+## 5.10.0-RC8.11 - Site Diagnosis Intake Dialog Hotfix
+
+- Site Diagnosis Doctor result intake no longer uses `SpreadsheetApp.getUi().prompt()`.
+- Added an HTML modal with a large JSON text area.
+- Apps Script runs only after the user clicks the registration button, preventing prompt wait time from consuming the execution limit.
+- Registration result and Writer referral are returned to the same dialog.
+- Existing Site Diagnosis identity validation, Doctor_Cases trace storage, and Writer handoff behavior remain unchanged.
+
 ## 5.10.0-RC8.9
 - Version display/identity synchronized across Home, VERSION, product identity, and both Code.gs copies.
 - Adopted `major.minor.revision` for stable releases; RC validation uses `-RC<candidate>.<revision>`.

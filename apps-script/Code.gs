@@ -12048,9 +12048,14 @@ function sbmDoctorShowSiteDiagnosisWriterDialog_(req,id){
   SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(780).setHeight(560),'Site Diagnosis 診断結果を受け取りました');
 }
 function sbmDoctorRegisterSiteDiagnosisResult(){
+  var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124;background:#f8f9fa}h2{font-size:18px;margin:0 0 8px}.note{font-size:12px;line-height:1.6;color:#5f6368;margin-bottom:12px}textarea{box-sizing:border-box;width:100%;height:330px;padding:10px;font:12px/1.45 monospace;white-space:pre;border:1px solid #bdc1c6;border-radius:7px;background:#fff}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}button{padding:9px 16px;border:0;border-radius:6px;font-weight:700;cursor:pointer}.primary{background:#1a73e8;color:#fff}.secondary{background:#e8eaed;color:#202124}.status{font-size:12px;line-height:1.6;margin-top:10px;white-space:pre-wrap}.ok{color:#137333}.err{color:#b3261e}.hidden{display:none}</style></head><body><h2>Site Diagnosisの診断結果を受け取る</h2><div class="note">SIMS Doctor回答のJSON部分だけを貼り付けてください。入力中はApps Scriptを実行しません。「診断結果を登録」を押した時点で、CaseID・Site Diagnosis CaseID・SiteIDを検証してSBMへ登録します。</div><textarea id="json" placeholder="Doctor結果JSONをここに貼り付けてください"></textarea><div class="actions"><button class="secondary" onclick="google.script.host.close()">キャンセル</button><button id="submit" class="primary" onclick="submitResult()">診断結果を登録</button></div><div id="status" class="status"></div><div id="writerBox" class="hidden"><div class="note" style="margin-top:14px">登録が完了しました。下のWriter紹介状をコピーしてSIMS Writerへ渡してください。</div><textarea id="writer" readonly></textarea><div class="actions"><button class="primary" onclick="copyWriter()">Writer紹介状をコピー</button></div></div><script>function setStatus(text,cls){var s=document.getElementById("status");s.className="status "+(cls||"");s.textContent=text||""}function submitResult(){var raw=document.getElementById("json").value.trim();if(!raw){setStatus("JSONを貼り付けてください。","err");return}var b=document.getElementById("submit");b.disabled=true;setStatus("登録しています…","");google.script.run.withSuccessHandler(function(r){b.disabled=false;if(!r||!r.ok){setStatus(r&&r.message?r.message:"登録できませんでした。","err");return}setStatus(r.message||"登録しました。","ok");if(r.writerReady&&r.writerRequest){document.getElementById("writer").value=r.writerRequest;document.getElementById("writerBox").className=""}}).withFailureHandler(function(e){b.disabled=false;setStatus(e&&e.message?e.message:String(e),"err")}).sbmDoctorSubmitSiteDiagnosisResult(raw)}function copyWriter(){var t=document.getElementById("writer");t.select();t.setSelectionRange(0,999999);var done=function(){setStatus("Writer紹介状をコピーしました。","ok")};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t.value).then(done).catch(function(){document.execCommand("copy");done()})}else{document.execCommand("copy");done()}}</script></body></html>';
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(610),'Site Diagnosisの診断結果を受け取る');
+}
+function sbmDoctorSubmitSiteDiagnosisResult(rawText){
   try{
-    var o=sbmDoctorPromptJson_('Site Diagnosisの診断結果を受け取る','Site Diagnosisで選定され、SIMS Doctorが診断した結果JSONを貼り付けてください。CaseID・Site Diagnosis CaseID・SiteIDをSBMへ引き継ぎます。');
-    if(!o)return;
+    var t=sbmDoctorExtractJsonText_(String(rawText||''));
+    if(!t)throw new Error('JSONを読み取れませんでした。Doctor回答のJSON部分を貼り付けてください。');
+    var o;try{o=JSON.parse(t);}catch(parseError){throw new Error('JSONを読み取れませんでした。詳細：'+parseError.message);}
     if(String(o.format||'')!=='SIMS_DOCTOR_CASE_RESULT_V2')throw new Error('Site Diagnosis経路では SIMS_DOCTOR_CASE_RESULT_V2 を貼り付けてください。');
     var id=sbmDoctorSiteDiagnosisIdentity_(o),article=sbmDoctorValidateSiteDiagnosisIdentity_(id);
     sbmDoctorUpsertSiteDiagnosisCase_(o,id,article);
@@ -12059,13 +12064,12 @@ function sbmDoctorRegisterSiteDiagnosisResult(){
       var source=sbmDoctorBuildSiteDiagnosisSourceRequest_(id,article),req=sbmDoctorBuildWriterTreatmentRequest_(source,o,n);
       req.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
       sbmDoctorSaveGeneratedWriterRequest_(id.caseId,req);
-      sbmDoctorShowSiteDiagnosisWriterDialog_(req,id);
-      return;
+      return {ok:true,writerReady:true,message:'Site Diagnosis診断結果を登録しました。\nCaseID：'+id.caseId+'\nSite Diagnosis CaseID：'+id.siteDiagnosisCaseId+'\n状態：Writer紹介状作成済み',writerRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId};
     }
     if(n.monitor){try{sbmSetArticleWorkStateByIdentity_(id.articleId,id.articleUrl,'👀 モニター中');}catch(ignoreMonitor){}
-      return sbmAlert_('Site Diagnosis診断結果を登録しました','CaseID：'+id.caseId+'\nSite Diagnosis CaseID：'+id.siteDiagnosisCaseId+'\n状態：経過観察\n\nWriter処置は行いません。');}
-    sbmAlert_('Site Diagnosis診断結果を登録しました','CaseID：'+id.caseId+'\nSite Diagnosis CaseID：'+id.siteDiagnosisCaseId+'\n状態：'+saved.label);
-  }catch(e){sbmAlert_('Site Diagnosis診断結果を登録できません',String(e&&e.message?e.message:e));}
+      return {ok:true,writerReady:false,message:'Site Diagnosis診断結果を登録しました。\nCaseID：'+id.caseId+'\nSite Diagnosis CaseID：'+id.siteDiagnosisCaseId+'\n状態：経過観察\nWriter処置は行いません。',caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId};}
+    return {ok:true,writerReady:false,message:'Site Diagnosis診断結果を登録しました。\nCaseID：'+id.caseId+'\nSite Diagnosis CaseID：'+id.siteDiagnosisCaseId+'\n状態：'+saved.label,caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId};
+  }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
 }
 
 function sbmDoctorRegisterCaseResult(){
