@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.0-RC8.12';
+const SBM_VERSION = '5.10.0-RC8.13';
 // Product 5.10.0-RC8: staged health check + final Doctor UI + monitoring workflow baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -11993,11 +11993,15 @@ function sbmDoctorRegisterUserConfirmationAndBuildFollowUp(caseId,resultCode,raw
 /** Site Diagnosis由来のDoctor結果から追跡Identityを抽出します。 */
 function sbmDoctorSiteDiagnosisIdentity_(o){
   var c=o&&o.case_context||{};
+  var requestId=String(o&&o.request_id||c.request_id||'').trim();
+  // case_context形式とトップレベル形式を両方受理する。
+  // request_idはSDC-で始まる場合だけSite Diagnosis CaseIDの互換値として使う。
+  var sdcFromRequest=/^SDC-/i.test(requestId)?requestId:'';
   return {
     caseId:String(o&&o.case_id||c.case_id||c.individual_case_id||'').trim(),
-    siteDiagnosisCaseId:String(c.site_diagnosis_case_id||'').trim(),
-    siteDiagnosisBatchId:String(c.site_diagnosis_batch_id||'').trim(),
-    siteId:String(c.site_id||'').trim(),
+    siteDiagnosisCaseId:String(c.site_diagnosis_case_id||o&&o.site_diagnosis_case_id||sdcFromRequest||'').trim(),
+    siteDiagnosisBatchId:String(c.site_diagnosis_batch_id||o&&o.site_diagnosis_batch_id||'').trim(),
+    siteId:String(c.site_id||o&&o.site_id||'').trim(),
     articleId:String(c.article_id||o&&o.article_id||'').trim(),
     articleUrl:String(c.article_url||o&&o.article_url||'').trim()
   };
