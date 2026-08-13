@@ -1,0 +1,20 @@
+SIMS-Blog-Manager 5.10.0-RC8.14
+Site Diagnosis Unified Flow static QA
+Date: 2026-08-14
+
+PASS
+- apps-script/Code.gs syntax check (node --check)
+- apps-script/Code.gs == distribution/Code.gs (byte-identical)
+- Runtime SBM_VERSION == 5.10.0-RC8.14
+- VERSION == 5.10.0-RC8.14
+- PRODUCT_IDENTITY.current_version == 5.10.0-RC8.14
+- Menu contains one Site Diagnosis treatment entry (5)
+- Legacy sbmDoctorRegisterSiteDiagnosisWriterResult retained as compatibility wrapper
+- Unified dialog contains Doctor intake, article-open action, Writer referral copy, Writer result registration, and Close button
+- Existing backend identity validation and Writer monitoring transaction retained
+- UTF-8 / mojibake scan passed for changed artifacts
+- Targeted existing test tests/test_catalog_importer.py: 2 passed
+
+NOTE
+- Full repository pytest collection cannot run in this supplied snapshot because many legacy tests import src.doctor modules that are not present/resolvable in the repository snapshot. This is unrelated to the Apps Script RC8.14 UI change.
+- Runtime UAT in Google Sheets is still required.

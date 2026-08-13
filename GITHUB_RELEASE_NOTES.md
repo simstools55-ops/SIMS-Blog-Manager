@@ -1,8 +1,10 @@
-# SIMS-Blog-Manager Product 5.10.0-RC8.9
+# SIMS-Blog-Manager Product 5.10.0-RC8.14
 
-- Version management now uses `major.minor.revision`; RC validation adds a prerelease suffix such as `RC8.9`.
-- Home displays the complete running version (`v5.10.0-RC8.9`).
-- `VERSION`, `PRODUCT_IDENTITY.json`, `apps-script/Code.gs`, and `distribution/Code.gs` are synchronized.
-- Stale health-check runs no longer block daily processing; only a genuinely active recent run does.
-- Writer result registration shows `登録中...` immediately and prevents duplicate clicks.
-- The processing profile sheet remains internal, and Today view avoids unnecessary redraws when there is no change.
+## Site Diagnosis Unified Treatment Flow
+
+- Unified the former Site Diagnosis menu items 5 and 6 into `5．Site Diagnosisの処置を進める`.
+- One dialog now covers Doctor result registration, opening the article, copying the Writer referral, Writer result registration, and monitoring handoff.
+- Added a persistent `閉じる` button for consistency with other SBM workflows.
+- Kept the old Writer-return function as a compatibility wrapper.
+- Preserved existing identity validation, Writer referral generation, improvement-history registration, and monitoring synchronization.
+- Synchronized `VERSION`, `PRODUCT_IDENTITY.json`, `apps-script/Code.gs`, and `distribution/Code.gs` at `5.10.0-RC8.14`.

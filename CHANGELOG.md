@@ -1,5 +1,11 @@
-## 5.10.0-RC8.12 - Site Diagnosis Writer Return Hotfix
+## 5.10.0-RC8.14 - 2026-08-14
 
+- Unified Site Diagnosis Doctor intake and Writer return into one treatment-flow dialog.
+- Added an article-open action and a persistent Close button for UI consistency.
+- Preserved legacy Writer-return entry point as a compatibility wrapper.
+- Synchronized VERSION, runtime, distribution, product identity, and current release notes to 5.10.0-RC8.14.
+
+## 5.10.0-RC8.12 - Site Diagnosis Writer Return Hotfix
 - Added `6．Site DiagnosisのWriter処置結果を受け取る` to the SIMS Doctor menu.
 - Writer responses are received in a non-blocking HTML modal; full Writer output or the result JSON can be pasted.
 - The Site Diagnosis CaseID / BatchID stored in `Doctor_Cases` is validated before accepting the Writer result.
