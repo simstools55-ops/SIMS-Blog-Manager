@@ -11714,6 +11714,73 @@ function sbmDoctorExtractJsonText_(text){
   }
   return t;
 }
+
+/**
+ * Product 5.10.0 RC8.20-HF2:
+ * Extract a specific machine-result contract from a long human-readable response.
+ * This intentionally does NOT change the generic Doctor/Writer JSON extractor.
+ */
+function sbmDoctorContractNameOf_(o){
+  if(!o||typeof o!=='object')return '';
+  return String(o.envelope&&o.envelope.contract_name||o.contract_name||o.format||'');
+}
+function sbmDoctorBalancedJsonFrom_(text,start){
+  var t=String(text||''),depth=0,inString=false,escape=false;
+  if(start<0||t.charAt(start)!=='{')return '';
+  for(var i=start;i<t.length;i++){
+    var ch=t.charAt(i);
+    if(inString){
+      if(escape){escape=false;continue;}
+      if(ch==='\\'){escape=true;continue;}
+      if(ch==='"')inString=false;
+      continue;
+    }
+    if(ch==='"'){inString=true;continue;}
+    if(ch==='{')depth++;
+    else if(ch==='}'){
+      depth--;
+      if(depth===0)return t.substring(start,i+1);
+    }
+  }
+  return '';
+}
+function sbmDoctorExtractContractJsonText_(text,contractName){
+  var t=String(text||'').trim(),want=String(contractName||'').trim();
+  if(!t)throw new Error('CONTRACT_JSON_EXTRACT_EMPTY');
+  function accept(candidate){
+    var c=String(candidate||'').trim();if(!c)return '';
+    try{var o=JSON.parse(c);return sbmDoctorContractNameOf_(o)===want?c:'';}catch(ignore){return '';}
+  }
+
+  // 1. Entire pasted text is already the requested JSON.
+  var whole=accept(t);if(whole)return whole;
+
+  // 2. Search every Markdown code fence, not only the first one.
+  // RC2 Merge responses commonly contain the completed article fence first,
+  // followed by the SBM result JSON fence.
+  var fenceRe=/```(?:json)?\s*([\s\S]*?)```/gi,m;
+  while((m=fenceRe.exec(t))!==null){
+    var fenced=accept(m[1]);if(fenced)return fenced;
+  }
+
+  // 3. Target the requested contract marker in free-form text and walk
+  // backwards through possible object starts. This is string/escape aware,
+  // so braces inside content_markdown do not terminate the JSON early.
+  var markerPos=t.indexOf(want);
+  while(markerPos>=0){
+    var starts=[],p=markerPos;
+    while((p=t.lastIndexOf('{',p-1))>=0){
+      starts.push(p);
+      if(starts.length>=80)break;
+    }
+    for(var i=0;i<starts.length;i++){
+      var objText=sbmDoctorBalancedJsonFrom_(t,starts[i]),hit=accept(objText);
+      if(hit)return hit;
+    }
+    markerPos=t.indexOf(want,markerPos+want.length);
+  }
+  throw new Error('CONTRACT_JSON_EXTRACT_NOT_FOUND:'+want);
+}
 function sbmDoctorPromptJson_(title,message){
   var ui=SpreadsheetApp.getUi(),res=ui.prompt(title,message+'\n\nDoctor回答の全文、またはJSON部分だけを貼り付けてください。',ui.ButtonSet.OK_CANCEL);
   if(res.getSelectedButton()!==ui.Button.OK)return null;
@@ -12615,7 +12682,13 @@ function sbmDoctorStoreMergeTreatmentResult_(o){
   return {caseId:m.caseId,status:String(rec.values[rec.hm['状態']-1]||''),resultStatus:m.status};
 }
 function sbmDoctorRegisterMergeTreatmentResultFromDialog(raw){
-  try{var text=sbmDoctorExtractJsonText_(String(raw||'').trim()),o;if(!text)throw new Error('SIMS Mergeの処置結果JSONを貼り付けてください。');try{o=JSON.parse(text);}catch(e){throw new Error('JSONを読み取れませんでした。Merge回答の SIMS_MERGE_TREATMENT_RESULT_V1 を含めて貼り付けてください。');}var saved=sbmDoctorStoreMergeTreatmentResult_(o);return {ok:true,message:'Merge処置結果をSBMへ登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status};}catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
+  try{
+    var input=String(raw||'').trim(),text='',o;if(!input)throw new Error('SIMS Mergeの処置結果JSONを貼り付けてください。');
+    try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_MERGE_TREATMENT_RESULT_V1');}catch(eExtract){throw new Error('Merge結果の抽出に失敗しました。\n段階：JSON抽出\n詳細：'+String(eExtract&&eExtract.message?eExtract.message:eExtract));}
+    try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge結果JSONの解析に失敗しました。\n段階：JSON parse\n詳細：'+String(eParse&&eParse.message?eParse.message:eParse));}
+    if(sbmDoctorContractNameOf_(o)!=='SIMS_MERGE_TREATMENT_RESULT_V1')throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証');
+    var saved=sbmDoctorStoreMergeTreatmentResult_(o);return {ok:true,message:'Merge処置結果をSBMへ登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status};
+  }catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
 }
 function sbmDoctorRegisterMergeTreatmentResult(){
   try{var o=sbmDoctorPromptJson_('Merge処置結果を登録','SIMS Mergeの回答全文、または SIMS_MERGE_TREATMENT_RESULT_V1 JSONを貼り付けてください。');if(!o)return;var saved=sbmDoctorStoreMergeTreatmentResult_(o);sbmAlert_('Merge処置結果を登録しました','CaseID：'+saved.caseId+'\n状態：'+saved.status);}catch(e){sbmAlert_('Merge処置結果を登録できません',String(e.message||e));}
@@ -12703,8 +12776,11 @@ function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){
 }
 function sbmDoctorSubmitSiteDiagnosisMergeResult(raw){
   try{
-    var text=sbmDoctorExtractJsonText_(String(raw||'').trim()),o;if(!text)throw new Error('SIMS Mergeの処置結果を貼り付けてください。回答全文でもJSONだけでも登録できます。');
-    try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge処置結果JSONを読み取れませんでした。SIMS Mergeの回答全文、または SIMS_MERGE_TREATMENT_RESULT_V1 をそのまま貼り付けてください。');}
+    var input=String(raw||'').trim(),text='',o;if(!input)throw new Error('SIMS Mergeの処置結果を貼り付けてください。回答全文でもJSONだけでも登録できます。');
+    try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_MERGE_TREATMENT_RESULT_V1');}
+    catch(eExtract){throw new Error('Merge結果の抽出に失敗しました。回答内に SIMS_MERGE_TREATMENT_RESULT_V1 が含まれることを確認してください。\n段階：JSON抽出\n詳細：'+String(eExtract&&eExtract.message?eExtract.message:eExtract));}
+    try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge結果JSONの解析に失敗しました。\n段階：JSON parse\n詳細：'+String(eParse&&eParse.message?eParse.message:eParse));}
+    if(sbmDoctorContractNameOf_(o)!=='SIMS_MERGE_TREATMENT_RESULT_V1')throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証\n検出：'+(sbmDoctorContractNameOf_(o)||'未記載'));
     var m=sbmDoctorNormalizeMergeResult_(o),rec=sbmDoctorFindCaseRow_(m.caseId);if(!rec)throw new Error('対応するCaseIDがSBMにありません：'+m.caseId);
     var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Diagnosis経路の案件ではありません。通常のDoctor処置結果登録を使用してください。');
     var saved=sbmDoctorStoreMergeTreatmentResult_(o),writerReq=null,writerText='';
