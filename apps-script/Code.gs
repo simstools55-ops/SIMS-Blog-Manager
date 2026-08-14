@@ -12231,13 +12231,19 @@ function sbmDoctorResumeSiteDiagnosisTreatments(){
   try{
     var sh=sbmDoctorEnsureCaseSheet_(),hm=sbmHeaderMap_(sh),last=sh.getLastRow();
     if(last<2)return {ok:true,actions:[],message:'再開できるSite Diagnosis処置はありません。'};
-    var vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues(),actions=[],pendingUser=0,pendingMergeCaseId='',pendingMergeContext=null;
+    var vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues(),actions=[],pendingUser=0,pendingMergeCaseId='',pendingMergeContext=null,scanned=0,mergeRows=0,skippedNoSiteDiagnosis=0,recoveredWithoutSiteDiagnosis=0;
     vals.forEach(function(row){
+      scanned++;
       var sd=hm['SiteDiagnosisCaseID']?String(row[hm['SiteDiagnosisCaseID']-1]||'').trim():'';
-      if(!sd)return;
       var state=hm['状態コード']?String(row[hm['状態コード']-1]||'').trim():'';
       var caseId=String(row[hm['CaseID']-1]||'').trim(),url=hm['記事URL']?String(row[hm['記事URL']-1]||'').trim():'',articleTitle=hm['記事タイトル']?String(row[hm['記事タイトル']-1]||'').trim():'';
       var route='',req='',label='',destination=hm['紹介先']?String(row[hm['紹介先']-1]||'').toUpperCase():'',mergeReqStored=hm['Merge依頼JSON']?String(row[hm['Merge依頼JSON']-1]||''):'',mergeResultStored=hm['Merge結果JSON']?String(row[hm['Merge結果JSON']-1]||''):'',confirmResult=hm['確認結果']?String(row[hm['確認結果']-1]||''):'';
+      var isMergeRow=destination.indexOf('MERGE')>=0||!!mergeReqStored;
+      if(isMergeRow)mergeRows++;
+      // HF8.2: old/intermediate rows may have lost SiteDiagnosisCaseID.
+      // Keep Writer-only rows protected, but never discard a concrete Merge referral.
+      if(!sd&&!isMergeRow){skippedNoSiteDiagnosis++;return;}
+      if(!sd&&isMergeRow)recoveredWithoutSiteDiagnosis++;
       if(state==='MERGE_IN_PROGRESS'||state==='MERGE_RESULT_RECEIVED'){
         route='MERGE';req=mergeReqStored;label=state==='MERGE_RESULT_RECEIVED'?'Merge結果を再登録できます':'Merge結果待ち';
       }else if(state==='MERGE_WRITER_IN_PROGRESS'||state==='WRITER_IN_PROGRESS'){
@@ -12252,7 +12258,7 @@ function sbmDoctorResumeSiteDiagnosisTreatments(){
         }
       }else if(state==='MERGE_USER_ACTION_REQUIRED'){
         pendingUser++;if(!pendingMergeCaseId){pendingMergeCaseId=caseId;pendingMergeContext=sbmDoctorLoadMergeCompletionContextFromRow_(row,hm);}return;
-      }else if(destination.indexOf('MERGE')>=0&&mergeReqStored&&state!=='MONITORING'&&state!=='TREATMENT_FAILED'){
+      }else if(mergeReqStored&&state!=='MONITORING'&&state!=='TREATMENT_FAILED'){
         // HF8.1 recovery fallback:
         // Drive/Artifact導入前後の中間状態や旧HFで状態コードが想定外でも、
         // Site DiagnosisのMerge紹介状が残っていれば処置を失わない。
@@ -12263,10 +12269,11 @@ function sbmDoctorResumeSiteDiagnosisTreatments(){
       }else{return;}
       var needsRebuild=sbmDoctorStoredReferralNeedsRebuild_(req),pretty=req;
       if(req){try{pretty=JSON.stringify(JSON.parse(req),null,2);}catch(ignorePretty){}}
-      actions.push({route:route,request:pretty,caseId:caseId,articleUrl:url,articleTitle:articleTitle,resume:true,resumeState:state,resumeLabel:label,siteDiagnosisCaseId:sd,needsRebuild:needsRebuild});
+      actions.push({route:route,request:pretty,caseId:caseId,articleUrl:url,articleTitle:articleTitle,resume:true,resumeState:state,resumeLabel:label+(sd?'':'【SiteDiagnosisCaseID欠落を補完復元】'),siteDiagnosisCaseId:sd,needsRebuild:needsRebuild});
     });
-    if(!actions.length)return {ok:true,actions:[],pendingMergeCaseId:pendingMergeCaseId,pendingMergeContext:pendingMergeContext,message:pendingUser?'Site Diagnosis案件は統合原稿反映・301等の利用者処置待ちです。④で実施済み項目を確認し、処置完了として登録してください。':'再開できるSite Diagnosis処置はありません。Doctorからやり直す必要はありません。'};
-    return {ok:true,actions:actions,pendingMergeCaseId:pendingMergeCaseId,pendingMergeContext:pendingMergeContext,message:'前回の続きから再開しました。未完了の紹介状／結果登録：'+actions.length+'件'+(pendingUser?'、利用者処置待ち：'+pendingUser+'件':'')};
+    var diag='\n走査：'+scanned+'件 / Merge候補行：'+mergeRows+'件'+(recoveredWithoutSiteDiagnosis?' / SiteDiagnosisCaseIDなしで復元：'+recoveredWithoutSiteDiagnosis+'件':'');
+    if(!actions.length)return {ok:true,actions:[],pendingMergeCaseId:pendingMergeCaseId,pendingMergeContext:pendingMergeContext,message:(pendingUser?'Site Diagnosis案件は統合原稿反映・301等の利用者処置待ちです。④で実施済み項目を確認し、処置完了として登録してください。':'再開できる未完了処置は見つかりませんでした。Doctorからやり直す必要はありません。')+diag};
+    return {ok:true,actions:actions,pendingMergeCaseId:pendingMergeCaseId,pendingMergeContext:pendingMergeContext,message:'前回の続きから再開しました。未完了の紹介状／結果登録：'+actions.length+'件'+(pendingUser?'、利用者処置待ち：'+pendingUser+'件':'')+diag};
   }catch(e){return {ok:false,actions:[],message:'Site Diagnosisの再開状態を読み取れませんでした：'+String(e&&e.message?e.message:e)};}
 }
 
