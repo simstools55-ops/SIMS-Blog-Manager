@@ -4,8 +4,8 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.3';
-// Product v5.10.3: Site Diagnosis workflow, full-response result extraction, and monitoring baseline.
+const SBM_VERSION = '5.10.4';
+// Product v5.10.4: Site Diagnosis workflow, full-response result extraction, and monitoring baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -12224,6 +12224,18 @@ function sbmDoctorSiteDiagnosisIdentity_(o){
   };
 }
 function sbmDoctorValidateSiteDiagnosisIdentity_(id){
+  // Product 5.10.4: Site Diagnosis packages may omit article_id.
+  // When URL is authoritative and resolves to exactly the local Article DB record,
+  // fill ArticleID from SBM rather than rejecting the handoff.
+  var article=null;
+  if(!id.articleId&&id.articleUrl){
+    article=sbmDoctorFindArticleByIdOrUrl_('',id.articleUrl);
+    if(article){
+      var resolvedId=String(article['ArticleID']||'').trim();
+      if(resolvedId)id.articleId=resolvedId;
+    }
+  }
+
   var missing=[];
   if(!id.caseId)missing.push('case_id');
   if(!id.siteDiagnosisCaseId)missing.push('site_diagnosis_case_id');
@@ -12232,10 +12244,13 @@ function sbmDoctorValidateSiteDiagnosisIdentity_(id){
   if(!id.articleId)missing.push('article_id');
   if(!id.articleUrl)missing.push('article_url');
   if(missing.length)throw new Error('Site Diagnosisの識別情報が不足しています：'+missing.join(', '));
+
   var localSite=String(sbmGetSetting_('SiteID','')).trim();
   if(localSite&&localSite!==id.siteId)throw new Error('SiteIDがこのSBMと一致しません。\nSBM：'+localSite+'\nDoctor結果：'+id.siteId);
-  var article=sbmDoctorFindArticleByIdOrUrl_(id.articleId,id.articleUrl);
+
+  article=article||sbmDoctorFindArticleByIdOrUrl_(id.articleId,id.articleUrl);
   if(!article)throw new Error('記事管理に対象記事が見つかりません。\nArticleID：'+id.articleId+'\nURL：'+id.articleUrl);
+
   var storedId=String(article['ArticleID']||'').trim(),storedUrl=String(article['記事URL']||'').trim();
   if(storedId&&storedId!==id.articleId)throw new Error('ArticleIDが記事管理と一致しません。');
   if(storedUrl&&sbmNormalizeUrl_(storedUrl)!==sbmNormalizeUrl_(id.articleUrl))throw new Error('記事URLが記事管理と一致しません。');

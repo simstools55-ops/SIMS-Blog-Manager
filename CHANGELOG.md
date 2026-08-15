@@ -1,3 +1,10 @@
+## 5.10.4 - 2026-08-16
+
+- Site Diagnosis intake now safely resolves a missing `article_id` from the authoritative article URL in the local SBM Article DB.
+- URL-based fallback is used only when `article_id` is absent; existing ArticleID/URL consistency checks remain unchanged.
+- This enables Site Diagnosis v0.5.6 handoff packages to reuse the existing SBM Writer/Merge routing without adding a new contract.
+- No changes to Writer/Merge treatment generation, monitoring rules, daily processing, or diagnosis logic.
+
 ## 5.10.3 - 2026-08-15
 
 - Fixed Doctor V2 direct `allowed_scope` / `blocked_scope` mapping into Writer referrals.
