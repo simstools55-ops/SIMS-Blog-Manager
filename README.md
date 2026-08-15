@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.10.0  
-> **Internal build:** 5.10.0-RC8.21  
-> Home displays only the three-part product version. RC/HF identifiers are development metadata.
+> **Current product:** SIMS-Blog-Manager v5.10.1  
+> **Version policy:** `vX.Y.Z` (major.minor.patch)  
+> **Shared Editorial Knowledge:** v3.5.0
 
+## Current release
 
-SIMS Editorial PlatformのControl Plane／System of Recordとして、日次改善、Doctor診断、Treatment Routing、公開結果、効果測定を管理します。
-
-- Product Version: `5.10.0-RC8.14`
-- Platform Compatibility: `SIMS Editorial Platform 1.x`
+- Product Version: `5.10.1`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
+- Release type: `PATCH`
+- Main fix: Writer / Doctor / Merge result registration can extract the intended result JSON from a full AI response.
 
-> Current release: SIMS-Blog-Manager Product 5.10.0-RC8.14
+> Current release: SIMS-Blog-Manager Product v5.10.1
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 

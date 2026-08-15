@@ -5,8 +5,7 @@
  */
 
 const SBM_VERSION = '5.10.1';
-const SBM_DISPLAY_VERSION = '5.10.0';
-// Product 5.10.0-RC8: staged health check + final Doctor UI + monitoring workflow baseline.
+// Product v5.10.1: Site Diagnosis workflow, full-response result extraction, and monitoring baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -1083,7 +1082,7 @@ function sbmBuildHomeSheet_() {
   if (sh.getMaxRows() < 24) sh.insertRowsAfter(sh.getMaxRows(), 24 - sh.getMaxRows());
 
   sh.getRange('A1:G1').merge().setValue('SIMS-Blog-Manager  Home');
-  sh.getRange('H1').setValue('v' + SBM_DISPLAY_VERSION);
+  sh.getRange('H1').setValue('v' + SBM_VERSION);
   sh.getRange('A2').setValue('ブログ名'); sh.getRange('B2:D2').merge();
   sh.getRange('E2').setValue('最終更新'); sh.getRange('F2:H2').merge();
   sh.getRange('A3').setValue('総記事数'); sh.getRange('B3').setValue('0件');
@@ -5847,7 +5846,7 @@ function sbmApplyProduct5OfficialMeasurementSchema_() {
 function sbmShowVersionInfo() {
   SpreadsheetApp.getUi().alert(
     'SIMS-Blog-Manager バージョン',
-    '製品バージョン：v' + SBM_DISPLAY_VERSION + '\n内部ビルド：' + SBM_VERSION + '\n効果測定：7日・14日・21日・28日の4回測定',
+    '製品バージョン：v' + SBM_VERSION + '\n効果測定：7日・14日・21日・28日の4回測定',
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }
@@ -8047,7 +8046,7 @@ function sbmRefreshHome_() {
   var settingsMap = sbmGetSettingsMap_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
-  if (!sh || String(sh.getRange('H1').getValue()) !== ('v' + SBM_DISPLAY_VERSION) || sbmHomeLayoutNeedsRebuild_(sh)) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
+  if (!sh || String(sh.getRange('H1').getValue()) !== ('v' + SBM_VERSION) || sbmHomeLayoutNeedsRebuild_(sh)) { sbmBuildHomeSheet_(); sh = ss.getSheetByName(SBM_SHEETS.HOME); }
 
   var rows = [];
   try { rows = sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB) || []; } catch(e) {}
@@ -12342,7 +12341,7 @@ function sbmDoctorResumeSiteDiagnosisTreatments(){
 }
 
 function sbmDoctorRegisterSiteDiagnosisResult(){
-  // Product v5.10.1: Site DiagnosisのDoctor受取とWriter結果登録を1つの導線へ統合。
+  // Product 5.10.0 RC8.14: Site DiagnosisのDoctor受取とWriter結果登録を1つの導線へ統合。
   // 既存の登録トランザクションは変更せず、UIだけを「診断結果 → Writer紹介状 → 修正結果登録」へ一本化する。
   var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>'+
     'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124;background:#f8f9fa}'+

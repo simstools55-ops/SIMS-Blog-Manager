@@ -1,40 +1,40 @@
-# SIMS-Blog-Manager v5.10.0-RC8.14 Apply Instructions
+# SIMS-Blog-Manager v5.10.1 Apply Instructions
 
 ## Apps Script
 
 Replace only:
-- `Code.gs` <- `apps-script/Code.gs`
 
-No other Apps Script file needs replacement.
+- `Code.gs` — **replace**
+
+No change:
+
+- `appsscript.json` — **no change**
+
+After replacement, reload the spreadsheet.
 
 ## GitHub repository
 
-Replace:
+For a repository update, overwrite the changed/current metadata files. Full deletion is not required.
+
+Updated current-release files:
 - `apps-script/Code.gs`
 - `distribution/Code.gs`
+- `src/apps-script/Code.gs`
+- `src/distribution/Code.gs`
 - `VERSION`
 - `PRODUCT_IDENTITY.json`
 - `README.md`
-- `README.txt`
 - `GITHUB_RELEASE_NOTES.md`
 - `CHANGELOG.md`
-- `FILE_MANIFEST.json`
-- `FILE_MANIFEST.txt`
-
-Add:
-- `RELEASE_NOTES_v5.10.0-RC8.14-Site-Diagnosis-Unified-Flow.md`
-- `RC8_14_SITE_DIAGNOSIS_UNIFIED_FLOW_TEST_RESULT.txt`
-
-Unchanged:
-- All other Apps Script files
-- Contracts, schemas, runtime validators, templates, and documentation pages not listed above
+- `RELEASE_NOTES-v5.10.1.md`
 
 ## Version
 
-- Product: `5.10.0-RC8.14`
-- RC family: `RC8`
-- Revision: `14`
+- Product: `5.10.1`
+- Formal display: `v5.10.1`
+- Version policy: `vX.Y.Z`
+- Shared Editorial Knowledge: `3.5.0`
 
-## Recommended commit
+Recommended commit:
 
-`feat(sbm): unify Site Diagnosis treatment flow in RC8.14`
+`fix(sbm): release v5.10.1 with unified version and full-response extraction`

@@ -1,8 +1,10 @@
-# v5.10.1
+## 5.10.1 - 2026-08-15
 
-- Fixed full-response JSON extraction for Writer, Doctor Site Diagnosis, and Merge result registration.
-- Preserved JSON-only input compatibility.
-- Normalized formal product versioning to vX.Y.Z.
+- Formal product version normalized to `v5.10.1` using the three-number `vX.Y.Z` policy.
+- Removed the separate `SBM_DISPLAY_VERSION`; Home and the version dialog now use `SBM_VERSION`.
+- Fixed full-response extraction for Writer, Site Diagnosis Doctor, and Merge result registration.
+- JSON-only result registration remains backward compatible.
+- Synchronized all maintained `Code.gs` copies and current release metadata.
 
 ## 5.10.0-RC8.21 - 2026-08-15
 

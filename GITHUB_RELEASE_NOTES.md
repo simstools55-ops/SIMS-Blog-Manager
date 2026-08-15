@@ -1,10 +1,21 @@
-# SIMS-Blog-Manager Product 5.10.0-RC8.14
+# SIMS-Blog-Manager v5.10.1
 
-## Site Diagnosis Unified Treatment Flow
+## PATCH release
 
-- Unified the former Site Diagnosis menu items 5 and 6 into `5．Site Diagnosisの処置を進める`.
-- One dialog now covers Doctor result registration, opening the article, copying the Writer referral, Writer result registration, and monitoring handoff.
-- Added a persistent `閉じる` button for consistency with other SBM workflows.
-- Kept the old Writer-return function as a compatibility wrapper.
-- Preserved existing identity validation, Writer referral generation, improvement-history registration, and monitoring synchronization.
-- Synchronized `VERSION`, `PRODUCT_IDENTITY.json`, `apps-script/Code.gs`, and `distribution/Code.gs` at `5.10.0-RC8.14`.
+v5.10.1 fixes result registration when users paste an AI response in full.
+
+### Fixed
+- Writer result registration extracts `SIMS_WRITER_TREATMENT_RESULT_V1` from the full response.
+- Site Diagnosis Writer result registration uses the same contract-specific extraction.
+- Site Diagnosis Doctor result registration selects the intended Doctor result contract instead of the first JSON object.
+- Merge result registration extracts `SIMS_MERGE_TREATMENT_RESULT_V1` from the full response.
+- JSON-only paste remains supported.
+
+### Version consistency
+- Product runtime: `5.10.1`
+- Home / version dialog: `v5.10.1`
+- Root `VERSION`: `5.10.1`
+- `PRODUCT_IDENTITY.json.current_version`: `5.10.1`
+- Maintained `Code.gs` copies are synchronized.
+
+Shared Editorial Knowledge remains `3.5.0`.
