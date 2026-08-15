@@ -87,6 +87,7 @@
 ./README.txt
 ./RELEASE_NOTES-v5.10.1.md
 ./RELEASE_NOTES-v5.10.2.md
+./RELEASE_NOTES-v5.10.3.md
 ./RELEASE_NOTES_5.10.0-RC8-OFFICIAL-BLOCKER-FINAL.md
 ./RELEASE_NOTES_v0.1.0.md
 ./RELEASE_NOTES_v1.0.0-RC1.md
@@ -237,6 +238,7 @@
 ./VERSION
 ./VERSION-AUDIT-v5.10.1.md
 ./VERSION-AUDIT-v5.10.2.md
+./VERSION-AUDIT-v5.10.3.md
 ./VERSION_POLICY.md
 ./apps-script/Code.gs
 ./apps-script/appsscript.json

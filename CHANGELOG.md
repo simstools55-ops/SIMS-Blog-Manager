@@ -1,3 +1,11 @@
+## 5.10.3 - 2026-08-15
+
+- Fixed Doctor V2 direct `allowed_scope` / `blocked_scope` mapping into Writer referrals.
+- Refreshed Writer referral H1/title, SEO title, and meta description from the live article.
+- Preserved Doctor diagnosis summary and available diagnosis codes more completely.
+- Applied the same mapping behavior to Site Diagnosis and manual/backup Writer request paths.
+- Formal version advanced from v5.10.2 to v5.10.3.
+
 ## 5.10.2 - 2026-08-15
 
 - Fixed Doctor V2 contract extraction regression from v5.10.1.

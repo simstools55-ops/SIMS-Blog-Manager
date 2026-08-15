@@ -1,27 +1,26 @@
-# SIMS-Blog-Manager v5.10.2
+# SIMS-Blog-Manager v5.10.3
 
 ## PATCH release
 
-v5.10.2 corrects the result-contract parser introduced in v5.10.1.
+v5.10.3 fixes Doctor -> SBM -> Writer referral mapping found during Site Diagnosis production testing.
 
 ### Fixed
-- Doctor V2 results are now identified correctly even when:
-  - `format = SIMS_DOCTOR_CASE_RESULT_V2`
-  - `contract_name = SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`
-- Result matching now accepts any valid identifier from:
-  - `format`
-  - `contract_name`
-  - `envelope.contract_name`
-- JSON-only Doctor input remains supported.
-- Full Doctor / Writer / Merge responses remain supported.
-- Contract-specific extraction still ignores unrelated JSON blocks before the target result.
+- `treatment_plan.allowed_scope` is copied into `doctor_referral.allowed_scope`.
+- `treatment_plan.blocked_scope` is copied into `doctor_referral.blocked_scope`.
+- Doctor diagnosis metadata is preserved more completely.
+- Writer referral article metadata is refreshed from the live article at referral generation time:
+  - H1/title
+  - SEO title
+  - meta description
+- Live metadata takes priority over stale Article Master metadata.
+- Technical flags intended for SBM remain explicitly available as `technical_flags_for_sbm`.
+- Both the Site Diagnosis Writer path and the backup/manual Writer-request path use the same mapping rules.
 
-### Version consistency
-- Runtime: `5.10.2`
-- Home / version dialog: `v5.10.2`
-- Root `VERSION`: `5.10.2`
-- `PRODUCT_IDENTITY.json.current_version`: `5.10.2`
-- Four maintained `Code.gs` copies are synchronized.
-- `SBM_DISPLAY_VERSION` is not used.
+### Compatibility
+- Existing Doctor V1/V2 referral shapes remain supported.
+- JSON-only and full-response result registration from v5.10.2 remains unchanged.
 
-Shared Editorial Knowledge remains `3.5.0`.
+### Version
+- Product: `5.10.3`
+- Display: `v5.10.3`
+- Shared Editorial Knowledge: `3.5.0`

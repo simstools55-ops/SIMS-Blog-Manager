@@ -1,29 +1,22 @@
-# SIMS-Blog-Manager v5.10.2 Apply Instructions
+# SIMS-Blog-Manager v5.10.3 Apply Instructions
 
 ## Apps Script
-
 Replace only:
-
-- `Code.gs` — **replace**
+- `Code.gs` — replace
 
 No change:
+- `appsscript.json` — no change
 
-- `appsscript.json` — **no change**
+Reload the spreadsheet after replacement.
 
-After replacement, reload the spreadsheet.
-
-## GitHub repository
-
-You may replace the repository contents with this release package.
-The repository itself does not need to be deleted.
+## GitHub
+Repository contents may be overwritten with this release package. Full repository deletion is not required.
 
 ## Version
-
-- Product: `5.10.2`
-- Formal display: `v5.10.2`
+- Product: `5.10.3`
+- Formal display: `v5.10.3`
 - Version policy: `vX.Y.Z`
 - Shared Editorial Knowledge: `3.5.0`
 
 Recommended commit:
-
-`fix(sbm): release v5.10.2 with Doctor contract parser correction`
+`fix(sbm): release v5.10.3 with Doctor Writer referral mapping correction`

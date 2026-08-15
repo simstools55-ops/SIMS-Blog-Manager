@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.10.2  
+> **Current product:** SIMS-Blog-Manager v5.10.3  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.10.2`
+- Product Version: `5.10.3`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `PATCH`
 - Main fix: Writer / Doctor / Merge result registration can extract the intended result JSON from a full AI response.
 
-> Current release: SIMS-Blog-Manager Product v5.10.2
+> Current release: SIMS-Blog-Manager Product v5.10.3
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
