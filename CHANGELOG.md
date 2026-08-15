@@ -1,3 +1,15 @@
+## 5.10.0-RC8.21 - 2026-08-15
+
+- Consolidated Site Diagnosis / Merge hotfixes through HF8.11.
+- Fixed stale primary ArticleID in Merge registration completion message.
+- Removed internal HF labels from end-user dialog text.
+- Home now displays `v5.10.0`; internal build remains `5.10.0-RC8.21`.
+- Merge completion uses two user checks: publish merged primary article + configure 301 redirect.
+- Merge treatment dialog clearly distinguishes and opens primary vs absorbed articles.
+- Preserved automatic Drive artifact storage and safe retry.
+- Preserved Site Diagnosis resume recovery.
+- Added release QA for generated dialog JavaScript syntax.
+
 ## 5.10.0-RC8.14 - 2026-08-14
 
 - Unified Site Diagnosis Doctor intake and Writer return into one treatment-flow dialog.

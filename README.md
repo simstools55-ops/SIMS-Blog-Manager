@@ -1,5 +1,10 @@
 # SIMS-Blog-Manager
 
+> **Current product:** SIMS-Blog-Manager v5.10.0  
+> **Internal build:** 5.10.0-RC8.21  
+> Home displays only the three-part product version. RC/HF identifiers are development metadata.
+
+
 SIMS Editorial PlatformのControl Plane／System of Recordとして、日次改善、Doctor診断、Treatment Routing、公開結果、効果測定を管理します。
 
 - Product Version: `5.10.0-RC8.14`
