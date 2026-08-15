@@ -11781,6 +11781,17 @@ function sbmDoctorExtractContractJsonText_(text,contractName){
   }
   throw new Error('CONTRACT_JSON_EXTRACT_NOT_FOUND:'+want);
 }
+function sbmDoctorExtractOneOfContracts_(text, contractNames){
+  var names=Array.isArray(contractNames)?contractNames:[contractNames],lastError=null;
+  for(var i=0;i<names.length;i++){
+    var name=String(names[i]||'').trim();
+    if(!name)continue;
+    try{return sbmDoctorExtractContractJsonText_(text,name);}
+    catch(e){lastError=e;}
+  }
+  throw lastError||new Error('CONTRACT_JSON_EXTRACT_NOT_FOUND');
+}
+
 function sbmDoctorPromptJson_(title,message){
   var ui=SpreadsheetApp.getUi(),res=ui.prompt(title,message+'\n\nDoctor回答の全文、またはJSON部分だけを貼り付けてください。',ui.ButtonSet.OK_CANCEL);
   if(res.getSelectedButton()!==ui.Button.OK)return null;
@@ -12263,7 +12274,7 @@ function sbmDoctorResumeSiteDiagnosisTreatments(){
 }
 
 function sbmDoctorRegisterSiteDiagnosisResult(){
-  // Product 5.10.0 RC8.14: Site DiagnosisのDoctor受取とWriter結果登録を1つの導線へ統合。
+  // Product v5.10.1: Site DiagnosisのDoctor受取とWriter結果登録を1つの導線へ統合。
   // 既存の登録トランザクションは変更せず、UIだけを「診断結果 → Writer紹介状 → 修正結果登録」へ一本化する。
   var html='<!doctype html><html><head><base target="_top"><meta charset="UTF-8"><style>'+
     'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124;background:#f8f9fa}'+
@@ -12334,9 +12345,17 @@ function sbmDoctorProcessSiteDiagnosisSingleResult_(o){
 }
 function sbmDoctorSubmitSiteDiagnosisResult(rawText){
   try{
-    var t=sbmDoctorExtractJsonText_(String(rawText||''));
-    if(!t)throw new Error('JSONを読み取れませんでした。Doctor回答のJSON部分を貼り付けてください。');
-    var o;try{o=JSON.parse(t);}catch(parseError){throw new Error('JSONを読み取れませんでした。詳細：'+parseError.message);}
+    var input=String(rawText||'').trim(),t='',o;
+    if(!input)throw new Error('Doctor回答全文、または診断結果JSONを貼り付けてください。');
+    try{
+      t=sbmDoctorExtractOneOfContracts_(input,[
+        'SIMS_DOCTOR_CASE_RESULT_V2',
+        'SIMS_DOCTOR_SITE_WIDE_PRECISION_RESULT_V1'
+      ]);
+    }catch(eExtract){
+      throw new Error('Doctor診断結果を抽出できませんでした。SIMS_DOCTOR_CASE_RESULT_V2 または SIMS_DOCTOR_SITE_WIDE_PRECISION_RESULT_V1 が回答内に含まれることを確認してください。');
+    }
+    try{o=JSON.parse(t);}catch(parseError){throw new Error('Doctor診断結果JSONを読み取れませんでした。詳細：'+parseError.message);}
     var format=String(o.format||'');
     if(format==='SIMS_DOCTOR_CASE_RESULT_V2'){
       var single=sbmDoctorProcessSiteDiagnosisSingleResult_(o);
@@ -12394,8 +12413,10 @@ function sbmDoctorPromptWriterResultJson_(){
   if(res.getSelectedButton()!==ui.Button.OK)return null;
   var raw=String(res.getResponseText()||'').trim();
   if(!raw)return null;
-  var text=sbmDoctorExtractJsonText_(raw),obj;
-  try{obj=JSON.parse(text);}catch(e){throw new Error('JSONを読み取れませんでした。Writerの回答全文、または結果JSONをそのまま貼り付けてください。');}
+  var text='',obj;
+  try{text=sbmDoctorExtractContractJsonText_(raw,'SIMS_WRITER_TREATMENT_RESULT_V1');}
+  catch(eExtract){throw new Error('Writer結果を抽出できませんでした。回答内に SIMS_WRITER_TREATMENT_RESULT_V1 が含まれることを確認してください。');}
+  try{obj=JSON.parse(text);}catch(e){throw new Error('Writer結果JSONを読み取れませんでした。回答全文、または結果JSONをそのまま貼り付けてください。');}
   var f=String(obj&&obj.format||'');
   if(f.indexOf('SIMS_DOCTOR_')===0)throw new Error('これはDoctorの診断JSONです。ここには登録しません。Doctor回答のコピー用依頼文をWriterへ渡してください。');
   return obj;
@@ -12705,7 +12726,14 @@ function sbmDoctorRegisterMergeTreatmentResultFromDialog(raw){
   }catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
 }
 function sbmDoctorRegisterMergeTreatmentResult(){
-  try{var o=sbmDoctorPromptJson_('Merge処置結果を登録','SIMS Mergeの回答全文、または SIMS_MERGE_TREATMENT_RESULT_V1 JSONを貼り付けてください。');if(!o)return;var saved=sbmDoctorStoreMergeTreatmentResult_(o);sbmAlert_('Merge処置結果を登録しました','CaseID：'+saved.caseId+'\n状態：'+saved.status);}catch(e){sbmAlert_('Merge処置結果を登録できません',String(e.message||e));}
+  try{
+    var ui=SpreadsheetApp.getUi(),res=ui.prompt('Merge処置結果を登録','SIMS Mergeの回答全文、または SIMS_MERGE_TREATMENT_RESULT_V1 JSONを貼り付けてください。',ui.ButtonSet.OK_CANCEL);
+    if(res.getSelectedButton()!==ui.Button.OK)return;
+    var raw=String(res.getResponseText()||'').trim();if(!raw)return;
+    var text=sbmDoctorExtractContractJsonText_(raw,'SIMS_MERGE_TREATMENT_RESULT_V1'),o=JSON.parse(text);
+    var saved=sbmDoctorStoreMergeTreatmentResult_(o);
+    sbmAlert_('Merge処置結果を登録しました','CaseID：'+saved.caseId+'\n状態：'+saved.status);
+  }catch(e){sbmAlert_('Merge処置結果を登録できません',String(e.message||e));}
 }
 
 function sbmDoctorStoreWriterTreatmentResult_(o){
@@ -12749,9 +12777,11 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
 }
 function sbmDoctorRegisterWriterTreatmentResultFromDialog(raw){
   try{
-    var text=sbmDoctorExtractJsonText_(String(raw||'').trim()),o;
-    if(!text)throw new Error('Writerの処置結果JSONを貼り付けてください。');
-    try{o=JSON.parse(text);}catch(e){throw new Error('JSONを読み取れませんでした。Writer回答の最後にある結果JSONだけを貼り付けてください。');}
+    var input=String(raw||'').trim(),text='',o;
+    if(!input)throw new Error('Writerの回答全文、または処置結果JSONを貼り付けてください。');
+    try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_WRITER_TREATMENT_RESULT_V1');}
+    catch(eExtract){throw new Error('Writer結果を抽出できませんでした。回答内に SIMS_WRITER_TREATMENT_RESULT_V1 が含まれることを確認してください。');}
+    try{o=JSON.parse(text);}catch(e){throw new Error('Writer結果JSONを読み取れませんでした。回答全文、または結果JSONをそのまま貼り付けてください。');}
     var saved=sbmDoctorStoreWriterTreatmentResult_(o);
     return {ok:true,message:'Writer処置結果を登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status};
   }catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
@@ -12769,8 +12799,10 @@ function sbmDoctorRegisterWriterTreatmentResult(){
  */
 function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){
   try{
-    var text=sbmDoctorExtractJsonText_(String(raw||'').trim()),o;
-    if(!text)throw new Error('SIMS Writerの処置結果を貼り付けてください。回答全文でもJSONだけでも登録できます。');
+    var input=String(raw||'').trim(),text='',o;
+    if(!input)throw new Error('SIMS Writerの処置結果を貼り付けてください。回答全文でもJSONだけでも登録できます。');
+    try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_WRITER_TREATMENT_RESULT_V1');}
+    catch(eExtract){throw new Error('Writer結果を抽出できませんでした。回答内に SIMS_WRITER_TREATMENT_RESULT_V1 が含まれることを確認してください。');}
     try{o=JSON.parse(text);}catch(eParse){throw new Error('Writer処置結果JSONを読み取れませんでした。SIMS Writerの回答全文、または最後のJSONをそのまま貼り付けてください。');}
     if(String(o.format||'')!=='SIMS_WRITER_TREATMENT_RESULT_V1')throw new Error('Site Diagnosis経路では SIMS_WRITER_TREATMENT_RESULT_V1 を貼り付けてください。');
     var caseId=String(o.case_id||'').trim();if(!caseId)throw new Error('Writer結果にcase_idがありません。');

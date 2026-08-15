@@ -1,3 +1,9 @@
+# v5.10.1
+
+- Fixed full-response JSON extraction for Writer, Doctor Site Diagnosis, and Merge result registration.
+- Preserved JSON-only input compatibility.
+- Normalized formal product versioning to vX.Y.Z.
+
 ## 5.10.0-RC8.21 - 2026-08-15
 
 - Consolidated Site Diagnosis / Merge hotfixes through HF8.11.
