@@ -1,3 +1,10 @@
+## 5.10.2 - 2026-08-15
+
+- Fixed Doctor V2 contract extraction regression from v5.10.1.
+- Result matching now checks `format`, `contract_name`, and `envelope.contract_name` independently.
+- Verified JSON-only and full-response registration paths for Doctor / Writer / Merge.
+- Formal version advanced from v5.10.1 to v5.10.2.
+
 ## 5.10.1 - 2026-08-15
 
 - Doctor V2の `format` と `contract_name` が異なる正式ケースを正しく識別するよう結果抽出を修正。

@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product v5.10.1
+ * SIMS-Blog-Manager Product v5.10.2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.1';
-// Product v5.10.1: Site Diagnosis workflow, full-response result extraction, and monitoring baseline.
+const SBM_VERSION = '5.10.2';
+// Product v5.10.2: Site Diagnosis workflow, full-response result extraction, and monitoring baseline.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({

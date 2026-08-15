@@ -1,21 +1,27 @@
-# SIMS-Blog-Manager v5.10.1
+# SIMS-Blog-Manager v5.10.2
 
 ## PATCH release
 
-v5.10.1 fixes result registration when users paste an AI response in full.
+v5.10.2 corrects the result-contract parser introduced in v5.10.1.
 
 ### Fixed
-- Writer result registration extracts `SIMS_WRITER_TREATMENT_RESULT_V1` from the full response.
-- Site Diagnosis Writer result registration uses the same contract-specific extraction.
-- Site Diagnosis Doctor result registration selects the intended Doctor result contract instead of the first JSON object.
-- Merge result registration extracts `SIMS_MERGE_TREATMENT_RESULT_V1` from the full response.
-- JSON-only paste remains supported.
+- Doctor V2 results are now identified correctly even when:
+  - `format = SIMS_DOCTOR_CASE_RESULT_V2`
+  - `contract_name = SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`
+- Result matching now accepts any valid identifier from:
+  - `format`
+  - `contract_name`
+  - `envelope.contract_name`
+- JSON-only Doctor input remains supported.
+- Full Doctor / Writer / Merge responses remain supported.
+- Contract-specific extraction still ignores unrelated JSON blocks before the target result.
 
 ### Version consistency
-- Product runtime: `5.10.1`
-- Home / version dialog: `v5.10.1`
-- Root `VERSION`: `5.10.1`
-- `PRODUCT_IDENTITY.json.current_version`: `5.10.1`
-- Maintained `Code.gs` copies are synchronized.
+- Runtime: `5.10.2`
+- Home / version dialog: `v5.10.2`
+- Root `VERSION`: `5.10.2`
+- `PRODUCT_IDENTITY.json.current_version`: `5.10.2`
+- Four maintained `Code.gs` copies are synchronized.
+- `SBM_DISPLAY_VERSION` is not used.
 
 Shared Editorial Knowledge remains `3.5.0`.

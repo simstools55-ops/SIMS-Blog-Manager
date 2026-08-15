@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.1 Apply Instructions
+# SIMS-Blog-Manager v5.10.2 Apply Instructions
 
 ## Apps Script
 
@@ -14,27 +14,16 @@ After replacement, reload the spreadsheet.
 
 ## GitHub repository
 
-For a repository update, overwrite the changed/current metadata files. Full deletion is not required.
-
-Updated current-release files:
-- `apps-script/Code.gs`
-- `distribution/Code.gs`
-- `src/apps-script/Code.gs`
-- `src/distribution/Code.gs`
-- `VERSION`
-- `PRODUCT_IDENTITY.json`
-- `README.md`
-- `GITHUB_RELEASE_NOTES.md`
-- `CHANGELOG.md`
-- `RELEASE_NOTES-v5.10.1.md`
+You may replace the repository contents with this release package.
+The repository itself does not need to be deleted.
 
 ## Version
 
-- Product: `5.10.1`
-- Formal display: `v5.10.1`
+- Product: `5.10.2`
+- Formal display: `v5.10.2`
 - Version policy: `vX.Y.Z`
 - Shared Editorial Knowledge: `3.5.0`
 
 Recommended commit:
 
-`fix(sbm): release v5.10.1 with unified version and full-response extraction`
+`fix(sbm): release v5.10.2 with Doctor contract parser correction`
