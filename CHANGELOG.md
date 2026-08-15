@@ -1,3 +1,10 @@
+## 5.10.5 - 2026-08-16
+
+- Added `処置せず終了` to the Site Diagnosis treatment dialog for cases where live-site verification invalidates the Doctor/Writer treatment premise.
+- The skip action records the reason and optional verification memo in Doctor_Cases, closes the treatment without fabricating a Writer/Merge result, and does not create a new improvement-history or effectiveness-monitoring record.
+- Stopped populating Writer referral `article.canonical_url` from the current SBM article URL when SBM has not independently verified the live HTML canonical.
+- Existing Writer/Merge result registration, monitoring, resume, and Site Diagnosis identity validation remain unchanged.
+
 ## 5.10.4 - 2026-08-16
 
 - Site Diagnosis intake now safely resolves a missing `article_id` from the authoritative article URL in the local SBM Article DB.
