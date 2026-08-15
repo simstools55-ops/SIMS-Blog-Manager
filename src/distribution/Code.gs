@@ -11720,9 +11720,23 @@ function sbmDoctorExtractJsonText_(text){
  * Extract a specific machine-result contract from a long human-readable response.
  * This intentionally does NOT change the generic Doctor/Writer JSON extractor.
  */
-function sbmDoctorContractNameOf_(o){
-  if(!o||typeof o!=='object')return '';
-  return String(o.envelope&&o.envelope.contract_name||o.contract_name||o.format||'');
+function sbmDoctorContractNamesOf_(o){
+  if(!o||typeof o!=='object')return [];
+  var out=[],seen={};
+  [
+    o.envelope&&o.envelope.contract_name,
+    o.contract_name,
+    o.format
+  ].forEach(function(v){
+    var s=String(v||'').trim();
+    if(s&&!seen[s]){seen[s]=true;out.push(s);}
+  });
+  return out;
+}
+function sbmDoctorContractMatches_(o,want){
+  var target=String(want||'').trim();
+  if(!target)return false;
+  return sbmDoctorContractNamesOf_(o).indexOf(target)>=0;
 }
 function sbmDoctorBalancedJsonFrom_(text,start){
   var t=String(text||''),depth=0,inString=false,escape=false;
@@ -11749,7 +11763,7 @@ function sbmDoctorExtractContractJsonText_(text,contractName){
   if(!t)throw new Error('CONTRACT_JSON_EXTRACT_EMPTY');
   function accept(candidate){
     var c=String(candidate||'').trim();if(!c)return '';
-    try{var o=JSON.parse(c);return sbmDoctorContractNameOf_(o)===want?c:'';}catch(ignore){return '';}
+    try{var o=JSON.parse(c);return sbmDoctorContractMatches_(o,want)?c:'';}catch(ignore){return '';}
   }
 
   // 1. Entire pasted text is already the requested JSON.

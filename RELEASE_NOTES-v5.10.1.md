@@ -21,3 +21,15 @@ The formal product version is managed only as `vX.Y.Z`.
 There is no separate display product version or formal RC/HF build number in the release identity.
 
 Current version: `v5.10.1`.
+
+## Final parser correction
+
+Doctor V2 results legitimately contain both:
+
+- `format: SIMS_DOCTOR_CASE_RESULT_V2`
+- `contract_name: SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`
+
+The result extractor now treats `format`, `contract_name`, and
+`envelope.contract_name` as independent valid identifiers instead of choosing
+only one field. This preserves JSON-only input and full-response input.
+

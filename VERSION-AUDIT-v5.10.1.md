@@ -39,3 +39,23 @@ Those strings are not used as the current runtime/display/release identity.
 - Separate display-version constant: absent
 - Root `VERSION`: `5.10.1`
 - Product identity current version: `5.10.1`
+
+## Result-extraction regression verification
+
+Validated against actual production-style responses:
+
+- A000018 Doctor JSON only: PASS
+- A000018 Doctor full response: PASS
+- A000019 Writer full response: PASS
+- Merge full response with unrelated JSON before the target result: PASS
+- Doctor one-of-contract routing: PASS
+
+The extractor now accepts a target identifier if it matches any of:
+- `format`
+- `contract_name`
+- `envelope.contract_name`
+
+This is required because Doctor V2 legitimately uses
+`format = SIMS_DOCTOR_CASE_RESULT_V2` while
+`contract_name = SIMS_DOCTOR_SINGLE_CASE_RESULT_V1`.
+

@@ -1,5 +1,7 @@
 ## 5.10.1 - 2026-08-15
 
+- Doctor V2の `format` と `contract_name` が異なる正式ケースを正しく識別するよう結果抽出を修正。
+
 - Formal product version normalized to `v5.10.1` using the three-number `vX.Y.Z` policy.
 - Removed the separate `SBM_DISPLAY_VERSION`; Home and the version dialog now use `SBM_VERSION`.
 - Fixed full-response extraction for Writer, Site Diagnosis Doctor, and Merge result registration.
