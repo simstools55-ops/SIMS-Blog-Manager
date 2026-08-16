@@ -1,12 +1,6 @@
 {
-  "product_code": "SBM",
   "product_name": "SIMS-Blog-Manager",
-  "repository_name": "SIMS-Blog-Manager",
-  "repository_type": "PRODUCT",
-  "platform": "SIMS Editorial Platform",
-  "platform_compatibility": "1.x",
-  "current_version": "5.10.8",
-  "shared_version": "3.5.0",
-  "role": "CONTROL_PLANE_AND_SYSTEM_OF_RECORD",
-  "version_policy": "major.minor.patch"
+  "current_version": "5.10.13",
+  "release_status": "PATCH",
+  "notes": "Adds Creator published-article registration and monitoring return path for Site Diagnosis Creator treatments."
 }

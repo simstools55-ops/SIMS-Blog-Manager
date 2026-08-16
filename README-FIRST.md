@@ -1,27 +1,15 @@
-# SIMS-Blog-Manager v5.10.12
+# SIMS-Blog-Manager v5.10.13
 
-## Apps Scriptへ反映するファイル
+Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 
+## Apps Scriptで変更するファイル
+- `Code.gs`：置換
+
+## GitHubで変更するファイル
 - `apps-script/Code.gs`：置換
-- `distribution/Code.gs`：配布用。`apps-script/Code.gs` と同一内容
-- その他：Apps Scriptへの追加・置換なし
+- `distribution/Code.gs`：置換
+- `VERSION`：更新
+- `PRODUCT_IDENTITY.json`：更新
+- `CHANGELOG.md`：更新
 
-Google Apps Scriptでは、現在の `Code.gs` 全文をこのv5.10.12版へ置換して保存してください。
-
-## 今回の修正
-
-Site Diagnosis処置ダイアログの「診断結果を登録」ボタンについて、クリック受付を明示的なDOMイベントへ統一しました。
-
-- `type="button"` を明示
-- `pointer-events:auto` と前面配置を明示
-- `pointerdown` で「ボタン入力を検出しました。」を表示
-- `click` を `addEventListener` で `submitDoctor()` に接続
-- 既存のCreator連携対応（v5.10.10）を維持
-
-この変更により、クリック自体が届かない問題と、Apps Script呼び出し後の問題を切り分けられます。
-
-
-## v5.10.12
-- Site Diagnosis treatment dialog: fixed an embedded JavaScript parse error caused by an insufficiently escaped newline in the Merge optional-artifact status message.
-- This parse error prevented all dialog JavaScript from loading, so buttons such as “診断結果を登録” did not receive clicks.
-- Creator routing from v5.10.10/11 is retained.
+Creator紹介状画面で「新記事の公開を登録」を押し、公開済み新記事URLを入力すると、記事管理へ新規記事を登録し、モニター中へ移します。

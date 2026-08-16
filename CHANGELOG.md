@@ -1,15 +1,8 @@
-## v5.10.12
-- Fixed Site Diagnosis treatment dialog embedded-JavaScript parse failure.
-- Corrected newline escaping in the optional Merge artifact message so dialog event handlers load normally.
-- No workflow/contract behavior changed beyond restoring the dialog JavaScript execution.
-
 # CHANGELOG
 
-## v5.10.11
-- Site Diagnosis処置ダイアログの「診断結果を登録」ボタンのクリック受付を強化。
-- inline onclick依存をやめ、DOMContentLoaded後の明示的なclickイベントへ統一。
-- pointerdown検出メッセージを追加し、UI入力とサーバー処理を切り分け可能にした。
-- v5.10.10のSite Diagnosis → SBM → Creator対応を維持。
-
-## v5.10.10
-- apps-script/Code.gs と distribution/Code.gs の同期を修正。
+## v5.10.13
+- Site Diagnosis由来のCreator案件に「新記事の公開を登録」を追加。
+- 公開URLを新規記事として記事管理へ登録し、ArticleIDを採番。
+- Creator案件をモニター中へ移行し、Creator planのmonitor_daysを再診予定日に反映。
+- 既存記事の内部リンク候補URLを新記事URLとして扱わない。
+- apps-script/Code.gs と distribution/Code.gs を同一内容で同期。
