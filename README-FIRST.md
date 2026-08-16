@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.13
+# SIMS-Blog-Manager v5.10.14
 
 Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 

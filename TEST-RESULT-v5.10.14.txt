@@ -1,0 +1,11 @@
+SIMS-Blog-Manager v5.10.14 Test Result
+
+PASS: JavaScript syntax check (Code.gs copied to .js for Node syntax parser)
+PASS: apps-script/Code.gs == distribution/Code.gs
+PASS: VERSION / SBM_VERSION / PRODUCT_IDENTITY / README-FIRST version consistency
+PASS: product51014_site_diagnosis_creator_semantics_test.js
+
+Legacy note:
+product5100_rc8_10_site_diagnosis_handoff_test.js fails on a historical fixed menu-label assertion.
+The expected string is not present in the v5.10.13 baseline either, so this is a stale legacy test,
+not a v5.10.14 regression.
