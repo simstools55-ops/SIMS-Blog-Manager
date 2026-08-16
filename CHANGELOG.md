@@ -1,3 +1,12 @@
+## 5.10.6 - 2026-08-16
+
+- Fixed Site Diagnosis Merge routing when a cluster contains more than two evidence articles.
+- When `merge_plan.target_article` and `merge_plan.source_article` are present, SBM now treats those two articles as the authoritative Merge pair.
+- Articles listed only in `cluster_result.articles[]` are no longer promoted to `MERGE_SOURCE` when an explicit `merge_plan` exists.
+- Merge request persistence and resume/UI labels now prioritize the saved `merge_plan` target/source pair.
+- Legacy Doctor results without `merge_plan` continue to use the previous reference-collection fallback.
+- Added safety checks for missing target/source identities, Article DB mismatches, and target/source identity collisions.
+
 ## 5.10.5 - 2026-08-16
 
 - Added `処置せず終了` to the Site Diagnosis treatment dialog for cases where live-site verification invalidates the Doctor/Writer treatment premise.
