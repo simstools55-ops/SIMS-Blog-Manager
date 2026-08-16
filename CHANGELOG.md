@@ -1,3 +1,12 @@
+## 5.10.7 - 2026-08-16
+
+- Fixed Merge result registration failure caused by the undefined `sbmDoctorContractNameOf_` call.
+- Site Diagnosis Merge result input accepts either the full SIMS Merge response or the standalone `SIMS_MERGE_TREATMENT_RESULT_V1` JSON.
+- Full-response extraction continues to scan all Markdown code fences and free-form text for the requested result contract, so a completed-article code block can appear before the SBM result JSON.
+- Contract validation now uses the existing multi-source contract matcher (`envelope.contract_name`, top-level `contract_name`, or `format`).
+- Added a backward-compatible single-contract accessor to prevent older call sites from failing.
+- No changes to Merge target/source routing, Writer flow, monitoring, or Site Diagnosis case selection.
+
 ## 5.10.6 - 2026-08-16
 
 - Fixed Site Diagnosis Merge routing when a cluster contains more than two evidence articles.

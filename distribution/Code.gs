@@ -4,8 +4,8 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.6';
-// Product v5.10.6: Site Diagnosis safe-skip and URL/canonical verification guard.
+const SBM_VERSION = '5.10.7';
+// Product v5.10.7: Site Diagnosis safe-skip and URL/canonical verification guard.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
 const SBM_SHEETS = Object.freeze({
@@ -11738,6 +11738,12 @@ function sbmDoctorContractMatches_(o,want){
   if(!target)return false;
   return sbmDoctorContractNamesOf_(o).indexOf(target)>=0;
 }
+function sbmDoctorContractNameOf_(o){
+  // Product 5.10.7: backward-compatible single-value accessor.
+  // Envelope contract_name is authoritative, then top-level contract_name, then format.
+  var names=sbmDoctorContractNamesOf_(o);
+  return names.length?names[0]:'';
+}
 function sbmDoctorBalancedJsonFrom_(text,start){
   var t=String(text||''),depth=0,inString=false,escape=false;
   if(start<0||t.charAt(start)!=='{')return '';
@@ -13056,7 +13062,7 @@ function sbmDoctorRegisterMergeTreatmentResultFromDialog(raw){
     var input=String(raw||'').trim(),text='',o;if(!input)throw new Error('SIMS Mergeの処置結果JSONを貼り付けてください。');
     try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_MERGE_TREATMENT_RESULT_V1');}catch(eExtract){throw new Error('Merge結果の抽出に失敗しました。\n段階：JSON抽出\n詳細：'+String(eExtract&&eExtract.message?eExtract.message:eExtract));}
     try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge結果JSONの解析に失敗しました。\n段階：JSON parse\n詳細：'+String(eParse&&eParse.message?eParse.message:eParse));}
-    if(sbmDoctorContractNameOf_(o)!=='SIMS_MERGE_TREATMENT_RESULT_V1')throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証');
+    if(!sbmDoctorContractMatches_(o,'SIMS_MERGE_TREATMENT_RESULT_V1'))throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証\n検出：'+(sbmDoctorContractNamesOf_(o).join(', ')||'未記載'));
     var m=sbmDoctorNormalizeMergeResult_(o),saved=sbmDoctorStoreMergeTreatmentResult_(o),finalized=null;if((/COMPLETED|READY|SUCCESS|APPROVED/i.test(String(m.status||''))||String(m.status||'')==='')&&sbmDoctorMergeHasCompletedArticle_(m)){finalized=sbmDoctorFinalizeMergeArticleResult_(m);saved.status=finalized.status;}return {ok:true,message:'Merge処置結果をSBMへ登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status+(saved.artifactRetryRequired?'\n注意：Drive Artifact保存のみ失敗しました。同じ結果を再登録すると再試行できます。':''),mergedArticleReady:!!finalized,artifactSaved:!!saved.artifactSaved,artifactRetryRequired:!!saved.artifactRetryRequired,artifactError:saved.artifactError||''};
   }catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
 }
@@ -13161,7 +13167,7 @@ function sbmDoctorSubmitSiteDiagnosisMergeResult(raw){
     try{text=sbmDoctorExtractContractJsonText_(input,'SIMS_MERGE_TREATMENT_RESULT_V1');}
     catch(eExtract){throw new Error('Merge結果の抽出に失敗しました。回答内に SIMS_MERGE_TREATMENT_RESULT_V1 が含まれることを確認してください。\n段階：JSON抽出\n詳細：'+String(eExtract&&eExtract.message?eExtract.message:eExtract));}
     try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge結果JSONの解析に失敗しました。\n段階：JSON parse\n詳細：'+String(eParse&&eParse.message?eParse.message:eParse));}
-    if(sbmDoctorContractNameOf_(o)!=='SIMS_MERGE_TREATMENT_RESULT_V1')throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証\n検出：'+(sbmDoctorContractNameOf_(o)||'未記載'));
+    if(!sbmDoctorContractMatches_(o,'SIMS_MERGE_TREATMENT_RESULT_V1'))throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証\n検出：'+(sbmDoctorContractNamesOf_(o).join(', ')||'未記載'));
     var m=sbmDoctorNormalizeMergeResult_(o),rec=sbmDoctorFindCaseRow_(m.caseId);if(!rec)throw new Error('対応するCaseIDがSBMにありません：'+m.caseId);
     var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Diagnosis経路の案件ではありません。通常のDoctor処置結果登録を使用してください。');
     var saved=sbmDoctorStoreMergeTreatmentResult_(o),finalized=null;
