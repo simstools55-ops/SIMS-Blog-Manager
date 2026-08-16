@@ -1,3 +1,13 @@
+## 5.10.8 - 2026-08-16
+
+- Added a radio-button based `処置せず終了` dialog with standardized reasons and an optional verification memo.
+- Added a strict Merge identity guard: when a saved Merge request contains an explicit `merge_plan`, returned Merge results must match the same target and absorbed Article IDs/URLs before registration.
+- Added a second identity check before final Merge completion so the monitoring target cannot silently change.
+- Made Google Drive Artifact storage best-effort instead of workflow-blocking. If Drive storage is unavailable, SBM stores a compact Merge result summary in the sheet and continues the treatment flow without requiring a retry.
+- Improved Site Diagnosis resume messaging so remaining referral/result work and Merge user actions are shown separately and completed cases are not presented as pending.
+- Preserved full-response / JSON-only registration for both Writer and Merge results.
+- Regression tested against CLUSTER-GADGET-XIAOMISMARTBAND10: target A000019, absorbed A000027, A000014 excluded.
+
 ## 5.10.7 - 2026-08-16
 
 - Fixed Merge result registration failure caused by the undefined `sbmDoctorContractNameOf_` call.
