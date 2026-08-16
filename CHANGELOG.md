@@ -1,3 +1,8 @@
+## v5.10.12
+- Fixed Site Diagnosis treatment dialog embedded-JavaScript parse failure.
+- Corrected newline escaping in the optional Merge artifact message so dialog event handlers load normally.
+- No workflow/contract behavior changed beyond restoring the dialog JavaScript execution.
+
 # CHANGELOG
 
 ## v5.10.11
