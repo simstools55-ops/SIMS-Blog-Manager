@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v5.10.15
+
+- Site DiagnosisのURL surrogate ArticleID (`REF-*`) を記事URLでSBM正式ArticleIDへ解決。
+- `REF-*` はDoctorケース追跡用として許容するが、SBMの記事管理IDとして保存しない。
+- 複数の `SIMS_DOCTOR_CASE_RESULT_V2` を含むDoctor回答全文を一括取込。
+- 一括登録前に全件のSiteID・URL・正式ArticleIDをpreflight。
+- 単件結果、Site-wide precision、Writer/Merge/Creator/Monitorの既存経路は互換維持。
+
 ## v5.10.14
 
 - Site Diagnosis v0.7.3 Creator handoff semanticsをSBM内で欠落なく保持。
