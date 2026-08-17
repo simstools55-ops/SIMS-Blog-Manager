@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.10.16",
+  "current_version": "5.10.17",
   "release_status": "PATCH",
   "notes": "Adds Creator published-article registration and monitoring return path for Site Diagnosis Creator treatments."
 }
