@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v5.10.20
+
+- Site-wide Precision ResultのSBM登録を1案件ずつ分割実行。
+- ブラウザ側で登録対象件数を先に確定し、進捗 `0/N → 1/N → ...` を即時表示。
+- 現在処理中の診断テーマ/CaseIDを進捗表示へ反映。
+- Writer処置結果登録成功後に③入力欄を自動クリア。
+- v5.10.19までのREF URL解決・Doctor V2 scope互換を維持。
+
 ## v5.10.19
 
 - `SIMS_DOCTOR_CASE_RESULT_V2` のトップレベル `allowed_scope` / `blocked_scope` を受理。

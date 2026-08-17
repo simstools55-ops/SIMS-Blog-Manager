@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.19
+# SIMS-Blog-Manager v5.10.20
 
 Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 
@@ -45,3 +45,10 @@ Creator紹介状画面で「新記事の公開を登録」を押し、公開済�
   `allowed_scope` / `blocked_scope` を正式な治療範囲として受理します。
 - Writer紹介状へDoctorの治療範囲を欠落なく引き継ぎます。
 - `treatment_plan.actions` もWriterへの具体的な処置指示として保持します。
+
+## v5.10.20
+
+- Site Diagnosis一括結果を1案件ずつ別Apps Script実行で登録します。
+- 登録開始前にブラウザ側で件数を数え、`0 / ?件` ではなく `0 / N件` を即時表示します。
+- 1件ごとに進捗を更新し、長時間無反応に見える状態を解消します。
+- Writer処置結果の登録成功後、③の入力欄を自動クリアします。
