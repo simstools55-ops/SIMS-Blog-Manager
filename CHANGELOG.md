@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v5.10.18
+
+- Site Diagnosis処置ダイアログのsubmitDoctor()差し替え不具合を修正。
+- 進捗オーバーレイがクリック直後に表示されない問題を修正。
+- 外側Code.gsに加え、ブラウザ側submitDoctor()単体の構文チェックを追加。
+
 ## v5.10.17
 
 - Doctor複数個別結果を1件ずつの分割実行へ変更。
