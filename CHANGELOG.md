@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v5.10.21
+
+- Removed manual "前回の処置を再読み込み" UI from Site Diagnosis treatment dialog.
+- Preserved automatic resume of unfinished treatment state.
+- Clear Writer result input and previous registration status when switching referrals.
+
 ## v5.10.20
 
 - Site-wide Precision ResultのSBM登録を1案件ずつ分割実行。
