@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v5.10.16
+
+- Doctor個別精密診断の複数結果登録を2件ずつの分割実行へ変更。
+- 1回で9件処理する長時間実行を廃止。
+- 進捗を2/9、4/9、6/9、8/9、9/9のように画面表示。
+- 「ボタン入力を検出しました」のまま長時間待つUIを改善。
+- v5.10.15のREF URL照合・複数CASE_RESULT抽出は維持。
+
 ## v5.10.15
 
 - Site DiagnosisのURL surrogate ArticleID (`REF-*`) を記事URLでSBM正式ArticleIDへ解決。

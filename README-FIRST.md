@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.15
+# SIMS-Blog-Manager v5.10.16
 
 Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 
@@ -19,3 +19,9 @@ Creator紹介状画面で「新記事の公開を登録」を押し、公開済�
 - Site DiagnosisのREF-*をURLでSBM正式ArticleIDへ安全に解決します。
 - Doctor回答全文に複数のSIMS_DOCTOR_CASE_RESULT_V2が含まれる場合、1回の貼り付けで一括登録します。
 - 一括登録前に全件のSiteID・URL・ArticleIDを事前照合します。
+
+## v5.10.16
+
+- 複数の個別Doctor結果を2件ずつ別Apps Script実行で登録します。
+- 9件の場合は 2/9 → 4/9 → 6/9 → 8/9 → 9/9 と進捗を表示します。
+- v5.10.15のREF→正式ArticleID URL照合と複数CASE_RESULT抽出を維持します。
