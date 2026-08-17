@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.18
+# SIMS-Blog-Manager v5.10.19
 
 Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 
@@ -38,3 +38,10 @@ Creator紹介状画面で「新記事の公開を登録」を押し、公開済�
 - v5.10.17の進捗オーバーレイが表示されなかったブラウザ側JavaScript不具合を修正。
 - submitDoctor() の差し替え境界と文字列生成を修正。
 - リリース検証に submitDoctor() 単体のブラウザJavaScript構文チェックを追加。
+
+## v5.10.19
+
+- Site Diagnosis個別精密診断の `SIMS_DOCTOR_CASE_RESULT_V2` がトップレベルに持つ
+  `allowed_scope` / `blocked_scope` を正式な治療範囲として受理します。
+- Writer紹介状へDoctorの治療範囲を欠落なく引き継ぎます。
+- `treatment_plan.actions` もWriterへの具体的な処置指示として保持します。

@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.18';
+const SBM_VERSION = '5.10.19';
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -11833,7 +11833,7 @@ function sbmDoctorNormalizeCaseResult_(o){
     var monitorV2=explicitNextActionV2==='MONITOR'||(!writerReadyV2&&!mergeReadyV2&&!manualReviewV2&&(t.action==='MONITOR'||t.action==='NO_TREATMENT'));
     var reviewDateV2=re.recommended_date||'';
     if(!reviewDateV2&&Number(review.review_after_days)>0){var rd=new Date();rd.setDate(rd.getDate()+Number(review.review_after_days));reviewDateV2=Utilities.formatDate(rd,SBM_DEFAULTS.TIMEZONE,'yyyy-MM-dd');}
-    return {format:format,caseId:String(o.case_id||cc.case_id||cc.individual_case_id||''),diagnosisId:o.diagnosis_id||cc.case_id||'',diagnosisStatus:d.status||d.primary_hypothesis||d.summary||'',primaryCode:d.primary_code||d.primary_hypothesis||d.code||'',priority:d.priority||t.priority||'',action:(writerReadyV2||mergeReadyV2)?'TREATMENT_RECOMMENDED':(manualReviewV2?'MANUAL_REVIEW':(monitorV2?'MONITOR':t.action||t.strategy||'')),treatmentLevel:t.treatment_level||t.strategy||'',destination:mergeReadyV2?'SIMS_MERGE':(writerReadyV2?'SIMS_WRITER':ref.destination||''),allowed:(handoff.allowed_scope||ref.allowed_scope||t.allowed_scope||[]),blocked:(handoff.blocked_scope||ref.blocked_scope||t.blocked_scope||[]),reviewDate:reviewDateV2,locked:!!(o.workflow&&o.workflow.workflow_locked),nextAction:explicitNextActionV2||(mergeReadyV2?'MERGE':writerReadyV2?'WRITER':manualReviewV2?'USER_CONFIRMATION':monitorV2?'MONITOR':''),writerReady:writerReadyV2,mergeReady:mergeReadyV2,manualReview:manualReviewV2,monitor:monitorV2,writerReferrals:[],mergeReferrals:mergeReadyV2?[ref]:[]};
+    return {format:format,caseId:String(o.case_id||cc.case_id||cc.individual_case_id||''),diagnosisId:o.diagnosis_id||cc.case_id||'',diagnosisStatus:d.status||d.primary_hypothesis||d.summary||'',primaryCode:d.primary_code||d.primary_hypothesis||d.code||'',priority:d.priority||t.priority||'',action:(writerReadyV2||mergeReadyV2)?'TREATMENT_RECOMMENDED':(manualReviewV2?'MANUAL_REVIEW':(monitorV2?'MONITOR':t.action||t.strategy||'')),treatmentLevel:t.treatment_level||t.strategy||'',destination:mergeReadyV2?'SIMS_MERGE':(writerReadyV2?'SIMS_WRITER':ref.destination||''),allowed:(o.allowed_scope||handoff.allowed_scope||ref.allowed_scope||t.allowed_scope||[]),blocked:(o.blocked_scope||handoff.blocked_scope||ref.blocked_scope||t.blocked_scope||[]),reviewDate:reviewDateV2,locked:!!(o.workflow&&o.workflow.workflow_locked),nextAction:explicitNextActionV2||(mergeReadyV2?'MERGE':writerReadyV2?'WRITER':manualReviewV2?'USER_CONFIRMATION':monitorV2?'MONITOR':''),writerReady:writerReadyV2,mergeReady:mergeReadyV2,manualReview:manualReviewV2,monitor:monitorV2,writerReferrals:[],mergeReferrals:mergeReadyV2?[ref]:[]};
   }
   if(format==='SIMS_DOCTOR_SINGLE_CASE_RESULT_V1'){
     var refs=Array.isArray(o.referrals)?o.referrals:[],activeWriter=[],deferredWriter=[],activeMerge=[],deferredMerge=[],sbmRequired=[];
@@ -11896,12 +11896,27 @@ function sbmDoctorReferralDetails_(doctor,n,evidence){
   // Doctor may express treatment through actions_permitted (RC2-compatible),
   // immediate_action_scope (WAIT + LIGHT_FIX), or workflow_handoff. All must
   // produce the same complete Writer referral.
+  // v5.10.19: SIMS_DOCTOR_CASE_RESULT_V2 may carry the final treatment boundary
+  // directly at the result root. This is the shape used by Site Diagnosis
+  // individual precision batches and must be preserved into the Writer referral.
+  allowed=allowed.concat(Array.isArray(doctor&&doctor.allowed_scope)?doctor.allowed_scope:[]);
+  blocked=blocked.concat(Array.isArray(doctor&&doctor.blocked_scope)?doctor.blocked_scope:[]);
+
   var tp=doctor&&doctor.treatment_plan||{},permitted=Array.isArray(tp.actions_permitted)?tp.actions_permitted:[],prohibited=Array.isArray(tp.actions_prohibited)?tp.actions_prohibited:[];
   // v5.10.3: Doctor V2 may express the final treatment contract directly
   // as treatment_plan.allowed_scope / blocked_scope. These are authoritative
   // and must not be dropped when no legacy actions_permitted array exists.
   allowed=allowed.concat(Array.isArray(tp.allowed_scope)?tp.allowed_scope:[]);
   blocked=blocked.concat(Array.isArray(tp.blocked_scope)?tp.blocked_scope:[]);
+  if(Array.isArray(tp.actions)){
+    tp.actions.forEach(function(a){
+      var text=String(a||'').trim();
+      if(text){
+        instructions.push(text);
+        tasks.push({type:'DOCTOR_ACTION',location:'',target_urls:[],instruction:text,reason:tp.rationale||'',expected_effect:''});
+      }
+    });
+  }
   if(tp.instructions)instructions=instructions.concat(Array.isArray(tp.instructions)?tp.instructions:[tp.instructions]);
   if(tp.candidate_urls)candidates=candidates.concat(Array.isArray(tp.candidate_urls)?tp.candidate_urls:[tp.candidate_urls]);
   permitted.forEach(function(a){

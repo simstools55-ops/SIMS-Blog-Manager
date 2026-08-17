@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v5.10.19
+
+- `SIMS_DOCTOR_CASE_RESULT_V2` のトップレベル `allowed_scope` / `blocked_scope` を受理。
+- Site Diagnosis個別精密診断からWriter紹介状を生成する際の治療範囲欠落を修正。
+- `treatment_plan.actions` をWriter紹介状のinstructions / treatment_tasksへ引き継ぎ。
+- v5.10.18までのREF URL照合・複数CASE_RESULT抽出・1件ずつ分割登録・進捗UIは維持。
+
 ## v5.10.18
 
 - Site Diagnosis処置ダイアログのsubmitDoctor()差し替え不具合を修正。
