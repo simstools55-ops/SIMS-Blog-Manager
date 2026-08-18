@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v5.10.22
+
+- Normalized the product header/version metadata against the currently deployed Code.gs.
+- Re-synchronized all distributed Code.gs runtime mirrors from the current deployed script.
+- No functional workflow change from the currently deployed v5.10.21 behavior.
+
 ## v5.10.21
 
 - Removed manual "前回の処置を再読み込み" UI from Site Diagnosis treatment dialog.

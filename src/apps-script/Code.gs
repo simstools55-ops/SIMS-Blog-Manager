@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.10.12
+ * SIMS-Blog-Manager Product v5.10.22
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.21';
+const SBM_VERSION = '5.10.22';
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';

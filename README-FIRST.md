@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.10.21
+# SIMS-Blog-Manager v5.10.22
 
 Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
 
@@ -58,3 +58,11 @@ Creator紹介状画面で「新記事の公開を登録」を押し、公開済�
 - Site Diagnosis処置ダイアログの「前回の処置を再読み込み」ボタンを削除。
 - 未完了処置の内部自動再開機能は維持。
 - 「前の紹介状／次の紹介状」で案件を切り替えた際、③Writer結果欄と前案件の緑色登録結果を同時にクリア。
+
+
+## v5.10.22
+
+- 現在稼働中のCode.gsを正本として再同期。
+- Code.gs先頭の製品ヘッダーを `SIMS-Blog-Manager Product v5.10.22` へ修正。
+- `SBM_VERSION`、VERSION、Product Identity、配布Runtimeを v5.10.22 に統一。
+- v5.10.21で実装済みのSite Diagnosis処置ダイアログ改善はそのまま維持。
