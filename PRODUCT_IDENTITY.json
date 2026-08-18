@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.12.1",
+  "current_version": "5.12.2",
   "release_status": "PATCH",
-  "notes": "Allows Creator publication registration when the Creator response has no published URL by accepting a manual published-URL fallback, with improved dialog layout."
+  "notes": "Allows Creator-direct published articles without a Diagnosis/SBM case_id to be registered immediately, while preserving case-linked registration when available."
 }

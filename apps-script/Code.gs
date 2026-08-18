@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.12.1
+ * SIMS-Blog-Manager Product v5.12.2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.12.1';
+const SBM_VERSION = '5.12.2';
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -12764,7 +12764,7 @@ function sbmDoctorProcessSiteDiagnosisCreator_(o){
   return {ok:true,route:'CREATOR',creatorReady:true,writerReady:false,mergeReady:false,message:'Creator紹介状作成済み',request:JSON.stringify(req,null,2),creatorRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:'',articleTitle:String(plan.candidate_keyword||''),keyword:String(plan.candidate_keyword||'')};
 }
 /**
- * Product 5.12.1: Creator回答全文＋必要時の手入力URLから公開済み新記事をSBMへ登録します。
+ * Product 5.12.2: Creator回答全文＋必要時の手入力URLから公開済み新記事をSBMへ登録します。Diagnosis/SBM起点だけでなくCreator単独作成にも対応します。
  * 利用者はCreatorの回答（説明文＋JSON）をそのまま貼り付けるだけです。
  */
 function sbmOpenCreatorPublicationRegisterDialog(){
@@ -12772,7 +12772,7 @@ function sbmOpenCreatorPublicationRegisterDialog(){
     '<!doctype html><html><head><base target="_top"><style>'+
     'html,body{height:100%;margin:0}body{font-family:Arial,"Noto Sans JP",sans-serif;color:#202124;display:flex;flex-direction:column;overflow:hidden}.content{padding:18px 18px 8px;overflow:auto;flex:1}h2{font-size:18px;margin:0 0 8px}.note{font-size:13px;line-height:1.65;color:#5f6368;margin-bottom:10px}label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}textarea{width:100%;height:280px;box-sizing:border-box;border:1px solid #dadce0;border-radius:6px;padding:10px;font-family:monospace;font-size:12px;resize:vertical}input[type=url]{width:100%;box-sizing:border-box;border:1px solid #dadce0;border-radius:6px;padding:10px;font-size:13px}.hint{font-size:12px;color:#5f6368;line-height:1.5;margin-top:5px}.footer{flex:none;border-top:1px solid #e8eaed;background:#fff;padding:10px 18px 14px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}button{border:0;border-radius:5px;padding:9px 16px;cursor:pointer}.secondary{background:#f1f3f4}.primary{background:#1a73e8;color:white}.primary:disabled{opacity:.55;cursor:default}.status{white-space:pre-wrap;font-size:13px;line-height:1.55;padding:9px;border-radius:5px;background:#f8f9fa}.ok{background:#e6f4ea;color:#137333}.err{background:#fce8e6;color:#b3261e}</style></head><body>'+
     '<div class="content"><h2>Creatorで作った新記事をSBMへ登録</h2>'+
-    '<div class="note">SIMS Article Creatorの回答全文（JSONを含む）をそのまま貼り付けてください。公開URLがCreator回答に含まれていない場合だけ、下のURL欄へ公開後の記事URLを貼り付けてください。SBMはSearch Console反映前でも「検索露出待ち／モニター中」として登録します。</div>'+
+    '<div class="note">SIMS Article Creatorの回答全文（JSONを含む）をそのまま貼り付けてください。Diagnosis/SBMから作成したCreator案件でも、Creator単独で作成した記事でも登録できます。公開URLがCreator回答に含まれていない場合だけ、下のURL欄へ公開後の記事URLを貼り付けてください。SBMはSearch Console反映前でも「検索露出待ち／モニター中」として登録します。</div>'+
     '<label for="raw">Creator回答全文</label><textarea id="raw" placeholder="Creatorの回答全文を貼り付け"></textarea>'+
     '<label for="publishedUrl">公開した記事のURL（回答内にURLがない場合のみ）</label>'+
     '<input id="publishedUrl" type="url" inputmode="url" placeholder="https://example.com/entry/...">'+
@@ -12826,6 +12826,40 @@ function sbmCreatorActiveCaseByKeyword_(keyword){
   vals.forEach(function(r,i){var state=hm['状態コード']?String(r[hm['状態コード']-1]||''):'';if(['CREATOR_IN_PROGRESS','CREATOR_REQUEST_READY'].indexOf(state)<0)return;var title=hm['記事タイトル']?String(r[hm['記事タイトル']-1]||'').trim().toLowerCase():'';if(title&&title===kw)found.push({row:i+2,caseId:hm['CaseID']?String(r[hm['CaseID']-1]||''):''});});
   return found.length===1?found[0]:null;
 }
+function sbmCreatorRegisterDirectPublication_(o,url,title,keyword,siteId){
+  var norm=sbmNormalizeUrl_(url);if(!norm||!sbmIsValidArticleUrl_(url))throw new Error('公開した新記事URLを正しく入力してください。');
+  try{
+    var blog=String(sbmGetSetting_('BlogUrl','')||'').trim(),bh=blog?new URL(blog).hostname.replace(/^www\./,'').toLowerCase():'',uh=new URL(url).hostname.replace(/^www\./,'').toLowerCase();
+    if(bh&&uh&&bh!==uh)throw new Error('公開URLがこのSBMのブログと一致しません。\nSBM：'+bh+'\n入力：'+uh);
+  }catch(eHost){if(String(eHost&&eHost.message||eHost).indexOf('一致しません')>=0)throw eHost;}
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=sbmGetOrCreateSheet_(SBM_SHEETS.ARTICLE_DB);sbmEnsureHeaders_(sh,SBM_HEADERS.ARTICLE_DB);var hm=sbmHeaderMap_(sh),rows=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],article=null;
+  for(var i=0;i<rows.length;i++){if(sbmNormalizeUrl_(rows[i]['記事URL']||'')===norm){article=rows[i];break;}}
+  var articleId='',now=sbmNowText_(),effectiveTitle=String(title||'').trim(),effectiveKeyword=String(keyword||'').trim();
+  if(article){
+    articleId=String(article['ArticleID']||'').trim();if(!articleId){articleId=sbmNextArticleId_(sbmArticleDbRowsByUrl_());if(hm['ArticleID'])sh.getRange(article._rowNumber,hm['ArticleID']).setValue(articleId);}
+    if(hm['作業状態'])sh.getRange(article._rowNumber,hm['作業状態']).setValue('👀 モニター中');
+    if(effectiveTitle&&hm['記事タイトル'])sh.getRange(article._rowNumber,hm['記事タイトル']).setValue(effectiveTitle);
+    if(effectiveTitle&&hm['H1タイトル'])sh.getRange(article._rowNumber,hm['H1タイトル']).setValue(effectiveTitle);
+    if(effectiveKeyword&&hm['メインクエリ']&&!String(article['メインクエリ']||'').trim())sh.getRange(article._rowNumber,hm['メインクエリ']).setValue(effectiveKeyword);
+    if(hm['記事ステータス'])sh.getRange(article._rowNumber,hm['記事ステータス']).setValue('検索露出待ち');
+    if(hm['管理フラグ'])sh.getRange(article._rowNumber,hm['管理フラグ']).setValue('管理中');
+    if(hm['備考']){var oldNote=String(article['備考']||'').trim(),note='Creator単独作成の記事を公開直後にSBMへ登録。Search Console反映前からモニターします。';sh.getRange(article._rowNumber,hm['備考']).setValue(oldNote?oldNote+' / '+note:note);}
+  }else{
+    articleId=sbmNextArticleId_(sbmArticleDbRowsByUrl_());var obj={};SBM_HEADERS.ARTICLE_DB.forEach(function(k){obj[k]='';});
+    obj['選択']=false;obj['記事ランク']='—';obj['作業状態']='👀 モニター中';obj['記事URL']=url;obj['メインクエリ']=effectiveKeyword;obj['H1タイトル']=effectiveTitle||effectiveKeyword||'タイトル取得待ち';obj['クリック数']=0;obj['表示回数']=0;obj['CTR']=0;obj['掲載順位']=0;obj['データ更新日']=sbmDateText_(new Date());obj['記事タイトル']=effectiveTitle||effectiveKeyword||'タイトル取得待ち';obj['詳細']='記事詳細';obj['SEOタイトル']='';obj['メタディスクリプション']='';obj['最終取得日時']=now;obj['元URL件数']=0;obj['備考']='Creator単独作成の記事を公開直後にSBMへ登録。Search Console反映前からモニターします。';obj['ArticleID']=articleId;obj['記事情報補完済み']=effectiveTitle?'○':'×';obj['補完日時']=effectiveTitle?now:'';obj['記事ステータス']='検索露出待ち';obj['最終確認日']=sbmDateText_(new Date());obj['連続未取得日数']=0;obj['管理フラグ']='管理中';
+    sh.appendRow(SBM_HEADERS.ARTICLE_DB.map(function(k){return obj[k]!==undefined?obj[k]:'';}));
+  }
+  try{sbmStyleArticleDbSheet_(sh);}catch(ignoreStyle){}
+  var rowObj=sbmFindArticleDbByIdentity_(articleId,url)||{},row=SBM_HEADERS.ARTICLE_DB.map(function(k){return rowObj[k]!==undefined?rowObj[k]:'';}),before={clicks:0,impressions:0,ctr:0,position:0,title:effectiveTitle||effectiveKeyword};
+  var directId='CREATOR-DIRECT-'+Utilities.formatDate(new Date(),SBM_DEFAULTS.TIMEZONE,'yyyyMMdd-HHmmss')+'-'+Utilities.getUuid().substring(0,6).toUpperCase();
+  var publication={format:'SIMS_CREATOR_PUBLICATION_V1',source_mode:'CREATOR_DIRECT',case_id:'',creator_direct_id:directId,site_id:siteId||String(sbmGetSetting_('SiteID','')||''),article_id:articleId,article_url:url,article_title:effectiveTitle||effectiveKeyword,main_keyword:effectiveKeyword,published_at:now,creator_response:o};
+  var data={format:'SIMS_FEEDBACK_V2',article_id:articleId,article_url:url,completed_at:now,ai_name:'SIMS Article Creator',changes:{body:true},new_values:{article_title:effectiveTitle||effectiveKeyword,seo_title:'',description:'',main_query:effectiveKeyword},improvement_type:'new_article',improvement_method:'Creator Direct',confidence:'',expected_effect:{},next_action:'monitor',kept_sections:[],summary:'Creator単独作成の新記事を公開・SBM登録',warnings:[],estimated_minutes:0,recommended_review_days:30,public_ok_changes:{body:true},user_decision_changes:[],change_summary:'Creator新記事公開',writer_version:'',raw_json:JSON.stringify(publication)};
+  try{sbmAppendImprovementHistory_(data,row,before);sbmAppendLegacyImprovementLog_(data,row,before);}catch(eHist){sbmLog_('CreatorDirectHistory','Warning',String(eHist));}
+  try{sbmDoctorEnsureMonitoringSync_(articleId,url);}catch(eSync){sbmLog_('CreatorDirectMonitoringSync','Warning',String(eSync));}
+  try{sbmDoctorRemoveCandidateArticle_(articleId,url);}catch(ignoreRemove){}try{sbmRefreshHome_();}catch(ignoreHome){}
+  return {ok:true,directRegistration:true,creatorDirectId:directId,articleId:articleId,articleUrl:url,monitorDays:30,message:'Creator単独作成の新記事をSBMへ登録しました。\nArticleID：'+articleId+'\n記事管理：モニター中\n状態：検索露出待ち\nSearch Consoleで初観測後、同じURLへ実績データを合流します。'};
+}
+
 function sbmRegisterCreatorPublicationResponse(raw,manualPublishedUrl){
   try{
     var o=sbmCreatorExtractJsonObject_(raw);
@@ -12839,7 +12873,7 @@ function sbmRegisterCreatorPublicationResponse(raw,manualPublishedUrl){
     var localSite=String(sbmGetSetting_('SiteID','')||'').trim();if(siteId&&localSite&&siteId!==localSite)throw new Error('Creator回答のSiteIDがこのSBMと一致しません。\nSBM：'+localSite+'\nCreator：'+siteId);
     if(!url||!sbmIsValidArticleUrl_(url))throw new Error('公開記事URLを確認できませんでした。Creator回答に公開URLが含まれていない場合は、ダイアログの「公開した記事のURL」欄へ公開後のURLを貼り付けてください。');
     if(!caseId){var found=sbmCreatorActiveCaseByKeyword_(keyword);if(found)caseId=found.caseId;}
-    if(!caseId)throw new Error('Creator案件のcase_idを特定できませんでした。Diagnosis/SBMから作成したCreator紹介状に対する回答を貼り付けてください。');
+    if(!caseId){var direct=sbmCreatorRegisterDirectPublication_(o,url,title,keyword,siteId||localSite);if(direct&&direct.ok)direct.message=(direct.message||'Creator新記事を登録しました。')+'\n登録経路：Creator単独作成（case_idなし）';return direct;}
     var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)throw new Error('Creator案件をSBMで見つけられません：'+caseId);
     var state=rec.hm['状態コード']?String(rec.values[rec.hm['状態コード']-1]||'').trim():'';
     if(state!=='MONITORING'&&['CREATOR_IN_PROGRESS','CREATOR_REQUEST_READY'].indexOf(state)<0)throw new Error('このcase_idはCreator公開登録待ちではありません。\nCaseID：'+caseId+'\n状態：'+state);
