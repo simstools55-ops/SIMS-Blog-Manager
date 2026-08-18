@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.12.0",
-  "release_status": "MINOR",
-  "notes": "Adds Creator-response new-article registration before GSC exposure and prevents numeric URL slugs from being used as article titles."
+  "current_version": "5.12.1",
+  "release_status": "PATCH",
+  "notes": "Allows Creator publication registration when the Creator response has no published URL by accepting a manual published-URL fallback, with improved dialog layout."
 }
