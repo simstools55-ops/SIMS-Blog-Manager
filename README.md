@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.11.0  
+> **Current product:** SIMS-Blog-Manager v5.12.0  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.11.0`
+- Product Version: `5.12.0`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `MINOR`
-- Main feature: Treatment Performance Feedback v1 freezes reliable 28-day treatment outcomes for future SIMS performance analysis.
+- Main feature: Creator回答全文から公開済み新記事を即時登録し、GSC反映前から「検索露出待ち／モニター中」で管理できます。
 
-> Current release: SIMS-Blog-Manager Product v5.11.0
+> Current release: SIMS-Blog-Manager Product v5.12.0
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
@@ -31,13 +31,17 @@
 
 Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
-# SIMS-Blog-Manager v5.11.0
+# SIMS-Blog-Manager v5.12.0
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
 ## 正式バージョン
 
-`5.11.0`
+`5.12.0`
+
+## Creatorで作った新記事の登録
+
+Creatorで新記事を公開したら、`SIMS-Blog-Manager` → `Creatorで作った新記事を登録` を開き、Creatorの回答全文（JSONを含む）を貼り付けて登録します。SBMは公開URL・Creator案件・SiteIDを検証し、Search Consoleにまだ現れていない記事も `検索露出待ち` / `👀 モニター中` として管理します。後日GSCに同じURLが現れたときは、既存ArticleIDへ実績を合流させます。
 
 ## 毎日の基本操作
 

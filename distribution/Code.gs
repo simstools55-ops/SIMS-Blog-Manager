@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.11.0
+ * SIMS-Blog-Manager Product v5.12.0
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.11.0';
+const SBM_VERSION = '5.12.0';
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -2944,7 +2944,12 @@ function sbmTitleFromPath_(url) {
   var last = parts.length ? parts[parts.length-1] : s;
   try { last = decodeURIComponent(last); } catch(e) {}
   last = last.replace(/[-_]+/g, ' ').trim();
-  return last || s;
+  // Product 5.12.0: WordPress の投稿ID型URL (/1223/ など) や
+  // はてな記事URL末尾の時刻値を、H1/記事タイトルの代用品にしない。
+  // タイトルが取得できない場合は空文字を返し、呼び出し側で「タイトル取得待ち」にする。
+  if (/^\d+(?:[.,]\d+)?$/.test(last)) return '';
+  if (/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/.test(last)) return '';
+  return last || '';
 }
 
 
@@ -9415,6 +9420,7 @@ function onOpen() {
     .addItem('初回セットアップ','sbmStartInitialSetup')
     .addItem('ブログ情報を変更','sbmOpenBlogInfoChange')
     .addItem('記事一覧を最新にする','sbmSupplementNewArticlesManual')
+    .addItem('Creatorで作った新記事を登録','sbmOpenCreatorPublicationRegisterDialog')
     .addItem('シートの作成・修復','sbmInitializeSheets')
     .addItem('詳細設定を開く','sbmOpenUserSettings')
     .addSeparator()
@@ -12757,6 +12763,87 @@ function sbmDoctorProcessSiteDiagnosisCreator_(o){
   if(rec){if(rec.hm['状態コード'])rec.values[rec.hm['状態コード']-1]='CREATOR_IN_PROGRESS';if(rec.hm['状態'])rec.values[rec.hm['状態']-1]='Creator新記事作成中';if(rec.hm['更新日時'])rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);}
   return {ok:true,route:'CREATOR',creatorReady:true,writerReady:false,mergeReady:false,message:'Creator紹介状作成済み',request:JSON.stringify(req,null,2),creatorRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:'',articleTitle:String(plan.candidate_keyword||''),keyword:String(plan.candidate_keyword||'')};
 }
+/**
+ * Product 5.12.0: Creator回答全文から公開済み新記事をSBMへ登録します。
+ * 利用者はCreatorの回答（説明文＋JSON）をそのまま貼り付けるだけです。
+ */
+function sbmOpenCreatorPublicationRegisterDialog(){
+  var html=HtmlService.createHtmlOutput(
+    '<!doctype html><html><head><base target="_top"><style>'+ 
+    'body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124}h2{font-size:18px;margin:0 0 8px}.note{font-size:13px;line-height:1.65;color:#5f6368;margin-bottom:10px}textarea{width:100%;height:330px;box-sizing:border-box;border:1px solid #dadce0;border-radius:6px;padding:10px;font-family:monospace;font-size:12px}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}button{border:0;border-radius:5px;padding:9px 16px;cursor:pointer}.secondary{background:#f1f3f4}.primary{background:#1a73e8;color:white}.status{white-space:pre-wrap;font-size:13px;line-height:1.55;margin-top:10px;padding:9px;border-radius:5px;background:#f8f9fa}.ok{background:#e6f4ea;color:#137333}.err{background:#fce8e6;color:#b3261e}</style></head><body>'+ 
+    '<h2>Creatorで作った新記事をSBMへ登録</h2>'+ 
+    '<div class="note">SIMS Article Creatorの回答全文（JSONを含む）をそのまま貼り付けてください。SBMが公開URL・記事タイトル・Creator案件を確認し、Search Console反映前でも「検索露出待ち／モニター中」として登録します。</div>'+ 
+    '<textarea id="raw" placeholder="Creatorの回答全文を貼り付け"></textarea>'+ 
+    '<div id="status" class="status">公開済みの記事だけを登録してください。</div>'+ 
+    '<div class="actions"><button class="secondary" onclick="google.script.host.close()">閉じる</button><button id="submit" class="primary" onclick="submitCreator()">新記事を登録</button></div>'+ 
+    '<script>function st(t,c){var e=document.getElementById("status");e.textContent=t||"";e.className="status "+(c||"")}function submitCreator(){var raw=document.getElementById("raw").value||"",b=document.getElementById("submit");if(!raw.trim()){st("Creatorの回答を貼り付けてください。","err");return}b.disabled=true;b.textContent="登録中…";st("Creator回答から公開情報を確認しています…","");google.script.run.withSuccessHandler(function(r){b.disabled=false;b.textContent="新記事を登録";if(!r||!r.ok){st(r&&r.message?r.message:"登録できませんでした。","err");return}st(r.message||"登録しました。","ok")}).withFailureHandler(function(e){b.disabled=false;b.textContent="新記事を登録";st(e&&e.message?e.message:String(e),"err")}).sbmRegisterCreatorPublicationResponse(raw)}</script>'+ 
+    '</body></html>'
+  ).setWidth(720).setHeight(540);
+  SpreadsheetApp.getUi().showModalDialog(html,'Creator新規記事登録');
+}
+function sbmCreatorJsonScore_(o){
+  if(!o||typeof o!=='object')return -1;
+  var raw='';try{raw=JSON.stringify(o).toLowerCase();}catch(ignore){}
+  var score=0;
+  if(/creator/.test(raw))score+=4;
+  if(/article_url|published_url|publication_url|new_article_url/.test(raw))score+=6;
+  if(/case_id|site_diagnosis_case_id/.test(raw))score+=3;
+  if(/article_title|main_keyword|main_query|candidate_keyword/.test(raw))score+=2;
+  if(/sims_creator|publication|new_article/.test(raw))score+=3;
+  return score;
+}
+function sbmCreatorExtractJsonObject_(text){
+  var t=String(text||'').trim();if(!t)throw new Error('Creatorの回答が空です。');
+  var candidates=[];
+  function add(raw){var c=String(raw||'').trim();if(!c)return;try{var o=JSON.parse(c);candidates.push({o:o,score:sbmCreatorJsonScore_(o)});}catch(ignore){}}
+  add(t);
+  var re=/```(?:json)?\s*([\s\S]*?)```/gi,m;while((m=re.exec(t))!==null)add(m[1]);
+  for(var i=0;i<t.length;i++)if(t.charAt(i)==='{'){var b=sbmDoctorBalancedJsonFrom_(t,i);if(b){add(b);i+=Math.max(0,b.length-1);}}
+  if(!candidates.length)throw new Error('Creator回答からJSONを抽出できませんでした。CreatorのJSONを含む回答全文を貼り付けてください。');
+  candidates.sort(function(a,b){return b.score-a.score;});
+  return candidates[0].o;
+}
+function sbmCreatorDeepFind_(o,keys){
+  var wanted={};(keys||[]).forEach(function(k){wanted[String(k).toLowerCase()]=true;});
+  var seen=[],queue=[o];
+  while(queue.length){var cur=queue.shift();if(!cur||typeof cur!=='object')continue;if(seen.indexOf(cur)>=0)continue;seen.push(cur);
+    if(!Array.isArray(cur)){var ks=Object.keys(cur);for(var i=0;i<ks.length;i++){var k=ks[i],v=cur[k];if(wanted[String(k).toLowerCase()]&&v!==undefined&&v!==null&&String(v).trim()!=='')return v;}}
+    Object.keys(cur).forEach(function(k){var v=cur[k];if(v&&typeof v==='object')queue.push(v);});
+  }
+  return '';
+}
+function sbmCreatorPreferredValue_(o,paths,keys){
+  for(var i=0;i<(paths||[]).length;i++){var cur=o,parts=paths[i].split('.');for(var j=0;j<parts.length&&cur!==undefined&&cur!==null;j++)cur=cur[parts[j]];if(cur!==undefined&&cur!==null&&String(cur).trim()!=='')return cur;}
+  return sbmCreatorDeepFind_(o,keys||[]);
+}
+function sbmCreatorActiveCaseByKeyword_(keyword){
+  var kw=String(keyword||'').trim().toLowerCase();if(!kw)return null;
+  var sh=SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.DOCTOR_CASES);if(!sh||sh.getLastRow()<2)return null;
+  var hm=sbmHeaderMap_(sh),vals=sh.getRange(2,1,sh.getLastRow()-1,sh.getLastColumn()).getValues(),found=[];
+  vals.forEach(function(r,i){var state=hm['状態コード']?String(r[hm['状態コード']-1]||''):'';if(['CREATOR_IN_PROGRESS','CREATOR_REQUEST_READY'].indexOf(state)<0)return;var title=hm['記事タイトル']?String(r[hm['記事タイトル']-1]||'').trim().toLowerCase():'';if(title&&title===kw)found.push({row:i+2,caseId:hm['CaseID']?String(r[hm['CaseID']-1]||''):''});});
+  return found.length===1?found[0]:null;
+}
+function sbmRegisterCreatorPublicationResponse(raw){
+  try{
+    var o=sbmCreatorExtractJsonObject_(raw);
+    var caseId=String(sbmCreatorPreferredValue_(o,['case_id','caseId','site_diagnosis_context.case_id','workflow.case_id','source_referral.case_id'],['case_id','caseid'])||'').trim();
+    var siteId=String(sbmCreatorPreferredValue_(o,['site_id','site.site_id','site_diagnosis_context.site_id'],['site_id'])||'').trim();
+    var url=String(sbmCreatorPreferredValue_(o,['published_url','publication_url','new_article_url','publication_result.article_url','publication_result.url','new_article.article_url','new_article.url','article.article_url','article.url','result.article_url','result.url','output.article_url','output.url','article_url'],['published_url','publication_url','new_article_url','article_url'])||'').trim();
+    var title=String(sbmCreatorPreferredValue_(o,['article_title','new_values.article_title','publication_result.article_title','publication_result.title','new_article.article_title','new_article.title','article.article_title','article.title','result.article_title','result.title','output.article_title','output.title'],['article_title'])||'').trim();
+    var keyword=String(sbmCreatorPreferredValue_(o,['main_query','main_keyword','candidate_keyword','new_values.main_query','creator_plan.candidate_keyword','target_keyword'],['main_query','main_keyword','candidate_keyword','target_keyword'])||'').trim();
+    var localSite=String(sbmGetSetting_('SiteID','')||'').trim();if(siteId&&localSite&&siteId!==localSite)throw new Error('Creator回答のSiteIDがこのSBMと一致しません。\nSBM：'+localSite+'\nCreator：'+siteId);
+    if(!url||!sbmIsValidArticleUrl_(url))throw new Error('Creator回答から公開記事URLを取得できませんでした。公開後のURLを含むCreator回答を貼り付けてください。');
+    if(!caseId){var found=sbmCreatorActiveCaseByKeyword_(keyword);if(found)caseId=found.caseId;}
+    if(!caseId)throw new Error('Creator案件のcase_idを特定できませんでした。Diagnosis/SBMから作成したCreator紹介状に対する回答を貼り付けてください。');
+    var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)throw new Error('Creator案件をSBMで見つけられません：'+caseId);
+    var state=rec.hm['状態コード']?String(rec.values[rec.hm['状態コード']-1]||'').trim():'';
+    if(state!=='MONITORING'&&['CREATOR_IN_PROGRESS','CREATOR_REQUEST_READY'].indexOf(state)<0)throw new Error('このcase_idはCreator公開登録待ちではありません。\nCaseID：'+caseId+'\n状態：'+state);
+    var r=sbmDoctorCreatorPublishedArticle_(caseId,url,title);
+    if(r&&r.ok){r.message=(r.message||'Creator新記事を登録しました。')+'\n入力方法：Creator回答全文から自動登録';}
+    return r;
+  }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
+}
+
 function sbmDoctorCreatorPublishedArticle_(caseId,articleUrl,articleTitle){
   var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)throw new Error('Creator案件を見つけられません：'+caseId);
   var state=rec.hm['状態コード']?String(rec.values[rec.hm['状態コード']-1]||'').trim():'';
