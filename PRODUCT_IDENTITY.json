@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.10.22",
-  "release_status": "PATCH",
-  "notes": "Adds Creator published-article registration and monitoring return path for Site Diagnosis Creator treatments."
+  "current_version": "5.11.0",
+  "release_status": "MINOR",
+  "notes": "Adds Treatment Performance Feedback v1 with immutable 28-day treatment outcome snapshots and candidate-score provenance."
 }

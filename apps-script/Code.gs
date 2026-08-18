@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.10.22
+ * SIMS-Blog-Manager Product v5.11.0
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.10.22';
+const SBM_VERSION = '5.11.0';
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -27,6 +27,7 @@ const SBM_SHEETS = Object.freeze({
   PROFILE_LOG: '処理プロファイル',
   IN_PROGRESS: '改善中',
   FEEDBACK_HISTORY: '改善履歴',
+  TREATMENT_PERFORMANCE: 'Treatment_Performance',
   DOCTOR_HEALTH_SNAPSHOT: 'Doctor_Health_Snapshot',
   DOCTOR_HEALTH_RECORD: 'Doctor_Health_Record',
   DOCTOR_TREATMENT_QUEUE: 'Doctor_治療待ち',
@@ -63,7 +64,8 @@ const SBM_HEADERS = Object.freeze({
   PLATFORM_TREATMENTS: ['TreatmentRequestID','CaseID','ReferralID','TargetProduct','TreatmentType','SequenceNumber','DependsOn','Status','UserApprovalRequired','ResultID','RetryCount','CreatedAt','StartedAt','CompletedAt','RawJSON'],
   PLATFORM_EVENTS: ['EventID','CaseID','EventType','PreviousStatus','NewStatus','Actor','SourceMessageID','OccurredAt','DetailJSON'],
   PLATFORM_ERRORS: ['CreatedAt','CaseID','MessageID','ErrorCode','Severity','Recoverable','ContractName','FailedField','Message','RecommendedAction','RawJSON'],
-  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','改善経路','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','公開OK変更JSON','利用者判断変更JSON','変更サマリーJSON','Feedback Format','Writer Version']
+  FEEDBACK_HISTORY: ['選択','改善日','記事タイトル','改善概要','改善経路','使用AI','1週','2週','3週','4週','最終判定','状態','1回目測定日時','1回目SIMS寸評','2回目測定日時','2回目SIMS寸評','3回目測定日時','3回目SIMS寸評','4回目測定日時','4回目SIMS寸評','最終総括','最終改善提案','ArticleID','記事URL','変更箇所','変更後タイトル','変更後SEOタイトル','変更後メタディスクリプション','メインクエリ','改善規模','確信度','期待CTR効果','期待クリック効果','次のアクション','維持した項目','作業時間（分）','注意事項','改善前クリック','改善前表示回数','改善前CTR','改善前順位','AI改善結果JSON','改善履歴ID','改善計画JSON','公開OK変更JSON','利用者判断変更JSON','変更サマリーJSON','Feedback Format','Writer Version'],
+  TREATMENT_PERFORMANCE: ['PerformanceID','改善履歴ID','ArticleID','記事URL','記事タイトル','改善日','28日測定日','候補元','候補ID','候補区分','TargetCTR','ExpectedClicks','InstantScore','CTRScore','主診断コード','Doctor優先度','治療アクション','治療レベル','改善経路','変更箇所','改善規模','WriterVersion','改善前クリック','改善前表示回数','改善前CTR','改善前順位','28日後クリック','28日後表示回数','28日後CTR','28日後順位','クリック変化','表示回数変化','CTR変化','順位変化','4週判定','最終判定','最終総括','記録日時']
 });
 
 const SBM_DEFAULTS = Object.freeze({
@@ -839,6 +841,7 @@ function sbmEnsureDataSheets_() {
     LOG: SBM_SHEETS.LOG,
     PROCESS_LOG: SBM_SHEETS.PROCESS_LOG,
     FEEDBACK_HISTORY: SBM_SHEETS.FEEDBACK_HISTORY,
+    TREATMENT_PERFORMANCE: SBM_SHEETS.TREATMENT_PERFORMANCE,
     DOCTOR_HEALTH_SNAPSHOT: SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT,
     DOCTOR_HEALTH_RECORD: SBM_SHEETS.DOCTOR_HEALTH_RECORD,
     DOCTOR_TREATMENT_QUEUE: SBM_SHEETS.DOCTOR_TREATMENT_QUEUE,
@@ -6244,6 +6247,90 @@ function sbmFinalImprovementOutcome_(judgment, complete){
 }
 
 
+
+/**
+ * Product 5.11.0: 28日後の治療成績を一度だけ固定保存します。
+ * 既存の「改善の推移」は最新値を表示し続けるため、学習用の28日スナップショットは別台帳へ保持します。
+ */
+function sbmFindDoctorCaseByHistoryId_(historyId) {
+  historyId = String(historyId || '').trim();
+  if (!historyId) return {};
+  var rows = sbmRowsAsObjects_(SBM_SHEETS.DOCTOR_CASES) || [];
+  for (var i=rows.length-1; i>=0; i--) {
+    if (String(rows[i]['改善履歴ID'] || '').trim() === historyId) return rows[i];
+  }
+  return {};
+}
+
+function sbmTreatmentPerformanceExists_(historyId) {
+  historyId = String(historyId || '').trim();
+  if (!historyId) return false;
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TREATMENT_PERFORMANCE);
+  if (!sh || sh.getLastRow() < 2) return false;
+  var hm = sbmHeaderMap_(sh), col = hm['改善履歴ID'];
+  if (!col) return false;
+  var vals = sh.getRange(2,col,sh.getLastRow()-1,1).getDisplayValues();
+  for (var i=0;i<vals.length;i++) if (String(vals[i][0] || '').trim() === historyId) return true;
+  return false;
+}
+
+function sbmRecordTreatmentPerformance_(historyRow, judgment, measuredAt, metrics) {
+  metrics = metrics || {};
+  var historyId = String(historyRow['改善履歴ID'] || '').trim();
+  if (!historyId || sbmTreatmentPerformanceExists_(historyId)) return {recorded:false, reason:'already_recorded_or_missing_id'};
+
+  var plan = sbmParseJsonObjectSafe_(historyRow['改善計画JSON']);
+  var doctor = sbmFindDoctorCaseByHistoryId_(historyId);
+  var finalOutcome = sbmFinalImprovementOutcome_(judgment, true);
+  var record = {
+    'PerformanceID': sbmId_('PERF'),
+    '改善履歴ID': historyId,
+    'ArticleID': historyRow['ArticleID'] || '',
+    '記事URL': historyRow['記事URL'] || '',
+    '記事タイトル': historyRow['記事タイトル'] || '',
+    '改善日': historyRow['改善日'] || '',
+    '28日測定日': measuredAt,
+    '候補元': plan.source || '',
+    '候補ID': plan.candidate_id || '',
+    '候補区分': plan.category || '',
+    'TargetCTR': plan.target_ctr === undefined ? '' : plan.target_ctr,
+    'ExpectedClicks': plan.expected_clicks === undefined ? '' : plan.expected_clicks,
+    'InstantScore': plan.instant_score === undefined ? '' : plan.instant_score,
+    'CTRScore': plan.ctr_score === undefined ? '' : plan.ctr_score,
+    '主診断コード': doctor['主診断コード'] || '',
+    'Doctor優先度': doctor['優先度'] || '',
+    '治療アクション': doctor['治療アクション'] || '',
+    '治療レベル': doctor['治療レベル'] || '',
+    '改善経路': historyRow['改善経路'] || historyRow['改善方法'] || '通常改善',
+    '変更箇所': historyRow['変更箇所'] || '',
+    '改善規模': historyRow['改善規模'] || '',
+    'WriterVersion': historyRow['Writer Version'] || '',
+    '改善前クリック': metrics.beforeClicks,
+    '改善前表示回数': metrics.beforeImp,
+    '改善前CTR': metrics.beforeCtr,
+    '改善前順位': metrics.beforePos,
+    '28日後クリック': metrics.currentClicks,
+    '28日後表示回数': metrics.currentImp,
+    '28日後CTR': metrics.currentCtr,
+    '28日後順位': metrics.currentPos,
+    'クリック変化': metrics.clickDelta,
+    '表示回数変化': metrics.impDelta,
+    'CTR変化': metrics.ctrDelta,
+    '順位変化': metrics.posDelta,
+    '4週判定': judgment || '',
+    '最終判定': finalOutcome,
+    '最終総括': historyRow['最終総括'] || sbmBuildFinalAssessment_(judgment,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta).summary,
+    '記録日時': sbmNowText_()
+  };
+  sbmAppendObject_(SBM_SHEETS.TREATMENT_PERFORMANCE, SBM_HEADERS.TREATMENT_PERFORMANCE, record);
+  try {
+    var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SBM_SHEETS.TREATMENT_PERFORMANCE);
+    if (sh) sh.hideSheet();
+  } catch(ignoreHide) {}
+  sbmLog_('TreatmentPerformance','Done','historyId='+historyId+', outcome='+finalOutcome);
+  return {recorded:true, historyId:historyId, outcome:finalOutcome};
+}
+
 function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt,metrics) {
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), hm=sbmHeaderMap_(sh);
   var historyId=String(historyRow['改善履歴ID']||'').trim(), articleId=String(historyRow['ArticleID']||'').trim();
@@ -6276,6 +6363,8 @@ function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt,metrics) {
     if(hm['最終判定'])sh.getRange(target,hm['最終判定']).setValue(sbmFinalImprovementOutcome_(judgment,true));
     if(hm['最終総括'])sh.getRange(target,hm['最終総括']).setValue(final.summary);
     if(hm['最終改善提案'])sh.getRange(target,hm['最終改善提案']).setValue(final.proposal);
+    historyRow['最終総括'] = final.summary;
+    try { sbmRecordTreatmentPerformance_(historyRow,judgment,when,metrics); } catch(ePerf) { sbmLog_('TreatmentPerformance','Warning',String(ePerf)); }
   }else if(hm['最終判定']){
     sh.getRange(target,hm['最終判定']).setValue('経過観察中');
   }
@@ -6654,7 +6743,7 @@ function sbmUpdateEffectivenessCore_(showAlert){
     var state=sbmHistoryMeasurementState_(h), due=sbmNextWeeklyDueDate_(h), dueReached=!!due&&now>=due;
     var currentJudgment=sbmJudgeEffectV2_(ctrDelta,posDelta,clickDelta,impDelta,elapsed,beforeClicks,beforeImp,currentImp);
     if(dueReached&&!state.complete){
-      var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now,{ctrDelta:ctrDelta,posDelta:posDelta,clickDelta:clickDelta,impDelta:impDelta});
+      var rec=sbmRecordWeeklyMeasurement_(h,currentJudgment,now,{beforeCtr:beforeCtr,currentCtr:currentCtr,beforePos:beforePos,currentPos:currentPos,beforeClicks:beforeClicks,currentClicks:currentClicks,beforeImp:beforeImp,currentImp:currentImp,ctrDelta:ctrDelta,posDelta:posDelta,clickDelta:clickDelta,impDelta:impDelta});
       if(rec.recorded){recordedCount++;h[(rec.count)+'回目測定日時']=now;h[(rec.count)+'週']=currentJudgment;h[(rec.count)+'回目SIMS寸評']=rec.observation;h['最終判定']=sbmFinalImprovementOutcome_(currentJudgment,rec.complete);h['状態']=rec.complete?'完了':'モニター中';}
       state=sbmHistoryMeasurementState_(h);due=sbmNextWeeklyDueDate_(h);
     }
@@ -7332,9 +7421,14 @@ function sbmBuildImprovementPlanSnapshot_(articleUrl, articleId) {
   }
 
   return {
-    version: '1.0',
+    version: '1.1',
     source: c ? '今日の改善' : '記事管理',
     category: kind || 'ー',
+    candidate_id: c ? String(c.candidateId || '') : '',
+    target_ctr: c ? Number(c.targetCtr || 0) : (article && article['記事URL'] ? sbmExpectedCtrTarget_(sbmNumber_(article['掲載順位']) || 0) : 0),
+    expected_clicks: expectedClicks,
+    instant_score: c ? Number(c.instantScore || 0) : '',
+    ctr_score: c ? Number(c.ctrScore || 0) : '',
     reason: reason || '',
     expected_effect: expectedClicks > 0 ? ('約' + expectedClicks + 'クリック増') : '',
     priorities: priorities,
