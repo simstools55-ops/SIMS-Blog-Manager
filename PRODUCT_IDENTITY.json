@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.13.3",
+  "current_version": "5.13.4",
   "release_status": "PATCH",
-  "notes": "Monitoring trend now collapses improvement history to the latest cycle per article before rendering. Superseded cycles are never generated into the active list; completed successful cycles are also excluded before rendering. Historical records remain stored."
+  "notes": "Fixes root cause of duplicate monitoring cycles: opening/preparing Improvement History could overwrite valid historical Doctor-cycle improvement dates with the latest Doctor Case date. Improvement dates are now immutable once valid. Existing corrupted dates are restored from the Effect sheet using cycle-specific improvement_history_id before regeneration."
 }

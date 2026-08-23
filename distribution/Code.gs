@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product v5.13.3
+ * SIMS-Blog-Manager Product v5.13.4
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.13.3';
-// Product v5.13.3: 改善履歴そのものを記事単位で最新化してから推移行を生成し、旧サイクル混在を根本的に防止。完了成功行も生成前に除外。
+const SBM_VERSION = '5.13.4';
+// Product v5.13.4: Doctor履歴表示処理が旧サイクルの改善日を最新Case日付で上書きする不具合を修正。改善日を不変値として扱い、既存破損は改善の推移の履歴IDから自己修復。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -6446,34 +6446,88 @@ function sbmParseImprovementHistoryDate_(value){
   return null;
 }
 
+
+/**
+ * v5.13.4:
+ * 旧版の「改善履歴を開く」処理で、Doctor経路の過去履歴の改善日が
+ * 最新Doctor Caseの完了日に上書きされる不具合がありました。
+ *
+ * 改善の推移には改善履歴IDと当時の改善実施日が保持されているため、
+ * 同じ改善履歴IDについて日付が食い違う場合は、推移側の日付へ復元します。
+ * 改善履歴IDはサイクル固有なので、この修復で新旧サイクルを混同しません。
+ */
+function sbmRepairCorruptedDoctorHistoryDatesFromEffect_(){
+  var ss=SpreadsheetApp.getActiveSpreadsheet();
+  var hist=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
+  var eff=ss.getSheetByName(SBM_SHEETS.EFFECT);
+  if(!hist||hist.getLastRow()<2||!eff||eff.getLastRow()<2)return 0;
+
+  var hhm=sbmHeaderMap_(hist),ehm=sbmHeaderMap_(eff);
+  if(!hhm['改善履歴ID']||!hhm['改善日']||!ehm['改善履歴ID']||!ehm['改善実施日'])return 0;
+
+  var effectVals=eff.getRange(2,1,eff.getLastRow()-1,eff.getLastColumn()).getValues();
+  var dateByHistoryId={};
+  effectVals.forEach(function(row){
+    var hid=String(row[ehm['改善履歴ID']-1]||'').trim();
+    var d=sbmParseDate_(row[ehm['改善実施日']-1]);
+    if(hid&&d)dateByHistoryId[hid]=d;
+  });
+  if(!Object.keys(dateByHistoryId).length)return 0;
+
+  var vals=hist.getRange(2,1,hist.getLastRow()-1,hist.getLastColumn()).getValues();
+  var changed=0;
+  vals.forEach(function(row){
+    var hid=String(row[hhm['改善履歴ID']-1]||'').trim();
+    var expected=hid?dateByHistoryId[hid]:null;
+    if(!expected)return;
+    var current=sbmParseDate_(row[hhm['改善日']-1]);
+    if(!current||Math.abs(current.getTime()-expected.getTime())>1000){
+      row[hhm['改善日']-1]=new Date(expected.getTime());
+      changed++;
+    }
+  });
+  if(changed){
+    hist.getRange(2,1,vals.length,vals[0].length).setValues(vals);
+    hist.getRange(2,hhm['改善日'],vals.length,1).setNumberFormat('yyyy/M/d');
+    try{sbmLog_('RepairHistoryCycleDates','Done','restored='+changed);}catch(ignoreLog){}
+  }
+  return changed;
+}
+
 function sbmPrepareImprovementHistoryViewData_(){
   var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName(SBM_SHEETS.FEEDBACK_HISTORY);
   if(!sh||sh.getLastRow()<2)return {changed:0,rows:0};
+
+  // v5.13.4: 旧版で破損したDoctor履歴日を、サイクル固有の改善履歴IDから先に復元。
+  try{sbmRepairCorruptedDoctorHistoryDatesFromEffect_();}catch(eRepair){
+    try{sbmLog_('RepairHistoryCycleDates','Warning',String(eRepair));}catch(ignoreRepairLog){}
+  }
 
   var lastRow=sh.getLastRow(),lastCol=sh.getLastColumn(),hm=sbmHeaderMap_(sh);
   if(!hm['改善日'])return {changed:0,rows:lastRow-1};
 
   var vals=sh.getRange(2,1,lastRow-1,lastCol).getValues();
   var dateIdx=hm['改善日']-1,routeIdx=hm['改善経路']?hm['改善経路']-1:-1;
-  var badDoctorNeeded=false;
 
+  // 改善日は「そのモニタリングサイクルが始まった日」であり不変値。
+  // 既に有効な日付が入っている履歴は絶対にDoctor Caseの日付で上書きしない。
+  // 日付が壊れている履歴だけ、同一改善履歴IDのCaseから補完する。
+  var caseByHistoryId={};
+  var needRepair=false;
   vals.forEach(function(row){
     var route=routeIdx>=0?String(row[routeIdx]||'').trim():'';
     if(route.indexOf('Doctor→')!==0)return;
-    var current=row[dateIdx];
-    if(!(current instanceof Date)||isNaN(current.getTime()))badDoctorNeeded=true;
+    if(!sbmParseImprovementHistoryDate_(row[dateIdx]))needRepair=true;
   });
 
-  var caseByHistoryId={},caseByArticle={};
-  if(badDoctorNeeded){
+  if(needRepair){
     var caseSh=ss.getSheetByName(SBM_SHEETS.DOCTOR_CASES);
     if(caseSh&&caseSh.getLastRow()>1){
       var chm=sbmHeaderMap_(caseSh);
       var cvals=caseSh.getRange(2,1,caseSh.getLastRow()-1,caseSh.getLastColumn()).getValues();
       cvals.forEach(function(r){
         var hid=chm['改善履歴ID']?String(r[chm['改善履歴ID']-1]||'').trim():'';
-        var aid=chm['記事ID']?String(r[chm['記事ID']-1]||'').trim():'';
-        if(!hid&&!aid)return;
+        if(!hid)return;
         var date='',raw=chm['Writer結果JSON']?String(r[chm['Writer結果JSON']-1]||'').trim():'';
         if(raw){
           try{
@@ -6482,9 +6536,7 @@ function sbmPrepareImprovementHistoryViewData_(){
           }catch(ignoreJson){}
         }
         if(!date&&chm['更新日時'])date=String(r[chm['更新日時']-1]||'').trim();
-        var info={date:date};
-        if(hid)caseByHistoryId[hid]=info;
-        if(aid)caseByArticle[aid]=info;
+        if(date)caseByHistoryId[hid]={date:date};
       });
     }
   }
@@ -6494,7 +6546,8 @@ function sbmPrepareImprovementHistoryViewData_(){
     var current=row[dateIdx],route=routeIdx>=0?String(row[routeIdx]||'').trim():'';
     var d=sbmParseImprovementHistoryDate_(current);
 
-    if(route.indexOf('Doctor→')===0){
+    // 有効な既存日付は保持。壊れているDoctor履歴だけ同一履歴IDから補完。
+    if(!d && route.indexOf('Doctor→')===0){
       var sourceDate='';
       if(hm['AI改善結果JSON']){
         var raw=String(row[hm['AI改善結果JSON']-1]||'').trim();
@@ -6507,12 +6560,10 @@ function sbmPrepareImprovementHistoryViewData_(){
       }
       if(!sourceDate){
         var hid=hm['改善履歴ID']?String(row[hm['改善履歴ID']-1]||'').trim():'';
-        var aid=hm['ArticleID']?String(row[hm['ArticleID']-1]||'').trim():'';
-        var info=(hid&&caseByHistoryId[hid])||(aid&&caseByArticle[aid])||null;
+        var info=hid?caseByHistoryId[hid]:null;
         if(info)sourceDate=String(info.date||'').trim();
       }
-      var sourceParsed=sbmParseImprovementHistoryDate_(sourceDate);
-      if(sourceParsed)d=sourceParsed;
+      d=sbmParseImprovementHistoryDate_(sourceDate);
     }
 
     if(d){
@@ -6522,7 +6573,6 @@ function sbmPrepareImprovementHistoryViewData_(){
       dateValues.push([current]);
     }
 
-    // 既存行も最終判定の新しい意味へ移行する。
     if(hm['最終判定']){
       var count=0,latest='測定待ち';
       for(var w=1;w<=4;w++){
@@ -6549,7 +6599,6 @@ function sbmPrepareImprovementHistoryViewData_(){
 
   return {changed:changed,rows:lastRow-1};
 }
-
 
 function sbmColumnLetter_(column){
   var n=Number(column||0),s='';
@@ -6880,7 +6929,7 @@ function sbmHistoryArticleIdentity_(h){
   if(url)return 'URL:'+url;
 
   var title=String(h['記事タイトル']||'').normalize('NFKC').toLowerCase()
-    .replace(/[\\s　]+/g,'')
+    .replace(/[\s　]+/g,'')
     .replace(/[‐‑‒–—―ー－]/g,'-')
     .replace(/[“”„‟＂"]/g,'"')
     .replace(/[‘’‚‛＇']/g,"'")
@@ -6894,7 +6943,7 @@ function sbmHistoryCycleTime_(h,index){
   var d=sbmParseDate_(h&&h['改善日']);
   var time=d?d.getTime():0;
   var id=String(h&&h['改善履歴ID']||'');
-  var nums=id.match(/\\d+/g)||[];
+  var nums=id.match(/\d+/g)||[];
   var historyNo=nums.length?Number(nums[nums.length-1]||0):0;
   return {time:time,historyNo:historyNo,index:Number(index||0)};
 }
@@ -6933,6 +6982,8 @@ function sbmLatestMonitoringHistories_(history){
 
 function sbmUpdateEffectivenessCore_(showAlert){
   sbmEnsureHistoryAndEffectSchemas_();
+  // v5.13.4: 旧版で履歴日が上書きされていた場合、既存の推移スナップショットから先に復元する。
+  try{sbmRepairCorruptedDoctorHistoryDatesFromEffect_();}catch(eDateRepair){try{sbmLog_('RepairHistoryCycleDates','Warning',String(eDateRepair));}catch(ignoreDateRepair){}}
   // Doctor処置と改善履歴IDの紐付けから改善経路を毎回復元し、推移からDoctor→Writer等が消える退化を防ぎます。
   try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRouteSync){sbmLog_('DoctorRouteSync','Warning',String(eRouteSync));}
   var allHistory=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[],articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],byId={},byUrl={};
