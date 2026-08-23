@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.13.4",
-  "release_status": "PATCH",
-  "notes": "Fixes root cause of duplicate monitoring cycles: opening/preparing Improvement History could overwrite valid historical Doctor-cycle improvement dates with the latest Doctor Case date. Improvement dates are now immutable once valid. Existing corrupted dates are restored from the Effect sheet using cycle-specific improvement_history_id before regeneration."
+  "current_version": "5.14.0",
+  "release_status": "MINOR",
+  "notes": "Introduces explicit monitoring-cycle lifecycle in Improvement History: ACTIVE, REVIEW_REQUIRED, SUPERSEDED, COMPLETED. Effect view is now driven by lifecycle state instead of date/title heuristics. Starting a new treatment or Doctor WAIT/MONITOR cycle supersedes the previous open cycle."
 }
