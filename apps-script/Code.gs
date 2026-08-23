@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.1';
+const SBM_VERSION = '5.14.2';
 // Product v5.14.0: 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -1104,9 +1104,9 @@ function sbmBuildHomeSheet_() {
   sh.getRange('A10:H10').merge().setValue('今日のメッセージ');
   sh.getRange('A11:H12').merge().setValue('記事の育ち方と改善状況に合わせて表示します。');
 
-  sh.getRange('A14:D14').merge().setValue('改善状況');
-  sh.getRange('E14:H14').merge().setValue('モニター中の記事｜推移');
-  var left = [['改善候補','0件'],['モニター中','0件'],['改善確認完了','0件'],['未取得記事','0件'],['','']];
+  sh.getRange('A14:D14').merge().setValue('改善・治療｜現在と累計');
+  sh.getRange('E14:H14').merge().setValue('現在モニター中｜判定内訳');
+  var left = [['現在モニター中','0件'],['改善・治療対象','0件'],['改善確認','0件'],['改善率','ー'],['未取得記事','0件']];
   for (var i=0;i<5;i++) {
     var r=15+i;
     sh.getRange(r,1,1,2).merge().setValue(left[i][0]);
@@ -8479,6 +8479,41 @@ function sbmHomeMonitorJudgmentCounts_() {
   return counts;
 }
 
+
+/**
+ * v5.14.2 Home累計実績。
+ * 「改善・治療対象」は改善履歴に登場した記事を記事単位で重複除外して数える。
+ * 「改善確認」は少なくとも1サイクルがCOMPLETEDになった記事数。
+ * 改善率は結果判定済み（COMPLETED / REVIEW_REQUIRED / SUPERSEDED）の記事だけを母数にし、
+ * 現在ACTIVEで観察中だけの記事は母数から除外する。
+ */
+function sbmHomeTreatmentStats_() {
+  var rows = [];
+  try { rows = sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY) || []; } catch(e) {}
+  var groups = {}, seq = 0;
+  rows.forEach(function(r) {
+    var aliases = sbmMonitoringAliasesFrom_(r);
+    var key = aliases.length ? aliases[0] : ('ROW:' + (++seq));
+    // ID/URL/タイトルのいずれかが既存グループと一致すれば同一記事として扱う。
+    var found = '';
+    Object.keys(groups).some(function(k){
+      if (sbmMonitoringRowsRelated_(groups[k].sample, r)) { found = k; return true; }
+      return false;
+    });
+    key = found || key;
+    if (!groups[key]) groups[key] = {sample:r, lives:[]};
+    groups[key].lives.push(sbmMonitoringLifecycleFromHistory_(r));
+  });
+  var targets = Object.keys(groups).length, improved = 0, resolved = 0;
+  Object.keys(groups).forEach(function(k) {
+    var lives = groups[k].lives;
+    if (lives.indexOf('COMPLETED') >= 0) improved++;
+    if (lives.some(function(v){ return v === 'COMPLETED' || v === 'REVIEW_REQUIRED' || v === 'SUPERSEDED'; })) resolved++;
+  });
+  var rate = resolved > 0 ? Math.round(improved * 1000 / resolved) / 10 : null;
+  return {targets:targets, improved:improved, resolved:resolved, rate:rate, rateText:rate === null ? 'ー' : (rate + '%')};
+}
+
 function sbmHomeJudgmentStyle_(label) {
   var value = String(label || '').trim();
   var style = {bg:'#f1f3f4',fg:'#5f6368',weight:'normal'};
@@ -8558,12 +8593,13 @@ function sbmHomeLayoutNeedsRebuild_(sh) {
   if (!sh) return true;
   try {
     var expected = [
-      ['A14','改善状況'],
-      ['A15','改善候補'],
-      ['A16','モニター中'],
-      ['A17','改善確認完了'],
-      ['A18','未取得記事'],
-      ['E14','モニター中の記事｜推移']
+      ['A14','改善・治療｜現在と累計'],
+      ['A15','現在モニター中'],
+      ['A16','改善・治療対象'],
+      ['A17','改善確認'],
+      ['A18','改善率'],
+      ['A19','未取得記事'],
+      ['E14','現在モニター中｜判定内訳']
     ];
     for (var i=0;i<expected.length;i++) {
       if (String(sh.getRange(expected[i][0]).getValue() || '').trim() !== expected[i][1]) return true;
@@ -8635,14 +8671,18 @@ function sbmRefreshHome_() {
   // Product 5.9.10 Final: 旧レイアウトのHomeでも複数セルへの文章複製を防ぐ。
   try { sh.getRange('A11:H12').breakApart().merge(); } catch (e) {}
   sh.getRange('A11:H12').setValue(sbmHomeOverallMessage_(blogName, snapshot)).setFontWeight('normal').setWrap(true);
-  sh.getRange('C15:D15').setValue(work.today + '件');
-  sh.getRange('C16:D16').setValue(work.monitor + '件');
+  // v5.14.2: Homeの現役件数は「改善の推移」と同じ正本から集計する。
+  // 記事管理の作業状態を別集計しないことで、Homeと推移の件数ずれを防ぐ。
+  var monitorCounts = sbmHomeMonitorJudgmentCounts_();
+  var currentMonitorTotal = Object.keys(monitorCounts).reduce(function(sum,key){ return sum + Number(monitorCounts[key] || 0); }, 0);
+  var treatmentStats = sbmHomeTreatmentStats_();
+  sh.getRange('C15:D15').setValue(currentMonitorTotal + '件');
+  sh.getRange('C16:D16').setValue(treatmentStats.targets + '件');
+  sh.getRange('C17:D17').setValue(treatmentStats.improved + '件');
+  sh.getRange('C18:D18').setValue(treatmentStats.rateText);
+  sh.getRange('C19:D19').setValue(missingCount + '件');
 
   var weekly = sbmHomeWeeklyActivity_();
-  sh.getRange('C17:D17').setValue(weekly.completed + '件');
-  sh.getRange('C18:D18').setValue(missingCount + '件');
-  sh.getRange('C19:D19').setValue('');
-  var monitorCounts = sbmHomeMonitorJudgmentCounts_();
   var monitorCells = [
     ['F15','測定待ち'],['H15','データ不足'],
     ['F16','経過観察'],['H16','改善傾向'],
