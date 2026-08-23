@@ -1,68 +1,35 @@
-# SIMS-Blog-Manager v5.10.22
+# SIMS-Blog-Manager v5.13.0
 
-Site Diagnosis → SBM → Creator → SBM の新記事公開後の戻り導線を追加したPATCHです。
+改善後モニタリングの「出口」を完成させるMINORアップデートです。
+
+## 今回の主な変更
+
+- 「推移確認」に `4．観察終了後の処置を進める` を追加
+- 4回測定後に改善完了した案件は、現役の「改善の推移」から卒業
+- 「再改善必要」「確定不能」の案件は、チェックしてDoctor再診へ直接送れる
+- Doctorが `WAIT / MONITOR` を返した場合は、正式な「追加経過観察」サイクルを新規開始
+- Doctor再診後は Writer / Merge / 追加経過観察 へ既存ルートで自動分岐
+- 完了案件の改善履歴・28日成績は削除せず保持
+- Homeのモニター件数は現役案件中心になるよう、記事管理状態を同期
+- Apps Script / 配布コード / VERSION / PRODUCT_IDENTITY の版数を v5.13.0 に同期
 
 ## Apps Scriptで変更するファイル
+
 - `Code.gs`：置換
 
-## GitHubで変更するファイル
-- `apps-script/Code.gs`：置換
-- `distribution/Code.gs`：置換
-- `VERSION`：更新
-- `PRODUCT_IDENTITY.json`：更新
-- `CHANGELOG.md`：更新
+`appsscript.json` は変更ありません。
 
-Creator紹介状画面で「新記事の公開を登録」を押し、公開済み新記事URLを入力すると、記事管理へ新規記事を登録し、モニター中へ移します。
+## 操作
 
-## v5.10.15
+1. 「推移確認」→「1．改善の推移を開く」
+2. 所定期間が終わり、処置が必要な行にチェック
+3. 「推移確認」→「4．観察終了後の処置を進める」
+4. SBMが状態を判定
+   - 改善完了 → 観察完了として卒業
+   - 再改善必要 / 確定不能 → Doctor再診依頼
+   - Doctor追加観察中 → 次回診察日まで待機
+5. Doctorが `WAIT / MONITOR` を返した場合は新しい観察サイクルへ自動登録
 
-- Site DiagnosisのREF-*をURLでSBM正式ArticleIDへ安全に解決します。
-- Doctor回答全文に複数のSIMS_DOCTOR_CASE_RESULT_V2が含まれる場合、1回の貼り付けで一括登録します。
-- 一括登録前に全件のSiteID・URL・ArticleIDを事前照合します。
+## 推奨コミットメッセージ
 
-## v5.10.16
-
-- 複数の個別Doctor結果を2件ずつ別Apps Script実行で登録します。
-- 9件の場合は 2/9 → 4/9 → 6/9 → 8/9 → 9/9 と進捗を表示します。
-- v5.10.15のREF→正式ArticleID URL照合と複数CASE_RESULT抽出を維持します。
-
-## v5.10.17
-
-- Doctor複数個別結果を1件ずつ別Apps Script実行で登録します。
-- 登録開始直後に専用の進捗オーバーレイを表示します。
-- 9件の場合は 0/9 → 1/9 → 2/9 … → 9/9 と画面中央で進捗を表示します。
-- エラー時は何件まで処理済みかを進捗画面に表示します。
-
-## v5.10.18
-
-- v5.10.17の進捗オーバーレイが表示されなかったブラウザ側JavaScript不具合を修正。
-- submitDoctor() の差し替え境界と文字列生成を修正。
-- リリース検証に submitDoctor() 単体のブラウザJavaScript構文チェックを追加。
-
-## v5.10.19
-
-- Site Diagnosis個別精密診断の `SIMS_DOCTOR_CASE_RESULT_V2` がトップレベルに持つ
-  `allowed_scope` / `blocked_scope` を正式な治療範囲として受理します。
-- Writer紹介状へDoctorの治療範囲を欠落なく引き継ぎます。
-- `treatment_plan.actions` もWriterへの具体的な処置指示として保持します。
-
-## v5.10.20
-
-- Site Diagnosis一括結果を1案件ずつ別Apps Script実行で登録します。
-- 登録開始前にブラウザ側で件数を数え、`0 / ?件` ではなく `0 / N件` を即時表示します。
-- 1件ごとに進捗を更新し、長時間無反応に見える状態を解消します。
-- Writer処置結果の登録成功後、③の入力欄を自動クリアします。
-
-## v5.10.21
-
-- Site Diagnosis処置ダイアログの「前回の処置を再読み込み」ボタンを削除。
-- 未完了処置の内部自動再開機能は維持。
-- 「前の紹介状／次の紹介状」で案件を切り替えた際、③Writer結果欄と前案件の緑色登録結果を同時にクリア。
-
-
-## v5.10.22
-
-- 現在稼働中のCode.gsを正本として再同期。
-- Code.gs先頭の製品ヘッダーを `SIMS-Blog-Manager Product v5.10.22` へ修正。
-- `SBM_VERSION`、VERSION、Product Identity、配布Runtimeを v5.10.22 に統一。
-- v5.10.21で実装済みのSite Diagnosis処置ダイアログ改善はそのまま維持。
+`feat(sbm): release v5.13.0 post-improvement monitoring lifecycle`

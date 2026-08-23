@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.12.2",
-  "release_status": "PATCH",
-  "notes": "Allows Creator-direct published articles without a Diagnosis/SBM case_id to be registered immediately, while preserving case-linked registration when available."
+  "current_version": "5.13.0",
+  "release_status": "MINOR",
+  "notes": "Completes the post-improvement monitoring lifecycle: completed successes graduate from the active trend list, review-required cases can be sent to Doctor directly from the trend sheet, and Doctor WAIT/MONITOR starts a new observation cycle."
 }
