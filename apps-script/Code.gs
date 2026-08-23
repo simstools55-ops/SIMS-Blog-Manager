@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.2';
+const SBM_VERSION = '5.14.3';
 // Product v5.14.0: 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -10747,6 +10747,38 @@ function sbmDoctorCreateRequestFromArticleList() {
  * 4回測定完了後は、改善完了なら現役一覧から卒業し、
  * 再改善必要/判断保留ならDoctor再診へ進めます。
  */
+
+/**
+ * v5.14.3:
+ * 観察終了判定は画面用の「測定状態」ラベルではなく、
+ * 測定回数・改善履歴のモニター状態・最終判定を正本にします。
+ */
+function sbmEffectMeasurementComplete_(effectRow){
+  effectRow=effectRow||{};
+
+  // 表示されている測定回数が4/4なら、通常観察は終了。
+  var countText=String(effectRow['測定回数']||'').replace(/\s/g,'');
+  if(/4回[／\/]4回/.test(countText))return true;
+
+  // 旧データ互換。
+  if(String(effectRow['測定状態']||'').trim()==='測定完了')return true;
+
+  // 改善履歴のライフサイクルも正本として利用。
+  var historyId=String(effectRow['改善履歴ID']||'').trim();
+  if(historyId){
+    var histories=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[];
+    for(var i=histories.length-1;i>=0;i--){
+      if(String(histories[i]['改善履歴ID']||'').trim()!==historyId)continue;
+      var life=sbmMonitoringLifecycleFromHistory_(histories[i]);
+      if(life==='COMPLETED'||life==='REVIEW_REQUIRED'||life==='SUPERSEDED')return true;
+      var final=String(histories[i]['最終判定']||'').trim();
+      if(final==='改善完了'||final==='再改善必要')return true;
+      break;
+    }
+  }
+  return false;
+}
+
 function sbmEffectFinalOutcomeForRow_(effectRow){
   effectRow=effectRow||{};
   var historyId=String(effectRow['改善履歴ID']||'').trim();
@@ -10758,8 +10790,7 @@ function sbmEffectFinalOutcomeForRow_(effectRow){
       }
     }
   }
-  var state=String(effectRow['測定状態']||'').trim();
-  if(state!=='測定完了')return '経過観察中';
+  if(!sbmEffectMeasurementComplete_(effectRow))return '経過観察中';
   var judgment=String(effectRow['判定']||'').trim();
   return sbmFinalImprovementOutcome_(judgment,true);
 }
@@ -10777,7 +10808,7 @@ function sbmLatestDoctorCaseForArticle_(articleId,url){
 
 function sbmEffectLifecycleState_(effectRow){
   var finalOutcome=sbmEffectFinalOutcomeForRow_(effectRow);
-  var measurementState=String(effectRow&&effectRow['測定状態']||'').trim();
+  var measurementComplete=sbmEffectMeasurementComplete_(effectRow);
   var articleId=String(effectRow&&effectRow['ArticleID']||'').trim(),url=String(effectRow&&effectRow['記事URL']||'').trim();
   var doctor=sbmLatestDoctorCaseForArticle_(articleId,url);
   var doctorCode=String(doctor['状態コード']||'').trim(),reviewDate=String(doctor['再診予定日']||'').trim();
@@ -10785,7 +10816,7 @@ function sbmEffectLifecycleState_(effectRow){
   if(doctorCode==='MONITORING' && String(doctor['治療アクション']||'').toUpperCase()==='MONITOR'){
     return {code:'DOCTOR_MONITORING',label:'追加経過観察中',finalOutcome:finalOutcome,reviewDate:reviewDate,doctor:doctor};
   }
-  if(measurementState!=='測定完了'){
+  if(!measurementComplete){
     return {code:'MEASURING',label:'経過観察中',finalOutcome:finalOutcome,reviewDate:'',doctor:doctor};
   }
   if(finalOutcome==='改善完了'){
@@ -10793,6 +10824,12 @@ function sbmEffectLifecycleState_(effectRow){
   }
   if(finalOutcome==='再改善必要'){
     return {code:'REVIEW_REQUIRED',label:'Doctor再診が必要',finalOutcome:finalOutcome,reviewDate:'',doctor:doctor};
+  }
+
+  // 4/4到達後の表示判定が見直し系なら、履歴側の補助ラベルが古くても再診へ進める。
+  var visibleJudgment=String(effectRow&&effectRow['判定']||'').trim();
+  if(measurementComplete && ['見直し候補','要確認','変化小'].indexOf(visibleJudgment)>=0){
+    return {code:'REVIEW_REQUIRED',label:'Doctor再診が必要',finalOutcome:'再改善必要',reviewDate:'',doctor:doctor};
   }
   return {code:'REVIEW_REQUIRED',label:'Doctor再診が必要',finalOutcome:finalOutcome||'経過観察中',reviewDate:'',doctor:doctor};
 }
