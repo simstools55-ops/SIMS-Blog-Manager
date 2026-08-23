@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.13.1",
+  "current_version": "5.13.2",
   "release_status": "PATCH",
-  "notes": "Active improvement trend shows only the latest monitoring cycle per article. Superseded cycles are hidden from the active list while retained in improvement history and Treatment_Performance."
+  "notes": "Improvement trend now applies a final render-level active-cycle filter. For the same article, only the newest monitoring cycle is shown even when legacy ArticleID/URL identity is inconsistent; successfully completed cycles are also removed from the active list while history is preserved."
 }
