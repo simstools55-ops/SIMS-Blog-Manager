@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product v5.13.2
+ * SIMS-Blog-Manager Product v5.13.3
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.13.2';
-// Product v5.13.2: 改善の推移を表示行レベルでも正規化し、同一記事の旧サイクルを確実に非表示。改善完了サイクルも現役一覧から卒業。
+const SBM_VERSION = '5.13.3';
+// Product v5.13.3: 改善履歴そのものを記事単位で最新化してから推移行を生成し、旧サイクル混在を根本的に防止。完了成功行も生成前に除外。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -6865,18 +6865,82 @@ function sbmFilterActiveEffectRows_(rows){
   }).map(function(meta){return meta.row;});
 }
 
+
+/**
+ * v5.13.3:
+ * 改善履歴を「記事単位」で先に1件へ絞ってから、改善の推移を生成します。
+ * v5.13.1/5.13.2の表示後フィルタに依存せず、旧サイクルを生成段階で除外します。
+ */
+function sbmHistoryArticleIdentity_(h){
+  h=h||{};
+  var articleId=String(h['ArticleID']||'').trim();
+  if(articleId)return 'ID:'+articleId;
+
+  var url=sbmNormalizeUrl_(h['記事URL']||'');
+  if(url)return 'URL:'+url;
+
+  var title=String(h['記事タイトル']||'').normalize('NFKC').toLowerCase()
+    .replace(/[\\s　]+/g,'')
+    .replace(/[‐‑‒–—―ー－]/g,'-')
+    .replace(/[“”„‟＂"]/g,'"')
+    .replace(/[‘’‚‛＇']/g,"'")
+    .replace(/-ガジェット探検記$/,'')
+    .replace(/-infohackジャーナル$/,'')
+    .trim();
+  return title ? 'TITLE:'+title : '';
+}
+
+function sbmHistoryCycleTime_(h,index){
+  var d=sbmParseDate_(h&&h['改善日']);
+  var time=d?d.getTime():0;
+  var id=String(h&&h['改善履歴ID']||'');
+  var nums=id.match(/\\d+/g)||[];
+  var historyNo=nums.length?Number(nums[nums.length-1]||0):0;
+  return {time:time,historyNo:historyNo,index:Number(index||0)};
+}
+
+function sbmHistoryCycleNewer_(a,b){
+  if(!b)return true;
+  if(a.time!==b.time)return a.time>b.time;
+  if(a.historyNo!==b.historyNo)return a.historyNo>b.historyNo;
+  return a.index>b.index;
+}
+
+function sbmLatestMonitoringHistories_(history){
+  history=history||[];
+  var latest={};
+  var noIdentity=[];
+
+  history.forEach(function(h,idx){
+    var key=sbmHistoryArticleIdentity_(h);
+    var meta={h:h,index:idx,sortKey:sbmHistoryCycleTime_(h,idx)};
+    if(!key){
+      noIdentity.push(meta);
+      return;
+    }
+    if(!latest[key]||sbmHistoryCycleNewer_(meta.sortKey,latest[key].sortKey)){
+      latest[key]=meta;
+    }
+  });
+
+  var picked=Object.keys(latest).map(function(k){return latest[k];})
+    .concat(noIdentity)
+    .sort(function(a,b){return a.index-b.index;})
+    .map(function(x){return x.h;});
+
+  return picked;
+}
+
 function sbmUpdateEffectivenessCore_(showAlert){
   sbmEnsureHistoryAndEffectSchemas_();
   // Doctor処置と改善履歴IDの紐付けから改善経路を毎回復元し、推移からDoctor→Writer等が消える退化を防ぎます。
   try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRouteSync){sbmLog_('DoctorRouteSync','Warning',String(eRouteSync));}
-  var history=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[],articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],byId={},byUrl={};
-  var latestEffectHistory=sbmLatestEffectHistoryKeys_(history);
+  var allHistory=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[],articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],byId={},byUrl={};
+  // v5.13.3: 同一記事の旧サイクルをここで除外し、最新サイクルだけから推移行を生成する。
+  var history=sbmLatestMonitoringHistories_(allHistory);
   articles.forEach(function(a){if(a['ArticleID'])byId[String(a['ArticleID'])]=a;if(a['記事URL'])byUrl[sbmNormalizeUrl_(a['記事URL'])]=a;});
   var rows=[], now=new Date(), recordedCount=0;
-  history.forEach(function(h,historyIndex){
-    // 新しい改善/Doctor追加観察が始まった記事は、旧サイクルを現役の推移一覧から卒業させる。
-    // 旧データ自体は改善履歴とTreatment_Performanceに保持する。
-    if(!sbmIsLatestEffectHistory_(h,historyIndex,latestEffectHistory))return;
+  history.forEach(function(h){
     var a=byId[String(h['ArticleID']||'')]||byUrl[sbmNormalizeUrl_(h['記事URL']||'')];if(!a)return;
     var improveDate=sbmParseDate_(h['改善日'])||new Date(),elapsed=sbmElapsedDaysFromImprovementDate_(h['改善日']);
     var beforeCtr=sbmNormalizeCtrNumber_(h['改善前CTR']),currentCtr=sbmNormalizeCtrNumber_(a['CTR']),beforePos=sbmNumber_(h['改善前順位']),currentPos=sbmNumber_(a['掲載順位']),beforeClicks=sbmNumber_(h['改善前クリック']),currentClicks=sbmNumber_(a['クリック数']),beforeImp=sbmNumber_(h['改善前表示回数']),currentImp=sbmNumber_(a['表示回数']);
@@ -6917,9 +6981,16 @@ function sbmUpdateEffectivenessCore_(showAlert){
       measurementLabel='追加経過観察中';
     }
 
+    // v5.13.3: 最新サイクルが改善成功で測定完了なら、推移行自体を生成しない。
+    // 「見直し候補」「要確認」「変化小」など未解決の最新サイクルは残す。
+    if(state.complete && (judgment==='大きく改善'||judgment==='改善'||judgment==='改善傾向')){
+      sbmMarkArticleMeasurementComplete_(h['ArticleID']);
+      return;
+    }
+
     rows.push([false,improveDate,elapsed,due||'【測定完了】',state.count+'回／4回',h['記事タイトル'],h['改善経路']||h['改善方法']||'通常改善',beforeClicks,currentClicks,beforeImp,currentImp,judgment,h['ArticleID'],h['記事URL'],h['改善概要'],h['変更箇所'],clickDelta,impDelta,beforeCtr,currentCtr,ctrDelta,beforePos,currentPos,posDelta,h['期待CTR効果'],h['期待クリック効果'],rating,next,comment,state.latestDate||'',measurementLabel,h['改善履歴ID']||'']);
   });
-  // v5.13.2: 実際の表示行を最終正規化。旧サイクルと改善完了サイクルを現役一覧から除外。
+  // v5.13.3: 最終表示フィルタは安全網として維持。主要判定は履歴生成前に実施。
   rows=sbmFilterActiveEffectRows_(rows);
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.EFFECT);sh.clear();sh.getRange(1,1,1,SBM_EFFECT_HEADERS_V2.length).setValues([SBM_EFFECT_HEADERS_V2]);
   if(rows.length)sh.getRange(2,1,rows.length,SBM_EFFECT_HEADERS_V2.length).setValues(rows);
