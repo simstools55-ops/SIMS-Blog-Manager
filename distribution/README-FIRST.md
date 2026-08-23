@@ -1,73 +1,49 @@
-# SIMS-Blog-Manager v5.14.0
+# SIMS-Blog-Manager v5.14.2
 
-## 新機能：改善モニタリングサイクル管理
+## 今回の修正
 
-「改善の推移」の旧サイクルが消えない問題を、表示フィルタではなくライフサイクル管理へ変更して根本解決します。
+### 1. Homeと「改善の推移」の件数を統一
+Homeの「現在モニター中」は「改善の推移」の現役行をそのまま集計します。
+Home独自のArticle DB集計は使いません。
 
-改善履歴に新しい内部列 `モニター状態` を追加し、各改善サイクルを次の4状態で管理します。
+### 2. Homeに現在と累計実績を分離表示
+左側:
+- 現在モニター中
+- 改善・治療対象
+- 改善確認
+- 改善率
+- 未取得記事
 
-- `ACTIVE`：現在測定中
-- `REVIEW_REQUIRED`：所定期間終了、Doctor再診・次処置待ち
-- `SUPERSEDED`：再診・再改善・追加経過観察によって新サイクルへ引継ぎ済み
-- `COMPLETED`：改善成功で終了
+右側:
+- 現在モニター中の判定内訳
 
-## 状態遷移
+「改善・治療対象」は記事単位で重複除外します。
+「改善率」は判定済み対象のうち改善確認できた割合です。
 
-改善実施
-→ ACTIVE
-→ 4回測定終了
-  → 改善成功：COMPLETED
-  → 見直し必要：REVIEW_REQUIRED
+### 3. Doctor再診 → 追加経過観察の反映不良を修正
+旧改善履歴IDをDoctor Caseが保持していた場合、
+それを新しい追加経過観察サイクルと誤認していた問題を修正しました。
 
-REVIEW_REQUIRED
-→ Doctor再診・Writer再改善・Doctor WAIT/MONITORで新サイクル開始
-→ 旧サイクルをSUPERSEDED
-→ 新サイクルをACTIVE
+DoctorがWAIT / MONITORを返した場合:
+- 旧サイクル → SUPERSEDED
+- 再診日 → 新しい「改善・治療開始日」
+- 改善経路 → Doctor再診→経過観察
+- 判定 → 追加経過観察
+- 新サイクル → ACTIVE
 
-## 改善の推移に表示するもの
+過去版ですでにMONITORINGになっているCaseも自動修復します。
 
-- ACTIVE
-- REVIEW_REQUIRED
+### 4. 「改善の推移」を開けば最新の保存済み状態を表示
+一覧を開くと、日次処理で保存済みの最新Search Console値と最新Doctor判定から再描画します。
+この操作ではGSC APIを再取得しません。
 
-## 非表示にするもの
+### 5. 利用者向け「最新データで更新」を削除
+通常運用は「日次処理 → 作業開始」のため、手動GSC更新メニューは削除しました。
+内部更新関数は日次処理用として保持します。
 
-- SUPERSEDED
-- COMPLETED
-
-履歴データそのものは削除しません。
-
-## 既存データの自動移行
-
-初回更新時に既存の改善履歴から状態を推定します。
-
-- `改善完了` → COMPLETED
-- `再改善必要` で新しいACTIVEサイクルがある → SUPERSEDED
-- `再改善必要` で次サイクル未開始 → REVIEW_REQUIRED
-- `経過観察中` → ACTIVE
-
-同一記事の識別はArticleID・URL・正規化タイトルを併用します。
-
-## 今回の期待結果
-
-- Something went wrong...
-  - 旧サイクル → SUPERSEDED / 改善の推移から非表示
-  - 8/23新サイクル → ACTIVE / 表示
-
-- Windows 11 25H2 ダウンロード完全ガイド
-  - 旧サイクル → SUPERSEDED / 非表示
-  - 8/23新サイクル → ACTIVE / 表示
-
-- YouTube自動再生オフ
-  - 改善完了 → COMPLETED / 非表示
-
-- Wi-Fiルーター電気代
-  - 再改善必要・未処置 → REVIEW_REQUIRED / 表示継続
-
-## Apps Scriptで変更するファイル
-
-- `Code.gs`：置換
-- `appsscript.json`：変更なし
+## Apps Script
+- Code.gs：置換
+- appsscript.json：変更なし
 
 ## 推奨コミットメッセージ
-
-`feat(sbm): add monitoring cycle lifecycle in v5.14.0`
+`fix(sbm): align Home and monitoring workflow in v5.14.2`
