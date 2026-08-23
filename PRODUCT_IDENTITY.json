@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.13.0",
-  "release_status": "MINOR",
-  "notes": "Completes the post-improvement monitoring lifecycle: completed successes graduate from the active trend list, review-required cases can be sent to Doctor directly from the trend sheet, and Doctor WAIT/MONITOR starts a new observation cycle."
+  "current_version": "5.13.1",
+  "release_status": "PATCH",
+  "notes": "Active improvement trend shows only the latest monitoring cycle per article. Superseded cycles are hidden from the active list while retained in improvement history and Treatment_Performance."
 }

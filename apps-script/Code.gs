@@ -1,10 +1,11 @@
 /**
- * SIMS-Blog-Manager Product v5.13.0
+ * SIMS-Blog-Manager Product v5.13.1
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.13.0';
+const SBM_VERSION = '5.13.1';
+// Product v5.13.1: 改善の推移は各記事の最新モニタリングサイクルだけを表示し、旧サイクルは改善履歴へ保持。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -6733,14 +6734,52 @@ function sbmElapsedDaysFromImprovementDate_(value) {
   return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
 }
 
+
+/**
+ * v5.13.1:
+ * 同一記事に複数の改善履歴（モニタリングサイクル）がある場合、
+ * 「改善の推移」には最新サイクルだけを表示します。
+ * 旧サイクルは改善履歴/Treatment_Performanceから削除しません。
+ */
+function sbmLatestEffectHistoryKeys_(historyRows){
+  historyRows=historyRows||[];
+  var latest={};
+  historyRows.forEach(function(h,idx){
+    var articleId=String(h['ArticleID']||'').trim();
+    var url=sbmNormalizeUrl_(h['記事URL']||'');
+    var key=articleId ? 'ID:'+articleId : (url ? 'URL:'+url : 'ROW:'+idx);
+    latest[key]={
+      historyId:String(h['改善履歴ID']||'').trim(),
+      index:idx
+    };
+  });
+  return latest;
+}
+
+function sbmIsLatestEffectHistory_(h,idx,latestMap){
+  h=h||{};latestMap=latestMap||{};
+  var articleId=String(h['ArticleID']||'').trim();
+  var url=sbmNormalizeUrl_(h['記事URL']||'');
+  var key=articleId ? 'ID:'+articleId : (url ? 'URL:'+url : 'ROW:'+idx);
+  var latest=latestMap[key];
+  if(!latest)return true;
+  var historyId=String(h['改善履歴ID']||'').trim();
+  if(historyId && latest.historyId)return historyId===latest.historyId;
+  return idx===latest.index;
+}
+
 function sbmUpdateEffectivenessCore_(showAlert){
   sbmEnsureHistoryAndEffectSchemas_();
   // Doctor処置と改善履歴IDの紐付けから改善経路を毎回復元し、推移からDoctor→Writer等が消える退化を防ぎます。
   try{sbmDoctorSyncImprovementRoutesFromCases_();}catch(eRouteSync){sbmLog_('DoctorRouteSync','Warning',String(eRouteSync));}
   var history=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[],articles=sbmRowsAsObjects_(SBM_SHEETS.ARTICLE_DB)||[],byId={},byUrl={};
+  var latestEffectHistory=sbmLatestEffectHistoryKeys_(history);
   articles.forEach(function(a){if(a['ArticleID'])byId[String(a['ArticleID'])]=a;if(a['記事URL'])byUrl[sbmNormalizeUrl_(a['記事URL'])]=a;});
   var rows=[], now=new Date(), recordedCount=0;
-  history.forEach(function(h){
+  history.forEach(function(h,historyIndex){
+    // 新しい改善/Doctor追加観察が始まった記事は、旧サイクルを現役の推移一覧から卒業させる。
+    // 旧データ自体は改善履歴とTreatment_Performanceに保持する。
+    if(!sbmIsLatestEffectHistory_(h,historyIndex,latestEffectHistory))return;
     var a=byId[String(h['ArticleID']||'')]||byUrl[sbmNormalizeUrl_(h['記事URL']||'')];if(!a)return;
     var improveDate=sbmParseDate_(h['改善日'])||new Date(),elapsed=sbmElapsedDaysFromImprovementDate_(h['改善日']);
     var beforeCtr=sbmNormalizeCtrNumber_(h['改善前CTR']),currentCtr=sbmNormalizeCtrNumber_(a['CTR']),beforePos=sbmNumber_(h['改善前順位']),currentPos=sbmNumber_(a['掲載順位']),beforeClicks=sbmNumber_(h['改善前クリック']),currentClicks=sbmNumber_(a['クリック数']),beforeImp=sbmNumber_(h['改善前表示回数']),currentImp=sbmNumber_(a['表示回数']);
