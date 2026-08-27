@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.14.2
+# SIMS-Blog-Manager v5.14.6
 
 ## 今回の修正
 
@@ -47,3 +47,8 @@ DoctorがWAIT / MONITORを返した場合:
 
 ## 推奨コミットメッセージ
 `fix(sbm): align Home and monitoring workflow in v5.14.2`
+
+## v5.14.6 追加
+- Merge完了時、吸収元記事を「301統合済み」「管理対象外」として自動整理します。
+- 統合先記事だけをモニター対象に残します。
+- 既にMerge完了済みの案件は「SIMS Doctor → Merge済み吸収記事を補正」で事後補正できます。
