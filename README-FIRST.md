@@ -26,3 +26,17 @@ Code.gs のみ置換してください。
 
 ## 推奨コミットメッセージ
 `fix(sbm): use measurement completion state for review routing in v5.14.3`
+
+
+## GitHubリポジトリの配布用ディレクトリー
+
+利用者向け配布物は `distribution/SIMS-Blog-Manager-v5.14.4/` に集約しています。
+
+- `README-FIRST.md`
+- `Code.gs`
+- `appsscript.json`
+- `Spreadsheet-Template.xlsx`
+
+Spreadsheet Template は現行実運用SBMを基に、ブログ固有情報、GSCデータ、
+記事DB、改善履歴、Doctor/Writer/Merge/Creator連携データ、ログ等を除去した
+配布専用テンプレートです。タイムゾーンは Asia/Tokyo に統一しています。
