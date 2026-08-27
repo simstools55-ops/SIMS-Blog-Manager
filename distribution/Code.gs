@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.6';
+const SBM_VERSION = '5.14.7';
 // Product v5.14.0: 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -14272,15 +14272,26 @@ function sbmDoctorMergeHasCompletedArticle_(m){
 }
 
 function sbmDoctorMergeCompletionContext_(m){
-  m=m||{};var a=m.mergedArticle||{},d=m.decision||{};
-  var primaryId=String(a.article_id||d.primary_article_id||''),primaryUrl=String(a.article_url||d.primary_article_url||''),primaryTitle=String(a.h1||a.seo_title||'');
-  var absorbedIds=Array.isArray(d.absorbed_article_ids)?d.absorbed_article_ids.map(function(x){return String(x||'').trim();}).filter(String):[];
-  var absorbedUrls=Array.isArray(d.absorbed_article_urls)?d.absorbed_article_urls.map(function(x){return String(x||'').trim();}):[];
+  m=m||{};var a=m.mergedArticle||m.merged_article||{},d=m.decision||m.merge_decision||{},p=m.plan||m.merge_plan||{};
+  var primaryId=String(a.article_id||d.primary_article_id||p.primary_article_id||''),primaryUrl=String(a.article_url||d.primary_article_url||p.primary_article_url||''),primaryTitle=String(a.h1||a.seo_title||'');
+  var absorbedIds=[];
+  function addId(v){v=String(v||'').trim();if(v&&absorbedIds.indexOf(v)<0)absorbedIds.push(v);}
+  if(Array.isArray(d.absorbed_article_ids))d.absorbed_article_ids.forEach(addId);
+  addId(d.absorbed_article_id);
+  if(Array.isArray(p.absorbed_article_ids))p.absorbed_article_ids.forEach(addId);
+  addId(p.absorbed_article_id);addId(p.source_article_id);
+  if(Array.isArray(a.absorbed_from_article_ids))a.absorbed_from_article_ids.forEach(addId);
+  var urlById={},looseUrls=[];
+  function addUrl(id,u){u=String(u||'').trim();id=String(id||'').trim();if(!u)return;if(id)urlById[id]=u;else looseUrls.push(u);}
+  if(Array.isArray(d.absorbed_article_urls))d.absorbed_article_urls.forEach(function(u,i){addUrl(absorbedIds[i]||'',u);});
+  addUrl(d.absorbed_article_id,d.absorbed_article_url);
+  if(Array.isArray(p.absorbed_article_urls))p.absorbed_article_urls.forEach(function(u,i){addUrl(absorbedIds[i]||'',u);});
+  addUrl(p.absorbed_article_id,p.absorbed_article_url);addUrl(p.source_article_id,p.source_article_url);
   var absorbed=absorbedIds.map(function(id,i){
-    var art=sbmDoctorFindArticleByIdOrUrl_(id,absorbedUrls[i]||''),title=art?String(art['記事タイトル']||art['H1タイトル']||''):'';
-    return {articleId:id,articleUrl:String(absorbedUrls[i]||art&&art['記事URL']||''),articleTitle:title};
+    var candidateUrl=String(urlById[id]||looseUrls[i]||''),art=sbmDoctorFindArticleByIdOrUrl_(id,candidateUrl),title=art?String(art['記事タイトル']||art['H1タイトル']||''):'';
+    return {articleId:id,articleUrl:String(candidateUrl||art&&art['記事URL']||''),articleTitle:title};
   });
-  return {caseId:String(m.caseId||''),primary:{articleId:primaryId,articleUrl:primaryUrl,articleTitle:primaryTitle},absorbed:absorbed,direction:(absorbedIds.length?absorbedIds.join(' + ')+' → ':'')+primaryId};
+  return {caseId:String(m.caseId||m.case_id||''),primary:{articleId:primaryId,articleUrl:primaryUrl,articleTitle:primaryTitle},absorbed:absorbed,direction:(absorbedIds.length?absorbedIds.join(' + ')+' → ':'')+primaryId};
 }
 function sbmDoctorSaveMergeCompletionContext_(rec,ctx){
   if(!rec||!ctx)return;
@@ -14343,21 +14354,36 @@ function sbmRepairCompletedMergeAbsorbedArticles(){
     var ui=SpreadsheetApp.getUi();
     var ans=ui.alert('Merge済み吸収記事を補正','過去にMerge完了済みのCaseを確認し、吸収元記事を「301統合済み・管理対象外」へ補正します。実際の記事や301設定は変更しません。続けますか？',ui.ButtonSet.OK_CANCEL);
     if(ans!==ui.Button.OK)return;
-    var sh=sbmDoctorEnsureCaseSheet_(),hm=sbmHeaderMap_(sh),last=sh.getLastRow(),fixed=0,skipped=0,details=[];
+    var sh=sbmDoctorEnsureCaseSheet_(),hm=sbmHeaderMap_(sh),last=sh.getLastRow(),fixed=0,skipped=0,details=[],recovered=0;
     if(last<2){sbmAlert_('Merge補正','対象Caseはありません。');return;}
     var vals=sh.getRange(2,1,last-1,sh.getLastColumn()).getValues();
     vals.forEach(function(row){
       var caseId=String(row[hm['CaseID']-1]||'').trim(),code=String(row[hm['状態コード']-1]||'').trim();
       if(!caseId||['MONITORING','MERGE_USER_ACTION_REQUIRED'].indexOf(code)<0)return;
-      var raw=hm['確認詳細']?String(row[hm['確認詳細']-1]||'').trim():'';
-      if(!raw)return;
-      var ctx=null;try{ctx=JSON.parse(raw);}catch(ignoreJson){return;}
-      if(!ctx||!ctx.primary||!Array.isArray(ctx.absorbed)||!ctx.absorbed.length)return;
+      var raw=hm['確認詳細']?String(row[hm['確認詳細']-1]||'').trim():'',ctx=null;
+      if(raw){try{ctx=JSON.parse(raw);}catch(ignoreJson){ctx=null;}}
+      if(!ctx||!ctx.primary||!Array.isArray(ctx.absorbed)||!ctx.absorbed.length){
+        var mrRaw=hm['Merge結果JSON']?String(row[hm['Merge結果JSON']-1]||'').trim():'';
+        if(mrRaw){
+          try{
+            var mr=JSON.parse(mrRaw),mm;
+            if(mr.envelope&&mr.payload)mm=sbmDoctorNormalizeMergeResult_(mr);
+            else mm={caseId:String(mr.case_id||caseId),decision:mr.merge_decision||{},plan:mr.merge_plan||{},mergedArticle:mr.merged_article||{}};
+            var rebuilt=sbmDoctorMergeCompletionContext_(mm);
+            if(rebuilt&&rebuilt.absorbed&&rebuilt.absorbed.length){ctx=rebuilt;recovered++;}
+          }catch(ignoreMergeResult){}
+        }
+      }
+      if(!ctx||!ctx.primary||!Array.isArray(ctx.absorbed)||!ctx.absorbed.length){
+        var reqRaw=hm['Merge依頼JSON']?String(row[hm['Merge依頼JSON']-1]||'').trim():'';
+        if(reqRaw){try{var rq=JSON.parse(reqRaw),rp=rq.payload||rq,mp=rp.merge_plan||{},rebuilt2=sbmDoctorMergeCompletionContext_({caseId:caseId,plan:mp,decision:{},mergedArticle:{}});if(rebuilt2.absorbed.length){ctx=rebuilt2;recovered++;}}catch(ignoreReq){}}
+      }
+      if(!ctx||!ctx.primary||!Array.isArray(ctx.absorbed)||!ctx.absorbed.length){skipped++;return;}
       var rs=sbmDoctorFinalizeMergeAbsorbedArticles_(caseId,ctx,sbmNowText_());
       rs.forEach(function(r){if(r&&r.ok){fixed++;details.push((r.articleId||r.articleUrl)+' → '+(r.primary||'統合先'));}else skipped++;});
     });
     try{sbmUpdateEffectivenessCore_(false);sbmRefreshHome_();}catch(eRefresh){sbmLog_('MergeAbsorbedRepairRefresh','Warning',String(eRefresh));}
-    sbmAlert_('Merge済み吸収記事の補正完了','補正：'+fixed+'件'+(skipped?'\n確認できなかった記事：'+skipped+'件':'')+(details.length?'\n\n'+details.slice(0,10).join('\n'):'\n\n補正対象はありませんでした。'));
+    sbmAlert_('Merge済み吸収記事の補正完了','補正：'+fixed+'件'+(recovered?'\n保存済みMerge結果から復元：'+recovered+'件':'')+(skipped?'\n確認できなかった記事：'+skipped+'件':'')+(details.length?'\n\n'+details.slice(0,10).join('\n'):'\n\n補正対象はありませんでした。'));
   }catch(e){sbmAlert_('Merge補正エラー',String(e&&e.message?e.message:e));}
 }
 
