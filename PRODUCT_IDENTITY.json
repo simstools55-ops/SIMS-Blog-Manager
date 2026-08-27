@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.14.2",
+  "current_version": "5.14.4",
   "release_status": "PATCH",
   "notes": "Home monitoring counts now use the same active Effect rows as Improvement Trend. Historical treatment stats show unique treatment targets, confirmed improvements and improvement rate. Manual latest-data refresh menu removed; daily processing is the GSC data refresh source. Opening Improvement Trend re-renders from saved daily data and latest Doctor state. Doctor WAIT/MONITOR cases now create a distinct extended-monitoring cycle instead of reusing the prior history ID."
 }

@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.14.3
+# SIMS-Blog-Manager v5.14.4
 
 ## 修正内容
 「観察終了後の処置を進める」で、4回/4回・見直し候補の案件が
@@ -9,7 +9,7 @@
 4回/4回終了後の見直し案件は「処置待ち」等になるため、
 `測定状態 != 測定完了` と誤認されていました。
 
-### v5.14.3
+### v5.14.4
 観察終了判定の正本を次へ変更しました。
 - 測定回数 4回/4回
 - 改善履歴のモニター状態
@@ -25,4 +25,18 @@ Doctorがすでに追加経過観察を指示している案件は、
 Code.gs のみ置換してください。
 
 ## 推奨コミットメッセージ
-`fix(sbm): use measurement completion state for review routing in v5.14.3`
+`fix(sbm): use measurement completion state for review routing in v5.14.4`
+
+
+## GitHubリポジトリの配布用ディレクトリー
+
+利用者向け配布物は `distribution/SIMS-Blog-Manager-v5.14.4/` に集約しています。
+
+- `README-FIRST.md`
+- `Code.gs`
+- `appsscript.json`
+- `Spreadsheet-Template.xlsx`
+
+Spreadsheet Template は現行実運用SBMを基に、ブログ固有情報、GSCデータ、
+記事DB、改善履歴、Doctor/Writer/Merge/Creator連携データ、ログ等を除去した
+配布専用テンプレートです。タイムゾーンは Asia/Tokyo に統一しています。
