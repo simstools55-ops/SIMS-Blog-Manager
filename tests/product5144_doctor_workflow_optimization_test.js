@@ -1,7 +1,7 @@
 const fs=require('fs');
 const code=fs.readFileSync('apps-script/Code.gs','utf8');
 function must(x,m){if(!x)throw new Error(m);console.log('PASS:',m)}
-must(code.includes("const SBM_VERSION = '5.14.4';"),'v5.14.4');
+must(code.includes("const SBM_VERSION = '5.14.8';"),'current version v5.14.8');
 must(code.includes('id="articleOpenSection" class="actions hidden"'),'article open button is initially hidden');
 must(code.includes('showArticleOpen(r.route==="WRITER"||r.route==="MERGE")'),'article open button is shown only for Writer/Merge route');
 must(code.includes('function scrollNextAction(sectionId,buttonId)'),'next-action auto scroll helper');

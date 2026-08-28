@@ -1,54 +1,25 @@
-# SIMS-Blog-Manager v5.14.6
+# SIMS-Blog-Manager v5.14.8
 
 ## 今回の修正
 
-### 1. Homeと「改善の推移」の件数を統一
-Homeの「現在モニター中」は「改善の推移」の現役行をそのまま集計します。
-Home独自のArticle DB集計は使いません。
+### 精密診断候補 STEP 3 のタイムアウト対策
+- `Doctor_精密診断候補` を毎回削除・新規作成せず、既存シートを再利用します。
+- 重症度・指標色のセル単位更新を廃止し、一括 `setBackgrounds` / `setFontColors` に変更しました。
+- 候補作成直後のチェックボックス再読込・再設定を省略しました。
+- `autoResizeRows` を固定行高へ変更し、Spreadsheetサービス負荷を削減しました。
+- STEP 3失敗時にSpreadsheetログ書込みを重ねないようにし、二次タイムアウトを防ぎます。
 
-### 2. Homeに現在と累計実績を分離表示
-左側:
-- 現在モニター中
-- 改善・治療対象
-- 改善確認
-- 改善率
-- 未取得記事
+### バージョン同期
+- 正式版: **v5.14.8**
+- `Code.gs` / `Code.base.gs` / `VERSION` / `PRODUCT_IDENTITY.json` / `shared/PRODUCT_IDENTITY.json` / READMEを同期しました。
+- `Code.gs` 内の旧5.14.x版番号付き履歴コメントを整理し、現行版との誤認を防止しました。
+- `distribution/SIMS-Blog-Manager-v5.14.4/` の旧配布物を削除しました。
 
-右側:
-- 現在モニター中の判定内訳
+## Apps Script適用
+`Code.gs` を差し替えて保存し、Spreadsheetを再読み込みしてください。
 
-「改善・治療対象」は記事単位で重複除外します。
-「改善率」は判定済み対象のうち改善確認できた割合です。
-
-### 3. Doctor再診 → 追加経過観察の反映不良を修正
-旧改善履歴IDをDoctor Caseが保持していた場合、
-それを新しい追加経過観察サイクルと誤認していた問題を修正しました。
-
-DoctorがWAIT / MONITORを返した場合:
-- 旧サイクル → SUPERSEDED
-- 再診日 → 新しい「改善・治療開始日」
-- 改善経路 → Doctor再診→経過観察
-- 判定 → 追加経過観察
-- 新サイクル → ACTIVE
-
-過去版ですでにMONITORINGになっているCaseも自動修復します。
-
-### 4. 「改善の推移」を開けば最新の保存済み状態を表示
-一覧を開くと、日次処理で保存済みの最新Search Console値と最新Doctor判定から再描画します。
-この操作ではGSC APIを再取得しません。
-
-### 5. 利用者向け「最新データで更新」を削除
-通常運用は「日次処理 → 作業開始」のため、手動GSC更新メニューは削除しました。
-内部更新関数は日次処理用として保持します。
-
-## Apps Script
-- Code.gs：置換
-- appsscript.json：変更なし
+## 確認
+「SIMS Doctor → 精密診断候補を準備」を実行し、STEP 3が完了して `Doctor_精密診断候補` が表示されることを確認してください。
 
 ## 推奨コミットメッセージ
-`fix(sbm): align Home and monitoring workflow in v5.14.2`
-
-## v5.14.6 追加
-- Merge完了時、吸収元記事を「301統合済み」「管理対象外」として自動整理します。
-- 統合先記事だけをモニター対象に残します。
-- 既にMerge完了済みの案件は「SIMS Doctor → Merge済み吸収記事を補正」で事後補正できます。
+`fix(sbm): optimize Doctor candidate rebuild and synchronize release version to v5.14.8`

@@ -1,11 +1,11 @@
 /**
- * SIMS-Blog-Manager Product v5.14.0
+ * SIMS-Blog-Manager Product v5.14.8
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.7';
-// Product v5.14.0: 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
+const SBM_VERSION = '5.14.8';
+// 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
 const SBM_OFFICIAL_SCHEMA_VERSION = 'p5-daily-status-v3';
@@ -6118,7 +6118,7 @@ function sbmNormalizeImprovementFeedback_(raw) {
 
 
 /* ========================================================================== *
- * Product v5.14.0 Monitoring Cycle Lifecycle
+ * Monitoring Cycle Lifecycle
  * ========================================================================== */
 
 function sbmMonitoringTitleKey_(v){
@@ -6275,7 +6275,7 @@ function sbmAppendImprovementHistory_(data,row,before,options) {
   var sh=sbmGetOrCreateSheet_(SBM_SHEETS.FEEDBACK_HISTORY), changed=sbmFeedbackChangedLabels_(data.changes).join('、');
   var historyId = sbmNextImprovementHistoryId_();
   var articleTitle=String(row[SBM_HEADERS.ARTICLE_DB.indexOf('記事タイトル')]||data.new_values.article_title||before.title);
-  // v5.14.0: 新しい改善サイクル開始時に旧ACTIVE/REVIEW_REQUIREDを明示的に終了。
+  // 新しい改善サイクル開始時に旧ACTIVE/REVIEW_REQUIREDを明示的に終了。
   try{sbmSupersedePreviousMonitoringCycles_(identityId,identityUrl,articleTitle,historyId);}catch(eSupersede){sbmLog_('MonitoringSupersede','Warning',String(eSupersede));}
   var planSnapshot = sbmBuildImprovementPlanSnapshot_(data.article_url, data.article_id);
   var record={
@@ -6523,7 +6523,7 @@ function sbmRecordWeeklyMeasurement_(historyRow,judgment,measuredAt,metrics) {
     var final=sbmBuildFinalAssessment_(judgment,metrics.ctrDelta,metrics.posDelta,metrics.clickDelta);
     var finalOutcome=sbmFinalImprovementOutcome_(judgment,true);
     if(hm['最終判定'])sh.getRange(target,hm['最終判定']).setValue(finalOutcome);
-    // v5.14.0: 観察終了時点でサイクル状態を明示。
+    // 観察終了時点でサイクル状態を明示。
     if(hm['モニター状態'])sh.getRange(target,hm['モニター状態']).setValue(finalOutcome==='改善完了'?'COMPLETED':'REVIEW_REQUIRED');
     if(hm['最終総括'])sh.getRange(target,hm['最終総括']).setValue(final.summary);
     if(hm['最終改善提案'])sh.getRange(target,hm['最終改善提案']).setValue(final.proposal);
@@ -7141,7 +7141,7 @@ function sbmLatestMonitoringHistories_(history){
 
 function sbmUpdateEffectivenessCore_(showAlert){
   sbmEnsureHistoryAndEffectSchemas_();
-  // v5.14.2: Doctor再診でWAIT/MONITORになった旧Caseを先に新観察サイクルへ同期。
+  // Doctor再診でWAIT/MONITORになった旧Caseを先に新観察サイクルへ同期。
   try{sbmDoctorReconcileExtendedMonitoringCases_();}catch(eDoctorMonitor){sbmLog_('DoctorMonitorReconcile','Warning',String(eDoctorMonitor));}
   // モニタリングライフサイクルを正本化してから現役サイクルだけを表示。
   try{sbmNormalizeMonitoringLifecycle_();}catch(eLife){sbmLog_('MonitoringLifecycleNormalize','Warning',String(eLife));}
@@ -7282,7 +7282,7 @@ function onEdit(e){
 function sbmOpenEffectiveness(){
   sbmMigrateEffectSheetName_();
   var ss=SpreadsheetApp.getActiveSpreadsheet();
-  // v5.14.2: 一覧を開いた時点で「日次処理で保存済みの最新GSC値」と
+  // 一覧を開いた時点で「日次処理で保存済みの最新GSC値」と
   // 最新Doctor判定から推移を再描画します。ここではGSC APIの再取得は行いません。
   try{sbmDoctorReconcileExtendedMonitoringCases_();}catch(eMonitorRepair){sbmLog_('EffectOpenMonitorRepair','Warning',String(eMonitorRepair));}
   try{sbmUpdateEffectivenessCore_(false);}catch(eRefresh){sbmLog_('EffectOpenRefresh','Warning',String(eRefresh));}
@@ -8630,7 +8630,7 @@ function sbmHomeLayoutNeedsRebuild_(sh) {
 
 function sbmRefreshHome_() {
   try{sbmMigrateLegacyMonitoringLabels_();}catch(eLegacyLabels){}
-  // v5.14.2: Homeも「改善の推移」と同じ現役サイクルを正本にする。
+  // Homeも「改善の推移」と同じ現役サイクルを正本にする。
   // GSC APIは再取得せず、日次処理で保存済みの値と最新Doctor状態から再描画。
   try{sbmDoctorReconcileExtendedMonitoringCases_();}catch(eMonHome){}
   try{sbmUpdateEffectivenessCore_(false);}catch(eEffectHome){}
@@ -10758,8 +10758,7 @@ function sbmDoctorCreateRequestFromArticleList() {
  */
 
 /**
- * v5.14.3:
- * 観察終了判定は画面用の「測定状態」ラベルではなく、
+ * * 観察終了判定は画面用の「測定状態」ラベルではなく、
  * 測定回数・改善履歴のモニター状態・最終判定を正本にします。
  */
 function sbmEffectMeasurementComplete_(effectRow){
@@ -10896,8 +10895,7 @@ function sbmDoctorMonitoringReviewDays_(doctor,n){
 
 
 /**
- * v5.14.2:
- * 過去版でDoctorのWAIT/MONITOR結果はCaseへ保存されたものの、
+ * * 過去版でDoctorのWAIT/MONITOR結果はCaseへ保存されたものの、
  * 旧改善履歴IDを「追加経過観察サイクル」と誤認して新サイクルが作られなかった案件を修復します。
  */
 function sbmDoctorReconcileExtendedMonitoringCases_(){
@@ -10977,7 +10975,7 @@ function sbmDoctorStartExtendedMonitoring_(source,doctor,n){
   }
 
   var days=sbmDoctorMonitoringReviewDays_(doctor,n),historyId=sbmNextImprovementHistoryId_();
-  // v5.14.0: Doctor WAIT/MONITORも新しいサイクル。旧サイクルを明示的に終了。
+  // Doctor WAIT/MONITORも新しいサイクル。旧サイクルを明示的に終了。
   try{sbmSupersedePreviousMonitoringCycles_(articleId,url,String(db['記事タイトル']||db['H1タイトル']||article.title||''),historyId);}catch(eSupersedeMonitor){sbmLog_('DoctorMonitoringSupersede','Warning',String(eSupersedeMonitor));}
   var currentClicks=sbmNumber_(db['クリック数']),currentImp=sbmNumber_(db['表示回数']),currentCtr=sbmNormalizeCtrNumber_(db['CTR']),currentPos=sbmNumber_(db['掲載順位']);
   var title=String(db['記事タイトル']||db['H1タイトル']||article.title||'').trim();
@@ -12283,17 +12281,15 @@ function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rows,hm){
     if(kind==='info')return ['#e8f0fe','#174ea6'];
     return ['#ffffff','#3c4043'];
   }
-  function apply(cell,kind,level){var p=palette(kind,level);cell.setBackground(p[0]).setFontColor(p[1]);}
   function classifyDelta(delta,badWhenPositive,sev){
     if(delta===null||!isFinite(delta)||Math.abs(delta)<0.03)return ['neutral',0];
     var bad=badWhenPositive?delta>0:delta<0,mag=Math.abs(delta),level=mag>=0.50?Math.max(sev,3):mag>=0.25?Math.max(sev,2):mag>=0.10?Math.max(sev,1):1;
     return [bad?'bad':'good',level];
   }
-  rows.forEach(function(row,i){
-    var r=startRow+i,code=String(row[hm['一次検査コード']-1]||''),sevText=sheet.getRange(r,2).getDisplayValue(),sev=severityRank(sevText);
-    var trendCell=sheet.getRange(r,4),clickCell=sheet.getRange(r,5),impCell=sheet.getRange(r,6),posCell=sheet.getRange(r,7),ctrCell=sheet.getRange(r,8);
-    // 傾向セルは記事全体の重症度を示す。
-    apply(trendCell,sev>=2?'bad':sev===1?'warn':'neutral',sev);
+  var bgs=[],fonts=[];
+  rows.forEach(function(row){
+    var code=String(row[hm['一次検査コード']-1]||''),sevText=sbmDoctorSeverityForRow_(code,String(row[hm['優先度']-1]||''),row,hm),sev=severityRank(sevText);
+    var kinds=[sev>=2?'bad':sev===1?'warn':'neutral','neutral','neutral','neutral','neutral'], levels=[sev,0,0,0,0];
     if(code==='RECENT_DROP'||code==='LONG_TERM_DECLINE'){
       var recent=code==='RECENT_DROP';
       var bC=n(row,recent?'前28日クリック':'前半90日クリック'),aC=n(row,recent?'直近28日クリック':'後半90日クリック');
@@ -12301,28 +12297,23 @@ function sbmDoctorApplyCandidateStatusColors_(sheet,startRow,rows,hm){
       var bP=n(row,recent?'前28日平均順位':'前半90日平均順位'),aP=n(row,recent?'直近28日平均順位':'後半90日平均順位');
       var bR=n(row,recent?'前28日CTR':'前半90日CTR'),aR=n(row,recent?'直近28日CTR':'後半90日CTR');
       var c=classifyDelta(ratio(bC,aC),false,sev),im=classifyDelta(ratio(bI,aI),false,sev),po=classifyDelta(bP>0&&aP>0?(aP-bP)/bP:null,true,sev),ct=classifyDelta(ratio(bR,aR),false,sev);
-      apply(clickCell,c[0],c[1]);apply(impCell,im[0],im[1]);apply(posCell,po[0],po[1]);apply(ctrCell,ct[0],ct[1]);
-    }else if(code==='CTR_OPPORTUNITY'){
-      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,'neutral',0);apply(ctrCell,sev>=2?'bad':'warn',sev);
-    }else if(code==='POSITION_OPPORTUNITY'){
-      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,sev>=2?'bad':'warn',sev);apply(ctrCell,'neutral',0);
-    }else if(code==='LONG_TERM_STAGNATION'){
-      apply(clickCell,'warn',sev);apply(impCell,'warn',sev);apply(posCell,'warn',sev);apply(ctrCell,'warn',sev);
-    }else{
-      apply(clickCell,'neutral',0);apply(impCell,'neutral',0);apply(posCell,'neutral',0);apply(ctrCell,'neutral',0);
-    }
+      kinds[1]=c[0];levels[1]=c[1];kinds[2]=im[0];levels[2]=im[1];kinds[3]=po[0];levels[3]=po[1];kinds[4]=ct[0];levels[4]=ct[1];
+    }else if(code==='CTR_OPPORTUNITY'){kinds[4]=sev>=2?'bad':'warn';levels[4]=sev;}
+    else if(code==='POSITION_OPPORTUNITY'){kinds[3]=sev>=2?'bad':'warn';levels[3]=sev;}
+    else if(code==='LONG_TERM_STAGNATION'){for(var j=1;j<5;j++){kinds[j]='warn';levels[j]=sev;}}
+    var br=[],fr=[];for(var k=0;k<5;k++){var p=palette(kinds[k],levels[k]);br.push(p[0]);fr.push(p[1]);}bgs.push(br);fonts.push(fr);
   });
+  // D:Hを2回の一括更新で色付け。旧実装のセル単位Spreadsheet呼び出しを廃止。
+  sheet.getRange(startRow,4,rows.length,5).setBackgrounds(bgs).setFontColors(fonts);
 }
-
 function sbmDoctorRebuildCandidateViewFromSnapshot_(candidateContext){
   var ss=SpreadsheetApp.getActiveSpreadsheet(), snap=ss.getSheetByName(SBM_SHEETS.DOCTOR_HEALTH_SNAPSHOT);
   if(!snap||snap.getLastRow()<2)return null;
-  var hm=sbmHeaderMap_(snap), allRows=snap.getRange(2,1,snap.getLastRow()-1,snap.getLastColumn()).getValues();
+  var hm=sbmHeaderMap_(snap), lastRow=snap.getLastRow(), lastCol=snap.getLastColumn();
+  var allRows=snap.getRange(2,1,lastRow-1,lastCol).getValues();
   if(!hm['詳細検査'])return null;
   var latestHealthCheckId=sbmDoctorLatestHealthCheckIdFromRows_(allRows,hm);
   var current=latestHealthCheckId?allRows.filter(function(r){return String(r[hm['健康診断ID']-1]||'')===latestHealthCheckId;}):allRows;
-  // RC8 Final QA RC8 Final: 健康診断時の上位10件だけを固定在庫にしない。
-  // 処理済み・改善中・モニター中を除外した後、精密診断が必要な全記事から再順位付けして最大N件を補充する。
   var detailCodes={'RECENT_DROP':1,'LONG_TERM_DECLINE':1,'CTR_OPPORTUNITY':1,'POSITION_OPPORTUNITY':1,'LONG_TERM_STAGNATION':1};
   var pool=sbmDoctorDedupeCandidateRows_(current.filter(function(r){
     var code=String(r[hm['一次検査コード']-1]||'');
@@ -12336,24 +12327,37 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(candidateContext){
     var sb=sbmDoctorCandidateScore_({priorityJa:String(b[hm['優先度']-1]||''),code:String(b[hm['一次検査コード']-1]||'')},{full:{i:Number(b[hm['180日表示']-1]||0),c:Number(b[hm['180日クリック']-1]||0)}});
     return sb-sa || Number(b[hm['180日表示']-1]||0)-Number(a[hm['180日表示']-1]||0) || Number(b[hm['180日クリック']-1]||0)-Number(a[hm['180日クリック']-1]||0);
   });
-  var candidateLimit=Math.max(1,Math.min(20,Number(sbmGetSetting_('DoctorDetailedDiagnosisLimit','10')||10)));
-  var selectedRows=pool.slice(0,candidateLimit);
-  var candName='Doctor_精密診断候補', old1=ss.getSheetByName(candName), old2=ss.getSheetByName('Doctor_精密診断紹介状');
-  try{if(old1){var h=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old1.getSheetId()&&h)ss.setActiveSheet(h);ss.deleteSheet(old1);}if(old2){var h2=ss.getSheetByName(SBM_SHEETS.HOME);if(ss.getActiveSheet()&&ss.getActiveSheet().getSheetId()===old2.getSheetId()&&h2)ss.setActiveSheet(h2);ss.deleteSheet(old2);}}catch(eDel){sbmLog_('DoctorCandidateRebuildDelete','Warning',String(eDel));}
-  var cand=ss.insertSheet(candName);
+  var candidateLimit=Math.max(1,Math.min(20,Number(sbmGetSetting_('DoctorDetailedDiagnosisLimit','10')||10))), selectedRows=pool.slice(0,candidateLimit);
+  var candName='Doctor_精密診断候補',cand=ss.getSheetByName(candName);
+  // 候補シートは毎回削除・新規作成せず再利用。Spreadsheetサービスへの構造変更要求を削減。
+  if(!cand)cand=ss.insertSheet(candName);else{
+    try{cand.getRange('A1:H2').breakApart();}catch(ignoreMerge){}
+    cand.clear();
+    try{cand.showColumns(1,cand.getMaxColumns());}catch(ignoreCols){}
+  }
   var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL','候補キー'];
   cand.setHiddenGridlines(true);
   cand.getRange('A1:H1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
   cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Doctorメニューの「4．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
-  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm);var title=String(r[hm['記事タイトル']-1]||'');var sev=sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm);var key=String(id)+'|'+sbmNormalizeUrl_(url)+'|'+title;return [false,sev,title,m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url,key];});
-  if(out.length)cand.getRange(7,1,out.length,out[0].length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
-  cand.setFrozenRows(6);[62,92,300,145,125,135,120,115].forEach(function(w,i){cand.setColumnWidth(i+1,w);});cand.setColumnWidth(9,110);cand.setColumnWidth(10,220);cand.setColumnWidth(11,260);try{cand.hideColumns(9,3);}catch(eHide){}
-  cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeight(3,6);cand.setRowHeight(4,6);cand.setRowHeight(5,6);cand.setRowHeight(6,28);cand.getDataRange().setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
-  if(out.length){cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);cand.getRange(7,2,out.length,1).setNumberFormat('@');var sevVals=cand.getRange(7,2,out.length,1).getDisplayValues();sevVals.forEach(function(v,i){var t=String(v[0]||''),cell=cand.getRange(7+i,2).setFontWeight('bold').setHorizontalAlignment('left');if(t.indexOf('緊急')>=0)cell.setBackground('#f4c7c3').setFontColor('#b31412');else if(t.indexOf('重症')>=0)cell.setBackground('#fce8b2').setFontColor('#7a3e00');else if(t.indexOf('中等症')>=0)cell.setBackground('#fff2cc').setFontColor('#5f4b00');else cell.setBackground('#e8f0fe').setFontColor('#174ea6');});sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm);try{cand.autoResizeRows(7,out.length);}catch(eResize){cand.setRowHeights(7,out.length,46);}}
+  var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm),title=String(r[hm['記事タイトル']-1]||''),sev=sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),key=String(id)+'|'+sbmNormalizeUrl_(url)+'|'+title;return [false,sev,title,m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url,key];});
+  if(out.length)cand.getRange(7,1,out.length,headers.length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
+  cand.setFrozenRows(6);
+  var widths=[62,92,300,145,125,135,120,115,110,220,260];for(var wi=0;wi<widths.length;wi++)cand.setColumnWidth(wi+1,widths[wi]);
+  try{cand.hideColumns(9,3);}catch(ignoreHide){}
+  cand.setRowHeight(1,36);cand.setRowHeight(2,44);cand.setRowHeights(3,3,6);cand.setRowHeight(6,28);
+  cand.getRange(1,1,Math.max(7,6+out.length),headers.length).setWrap(true).setVerticalAlignment('middle').setFontFamily('Arial');
+  if(out.length){
+    cand.getRange(7,1,out.length,1).insertCheckboxes().setValue(false);
+    cand.getRange(7,2,out.length,1).setNumberFormat('@').setFontWeight('bold').setHorizontalAlignment('left');
+    var sevBg=[],sevFont=[];out.forEach(function(v){var t=String(v[1]||'');if(t.indexOf('緊急')>=0){sevBg.push(['#f4c7c3']);sevFont.push(['#b31412']);}else if(t.indexOf('重症')>=0){sevBg.push(['#fce8b2']);sevFont.push(['#7a3e00']);}else if(t.indexOf('中等症')>=0){sevBg.push(['#fff2cc']);sevFont.push(['#5f4b00']);}else{sevBg.push(['#e8f0fe']);sevFont.push(['#174ea6']);}});
+    cand.getRange(7,2,out.length,1).setBackgrounds(sevBg).setFontColors(sevFont);
+    sbmDoctorApplyCandidateStatusColors_(cand,7,selectedRows,hm);
+    // autoResizeRowsはSpreadsheet側負荷が大きいため固定高さで安定化。
+    cand.setRowHeights(7,out.length,46);
+  }
   return cand;
 }
-
 function sbmShowAsyncProgressDialog_(opt){
   opt=opt||{};
   var title=String(opt.title||'処理しています'), desc=String(opt.description||'必要なデータを確認しています。');
@@ -12437,13 +12441,17 @@ function sbmDoctorIsUntreatedCurrentCandidateCached_(ctx,articleId,url){
   return !((articleId&&ctx.ids&&ctx.ids[String(articleId)])||(ctx.urls&&ctx.urls[sbmNormalizeUrl_(url||'')]));
 }
 function sbmDoctorCandidateProgressStep3_(){
-  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=null,ctx=sbmDoctorCandidateLoadContext_();
-  // Always render from the latest health snapshot first. Never expose a legacy 5-column sheet.
-  try{sh=sbmDoctorRebuildCandidateViewFromSnapshot_(ctx);}catch(eRebuild){sbmLog_('DoctorCandidateOpenRebuild','Warning',String(eRebuild));}
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=null,ctx=sbmDoctorCandidateLoadContext_(),rebuilt=false;
+  // 最新スナップショットから候補ビューを再生成。候補作成後の重複チェックボックス再設定は行わない。
+  try{sh=sbmDoctorRebuildCandidateViewFromSnapshot_(ctx);rebuilt=!!sh;}catch(eRebuild){
+    // Spreadsheetサービス障害時にログ書込みまで重ねて二次タイムアウトを起こさない。
+    try{console.warn('DoctorCandidateOpenRebuild: '+String(eRebuild));}catch(ignoreConsole){}
+    throw eRebuild;
+  }
   if(!sh) sh=ss.getSheetByName('Doctor_精密診断候補');
   if(!sh) return sbmAlert_('精密診断候補','まだ精密診断候補は作成されていません。先にブログ健康診断を実行してください。');
-  sbmDoctorEnsureReferralSelectionColumn_(sh);
-  sh.showSheet(); ss.setActiveSheet(sh); sh.activate();
+  if(!rebuilt)sbmDoctorEnsureReferralSelectionColumn_(sh);
+  sh.showSheet();ss.setActiveSheet(sh);
 }
 
 function sbmDoctorUrgencyFromCandidateSeverity_(severity){
@@ -14554,7 +14562,7 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
     try{sbmDoctorEnsureArticleDbRowForMonitoring_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1],rec.hm['記事タイトル']?rec.values[rec.hm['記事タイトル']-1]:'');}catch(eRestoreBeforeRegister){sbmLog_('DoctorArticleDbRestoreBeforeRegister','Warning',String(eRestoreBeforeRegister));}
     var feedbackSource=Object.assign({},o,{article_url:o.article_url||(rec.hm['記事URL']?rec.values[rec.hm['記事URL']-1]:'')});
     var feedback=sbmDoctorTreatmentResultAsFeedback_(feedbackSource), normalized=sbmNormalizeImprovementFeedback_(JSON.stringify(feedback));
-    // v5.14.4: Writer結果登録中は派生画面の再生成を最後まで遅延し、シート全体更新を1回に集約します。
+    // Writer結果登録中は派生画面の再生成を最後まで遅延し、シート全体更新を1回に集約します。
     var registered=sbmRegisterImprovementFeedback(normalized,{deferDerivedRefresh:true});if(!registered||registered.ok===false)throw new Error('処置結果は受け取りましたが、モニタリング登録に失敗しました：'+(registered&&registered.message?registered.message:'不明なエラー'));
     rec.values[rec.hm['状態コード']-1]='MONITORING';rec.values[rec.hm['状態']-1]='モニター中';
     if(rec.hm['改善履歴ID'])rec.values[rec.hm['改善履歴ID']-1]=String(registered.historyId||'')||sbmDoctorLatestHistoryIdForArticle_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);

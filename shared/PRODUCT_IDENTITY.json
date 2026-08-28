@@ -5,7 +5,7 @@
   "repository_type": "SHARED",
   "platform": "SIMS Editorial Platform",
   "platform_compatibility": "1.x",
-  "current_version": "5.14.6",
+  "current_version": "5.14.8",
   "release_status": "PATCH",
-  "notes": "Merge completion now archives absorbed source articles as 301 merged/managed-out while monitoring only the primary article. Includes a retroactive repair command for already-completed Merge cases."
+  "notes": "Optimizes Doctor detailed-candidate STEP 3 by reusing the candidate sheet and batching formatting/writes; synchronizes all active release version surfaces to 5.14.8."
 }
