@@ -5,7 +5,7 @@
   "repository_type": "SHARED",
   "platform": "SIMS Editorial Platform",
   "platform_compatibility": "1.x",
-  "current_version": "5.14.8",
+  "current_version": "5.14.9",
   "release_status": "PATCH",
-  "notes": "Optimizes Doctor detailed-candidate STEP 3 by reusing the candidate sheet and batching formatting/writes; synchronizes all active release version surfaces to 5.14.8."
+  "notes": "Adds single-selection checkbox behavior, reversible noindex/unpublished article management, and Merge handling for blogs where 301 redirects are unavailable; preserves management exclusions across daily updates."
 }
