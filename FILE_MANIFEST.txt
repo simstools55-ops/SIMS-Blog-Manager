@@ -135,6 +135,7 @@ RELEASE-NOTES-v5.16.1.md
 RELEASE-NOTES-v5.17.0.md
 RELEASE-NOTES-v5.18.0.md
 RELEASE-NOTES-v5.18.1.md
+RELEASE-NOTES-v5.18.2.md
 RELEASE_NOTES-v5.10.1.md
 RELEASE_NOTES-v5.10.2.md
 RELEASE_NOTES-v5.10.3.md
@@ -290,6 +291,7 @@ SHARED_VERSION
 SUPPORT.md
 TEST-RESULT-v5.10.14.txt
 UPDATE_GUIDE.md
+V5_18_2_REGRESSION_TEST_RESULT.txt
 VERIFICATION.md
 VERSION
 VERSION-AUDIT-v5.10.1.md
@@ -1187,6 +1189,7 @@ tests/product5161_personal_knowledge_drive_storage_test.js
 tests/product5170_personal_knowledge_writer_test.js
 tests/product5180_personal_knowledge_article_doctor_integration_test.js
 tests/product5181_personal_knowledge_autobootstrap_test.js
+tests/product5182_article_doctor_generic_intake_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js

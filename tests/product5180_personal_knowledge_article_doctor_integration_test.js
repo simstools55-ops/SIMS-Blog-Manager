@@ -3,7 +3,7 @@ const p=require('path');
 const root=p.resolve(__dirname,'..');
 const code=fs.readFileSync(p.join(root,'src/apps-script/Code.gs'),'utf8');
 function must(x,msg){if(!x)throw new Error(msg)}
-must(/const SBM_VERSION = '5\.18\.[01]';/.test(code),'version');
+must(/const SBM_VERSION = '5\.18\.[012]';/.test(code),'version');
 must(code.includes("sbmPersonalKnowledgeIngestPayload_(doctor,'SIMS Article Doctor',source)"),'Article Doctor ingestion missing');
 must(code.includes('confirmation_event_ids'),'independent confirmation replay guard missing');
 must(code.includes("SIMS Site Doctor　精密診断候補"),'candidate title not Site Doctor');

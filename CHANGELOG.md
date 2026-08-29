@@ -1,3 +1,9 @@
+## v5.18.2 - 2026-08-30
+
+- Article Doctor単票結果をSite Doctor追跡IDなしで安全に受理する回帰修正。
+- Site Doctor追跡案件の厳格なCase/Batch ID検証は維持。
+- Site Doctor処置ダイアログ経由でもPersonal Knowledge候補を取り込む。
+
 # v5.18.1 - 2026-08-30
 
 - Fix Personal Knowledge root initialization so `SIMS-Personal-Knowledge` is created even when the spreadsheet site context must be resolved from the active Doctor request.

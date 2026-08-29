@@ -4,8 +4,8 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
 const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
 function ok(cond,msg){if(!cond){throw new Error(msg)}}
-ok(version==='5.18.1','VERSION must be 5.18.1');
-ok(code.includes("const SBM_VERSION = '5.18.1';"),'Code version mismatch');
+ok(/^5\.18\.[12]$/.test(version),'VERSION must be v5.18.1+ patch');
+ok(/const SBM_VERSION = '5\.18\.[12]';/.test(code),'Code version mismatch');
 ok(/function sbmPersonalKnowledgeEnsureSite_\(hint\)[\s\S]*?var root = sbmPersonalKnowledgeEnsureRoot_\(\);[\s\S]*?var ident = sbmPersonalKnowledgeIdentityHint_\(hint\)/.test(code),'root must initialize before site identity resolution');
 ok(code.includes("legacySiteId = String(hs.site_id || h.site_id || sbmGetSetting_('SiteID','') || '').trim()"),'trusted legacy SiteID hint missing');
 ok(code.includes("var pkIngest=sbmPersonalKnowledgeIngestPayload_(doctor,'SIMS Article Doctor',source);"),'Doctor ingestion must pass trusted source request');

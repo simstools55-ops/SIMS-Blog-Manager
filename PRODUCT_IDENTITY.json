@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.18.1",
+  "current_version": "5.18.2",
   "release_status": "PATCH",
-  "notes": "Fixes Personal Knowledge automatic Drive-store initialization and site identity resolution during Article Doctor ingestion; accepts labeled confidence values while preserving replay-safe candidate handling."
+  "notes": "Fixes generic Article Doctor single-case intake in the Site Doctor treatment dialog: site_diagnosis trace IDs are required only for Site Doctor-tracked cases, while validated generic results are accepted and their Personal Knowledge candidates are ingested."
 }

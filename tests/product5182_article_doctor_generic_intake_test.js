@@ -1,0 +1,20 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const code=fs.readFileSync(path.join(root,'src/apps-script/Code.gs'),'utf8');
+const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
+function ok(c,m){if(!c)throw new Error(m)}
+ok(version==='5.18.2','VERSION must be 5.18.2');
+ok(code.includes("const SBM_VERSION = '5.18.2';"),'Code version mismatch');
+ok(code.includes('function sbmDoctorHydrateSiteDiagnosisIdentityFromCase_(id){'),'existing case trace hydration missing');
+ok(code.includes('function sbmDoctorValidateArticleDoctorIdentity_(id){'),'generic Article Doctor validator missing');
+ok(code.includes('var isSiteDiagnosis=hasSiteCase&&hasSiteBatch;'),'format-aware trace route missing');
+ok(code.includes("var article=isSiteDiagnosis?sbmDoctorValidateSiteDiagnosisIdentity_(id):sbmDoctorValidateArticleDoctorIdentity_(id);"),'generic result must not use strict Site Doctor validator');
+ok(code.includes("var source=isSiteDiagnosis?sbmDoctorBuildSiteDiagnosisSourceRequest_(id,article):sbmDoctorBuildArticleDoctorImportSourceRequest_(id,article);"),'generic source request route missing');
+ok(code.includes("var pkIngest=sbmPersonalKnowledgeIngestPayload_(o,'SIMS Article Doctor',source);"),'PK ingestion missing from Site Doctor intake path');
+ok(code.includes("if(isSiteDiagnosis)req.site_diagnosis_context="),'Writer must only carry Site Doctor context when tracked');
+ok(code.includes("if(isSiteDiagnosis)mreq.site_diagnosis_context="),'Merge must only carry Site Doctor context when tracked');
+ok(code.includes('hasSiteCase!==hasSiteBatch'),'partial Site Doctor trace must fail closed');
+const copies=['apps-script/Code.gs','distribution/Code.gs','src/apps-script/Code.gs','src/distribution/Code.gs'].map(p=>fs.readFileSync(path.join(root,p),'utf8'));
+ok(copies.every(x=>x===copies[0]),'Code.gs copies are not synchronized');
+console.log('product5182_article_doctor_generic_intake_test: PASS');

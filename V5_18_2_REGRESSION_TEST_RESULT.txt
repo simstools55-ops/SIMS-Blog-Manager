@@ -1,0 +1,12 @@
+SIMS-Blog-Manager v5.18.2 regression test
+Date: 2026-08-30
+
+PASS: Apps Script syntax (Node syntax check via .js copy)
+PASS: product5180_personal_knowledge_article_doctor_integration_test.js
+PASS: product5181_personal_knowledge_autobootstrap_test.js
+PASS: product5182_article_doctor_generic_intake_test.js
+PASS: four Code.gs copies synchronized
+PASS: Code.base.gs synchronized to current canonical source
+
+Target regression:
+SIMS_DOCTOR_CASE_RESULT_V2 without site_diagnosis_case_id/site_diagnosis_batch_id is accepted as a generic Article Doctor single-case result after SiteID/ArticleID/URL validation. Site Doctor-tracked cases remain strict. Personal Knowledge ingestion runs after validated storage.

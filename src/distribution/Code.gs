@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.18.1
+ * SIMS-Blog-Manager Product v5.18.2
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.18.1';
+const SBM_VERSION = '5.18.2';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -13713,6 +13713,39 @@ function sbmDoctorSiteDiagnosisIdentity_(o){
     )
   };
 }
+function sbmDoctorHydrateSiteDiagnosisIdentityFromCase_(id){
+  id=id||{};
+  if(!id.caseId)return id;
+  try{
+    var rec=sbmDoctorFindCaseRow_(id.caseId);
+    if(!rec)return id;
+    function val(k){return rec.hm[k]?String(rec.values[rec.hm[k]-1]||'').trim():'';}
+    if(!id.siteDiagnosisCaseId)id.siteDiagnosisCaseId=val('SiteDiagnosisCaseID');
+    if(!id.siteDiagnosisBatchId)id.siteDiagnosisBatchId=val('SiteDiagnosisBatchID');
+    if(!id.siteId)id.siteId=val('サイトID');
+    if(!id.articleId)id.articleId=val('記事ID');
+    if(!id.articleUrl)id.articleUrl=val('記事URL');
+  }catch(ignoreHydrate){}
+  return id;
+}
+function sbmDoctorValidateArticleDoctorIdentity_(id){
+  // Generic SIMS_DOCTOR_CASE_RESULT_V2 does not require Site Doctor trace IDs.
+  // It still must match this SBM and an existing article before registration.
+  var missing=[];
+  if(!id.caseId)missing.push('case_id');
+  if(!id.siteId)missing.push('site_id');
+  if(!id.articleId)missing.push('article_id');
+  if(!id.articleUrl)missing.push('article_url');
+  if(missing.length)throw new Error('Article Doctorの識別情報が不足しています：'+missing.join(', '));
+  var localSite=String(sbmGetSetting_('SiteID','')).trim();
+  if(localSite&&localSite!==id.siteId)throw new Error('SiteIDがこのSBMと一致しません。\nSBM：'+localSite+'\nDoctor結果：'+id.siteId);
+  var article=sbmDoctorFindArticleByIdOrUrl_(id.articleId,id.articleUrl);
+  if(!article)throw new Error('記事管理に対象記事が見つかりません。\nArticleID：'+id.articleId+'\nURL：'+id.articleUrl);
+  var storedId=String(article['ArticleID']||'').trim(),storedUrl=String(article['記事URL']||'').trim();
+  if(storedId&&storedId!==id.articleId)throw new Error('ArticleIDが記事管理と一致しません。\nDoctor結果：'+id.articleId+'\n記事管理：'+storedId);
+  if(storedUrl&&sbmNormalizeUrl_(storedUrl)!==sbmNormalizeUrl_(id.articleUrl))throw new Error('記事URLが記事管理と一致しません。');
+  return article;
+}
 function sbmDoctorValidateSiteDiagnosisIdentity_(id){
   // Diagnosis may use REF-* as a URL-surrogate because Collector/Diagnosis do not
   // own SBM's internal A000xxx ArticleID. Resolve by URL at the SBM boundary.
@@ -13777,6 +13810,16 @@ function sbmDoctorUpsertSiteDiagnosisCase_(o,id,article){
   put('SiteDiagnosisBatchID',id.siteDiagnosisBatchId);put('SiteDiagnosisCaseID',id.siteDiagnosisCaseId);
   if(!row[hm['作成日時']-1])put('作成日時',sbmNowText_());put('更新日時',sbmNowText_());
   if(!rowNo){put('状態コード','DOCTOR_DIAGNOSIS_PENDING');put('状態','Doctor診断結果受取中');sh.appendRow(row);}else sh.getRange(rowNo,1,1,headers.length).setValues([row]);
+}
+function sbmDoctorBuildArticleDoctorImportSourceRequest_(id,article){
+  var effect=sbmDoctorFindEffectByUrl_(id.articleUrl)||{},history=sbmDoctorFindLatestHistory_(id.articleId,id.articleUrl)||{};
+  var ctx={sourceType:'ARTICLE_DOCTOR_RESULT_IMPORT',article:article,effect:effect,history:history,sourceSheet:SBM_SHEETS.DOCTOR_CASES,sourceRow:null};
+  var p=sbmDoctorBuildSingleCaseRequest_(ctx);
+  p.case_id=id.caseId;
+  if(p.request){p.request.case_id=id.caseId;p.request.trigger='ARTICLE_DOCTOR_RESULT_IMPORT';p.request.requested_by='SBM';}
+  if(p.workflow)p.workflow.active_case_id=id.caseId;
+  if(p.article){p.article.canonical_url='';p.article.canonical_url_source='UNVERIFIED_BY_SBM';}
+  return p;
 }
 function sbmDoctorBuildSiteDiagnosisSourceRequest_(id,article){
   var effect=sbmDoctorFindEffectByUrl_(id.articleUrl)||{},history=sbmDoctorFindLatestHistory_(id.articleId,id.articleUrl)||{};
@@ -14219,25 +14262,39 @@ function sbmDoctorCreatorPublishedArticle_(caseId,articleUrl,articleTitle){
 function sbmDoctorCompleteSiteDiagnosisCreatorTreatment(caseId,articleUrl,articleTitle){try{return sbmDoctorCreatorPublishedArticle_(caseId,articleUrl,articleTitle);}catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}}
 function sbmDoctorProcessSiteDiagnosisSingleResult_(o){
   if(sbmDoctorIsSiteDiagnosisCreator_(o))return sbmDoctorProcessSiteDiagnosisCreator_(o);
-  var id=sbmDoctorSiteDiagnosisIdentity_(o),article=sbmDoctorValidateSiteDiagnosisIdentity_(id);
+  var id=sbmDoctorHydrateSiteDiagnosisIdentityFromCase_(sbmDoctorSiteDiagnosisIdentity_(o));
+  var hasSiteCase=!!id.siteDiagnosisCaseId,hasSiteBatch=!!id.siteDiagnosisBatchId;
+  if(hasSiteCase!==hasSiteBatch){
+    throw new Error('Site Doctorの識別情報が一部だけ存在します。site_diagnosis_case_id と site_diagnosis_batch_id を両方確認してください。');
+  }
+  var isSiteDiagnosis=hasSiteCase&&hasSiteBatch;
+  var article=isSiteDiagnosis?sbmDoctorValidateSiteDiagnosisIdentity_(id):sbmDoctorValidateArticleDoctorIdentity_(id);
   sbmDoctorUpsertSiteDiagnosisCase_(o,id,article);
   var n=sbmDoctorNormalizeCaseResult_(o),saved=sbmDoctorStoreCaseResult_(o,n);
-  var source=sbmDoctorBuildSiteDiagnosisSourceRequest_(id,article);
+  var source=isSiteDiagnosis?sbmDoctorBuildSiteDiagnosisSourceRequest_(id,article):sbmDoctorBuildArticleDoctorImportSourceRequest_(id,article);
+  // v5.18.2: This intake dialog accepts both Site Doctor-tracked results and
+  // generic Article Doctor single-case results. In either route, ingest PK
+  // candidates once the diagnosis has been validated and stored. Failures are
+  // non-blocking so the treatment workflow remains backward compatible.
+  try{
+    var pkIngest=sbmPersonalKnowledgeIngestPayload_(o,'SIMS Article Doctor',source);
+    if(pkIngest&&pkIngest.error)sbmLog_('PersonalKnowledgeWriter','Warning','Article Doctor candidate ingest error count: '+pkIngest.error);
+  }catch(ePk){sbmLog_('PersonalKnowledgeWriter','Warning','Article Doctor candidate ingest failed: '+String(ePk&&ePk.message||ePk));}
   if(n.mergeReady){
     var mreq=sbmDoctorBuildMergeTreatmentRequest_(source,o,n);
-    mreq.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
+    if(isSiteDiagnosis)mreq.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
     sbmDoctorSaveGeneratedMergeRequest_(id.caseId,mreq);
-    return {ok:true,route:'MERGE',mergeReady:true,writerReady:false,message:'Merge紹介状／Package作成済み',request:JSON.stringify(mreq,null,2),mergeRequest:JSON.stringify(mreq,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,route:'MERGE',mergeReady:true,writerReady:false,message:'Merge紹介状／Package作成済み',request:JSON.stringify(mreq,null,2),mergeRequest:JSON.stringify(mreq,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
   }
   if(n.writerReady){
     var req=sbmDoctorBuildWriterTreatmentRequest_(source,o,n);
-    req.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
+    if(isSiteDiagnosis)req.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
     sbmDoctorSaveGeneratedWriterRequest_(id.caseId,req);
-    return {ok:true,route:'WRITER',writerReady:true,mergeReady:false,message:'Writer紹介状作成済み',request:JSON.stringify(req,null,2),writerRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,route:'WRITER',writerReady:true,mergeReady:false,message:'Writer紹介状作成済み',request:JSON.stringify(req,null,2),writerRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
   }
   if(n.monitor){try{sbmSetArticleWorkStateByIdentity_(id.articleId,id.articleUrl,'👀 モニター中');}catch(ignoreMonitor){}
-    return {ok:true,route:'MONITOR',writerReady:false,mergeReady:false,message:'経過観察',caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};}
-  return {ok:true,route:'OTHER',writerReady:false,mergeReady:false,message:saved.label,caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId,articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,route:'MONITOR',writerReady:false,mergeReady:false,message:'経過観察',caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};}
+  return {ok:true,route:'OTHER',writerReady:false,mergeReady:false,message:saved.label,caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
 }
 
 function sbmDoctorExtractCaseResultsFromAnswer_(rawText){
