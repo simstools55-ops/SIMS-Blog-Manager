@@ -1,10 +1,12 @@
 /**
- * SIMS-Blog-Manager Product v5.14.12
+ * SIMS-Blog-Manager Product v5.14.13
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.12';
+const SBM_VERSION = '5.14.13';
+// User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
+const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -10097,7 +10099,7 @@ function onOpen() {
 
 
 /* ========================================================================== *
- * Product 5.10.0 RC8: SIMS Doctor Site Doctor健康診断 基盤
+ * Product 5.10.0 RC8: Site Doctor健康診断 基盤
  * ========================================================================== */
 
 const SBM_DOCTOR_HEALTH_DAYS = 180;
@@ -10970,7 +10972,7 @@ function sbmProcessSelectedEffectAfterObservation(){
     return sbmAlert_('観察完了',title+'\n\n所定の観察期間が終了し、改善完了と判定されています。\n現役の推移一覧から卒業し、改善履歴には記録を残します。');
   }
 
-  // 再改善必要または確定不能の完了案件は、Writerへ直行せずDoctorへ再診。
+  // 再改善必要または確定不能の完了案件は、Writerへ直行せずArticle Doctorへ再診。
   try{sbmSetMonitoringLifecycleByHistoryId_(rec['改善履歴ID'],'REVIEW_REQUIRED');}catch(ignoreLifeReview){}
   try{if(sbmHeaderMap_(sh)['選択'])sh.getRange(row,sbmHeaderMap_(sh)['選択']).setValue(false);}catch(ignoreClear){}
   return sbmDoctorCreateAndSaveRequest_('IMPROVEMENT_EFFECT',sh,row);
@@ -11390,7 +11392,7 @@ function sbmDoctorShowCopyDialog_(payload, jsonText) {
     '.status{font-size:13px;min-height:20px;margin-top:8px;white-space:pre-wrap}.next-title{font-size:16px;font-weight:700;color:#137333;margin-bottom:8px}' +
     '</style></head><body><h2>精密診断から次の処置まで</h2>' +
     '<div class="meta"><b>記事：</b>' + title + '<br><b>ArticleID：</b>' + articleId + '<br><b>RequestID：</b>' + requestId + '</div>' +
-    '<div class="progress"><span id="p1" class="pill active">1 Doctorへ依頼</span><span id="p2" class="pill">2 Doctor回答を登録</span><span id="p3" class="pill">3 確認・再診</span><span id="p4" class="pill">4 処置担当へ依頼</span><span id="p5" class="pill">5 処置結果を登録</span></div>' +
+    '<div class="progress"><span id="p1" class="pill active">1 Article Doctorへ依頼</span><span id="p2" class="pill">2 Article Doctor回答を登録</span><span id="p3" class="pill">3 確認・再診</span><span id="p4" class="pill">4 処置担当へ依頼</span><span id="p5" class="pill">5 処置結果を登録</span></div>' +
     '<section class="step"><h3>① Article Doctorへ精密診断を依頼する</h3><div class="hint">下のJSONをすべてコピーし、SIMS Article Doctorへ貼り付けてください。</div>' +
     '<textarea id="doctorRequest" readonly></textarea><div id="copyStatus" class="status ok"></div><div class="actions"><button class="primary" onclick="copyArea(\'doctorRequest\',\'copyStatus\',\'Article Doctor依頼JSONをコピーしました。SIMS Article Doctorへ貼り付けてください。\')">Article Doctor依頼JSONをコピー</button></div></section>' +
     '<section class="step"><h3>② Doctorの診断結果を受け取る</h3><div class="hint">Doctorの回答を最初から最後まで、そのまま貼り付けてください。SBMが回答内の診断結果JSONを自動抽出します。JSON部分だけを貼り付けても登録できます。</div>' +
@@ -11404,7 +11406,7 @@ function sbmDoctorShowCopyDialog_(payload, jsonText) {
     '<div class="hint">Search Consoleなどに表示された内容を、そのまま貼り付けても構いません。判断に迷う場合は「どれに当てはまるか分からない」を選び、表示内容を貼り付けてください。</div>' +
     '<textarea id="confirmationRaw" placeholder="確認画面の表示内容・メモを貼り付けます（任意。判断に迷う場合は推奨）"></textarea><div id="confirmationStatus" class="status"></div>' +
     '<div class="actions"><button id="confirmationRegisterButton" class="primary" onclick="registerConfirmation()">確認結果を登録して再診依頼を作る</button></div></section>' +
-    '<section id="followUpSection" class="step hidden"><h3>⑤ Article Doctorへ再診を依頼する</h3><div class="hint">確認結果をEvidenceとして追加した再診依頼です。下のJSONをすべてコピーし、SIMS Article Doctorへ貼り付けてください。</div>' +
+    '<section id="followUpSection" class="step hidden"><h3>⑤ Article Article Doctorへ再診を依頼する</h3><div class="hint">確認結果をEvidenceとして追加した再診依頼です。下のJSONをすべてコピーし、SIMS Article Doctorへ貼り付けてください。</div>' +
     '<textarea id="followUpRequest" readonly></textarea><div id="followUpStatus" class="status ok"></div><div class="actions"><button class="primary" onclick="copyArea(\'followUpRequest\',\'followUpStatus\',\'Article Doctor再診依頼JSONをコピーしました。SIMS Article Doctorへ貼り付けてください。\')">Article Doctor再診依頼JSONをコピー</button></div></section>' +
     '<section id="followUpResultSection" class="step hidden"><h3>⑥ Doctorの再診結果をSBMへ返す</h3><div class="hint">Doctorの再診回答を最初から最後まで、そのまま貼り付けてください。SBMが回答内のJSONを自動抽出し、Writer・再確認・経過観察など次の工程へ自動分岐します。</div>' +
     '<textarea id="followUpResult" placeholder="ここへDoctorの再診回答全文をそのまま貼り付けます"></textarea><div id="followUpResultStatus" class="status"></div><div class="actions"><button id="followUpResultButton" class="primary" onclick="registerFollowUpResult()">再診結果を登録して次へ進む</button></div></section>' +
@@ -11458,7 +11460,7 @@ function sbmDoctorCaseNextAction_(code){
     'MERGE_RESULT_RECEIVED':'Merge処置内容を確認・実施',
     'WRITER_IN_PROGRESS':'Writerの処置完了を待つ',
     'USER_ACTION_REQUIRED':'Doctor指定の確認を実施',
-    'FOLLOW_UP_REQUEST_READY':'Doctorへ再診依頼を送る',
+    'FOLLOW_UP_REQUEST_READY':'Article Doctorへ再診依頼を送る',
     'USER_DECISION_REQUIRED':'診断内容を確認して利用者判断',
     'PUBLICATION_PENDING':'記事へ修正を反映し、結果を登録',
     'MONITORING':'再診予定日まで経過観察',
@@ -14508,7 +14510,7 @@ function sbmDoctorCompleteMergeUserActions_(caseId,checks){
   var articleId=String(rec.hm['記事ID']?rec.values[rec.hm['記事ID']-1]:'').trim(),articleUrl=String(rec.hm['記事URL']?rec.values[rec.hm['記事URL']-1]:'').trim(),title=String(rec.hm['記事タイトル']?rec.values[rec.hm['記事タイトル']-1]:'').trim();var ctx=sbmDoctorLoadMergeCompletionContextFromRow_(rec.values,rec.hm),ctxPrimary=ctx&&ctx.primary||{};if(ctxPrimary.articleId&&articleId&&String(ctxPrimary.articleId)!==articleId)throw new Error('Merge完了対象ArticleIDがCaseと一致しません。処置完了を停止しました。');if(ctxPrimary.articleUrl&&articleUrl&&sbmNormalizeUrl_(ctxPrimary.articleUrl)!==sbmNormalizeUrl_(articleUrl))throw new Error('Merge完了対象URLがCaseと一致しません。処置完了を停止しました。');
   try{sbmDoctorEnsureArticleDbRowForMonitoring_(articleId,articleUrl,title);}catch(eRestore){sbmLog_('MergeArticleDbRestore','Warning',String(eRestore));}
   var absorbedResult=sbmDoctorFinalizeMergeAbsorbedArticles_(caseId,ctx,sbmNowText_(),redirectMode);
-  var feedback={format:'SIMS_FEEDBACK_V2',contract_version:'4.2',article_id:articleId,article_url:articleUrl,completed_at:sbmNowText_(),ai_name:'SIMS Merge',improvement_method:'Doctor→Merge',summary:'Doctor診断に基づく記事統合を実施。統合先記事の公開と'+(redirectMode==='301'?'301リダイレクト設定':'301設定不可ブログでの吸収記事検索対象外化')+'を利用者が確認済み。',publication_result:{change_summary:['Merge統合原稿を公開',redirectMode==='301'?'301リダイレクト設定':'301設定不可・吸収記事を検索改善管理から除外'],public_ok_changes:[],user_decision_changes:[]},recommended_review_days:28,next_action:'remeasure',warnings:[]};
+  var feedback={format:'SIMS_FEEDBACK_V2',contract_version:'4.2',article_id:articleId,article_url:articleUrl,completed_at:sbmNowText_(),ai_name:'SIMS Merge',improvement_method:'Doctor→Merge',summary:'Article Doctor診断に基づく記事統合を実施。統合先記事の公開と'+(redirectMode==='301'?'301リダイレクト設定':'301設定不可ブログでの吸収記事検索対象外化')+'を利用者が確認済み。',publication_result:{change_summary:['Merge統合原稿を公開',redirectMode==='301'?'301リダイレクト設定':'301設定不可・吸収記事を検索改善管理から除外'],public_ok_changes:[],user_decision_changes:[]},recommended_review_days:28,next_action:'remeasure',warnings:[]};
   var registered=sbmRegisterImprovementFeedback(sbmNormalizeImprovementFeedback_(JSON.stringify(feedback)));if(!registered||registered.ok===false)throw new Error('モニタリング登録に失敗しました：'+(registered&&registered.message?registered.message:'不明なエラー'));
   sbmDoctorEnsureMonitoringSync_(articleId,articleUrl);if(rec.hm['状態コード'])rec.values[rec.hm['状態コード']-1]='MONITORING';if(rec.hm['状態'])rec.values[rec.hm['状態']-1]='モニター中';if(rec.hm['改善履歴ID'])rec.values[rec.hm['改善履歴ID']-1]=sbmDoctorLatestHistoryIdForArticle_(articleId,articleUrl);if(rec.hm['再診予定日'])rec.values[rec.hm['再診予定日']-1]=sbmDateAfterDaysText_(28);if(rec.hm['更新日時'])rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);
   try{sbmDoctorRemoveCandidateArticle_(articleId,articleUrl);}catch(eRemove){}try{sbmDoctorSyncImprovementRoutesFromCases_();sbmUpdateEffectivenessCore_(false);sbmRefreshHome_();}catch(eSync){sbmLog_('MergeFinalMonitoringSync','Warning',String(eSync));}
@@ -14719,7 +14721,7 @@ function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){
     var rec=sbmDoctorFindCaseRow_(caseId);if(!rec)throw new Error('対応するCaseIDがSBMにありません：'+caseId);
     var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';
     var siteDiagnosisBatchId=rec.hm['SiteDiagnosisBatchID']?String(rec.values[rec.hm['SiteDiagnosisBatchID']-1]||'').trim():'';
-    if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Diagnosis経路の案件ではありません。通常のDoctor処置結果登録を使用してください。');
+    if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Doctor経路の案件ではありません。通常のArticle Doctor処置結果登録を使用してください。');
     var caseSiteId=rec.hm['サイトID']?String(rec.values[rec.hm['サイトID']-1]||'').trim():'';
     var caseArticleId=rec.hm['記事ID']?String(rec.values[rec.hm['記事ID']-1]||'').trim():'';
     if(String(o.site_id||'').trim()&&caseSiteId&&String(o.site_id).trim()!==caseSiteId)throw new Error('SiteIDがCaseと一致しません。\nCase：'+caseSiteId+'\nWriter結果：'+String(o.site_id));
@@ -14727,7 +14729,7 @@ function sbmDoctorSubmitSiteDiagnosisWriterResult(raw){
     var saved=sbmDoctorStoreWriterTreatmentResult_(o);
     var updated=sbmDoctorFindCaseRow_(caseId),historyId='';
     if(updated&&updated.hm['改善履歴ID'])historyId=String(updated.values[updated.hm['改善履歴ID']-1]||'').trim();
-    return {ok:true,message:'Site DiagnosisのWriter処置結果を登録しました。\nCaseID：'+saved.caseId+'\nSite Diagnosis CaseID：'+siteDiagnosisCaseId+'\n状態：'+saved.status+(historyId?'\n改善履歴ID：'+historyId:''),caseId:saved.caseId,siteDiagnosisCaseId:siteDiagnosisCaseId,siteDiagnosisBatchId:siteDiagnosisBatchId,status:saved.status,historyId:historyId,articleUrl:rec.hm['記事URL']?String(rec.values[rec.hm['記事URL']-1]||'').trim():''};
+    return {ok:true,message:'Site Doctor経路のWriter処置結果を登録しました。\nCaseID：'+saved.caseId+'\nSite Diagnosis CaseID：'+siteDiagnosisCaseId+'\n状態：'+saved.status+(historyId?'\n改善履歴ID：'+historyId:''),caseId:saved.caseId,siteDiagnosisCaseId:siteDiagnosisCaseId,siteDiagnosisBatchId:siteDiagnosisBatchId,status:saved.status,historyId:historyId,articleUrl:rec.hm['記事URL']?String(rec.values[rec.hm['記事URL']-1]||'').trim():''};
   }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
 }
 function sbmDoctorSubmitSiteDiagnosisMergeResult(raw){
@@ -14738,12 +14740,12 @@ function sbmDoctorSubmitSiteDiagnosisMergeResult(raw){
     try{o=JSON.parse(text);}catch(eParse){throw new Error('Merge結果JSONの解析に失敗しました。\n段階：JSON parse\n詳細：'+String(eParse&&eParse.message?eParse.message:eParse));}
     if(!sbmDoctorContractMatches_(o,'SIMS_MERGE_TREATMENT_RESULT_V1'))throw new Error('Merge結果のContractが一致しません。\n段階：Contract検証\n検出：'+(sbmDoctorContractNamesOf_(o).join(', ')||'未記載'));
     var m=sbmDoctorNormalizeMergeResult_(o),rec=sbmDoctorFindCaseRow_(m.caseId);if(!rec)throw new Error('対応するCaseIDがSBMにありません：'+m.caseId);
-    var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Diagnosis経路の案件ではありません。通常のDoctor処置結果登録を使用してください。');
+    var siteDiagnosisCaseId=rec.hm['SiteDiagnosisCaseID']?String(rec.values[rec.hm['SiteDiagnosisCaseID']-1]||'').trim():'';if(!siteDiagnosisCaseId)throw new Error('このCaseIDはSite Doctor経路の案件ではありません。通常のArticle Doctor処置結果登録を使用してください。');
     var saved=sbmDoctorStoreMergeTreatmentResult_(o),finalized=null;
     if((/COMPLETED|READY|SUCCESS|APPROVED/i.test(String(m.status||''))||String(m.status||'')==='')&&sbmDoctorMergeHasCompletedArticle_(m)){
       finalized=sbmDoctorFinalizeMergeArticleResult_(m);saved.status=finalized.status;
     }
-    return {ok:true,message:'Site DiagnosisのMerge処置結果を登録しました。\nCaseID：'+saved.caseId+'\nSite Diagnosis CaseID：'+siteDiagnosisCaseId+'\n状態：'+saved.status+(finalized?'\n\nMergeの統合後完成原稿を受理しました。Writerへの再紹介は行いません。'+(finalized.articleId?finalized.articleId+'への':'統合先記事への')+'本文反映と301等の利用者処置へ進んでください。':''),caseId:saved.caseId,siteDiagnosisCaseId:siteDiagnosisCaseId,status:saved.status,articleUrl:finalized&&finalized.articleUrl?finalized.articleUrl:(rec.hm['記事URL']?String(rec.values[rec.hm['記事URL']-1]||'').trim():''),writerReady:false,writerRequest:'',articleTitle:finalized&&finalized.articleTitle?finalized.articleTitle:'',mergedArticleReady:!!finalized,publicationReady:!!(finalized&&finalized.publicationReady),contentLength:finalized?finalized.contentLength:0,mergeCompletionContext:finalized&&finalized.completionContext?finalized.completionContext:null,artifact:saved&&saved.artifact?saved.artifact:null,artifactSaved:!!(saved&&saved.artifactSaved),artifactRetryRequired:!!(saved&&saved.artifactRetryRequired),artifactError:saved&&saved.artifactError?saved.artifactError:''};
+    return {ok:true,message:'Site Doctor経路のMerge処置結果を登録しました。\nCaseID：'+saved.caseId+'\nSite Diagnosis CaseID：'+siteDiagnosisCaseId+'\n状態：'+saved.status+(finalized?'\n\nMergeの統合後完成原稿を受理しました。Writerへの再紹介は行いません。'+(finalized.articleId?finalized.articleId+'への':'統合先記事への')+'本文反映と301等の利用者処置へ進んでください。':''),caseId:saved.caseId,siteDiagnosisCaseId:siteDiagnosisCaseId,status:saved.status,articleUrl:finalized&&finalized.articleUrl?finalized.articleUrl:(rec.hm['記事URL']?String(rec.values[rec.hm['記事URL']-1]||'').trim():''),writerReady:false,writerRequest:'',articleTitle:finalized&&finalized.articleTitle?finalized.articleTitle:'',mergedArticleReady:!!finalized,publicationReady:!!(finalized&&finalized.publicationReady),contentLength:finalized?finalized.contentLength:0,mergeCompletionContext:finalized&&finalized.completionContext?finalized.completionContext:null,artifact:saved&&saved.artifact?saved.artifact:null,artifactSaved:!!(saved&&saved.artifactSaved),artifactRetryRequired:!!(saved&&saved.artifactRetryRequired),artifactError:saved&&saved.artifactError?saved.artifactError:''};
   }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
 }
 
