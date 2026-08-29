@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.14.11
+# SIMS-Blog-Manager v5.14.12
 
 ## 今回の修正
 
@@ -17,7 +17,7 @@
 - 301非対応ブログでは、Merge吸収記事を「統合済み（リダイレクト不可）」として管理対象外へ移せます。
 
 ### バージョン同期
-- 正式版: **v5.14.11**
+- 正式版: **v5.14.12**
 - `Code.gs` / `Code.base.gs` / `VERSION` / `PRODUCT_IDENTITY.json` / `shared/PRODUCT_IDENTITY.json` / READMEを同期しました。
 - `Code.gs` 内の旧5.14.x版番号付き履歴コメントを整理し、現行版との誤認を防止しました。
 - `distribution/SIMS-Blog-Manager-v5.14.4/` の旧配布物を削除しました。
@@ -26,7 +26,7 @@
 `Code.gs` を差し替えて保存し、Spreadsheetを再読み込みしてください。
 
 ## 確認
-「SIMS Doctor → 精密診断候補を準備」を実行し、STEP 3が完了して `Doctor_精密診断候補` が表示されることを確認してください。
+「SIMS Site Doctor → 精密診断候補を見る」を実行し、STEP 3が完了して `Doctor_精密診断候補` が表示されることを確認してください。
 
 ## 推奨コミットメッセージ
-`fix(sbm): unify article selection and search-exclusion management (v5.14.11)`
+`refactor(sbm): clarify Article Doctor and Site Doctor roles (v5.14.12)`

@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.14.11  
+> **Current product:** SIMS-Blog-Manager v5.14.12  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.14.11`
+- Product Version: `5.14.12`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `PATCH`
 - Main feature: 単一選択チェックボックス統一、noindex等の可逆な管理対象外処理、301非対応ブログのMerge吸収記事除外を追加しました。
 
-> Current release: SIMS-Blog-Manager Product v5.14.11
+> Current release: SIMS-Blog-Manager Product v5.14.12
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
@@ -31,13 +31,13 @@
 
 Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
-# SIMS-Blog-Manager v5.14.11
+# SIMS-Blog-Manager v5.14.12
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
 ## 正式バージョン
 
-`5.14.11`
+`5.14.12`
 
 ## Creatorで作った新記事の登録
 
@@ -125,6 +125,6 @@ SIMS-Coreは候補を採用・保留・不採用に分類し、テキストリ�
 Product 5.3.1では、Writer依頼文のサイト情報を `SiteID / SiteName / SiteURL` に統一しました。また、「シートの作成・修復」の完了後はHomeを更新し、Homeへ戻ります。
 
 
-## SIMS Doctor 外来診療連携（5.7.0 RC2）
+## SIMS Article Doctor 記事診断連携（5.7.0 RC2）
 
-選択した1記事について、独立製品SIMS Doctor向けの診断依頼JSONを手動生成できます。日次処理や記事ランクには接続していません。
+選択した1記事について、独立製品SIMS Article Doctor向けの診断依頼JSONを手動生成できます。日次処理や記事ランクには接続していません。
