@@ -95,6 +95,7 @@ RELEASE-AUDIT-v5.16.0.txt
 RELEASE-AUDIT-v5.16.1.txt
 RELEASE-AUDIT-v5.17.0.txt
 RELEASE-AUDIT-v5.18.0.txt
+RELEASE-AUDIT-v5.18.3.txt
 RELEASE-NOTES-v5.10.10.md
 RELEASE-NOTES-v5.10.11.md
 RELEASE-NOTES-v5.10.12.md
@@ -136,6 +137,8 @@ RELEASE-NOTES-v5.17.0.md
 RELEASE-NOTES-v5.18.0.md
 RELEASE-NOTES-v5.18.1.md
 RELEASE-NOTES-v5.18.2.md
+RELEASE-NOTES-v5.18.3.md
+RELEASE-NOTES-v5.18.4.md
 RELEASE_NOTES-v5.10.1.md
 RELEASE_NOTES-v5.10.2.md
 RELEASE_NOTES-v5.10.3.md
@@ -287,6 +290,7 @@ RELEASE_NOTES_v5.9.8.md
 RELEASE_NOTES_v5.9.9.md
 SECURITY.md
 SHA256-v5.14.4.txt
+SHA256SUMS-v5.18.3.txt
 SHARED_VERSION
 SUPPORT.md
 TEST-RESULT-v5.10.14.txt
@@ -1190,6 +1194,8 @@ tests/product5170_personal_knowledge_writer_test.js
 tests/product5180_personal_knowledge_article_doctor_integration_test.js
 tests/product5181_personal_knowledge_autobootstrap_test.js
 tests/product5182_article_doctor_generic_intake_test.js
+tests/product5183_personal_knowledge_diagnostics_test.js
+tests/product5184_home_daily_and_pk_filter_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js

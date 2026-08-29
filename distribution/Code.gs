@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.18.3';
+const SBM_VERSION = '5.18.4';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -1471,8 +1471,9 @@ function sbmPersonalKnowledgeCandidateKey_(c) {
 function sbmPersonalKnowledgeAdmission_(c) {
   if (!c.statement) return {status:'REJECT',reason:'EMPTY_STATEMENT'};
   if (c.scope === 'SITE' && !c.site_id) return {status:'REJECT',reason:'SITE_ID_REQUIRED'};
-  var forbidden = /(?:api[\s_-]*key|password|credential|secret|現在順位|クリック数|表示回数|ctr|current\s+(?:rank|click|impression)|serp\s+snapshot)/i;
-  if (forbidden.test(c.statement)) return {status:'REJECT',reason:'TRANSIENT_OR_SECRET'};
+  var secretPattern = /(?:api[\s_-]*key|password|credential|secret)/i;
+  var transientMetricPattern = /(?:serp\s+snapshot|(?:現在|直近|最新|current|recent)\s*(?:の)?\s*(?:順位|掲載順位|クリック数|表示回数|ctr)|(?:順位|掲載順位|クリック数|表示回数|ctr)\s*[:：=]?\s*[+\-]?\d+(?:[.,]\d+)?\s*%?)/i;
+  if (secretPattern.test(c.statement) || transientMetricPattern.test(c.statement)) return {status:'REJECT',reason:'TRANSIENT_OR_SECRET'};
   if (c.explicit_user_confirmation || c.deterministic_state) {
     return {status:'AUTO_ACCEPT',reason:'CONFIRMED_OR_DETERMINISTIC'};
   }
@@ -4959,7 +4960,7 @@ function sbmAppendMeasurementHistoryUnique_(rows) {
 function sbmDateAfterText_(days) { var d = new Date(); d.setDate(d.getDate()+days); return sbmDateText_(d); }
 
 function sbmLog_(action,status,detail) { try { sbmAppendObject_(SBM_SHEETS.SYSTEM_LOG, SBM_HEADERS.SYSTEM_LOG, {CreatedAt:sbmNowText_(),Action:action,Status:status,Detail:detail||''}); } catch(e) { console.error(e); } }
-function sbmDateText_(d) { return Utilities.formatDate(d, Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd'); }
+function sbmDateText_(d) { return Utilities.formatDate(d, SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd'); }
 function sbmDisplayDateText_(value) { var d=sbmParseDate_(value); return d ? Utilities.formatDate(d, Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyy/M/d') : ''; }
 function sbmNowText_() { return Utilities.formatDate(new Date(), Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyy-MM-dd HH:mm:ss'); }
 function sbmId_(p) { return p + '-' + Utilities.formatDate(new Date(), Session.getScriptTimeZone() || SBM_DEFAULTS.TIMEZONE, 'yyyyMMdd-HHmmss') + '-' + Math.floor(Math.random()*10000); }
@@ -5211,7 +5212,9 @@ function sbmOpenHome() {
     sbmInitializeSheets();
     sh = ss.getSheetByName(SBM_SHEETS.HOME);
   }
-  try { sbmRefreshHome_(); } catch (e) { sbmLog_('sbmOpenHome', 'Warning', String(e)); }
+  // Homeを開くだけの操作では、Doctor再照合・効果測定再計算を実行しない。
+  // 日次処理や結果登録で保存済みのデータから表示だけを更新する。
+  try { sbmRefreshHome_({light:true}); } catch (e) { sbmLog_('sbmOpenHome', 'Warning', String(e)); }
   if (sh) { sh.showSheet(); ss.setActiveSheet(sh); sh.activate(); }
 }
 
@@ -9180,12 +9183,16 @@ function sbmHomeLayoutNeedsRebuild_(sh) {
   }
 }
 
-function sbmRefreshHome_() {
-  try{sbmMigrateLegacyMonitoringLabels_();}catch(eLegacyLabels){}
-  // Homeも「改善の推移」と同じ現役サイクルを正本にする。
-  // GSC APIは再取得せず、日次処理で保存済みの値と最新Doctor状態から再描画。
-  try{sbmDoctorReconcileExtendedMonitoringCases_();}catch(eMonHome){}
-  try{sbmUpdateEffectivenessCore_(false);}catch(eEffectHome){}
+function sbmRefreshHome_(options) {
+  options = options || {};
+  var light = options.light === true;
+  // Home表示だけでは重い自己修復・効果測定再計算を行わない。
+  // データ変更を伴う正規処理から呼ばれた場合だけ従来の整合処理を実行する。
+  if (!light) {
+    try{sbmMigrateLegacyMonitoringLabels_();}catch(eLegacyLabels){}
+    try{sbmDoctorReconcileExtendedMonitoringCases_();}catch(eMonHome){}
+    try{sbmUpdateEffectivenessCore_(false);}catch(eEffectHome){}
+  }
   var settingsMap = sbmGetSettingsMap_();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sh = ss.getSheetByName(SBM_SHEETS.HOME);
@@ -9266,6 +9273,21 @@ function sbmRefreshHome_() {
   try { sh.getRange('A23:H24').breakApart().merge(); } catch (e) {}
   var adviceWork=Object.assign({},work,{monitor:currentTreatment.total});
   sh.getRange('A23:H24').setValue(sbmHomeWeeklyAdvice_(weekly, adviceWork, candidateCount, missingCount)).setFontWeight('normal').setWrap(true);
+}
+
+function sbmRefreshHomeDailyStatusOnly_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName(SBM_SHEETS.HOME);
+  if (!sh) return false;
+  var settingsMap = sbmGetSettingsMap_();
+  var dailyStatus = sbmDailyUpdateStatus_(settingsMap);
+  sh.getRange('F2:H2').setValue(dailyStatus.displayText === '未更新' ? 'ー' : dailyStatus.displayText);
+  var runtimeState = sbmGetDailyRuntimeState_(settingsMap);
+  var statusText = runtimeState.running ? '▶ 実行中' : (runtimeState.completedToday ? '○ 本日完了' : (runtimeState.continuationRequired ? '◇ 続行待ち' : (runtimeState.label === 'エラー' ? '▲ エラー' : '● 未実施')));
+  sh.getRange('B4:H4').setValue(statusText);
+  sh.getRange('A4:H4').setBackground(runtimeState.running ? '#dbeafe' : (runtimeState.completedToday ? '#e6f4ea' : (runtimeState.continuationRequired ? '#fef7e0' : (runtimeState.label === 'エラー' ? '#fce8e6' : '#fff2cc'))));
+  sh.getRange('B4:H4').setFontColor(runtimeState.running ? '#174ea6' : (runtimeState.completedToday ? '#0b8043' : '#b3261e')).setFontWeight(runtimeState.completedToday ? 'normal' : 'bold');
+  return true;
 }
 
 function sbmHomeWeeklyActivity_() {
@@ -10526,11 +10548,12 @@ function onOpen() {
     .addItem('Merge済み吸収記事を補正','sbmRepairCompletedMergeAbsorbedArticles')
     .addToUi();
 
-  // 既存Homeがあれば表示するだけ。再集計・再装飾・flushは行わない。
+  // 起動時は重い再集計をせず、日付依存の日次処理状態だけを更新してHomeを表示する。
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var home = ss.getSheetByName(SBM_SHEETS.HOME);
     if (home) {
+      try { sbmRefreshHomeDailyStatusOnly_(); } catch (eDailyHome) { try { sbmLog_('OnOpenDailyStatus','Warning',String(eDailyHome)); } catch(ignoreDailyHome) {} }
       home.showSheet();
       ss.setActiveSheet(home);
       home.activate();

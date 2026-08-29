@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 5.18.4
+- Personal Knowledgeの過剰なCTR/クリック拒否を修正。
+- Home表示時の重いDoctor/効果測定再計算を省略。
+- 起動時の日次処理状態を軽量再判定し、翌日の「本日完了」残留を修正。
+
+
 ## 5.18.3
 - Personal Knowledge bootstrap errors are surfaced to the registration dialog and Cloud Logging.
 - Added a non-routine Personal Knowledge connection/self-check command.

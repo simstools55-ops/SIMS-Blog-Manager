@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.18.3",
+  "current_version": "5.18.4",
   "release_status": "PATCH",
-  "notes": "Surfaces Personal Knowledge bootstrap failures, adds Drive/self-check diagnostics and Cloud Logging, and prevents silent SITE-candidate rejection when PK context initialization fails."
+  "notes": "Refines Personal Knowledge transient-metric admission, speeds Home opening with a lightweight refresh, and refreshes daily-update status correctly on startup/day rollover."
 }
