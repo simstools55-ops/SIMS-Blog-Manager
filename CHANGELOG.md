@@ -1,3 +1,10 @@
+# v5.18.1 - 2026-08-30
+
+- Fix Personal Knowledge root initialization so `SIMS-Personal-Knowledge` is created even when the spreadsheet site context must be resolved from the active Doctor request.
+- Resolve SITE-scoped Personal Knowledge using trusted SBM request identity (`site_id`, site name, blog/article URL) before accepting AI output site identifiers.
+- Accept `HIGH` / `MEDIUM` / `LOW` confidence labels from Article Doctor candidates and normalize them to numeric admission values.
+- Keep candidate ingestion non-blocking and preserve replay-safe `confirmation_event_id` handling.
+
 ## v5.13.0
 
 ## v5.14.10

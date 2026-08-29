@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.18.0",
-  "release_status": "MINOR",
-  "notes": "Adds Article Doctor Personal Knowledge candidate ingestion with replay-safe confirmation tracking and clarifies Site Doctor candidate UI while preserving existing contracts and sheet names."
+  "current_version": "5.18.1",
+  "release_status": "PATCH",
+  "notes": "Fixes Personal Knowledge automatic Drive-store initialization and site identity resolution during Article Doctor ingestion; accepts labeled confidence values while preserving replay-safe candidate handling."
 }
