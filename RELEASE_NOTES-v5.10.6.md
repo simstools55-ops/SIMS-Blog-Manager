@@ -26,11 +26,11 @@ Legacy results without `merge_plan` keep the prior fallback behavior.
 
 `CLUSTER-GADGET-XIAOMISMARTBAND10`
 
-- Target: A000019
-- Source: A000027
-- Evidence-only / excluded: A000014
+- Target: A900019
+- Source: A900027
+- Evidence-only / excluded: A900014
 
-The v5.10.6 logic keeps A000014 out of the Merge source set.
+The v5.10.6 logic keeps A900014 out of the Merge source set.
 
 ## Files to replace
 

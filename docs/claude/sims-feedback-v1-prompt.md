@@ -27,7 +27,7 @@ SBMは改善結果登録に必要な最低限だけを検証します。
   "format": "SIMS_FEEDBACK_V2",
   "version": "2.0",
   "writer_version": "1.0.0",
-  "article_id": "A000123",
+  "article_id": "A900123",
   "article_url": "https://example.com/article",
   "completed_at": "2026-07-19",
   "changes": {

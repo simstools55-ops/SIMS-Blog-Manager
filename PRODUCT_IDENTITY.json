@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.14.13",
-  "release_status": "PATCH",
-  "notes": "Optimizes article management state registration to avoid Spreadsheet service timeouts, removes duplicate dialog close controls, and defers heavy derived-view rebuilds to the normal daily workflow."
+  "current_version": "5.15.0",
+  "release_status": "MINOR",
+  "notes": "Separates owner/site-specific knowledge from the distributable product and replaces hard-coded blog-title normalization with configured BlogName while preserving existing contracts and data compatibility."
 }

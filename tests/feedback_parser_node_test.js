@@ -50,7 +50,7 @@ function parse(obj) {
 }
 
 const v1 = parse({
-  format: 'SIMS_FEEDBACK_V1', article_id: 'A000001',
+  format: 'SIMS_FEEDBACK_V1', article_id: 'A900001',
   changes: {seo_title: true, internal_links: false},
   new_values: {seo_title: 'New title'}, summary: 'V1 test'
 });
@@ -58,8 +58,8 @@ assert.strictEqual(v1.changes.seo_title, true);
 assert.strictEqual(v1.new_values.seo_title, 'New title');
 
 const v2 = parse({
-  format: 'SIMS_FEEDBACK_V2', version: '2.0', site_id: 'tonbos55',
-  article_id: 'A000002', url: 'https://example.com/a',
+  format: 'SIMS_FEEDBACK_V2', version: '2.0', site_id: 'example-site',
+  article_id: 'A900002', url: 'https://example.com/a',
   changes: [{target:'internal_link', before:'old', after:'new', reason:'reason'}],
   change_flags: {body:true, internal_links:true},
   protected_elements: ['ads'],
@@ -81,7 +81,7 @@ assert.strictEqual(future.changes.faq, false);
 
 
 const v42 = parse({
-  format: 'SIMS_FEEDBACK_V2', contract_version: '4.2', article_id: 'A000039',
+  format: 'SIMS_FEEDBACK_V2', contract_version: '4.2', article_id: 'A900039',
   publication_result: {
     public_ok_changes: [
       {target:'seo_title', before:'Old title', after:'New title', reason:'CTR improvement'},

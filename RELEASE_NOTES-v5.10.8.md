@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Close the remaining Site Diagnosis / Merge safety and usability issues found during the gadget-mania55 production test.
+Close the remaining Site Diagnosis / Merge safety and usability issues found during the example-site production test.
 
 ## Changes
 
@@ -24,9 +24,9 @@ When the stored Merge request contains an explicit `merge_plan`, SBM validates t
 
 Regression case:
 
-- target: A000019
-- absorbed: A000027
-- evidence-only / excluded: A000014
+- target: A900019
+- absorbed: A900027
+- evidence-only / excluded: A900014
 
 ### Drive Artifact is optional
 

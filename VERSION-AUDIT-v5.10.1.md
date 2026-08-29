@@ -44,9 +44,9 @@ Those strings are not used as the current runtime/display/release identity.
 
 Validated against actual production-style responses:
 
-- A000018 Doctor JSON only: PASS
-- A000018 Doctor full response: PASS
-- A000019 Writer full response: PASS
+- A900018 Doctor JSON only: PASS
+- A900018 Doctor full response: PASS
+- A900019 Writer full response: PASS
 - Merge full response with unrelated JSON before the target result: PASS
 - Doctor one-of-contract routing: PASS
 

@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.14.13
+ * SIMS-Blog-Manager Product v5.15.0
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.13';
+const SBM_VERSION = '5.15.0';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
@@ -1220,7 +1220,7 @@ function sbmSetupStep1BlogInfo() {
   var ui = SpreadsheetApp.getUi();
   sbmAlert_('STEP1 ブログ情報', 'ブログ名、ブログURL、Search Consoleプロパティを登録します。\n\n初回のみGoogleの承認画面が出ることがあります。承認後に止まった場合は、このSTEP1をもう一度実行してください。');
 
-  var blogName = sbmPromptRequired_('ブログ名を入力', '管理するブログ名を入力してください。\n例：人生いろいろ', sbmGetSetting_('BlogName',''));
+  var blogName = sbmPromptRequired_('ブログ名を入力', '管理するブログ名を入力してください。\n例：サンプルブログ', sbmGetSetting_('BlogName',''));
   if (blogName === null) return;
   var blogUrl = sbmPromptRequired_('ブログURLを入力', 'ブログのトップページURLを入力してください。\n例：https://example.com/', sbmGetSetting_('BlogUrl',''));
   if (blogUrl === null) return;
@@ -6126,12 +6126,18 @@ function sbmNormalizeImprovementFeedback_(raw) {
  * Monitoring Cycle Lifecycle
  * ========================================================================== */
 
+function sbmStripConfiguredBlogSuffix_(v){
+  var text=String(v||'').normalize('NFKC');
+  var blog=String(sbmGetSetting_('BlogName','')||'').normalize('NFKC').trim();
+  if(!blog)return text;
+  var escaped=blog.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  return text.replace(new RegExp('\\s*-\\s*'+escaped+'\\s*$','i'),'');
+}
+
 function sbmMonitoringTitleKey_(v){
-  return String(v||'').normalize('NFKC').toLowerCase()
+  return sbmStripConfiguredBlogSuffix_(v).toLowerCase()
     .replace(/[\s　]+/g,'')
     .replace(/[‐‑‒–—―ー－]/g,'-')
-    .replace(/\s*-\s*ガジェット探検記\s*$/,'')
-    .replace(/\s*-\s*infohackジャーナル\s*$/,'')
     .trim();
 }
 
@@ -6999,10 +7005,8 @@ function sbmEffectRowIdentityAliases_(row){
   var aliases=[];
   var articleId=String(row[12]||'').trim();
   var url=sbmNormalizeUrl_(row[13]||'');
-  var title=String(row[5]||'').normalize('NFKC').toLowerCase()
+  var title=sbmStripConfiguredBlogSuffix_(row[5]||'').toLowerCase()
     .replace(/\s+/g,' ')
-    .replace(/\s*-\s*ガジェット探検記\s*$/,'')
-    .replace(/\s*-\s*infohackジャーナル\s*$/,'')
     .trim();
 
   if(articleId)aliases.push('ID:'+articleId);
@@ -7092,13 +7096,11 @@ function sbmHistoryArticleIdentity_(h){
   var url=sbmNormalizeUrl_(h['記事URL']||'');
   if(url)return 'URL:'+url;
 
-  var title=String(h['記事タイトル']||'').normalize('NFKC').toLowerCase()
+  var title=sbmStripConfiguredBlogSuffix_(h['記事タイトル']||'').toLowerCase()
     .replace(/[\s　]+/g,'')
     .replace(/[‐‑‒–—―ー－]/g,'-')
     .replace(/[“”„‟＂"]/g,'"')
     .replace(/[‘’‚‛＇']/g,"'")
-    .replace(/-ガジェット探検記$/,'')
-    .replace(/-infohackジャーナル$/,'')
     .trim();
   return title ? 'TITLE:'+title : '';
 }

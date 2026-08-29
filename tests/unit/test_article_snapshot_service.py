@@ -13,9 +13,9 @@ def record():
         "case_id": "CASE-20260804-000001",
         "medical_record_id": "MR-CASE-20260804-000001",
         "patient": {
-            "site_id": "tonbos55",
-            "article_id": "A000001",
-            "article_url": "https://tonbos55.hatenablog.com/entry/example",
+            "site_id": "example-site",
+            "article_id": "A900001",
+            "article_url": "https://example.com/entry/example",
         },
         "events": [],
         "observations": [],

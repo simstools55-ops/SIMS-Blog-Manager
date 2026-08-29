@@ -22,7 +22,7 @@
 - CHANGELOG.md
 
 ## Production regression verification
-Using the actual A000018 Site Diagnosis -> Writer referral fixture:
+Using the actual A900018 Site Diagnosis -> Writer referral fixture:
 - Doctor direct allowed_scope: PASS (3 items)
 - Doctor direct blocked_scope: PASS (4 items)
 - Live H1/title precedence: PASS

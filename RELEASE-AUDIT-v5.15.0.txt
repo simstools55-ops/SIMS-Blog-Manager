@@ -1,0 +1,35 @@
+SIMS Blog Manager v5.15.0 Release Audit
+Date: 2026-08-29
+
+Version policy: MINOR
+Reason: formal product architecture change separating Personal Knowledge from the distributable product.
+
+Release-gate checks
+- Active Code.gs copies identical: PASS
+- Apps Script JavaScript syntax: PASS
+- Focused Personal Knowledge separation regression: PASS
+- Known owner/site markers in distributable text: PASS
+- Low-number operational Article IDs (A000xxx) in distributable text: PASS
+- Active runtime hard-coded Article IDs: PASS
+- .git excluded from package source: PASS
+
+Compatibility
+- Existing Spreadsheet sheet structure: unchanged
+- Existing stored keys: unchanged
+- SIMS_DOCTOR_* contracts: preserved
+- Case ID / Batch ID contracts: preserved
+- Writer / Merge / Creator routing contracts: preserved
+- Embedded Shared baseline remains 3.5.0; v3.5.3 Personal Knowledge separation is backported without claiming a full Shared snapshot upgrade.
+
+Legacy test-suite note
+- Full historical pytest collection has pre-existing errors in legacy Python components and is not used as the v5.15.0 release gate.
+- Historical Node UAT files contain frozen assertions for older RC/version UI states and are retained as history rather than treated as a current-version aggregate gate.
+
+Focused regression output
+PASS: v5.15.0 version
+PASS: configured BlogName suffix normalizer exists
+PASS: no hard-coded Article IDs in runtime
+PASS: embedded operational learning records removed
+PASS: product-neutral Shared boundary declared
+PASS: synthetic example policy documented
+

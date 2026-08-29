@@ -4,7 +4,7 @@
 PATCH release from v5.10.2.
 
 ## Production issue
-A Site Diagnosis Writer referral for A000018 contained a valid Doctor result, but the top-level Writer referral dropped the Doctor's direct `treatment_plan.allowed_scope` and `blocked_scope`. Article metadata in the referral also came from stale Article Master values even though the live article had already changed.
+A Site Diagnosis Writer referral for A900018 contained a valid Doctor result, but the top-level Writer referral dropped the Doctor's direct `treatment_plan.allowed_scope` and `blocked_scope`. Article metadata in the referral also came from stale Article Master values even though the live article had already changed.
 
 ## Fix
 1. Direct Doctor V2 scope fields are authoritative and are now mapped.

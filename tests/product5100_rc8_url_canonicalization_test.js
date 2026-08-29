@@ -13,10 +13,10 @@ const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(snippet, ctx);
 
-ok(ctx.sbmNormalizeUrl_('https://chiebukuro55.com/1238/') === 'https://chiebukuro55.com/1238', 'trailing slash canonicalized');
-ok(ctx.sbmNormalizeUrl_('https://chiebukuro55.com/1238') === 'https://chiebukuro55.com/1238', 'no-slash URL remains canonical');
-ok(ctx.sbmUrlEquals_('https://chiebukuro55.com/1238/', 'https://chiebukuro55.com/1238'), 'slash variants compare equal');
-ok(ctx.sbmNormalizeUrl_('CHIEBUKURO55.com/1238/?x=1#part') === 'https://chiebukuro55.com/1238', 'host/query/fragment canonicalized');
+ok(ctx.sbmNormalizeUrl_('https://example.com/1238/') === 'https://example.com/1238', 'trailing slash canonicalized');
+ok(ctx.sbmNormalizeUrl_('https://example.com/1238') === 'https://example.com/1238', 'no-slash URL remains canonical');
+ok(ctx.sbmUrlEquals_('https://example.com/1238/', 'https://example.com/1238'), 'slash variants compare equal');
+ok(ctx.sbmNormalizeUrl_('EXAMPLE.com/1238/?x=1#part') === 'https://example.com/1238', 'host/query/fragment canonicalized');
 ok(ctx.sbmNormalizeUrl_('https://Example.COM:443/') === 'https://example.com/', 'root URL retains slash and default https port removed');
 ok(code.includes("if(sbmUrlEquals_(rows[i]['記事URL']||'', url||''))"), 'article DB lookup uses canonical comparison');
 ok(code.includes("var shown={}; candidates.slice(0,count).forEach(function(c){var k=sbmNormalizeUrl_(c.url||'')"), 'today work-state map uses canonical URL keys');
