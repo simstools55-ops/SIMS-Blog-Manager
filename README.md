@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.15.0  
+> **Current product:** SIMS-Blog-Manager v5.16.1  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.15.0`
+- Product Version: `5.16.1`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `MINOR`
 - Main feature: 製品版から利用者固有のブログ情報を分離し、Personal Knowledgeを外付けできる製品境界へ移行しました。
 
-> Current release: SIMS-Blog-Manager Product v5.15.0
+> Current release: SIMS-Blog-Manager Product v5.16.1
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
@@ -31,13 +31,13 @@
 
 Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
-# SIMS-Blog-Manager v5.15.0
+# SIMS-Blog-Manager v5.16.1
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
 ## 正式バージョン
 
-`5.15.0`
+`5.16.1`
 
 ## Creatorで作った新記事の登録
 

@@ -1,0 +1,12 @@
+const fs=require('fs'),path=require('path'),assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const c=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
+assert(c.includes("const SBM_VERSION = '5.16.1';"));
+assert(c.includes("storage_mode:'GOOGLE_DRIVE_FILES'"));
+assert(c.includes("user_visible:true"));
+assert(c.includes("manual_transfer_supported:true"));
+assert(c.includes("README-FIRST.txt"));
+assert(c.includes("It is not a Claude Shared Knowledge upload package."));
+assert(c.includes("function sbmPersonalKnowledgeEnsureRoot_()"));
+assert(c.includes("function sbmPersonalKnowledgeEnsureSite_()"));
+console.log('PASS Personal Knowledge Google Drive file storage v5.16.1');

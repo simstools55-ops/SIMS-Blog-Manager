@@ -1,4 +1,4 @@
-# SIMS-Blog-Manager v5.15.0
+# SIMS-Blog-Manager v5.16.1
 
 ## 今回の変更
 
@@ -19,8 +19,8 @@
 
 ## 正式版
 
-**v5.15.0**
+**v5.16.1**
 
 ## 推奨コミットメッセージ
 
-`refactor(sbm): separate personal knowledge from distributable product (v5.15.0)`
+`refactor(sbm): separate personal knowledge from distributable product (v5.16.1)`

@@ -1,0 +1,25 @@
+SIMS Blog Manager v5.16.0 release audit
+Date: 2026-08-29
+
+Release-specific validation
+- Node syntax checks: PASS (5 active Code.gs surfaces)
+- Personal Knowledge runtime bridge static test: PASS
+- Active Code.gs copies identical: PASS
+- Root VERSION / current product identity surfaces: PASS
+
+Legacy regression note
+Several historical static tests embed an exact previous SBM_VERSION and therefore stop at their
+version assertion after any legitimate release bump. Their pre-version Personal Knowledge checks
+continue to pass. These frozen version assertions are not treated as v5.16.0 functional failures.
+
+Compatibility
+- Existing SiteID unchanged: PASS
+- Physical sheet names unchanged: PASS
+- Shared baseline intentionally unchanged: PASS
+- Personal Knowledge uses separate immutable UUID site identity: PASS
+- Personal Knowledge root/site creation is automatic: PASS
+- Existing site is resolved by canonical blog URL: PASS
+- Personal Knowledge failure is non-blocking: PASS
+- No daily import/export UI added: PASS
+- Article Doctor handoff carries personal_knowledge_site_id: PASS
+- Writer handoff carries personal_knowledge_site_id: PASS

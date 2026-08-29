@@ -1,0 +1,9 @@
+SIMS Blog Manager v5.16.1 release audit
+Date: 2026-08-29
+- Active Code.gs syntax: PASS
+- Drive-file storage static test: PASS
+- Active Code.gs copies identical: PASS
+- Existing SiteID preserved: PASS
+- Personal Knowledge remains outside product package: PASS
+- Manual whole-folder transfer supported: PASS
+- Routine Claude-style knowledge import/export not introduced: PASS

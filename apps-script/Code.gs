@@ -1,12 +1,23 @@
 /**
- * SIMS-Blog-Manager Product v5.15.0
+ * SIMS-Blog-Manager Product v5.16.1
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.15.0';
+const SBM_VERSION = '5.16.1';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
+// Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
+// The canonical store is a normal user-visible Google Drive folder containing JSON files.
+// SIMS reads/writes these files in place; users normally leave them there and may copy/move them manually when needed.
+// PersonalKnowledgeSiteID is an immutable UUID-backed identifier used only for this private persistent knowledge store.
+const SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION = '1.0';
+const SBM_PERSONAL_KNOWLEDGE_FORMAT_VERSION = '1.0.0';
+const SBM_PERSONAL_KNOWLEDGE_ROOT_NAME = 'SIMS-Personal-Knowledge';
+const SBM_PERSONAL_KNOWLEDGE_MARKER_FILE = 'MANIFEST.json';
+const SBM_PERSONAL_KNOWLEDGE_DOC_PROP_ROOT = 'SBM_PK_ROOT_FOLDER_ID';
+const SBM_PERSONAL_KNOWLEDGE_DOC_PROP_SITE = 'SBM_PK_SITE_ID';
+
 // 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -1199,6 +1210,189 @@ function sbmSiteIdFromUrl_(url) {
   }
 }
 
+
+function sbmPersonalKnowledgeJsonFile_(folder, name, fallback) {
+  var files = folder.getFilesByName(name);
+  if (!files.hasNext()) return fallback;
+  try { return JSON.parse(files.next().getBlob().getDataAsString('UTF-8')); }
+  catch (e) { return fallback; }
+}
+
+function sbmPersonalKnowledgeWriteJson_(folder, name, obj) {
+  var text = JSON.stringify(obj, null, 2);
+  var files = folder.getFilesByName(name);
+  if (files.hasNext()) {
+    files.next().setContent(text);
+    while (files.hasNext()) {
+      try { files.next().setTrashed(true); } catch (e) {}
+    }
+  } else {
+    folder.createFile(name, text, MimeType.PLAIN_TEXT);
+  }
+}
+
+function sbmPersonalKnowledgeFindChildFolder_(parent, name) {
+  var it = parent.getFoldersByName(name);
+  return it.hasNext() ? it.next() : null;
+}
+
+function sbmPersonalKnowledgeEnsureChildFolder_(parent, name) {
+  return sbmPersonalKnowledgeFindChildFolder_(parent, name) || parent.createFolder(name);
+}
+
+function sbmPersonalKnowledgeIsRoot_(folder) {
+  try {
+    var manifest = sbmPersonalKnowledgeJsonFile_(folder, SBM_PERSONAL_KNOWLEDGE_MARKER_FILE, null);
+    return !!(manifest && manifest.format === 'SIMS_PERSONAL_EDITORIAL_KNOWLEDGE' &&
+      String(manifest.schema_version || '') === SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION);
+  } catch (e) { return false; }
+}
+
+function sbmPersonalKnowledgeEnsureRoot_() {
+  var props = PropertiesService.getDocumentProperties();
+  var cached = String(props.getProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_ROOT) || '').trim();
+  if (cached) {
+    try {
+      var cachedFolder = DriveApp.getFolderById(cached);
+      if (sbmPersonalKnowledgeIsRoot_(cachedFolder)) return cachedFolder;
+    } catch (e) {}
+  }
+
+  var matches = DriveApp.getFoldersByName(SBM_PERSONAL_KNOWLEDGE_ROOT_NAME);
+  while (matches.hasNext()) {
+    var found = matches.next();
+    if (sbmPersonalKnowledgeIsRoot_(found)) {
+      props.setProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_ROOT, found.getId());
+      return found;
+    }
+  }
+
+  var root = DriveApp.createFolder(SBM_PERSONAL_KNOWLEDGE_ROOT_NAME);
+  ['owner','sites','cross-site','system'].forEach(function(n){ sbmPersonalKnowledgeEnsureChildFolder_(root, n); });
+  var manifest = {
+    format:'SIMS_PERSONAL_EDITORIAL_KNOWLEDGE',
+    format_version:SBM_PERSONAL_KNOWLEDGE_FORMAT_VERSION,
+    schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,
+    created_at:new Date().toISOString(),
+    updated_at:new Date().toISOString(),
+    site_count:0,
+    site_ids:[],
+    managed_by:'SIMS',
+    storage_mode:'GOOGLE_DRIVE_FILES',
+    user_visible:true,
+    manual_transfer_supported:true
+  };
+  sbmPersonalKnowledgeWriteJson_(root, SBM_PERSONAL_KNOWLEDGE_MARKER_FILE, manifest);
+  if (!root.getFilesByName('README-FIRST.txt').hasNext()) {
+    root.createFile('README-FIRST.txt',
+      'SIMS Personal Knowledge\n\n' +
+      'This folder is the persistent personal knowledge store used by SIMS.\n' +
+      'Normally, leave this folder in Google Drive and let SIMS update the JSON files automatically.\n' +
+      'It is not a Claude Shared Knowledge upload package.\n' +
+      'When moving or backing up your environment, you may copy this entire folder manually.\n' +
+      'Do not place this folder in a distributable SIMS product repository.\n',
+      MimeType.PLAIN_TEXT);
+  }
+  sbmPersonalKnowledgeWriteJson_(sbmPersonalKnowledgeEnsureChildFolder_(root,'owner'), 'EDITORIAL_PREFERENCES.json',
+    {schema:'SIMS_PERSONAL_EDITORIAL_PREFERENCES_V1',schema_version:'1.0',preferences:{}});
+  sbmPersonalKnowledgeWriteJson_(sbmPersonalKnowledgeEnsureChildFolder_(root,'owner'), 'LEARNING.json',
+    {schema:'SIMS_PERSONAL_LEARNING_REGISTRY_V1',schema_version:'1.0',items:[]});
+  sbmPersonalKnowledgeWriteJson_(sbmPersonalKnowledgeEnsureChildFolder_(root,'cross-site'), 'LEARNING.json',
+    {schema:'SIMS_PERSONAL_CROSS_SITE_LEARNING_V1',schema_version:'1.0',items:[]});
+  sbmPersonalKnowledgeWriteJson_(sbmPersonalKnowledgeEnsureChildFolder_(root,'system'), 'MIGRATION_HISTORY.json',
+    {schema:'SIMS_PERSONAL_MIGRATION_HISTORY_V1',schema_version:'1.0',migrations:[]});
+  props.setProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_ROOT, root.getId());
+  return root;
+}
+
+function sbmPersonalKnowledgeCanonicalUrl_(url) {
+  var s = String(url || '').trim();
+  if (!s) return '';
+  try {
+    var u = new URL(s);
+    var path = (u.pathname || '/').replace(/\/+$/, '') || '/';
+    return (u.protocol.toLowerCase() + '//' + u.hostname.toLowerCase().replace(/^www\./,'') + path).replace(/\/$/, '');
+  } catch (e) {
+    return s.toLowerCase().replace(/\/+$/, '');
+  }
+}
+
+function sbmPersonalKnowledgeSiteFolder_(sitesFolder, siteId) {
+  return sbmPersonalKnowledgeFindChildFolder_(sitesFolder, siteId);
+}
+
+function sbmPersonalKnowledgeEnsureSite_() {
+  var blogUrl = String(sbmGetSetting_('BlogUrl','') || '').trim();
+  var blogName = String(sbmGetSetting_('BlogName','') || '').trim();
+  if (!blogUrl && !blogName) return '';
+
+  var props = PropertiesService.getDocumentProperties();
+  var cachedSiteId = String(props.getProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_SITE) || '').trim();
+  var root = sbmPersonalKnowledgeEnsureRoot_();
+  var sitesFolder = sbmPersonalKnowledgeEnsureChildFolder_(root, 'sites');
+  if (cachedSiteId && sbmPersonalKnowledgeSiteFolder_(sitesFolder, cachedSiteId)) return cachedSiteId;
+
+  var canonicalUrl = sbmPersonalKnowledgeCanonicalUrl_(blogUrl);
+  var manifest = sbmPersonalKnowledgeJsonFile_(root, SBM_PERSONAL_KNOWLEDGE_MARKER_FILE, {});
+  var siteIds = Array.isArray(manifest.site_ids) ? manifest.site_ids : [];
+  for (var i=0; i<siteIds.length; i++) {
+    var sid = String(siteIds[i] || '');
+    var sf = sbmPersonalKnowledgeSiteFolder_(sitesFolder, sid);
+    if (!sf) continue;
+    var profile = sbmPersonalKnowledgeJsonFile_(sf, 'SITE_PROFILE.json', {});
+    if (canonicalUrl && sbmPersonalKnowledgeCanonicalUrl_(profile.canonical_url || profile.blog_url || '') === canonicalUrl) {
+      props.setProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_SITE, sid);
+      return sid;
+    }
+  }
+
+  var siteId = 'SITE-' + Utilities.getUuid();
+  var siteFolder = sitesFolder.createFolder(siteId);
+  var now = new Date().toISOString();
+  var legacySiteId = String(sbmGetSetting_('SiteID','') || '').trim();
+  sbmPersonalKnowledgeWriteJson_(siteFolder, 'SITE_PROFILE.json', {
+    schema:'SIMS_PERSONAL_SITE_PROFILE_V1',
+    schema_version:'1.0',
+    site_id:siteId,
+    site_name:blogName || 'Site',
+    domain:(function(){ try { return new URL(blogUrl).hostname.toLowerCase().replace(/^www\./,''); } catch(e){ return null; } })(),
+    canonical_url:canonicalUrl || null,
+    legacy_sims_site_id:legacySiteId || null,
+    status:'ACTIVE',
+    created_at:now,
+    updated_at:null
+  });
+  sbmPersonalKnowledgeWriteJson_(siteFolder, 'ARTICLE_KNOWLEDGE.json',
+    {schema:'SIMS_PERSONAL_ARTICLE_KNOWLEDGE_V1',schema_version:'1.0',site_id:siteId,articles:[]});
+  sbmPersonalKnowledgeWriteJson_(siteFolder, 'CLUSTERS.json',
+    {schema:'SIMS_PERSONAL_CLUSTER_KNOWLEDGE_V1',schema_version:'1.0',site_id:siteId,clusters:[]});
+  sbmPersonalKnowledgeWriteJson_(siteFolder, 'LEARNING.json',
+    {schema:'SIMS_PERSONAL_SITE_LEARNING_V1',schema_version:'1.0',site_id:siteId,items:[]});
+
+  siteIds.push(siteId);
+  manifest.site_ids = siteIds;
+  manifest.site_count = siteIds.length;
+  manifest.updated_at = now;
+  sbmPersonalKnowledgeWriteJson_(root, SBM_PERSONAL_KNOWLEDGE_MARKER_FILE, manifest);
+  props.setProperty(SBM_PERSONAL_KNOWLEDGE_DOC_PROP_SITE, siteId);
+  return siteId;
+}
+
+function sbmPersonalKnowledgeGetContext_() {
+  try {
+    var siteId = sbmPersonalKnowledgeEnsureSite_();
+    return {
+      available:!!siteId,
+      schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,
+      site_id:siteId || ''
+    };
+  } catch (e) {
+    // Personal Knowledge failure must never block normal SBM operation.
+    sbmLog_('PersonalKnowledge','Warning',String(e && e.message || e));
+    return {available:false,schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,site_id:'',error:String(e && e.message || e)};
+  }
+}
+
 function sbmEnsureSiteIdentity_() {
   var blogUrl = String(sbmGetSetting_('BlogUrl','') || '').trim();
   var blogName = String(sbmGetSetting_('BlogName','') || '').trim();
@@ -1212,7 +1406,9 @@ function sbmEnsureSiteIdentity_() {
     siteName = blogName;
     sbmSetSetting_('SiteName', siteName, 'SIMS製品間で表示するサイト名');
   }
-  return {siteId:siteId, siteName:siteName, siteUrl:blogUrl, blogUrl:blogUrl};
+  var pk = sbmPersonalKnowledgeGetContext_();
+  return {siteId:siteId, siteName:siteName, siteUrl:blogUrl, blogUrl:blogUrl,
+    personalKnowledgeSiteId:String(pk.site_id||''), personalKnowledgeAvailable:!!pk.available};
 }
 
 function sbmSetupStep1BlogInfo() {
@@ -1234,6 +1430,8 @@ function sbmSetupStep1BlogInfo() {
   sbmSetSetting_('SiteName', blogName, 'SIMS製品間で表示するサイト名');
   sbmSetSetting_('SearchConsoleProperty', property, 'Search Console property');
   sbmSetSetting_('SetupBlogInfo', 'YES', 'STEP1完了状態');
+  // Personal Knowledgeは利用者に操作させず、ブログ登録時に内部で自動接続します。
+  sbmPersonalKnowledgeGetContext_();
   sbmLog_('SetupStep1BlogInfo','Done',blogName + ' / ' + property);
   sbmRefreshHome_();
   sbmAlert_('STEP1完了', 'ブログ情報を登録しました。\n\n次は「STEP2 Google Cloud APIガイドを開く」を実行してください。');
@@ -11238,6 +11436,8 @@ function sbmDoctorBuildSingleCaseRequest_(ctx) {
     timezone:SBM_DEFAULTS.TIMEZONE,
     site:{
       site_id:String(sbmGetSetting_('SiteID','')).trim(),
+      personal_knowledge_site_id:String(sbmPersonalKnowledgeGetContext_().site_id||'').trim(),
+      personal_knowledge_schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,
       site_name:String(sbmGetSetting_('SiteName','')||sbmGetSetting_('BlogName','')).trim(),
       blog_url:String(sbmGetSetting_('BlogUrl','')).trim(),
       search_console_property:String(sbmGetSetting_('SearchConsoleProperty','')).trim()
@@ -13041,7 +13241,7 @@ function sbmDoctorResolveWriterArticle_(sourceRequest){
 function sbmDoctorBuildWriterTreatmentRequest_(sourceRequest,doctor,n){
   var sourceArticle=sourceRequest.article||{},evidence=sourceRequest.evidence_package||{},detail=sbmDoctorReferralDetails_(doctor,n,evidence),article=sbmDoctorResolveWriterArticle_(sourceRequest);
   if(!detail.allowed_scope||!detail.allowed_scope.length)throw new Error('Writer紹介状を安全に生成できません。Article Doctor結果にallowed_scopeがありません。Article Doctor診断結果の治療範囲を確認してください。');
-  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:sourceArticle.article_id||evidence.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||evidence.site_id||'',request_mode:'DOCTOR_REFERRAL_TREATMENT',article:article,doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:sbmDoctorDiagnosisCodes_(doctor,n),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,internal_link_recommendations:detail.internal_link_recommendations,presentation:detail.presentation,technical_flags_for_sbm:doctor&&doctor.treatment_plan&&doctor.treatment_plan.technical_flags_for_sbm||[],doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
+  return {format:'SIMS_WRITER_TREATMENT_REQUEST_V1',contract_version:'1.0',source_system:'SIMS_BLOG_MANAGER',target_system:'SIMS_WRITER',generated_at:sbmDoctorIso_(new Date()),case_id:n.caseId,request_id:sourceRequest.request&&sourceRequest.request.request_id||'',article_id:sourceArticle.article_id||evidence.article_id||'',site_id:sourceRequest.site&&sourceRequest.site.site_id||evidence.site_id||'',personal_knowledge_site_id:sourceRequest.site&&sourceRequest.site.personal_knowledge_site_id||String(sbmPersonalKnowledgeGetContext_().site_id||''),request_mode:'DOCTOR_REFERRAL_TREATMENT',article:article,doctor_referral:{diagnosis_id:n.diagnosisId||'',diagnosis_status:n.diagnosisStatus||'',diagnosis_codes:sbmDoctorDiagnosisCodes_(doctor,n),priority:n.priority||'',treatment_action:n.action||'',treatment_level:n.treatmentLevel||'',allowed_scope:detail.allowed_scope,blocked_scope:detail.blocked_scope,instructions:detail.instructions,candidate_urls:detail.candidate_urls,treatment_tasks:detail.treatment_tasks,internal_link_recommendations:detail.internal_link_recommendations,presentation:detail.presentation,technical_flags_for_sbm:doctor&&doctor.treatment_plan&&doctor.treatment_plan.technical_flags_for_sbm||[],doctor_result:doctor},evidence_package:evidence,workflow:{locked:!!n.locked,treatment_allowed:!n.locked},return_contract:{format:'SIMS_WRITER_TREATMENT_RESULT_V1',contract_version:'1.0',return_to:'SIMS_BLOG_MANAGER'}};
 }
 function sbmDoctorMergeCollectRefs_(doctor,sourceRequest){
   var ids={},urls={};

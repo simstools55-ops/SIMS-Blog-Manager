@@ -1,0 +1,13 @@
+const fs=require('fs'), path=require('path'), assert=require('assert');
+const root=path.resolve(__dirname,'..');
+const code=fs.readFileSync(path.join(root,'apps-script','Code.gs'),'utf8');
+assert(code.includes("const SBM_VERSION = '5.16.0';"));
+assert(code.includes("SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION = '1.0'"));
+assert(code.includes("function sbmPersonalKnowledgeEnsureRoot_()"));
+assert(code.includes("function sbmPersonalKnowledgeEnsureSite_()"));
+assert(code.includes("'SITE-' + Utilities.getUuid()"));
+assert(code.includes("legacy_sims_site_id:legacySiteId || null"));
+assert(code.includes("personal_knowledge_site_id:String(sbmPersonalKnowledgeGetContext_().site_id||'').trim()"));
+assert(code.includes("personal_knowledge_site_id:sourceRequest.site&&sourceRequest.site.personal_knowledge_site_id"));
+assert(code.includes("Personal Knowledge failure must never block normal SBM operation."));
+console.log('PASS personal knowledge runtime bridge v5.16.0');
