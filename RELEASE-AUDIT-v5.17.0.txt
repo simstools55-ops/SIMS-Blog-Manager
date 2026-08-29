@@ -1,0 +1,11 @@
+SIMS Blog Manager v5.17.0 release audit
+Date: 2026-08-29
+- Active Code.gs syntax: PASS
+- Personal Knowledge Writer static test: PASS
+- Active Code.gs copies identical: PASS
+- Existing SiteID preserved: PASS
+- Physical sheet names unchanged: PASS
+- Shared baseline unchanged: PASS
+- Legacy product responses remain valid without knowledge_candidate: PASS
+- Product-specific direct writes prohibited by contract: PASS
+- Knowledge Writer failure non-blocking: PASS

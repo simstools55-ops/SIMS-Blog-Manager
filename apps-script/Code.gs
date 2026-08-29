@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.16.1
+ * SIMS-Blog-Manager Product v5.17.0
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.16.1';
+const SBM_VERSION = '5.17.0';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -1391,6 +1391,158 @@ function sbmPersonalKnowledgeGetContext_() {
     sbmLog_('PersonalKnowledge','Warning',String(e && e.message || e));
     return {available:false,schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,site_id:'',error:String(e && e.message || e)};
   }
+}
+
+
+function sbmPersonalKnowledgeNormalizeCandidate_(candidate) {
+  var c = candidate && typeof candidate === 'object' ? candidate : {};
+  var scope = String(c.scope || 'SITE').trim().toUpperCase();
+  if (['OWNER','SITE','CROSS_SITE'].indexOf(scope) < 0) scope = 'SITE';
+  var confidence = Number(c.confidence);
+  if (!isFinite(confidence)) confidence = 0;
+  confidence = Math.max(0, Math.min(1, confidence));
+  return {
+    candidate_id:String(c.candidate_id || ('KCAN-' + Utilities.getUuid())).trim(),
+    scope:scope,
+    site_id:String(c.site_id || '').trim(),
+    knowledge_type:String(c.knowledge_type || 'GENERAL').trim().toUpperCase(),
+    statement:String(c.statement || '').trim(),
+    confidence:confidence,
+    source_product:String(c.source_product || 'SIMS-Blog-Manager').trim(),
+    source_type:String(c.source_type || 'INFERENCE').trim().toUpperCase(),
+    evidence_refs:Array.isArray(c.evidence_refs) ? c.evidence_refs.map(String) : [],
+    proposed_at:String(c.proposed_at || new Date().toISOString()),
+    explicit_user_confirmation:!!c.explicit_user_confirmation,
+    deterministic_state:!!c.deterministic_state
+  };
+}
+
+function sbmPersonalKnowledgeCandidateKey_(c) {
+  var normalized = String(c.statement || '').toLowerCase().replace(/\s+/g,' ').trim();
+  return [c.scope, c.site_id || '', c.knowledge_type, normalized].join('|');
+}
+
+function sbmPersonalKnowledgeAdmission_(c) {
+  if (!c.statement) return {status:'REJECT',reason:'EMPTY_STATEMENT'};
+  if (c.scope === 'SITE' && !c.site_id) return {status:'REJECT',reason:'SITE_ID_REQUIRED'};
+  var forbidden = /(?:api[\s_-]*key|password|credential|secret|現在順位|クリック数|表示回数|ctr|current\s+(?:rank|click|impression)|serp\s+snapshot)/i;
+  if (forbidden.test(c.statement)) return {status:'REJECT',reason:'TRANSIENT_OR_SECRET'};
+  if (c.explicit_user_confirmation || c.deterministic_state) {
+    return {status:'AUTO_ACCEPT',reason:'CONFIRMED_OR_DETERMINISTIC'};
+  }
+  if (c.confidence >= 0.70) return {status:'CANDIDATE',reason:'INFERENCE_REQUIRES_CONFIRMATION'};
+  return {status:'REJECT',reason:'LOW_CONFIDENCE'};
+}
+
+function sbmPersonalKnowledgeRegistryForScope_(root, c) {
+  if (c.scope === 'OWNER') {
+    return {folder:sbmPersonalKnowledgeEnsureChildFolder_(root,'owner'), file:'LEARNING.json',
+      empty:{schema:'SIMS_PERSONAL_LEARNING_REGISTRY_V1',schema_version:'1.0',items:[]}};
+  }
+  if (c.scope === 'CROSS_SITE') {
+    return {folder:sbmPersonalKnowledgeEnsureChildFolder_(root,'cross-site'), file:'LEARNING.json',
+      empty:{schema:'SIMS_PERSONAL_CROSS_SITE_LEARNING_V1',schema_version:'1.0',items:[]}};
+  }
+  var sites = sbmPersonalKnowledgeEnsureChildFolder_(root,'sites');
+  var sf = sbmPersonalKnowledgeSiteFolder_(sites,c.site_id);
+  if (!sf) throw new Error('Personal Knowledge site not found: ' + c.site_id);
+  return {folder:sf,file:'LEARNING.json',
+    empty:{schema:'SIMS_PERSONAL_SITE_LEARNING_V1',schema_version:'1.0',site_id:c.site_id,items:[]}};
+}
+
+function sbmPersonalKnowledgeWriteCandidate_(candidate) {
+  try {
+    var c = sbmPersonalKnowledgeNormalizeCandidate_(candidate);
+    if (c.scope === 'SITE' && !c.site_id) c.site_id = String(sbmPersonalKnowledgeGetContext_().site_id || '');
+    var admission = sbmPersonalKnowledgeAdmission_(c);
+    if (admission.status === 'REJECT') {
+      return {ok:true,written:false,status:'REJECT',reason:admission.reason,candidate_id:c.candidate_id};
+    }
+
+    var root = sbmPersonalKnowledgeEnsureRoot_();
+    var reg = sbmPersonalKnowledgeRegistryForScope_(root,c);
+    var doc = sbmPersonalKnowledgeJsonFile_(reg.folder,reg.file,reg.empty);
+    if (!Array.isArray(doc.items)) doc.items = [];
+    var key = sbmPersonalKnowledgeCandidateKey_(c);
+    var now = new Date().toISOString();
+    var existing = null;
+    for (var i=0;i<doc.items.length;i++) {
+      if (String(doc.items[i].semantic_key || '') === key) { existing = doc.items[i]; break; }
+    }
+
+    if (existing) {
+      existing.last_confirmed_at = now;
+      existing.confirmation_count = Number(existing.confirmation_count || 1) + 1;
+      existing.confidence = Math.max(Number(existing.confidence || 0), c.confidence);
+      if (existing.status === 'CANDIDATE' && existing.confirmation_count >= 2) {
+        existing.status = 'ACCEPTED';
+        existing.admission_reason = 'REPEATED_INDEPENDENT_CONFIRMATION';
+      }
+      existing.evidence_refs = Array.from(new Set((existing.evidence_refs || []).concat(c.evidence_refs || [])));
+    } else {
+      doc.items.push({
+        knowledge_id:'PK-' + Utilities.getUuid(),
+        semantic_key:key,
+        scope:c.scope,
+        site_id:c.scope === 'SITE' ? c.site_id : null,
+        knowledge_type:c.knowledge_type,
+        statement:c.statement,
+        status:admission.status === 'AUTO_ACCEPT' ? 'ACCEPTED' : 'CANDIDATE',
+        confidence:c.confidence,
+        source_type:c.source_type,
+        source_product:c.source_product,
+        evidence_refs:c.evidence_refs,
+        created_at:now,
+        last_confirmed_at:now,
+        confirmation_count:1,
+        admission_reason:admission.reason
+      });
+    }
+    doc.updated_at = now;
+    sbmPersonalKnowledgeWriteJson_(reg.folder,reg.file,doc);
+    return {ok:true,written:true,status:admission.status,candidate_id:c.candidate_id};
+  } catch (e) {
+    sbmLog_('PersonalKnowledgeWriter','Warning',String(e && e.message || e));
+    return {ok:false,written:false,status:'ERROR',message:String(e && e.message || e)};
+  }
+}
+
+function sbmPersonalKnowledgeSubmitCandidates_(candidates) {
+  var list = Array.isArray(candidates) ? candidates : [];
+  var out = {ok:true,total:list.length,written:0,candidate:0,accepted:0,rejected:0,error:0,results:[]};
+  list.forEach(function(c){
+    var r = sbmPersonalKnowledgeWriteCandidate_(c);
+    out.results.push(r);
+    if (!r.ok) out.error++;
+    else if (r.status === 'REJECT') out.rejected++;
+    else {
+      out.written++;
+      if (r.status === 'AUTO_ACCEPT') out.accepted++; else out.candidate++;
+    }
+  });
+  out.ok = out.error === 0;
+  return out;
+}
+
+function sbmPersonalKnowledgeExtractCandidates_(payload, sourceProduct) {
+  var o = payload && typeof payload === 'object' ? payload : {};
+  var raw = [];
+  if (Array.isArray(o.knowledge_candidates)) raw = o.knowledge_candidates;
+  else if (Array.isArray(o.knowledge_candidate)) raw = o.knowledge_candidate;
+  else if (o.knowledge_candidate && typeof o.knowledge_candidate === 'object') raw = [o.knowledge_candidate];
+  var ctx = sbmPersonalKnowledgeGetContext_();
+  return raw.map(function(x){
+    var c = Object.assign({},x);
+    if (!c.source_product) c.source_product = sourceProduct || 'SIMS';
+    if (!c.site_id && String(c.scope || 'SITE').toUpperCase() === 'SITE') c.site_id = ctx.site_id || '';
+    return c;
+  });
+}
+
+function sbmPersonalKnowledgeIngestPayload_(payload, sourceProduct) {
+  var candidates = sbmPersonalKnowledgeExtractCandidates_(payload,sourceProduct);
+  if (!candidates.length) return {ok:true,total:0,written:0,results:[]};
+  return sbmPersonalKnowledgeSubmitCandidates_(candidates);
 }
 
 function sbmEnsureSiteIdentity_() {

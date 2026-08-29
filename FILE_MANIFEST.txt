@@ -15,6 +15,7 @@ HOW_TO_PUBLISH.md
 LICENSE
 PERSONAL-KNOWLEDGE-BOUNDARY.md
 PERSONAL-KNOWLEDGE-DRIVE-STORAGE.md
+PERSONAL-KNOWLEDGE-WRITER-CONTRACT-v1.md
 PRODUCT_IDENTITY.json
 RC8_14_SITE_DIAGNOSIS_UNIFIED_FLOW_TEST_RESULT.txt
 RC8_9_VERSION_SYNC_TEST_RESULT.txt
@@ -92,6 +93,7 @@ README.txt
 RELEASE-AUDIT-v5.15.0.txt
 RELEASE-AUDIT-v5.16.0.txt
 RELEASE-AUDIT-v5.16.1.txt
+RELEASE-AUDIT-v5.17.0.txt
 RELEASE-NOTES-v5.10.10.md
 RELEASE-NOTES-v5.10.11.md
 RELEASE-NOTES-v5.10.12.md
@@ -129,6 +131,7 @@ RELEASE-NOTES-v5.14.9.md
 RELEASE-NOTES-v5.15.0.md
 RELEASE-NOTES-v5.16.0.md
 RELEASE-NOTES-v5.16.1.md
+RELEASE-NOTES-v5.17.0.md
 RELEASE_NOTES-v5.10.1.md
 RELEASE_NOTES-v5.10.2.md
 RELEASE_NOTES-v5.10.3.md
@@ -1176,6 +1179,7 @@ tests/product5148_doctor_candidate_performance_version_test.js
 tests/product5150_personal_knowledge_separation_test.js
 tests/product5160_personal_knowledge_runtime_bridge_test.js
 tests/product5161_personal_knowledge_drive_storage_test.js
+tests/product5170_personal_knowledge_writer_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js
