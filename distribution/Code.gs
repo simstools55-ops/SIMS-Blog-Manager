@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.14.10
+ * SIMS-Blog-Manager Product v5.14.11
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.10';
+const SBM_VERSION = '5.14.11';
 // 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -7324,7 +7324,7 @@ function sbmApplyArticleManagementState(payload){
       try{sbmDoctorRemoveCandidateArticle_(String(article['ArticleID']||''),String(article['記事URL']||''));}catch(ignoreCandidate){}
     }
     sh.getRange(rowNo,1,1,row.length).setValues([row]);
-    // v5.14.10: 1記事の状態変更で全体再構築を行わない。
+    // 1記事の状態変更では全体再構築を行わない。
     // 重いToday/効果測定/Homeの再生成は次回の日次処理へ委ね、必要な操作ビューだけ即時除外する。
     if(action!=='restore'){
       try{sbmRemoveArticleFromOperationalViews_(String(article['ArticleID']||''),String(article['記事URL']||''));}catch(eView){try{sbmLog_('ArticleManagementView','Warning',String(eView));}catch(ignoreLog){}}
@@ -10048,7 +10048,8 @@ function onOpen() {
     .addItem('1．記事一覧を開く','sbmOpenAllBlogArticles')
     .addItem('2．選択記事の詳細を見る','sbmOpenSelectedArticleDbDetail')
     .addItem('3．選択記事の改善案を見る','sbmOpenSelectedImprovementNavi')
-    .addItem('4．選択記事の管理状態を変更','sbmOpenSelectedArticleManagementDialog')
+    .addItem('4．選択記事をArticle Doctorに診断依頼','sbmDoctorCreateRequestFromArticleList')
+    .addItem('5．選択記事の管理状態を変更','sbmOpenSelectedArticleManagementDialog')
     .addSeparator()
     .addItem('記事ランク順','sbmSortArticlesByRank')
     .addItem('改善状態順','sbmSortArticlesByWork')
@@ -10068,17 +10069,14 @@ function onOpen() {
 
   // 正式フロー: SBM → Doctor → Writer / Creator / Merge → SBM。
   // Doctor診断結果のSBM登録は通常不要。SBMは処置結果・効果測定・再診を管理します。
-  ui.createMenu('SIMS Doctor')
-    .addItem('1．ブログ健康診断を実行','sbmDoctorRunHealthCheck')
-    .addItem('2．健康診断書を開く','sbmDoctorOpenHealthReport')
+  ui.createMenu('SIMS Article Doctor')
+    .addItem('1．Site Doctor健康診断を実行','sbmDoctorRunHealthCheck')
+    .addItem('2．Site Doctor診断書を開く','sbmDoctorOpenHealthReport')
     .addItem('3．精密診断候補を見る','sbmDoctorOpenDetailedCandidates')
-    .addItem('4．チェックした記事のDoctor依頼文を作る','sbmDoctorCreateRequestFromDetailedCandidate')
-    .addItem('5．Site Diagnosisの処置を進める','sbmDoctorRegisterSiteDiagnosisResult')
+    .addItem('4．選択記事をArticle Doctorに診断依頼','sbmDoctorCreateRequestFromDetailedCandidate')
+    .addItem('5．Site Doctorの処置を進める','sbmDoctorRegisterSiteDiagnosisResult')
     .addSeparator()
     .addItem('Merge済み吸収記事を補正','sbmRepairCompletedMergeAbsorbedArticles')
-    .addSeparator()
-    .addItem('個別診断：記事一覧から依頼する','sbmDoctorCreateRequestFromArticleList')
-    .addItem('個別診断：改善の推移から依頼する','sbmDoctorCreateRequestFromEffect')
     .addToUi();
 
   // 既存Homeがあれば表示するだけ。再集計・再装飾・flushは行わない。
@@ -10850,7 +10848,7 @@ const SBM_DOCTOR_QUERY_LIMIT = 200;
 function sbmDoctorCreateRequestFromArticleList() {
   var sh = SpreadsheetApp.getActiveSheet();
   if (!sh || sh.getName() !== SBM_SHEETS.ARTICLE_DB) {
-    return sbmAlert_('SIMS Doctor', '記事一覧（記事管理）を開き、対象記事を1件選択してください。');
+    return sbmAlert_('SIMS Article Doctor', '記事一覧（記事管理）を開き、対象記事を1件選択してください。');
   }
   var row = sbmGetCheckedRow_(sh);
   if (!row) return;
@@ -11141,7 +11139,7 @@ function sbmDoctorCreateAndSaveRequest_(sourceType, sourceSheet, sourceRow) {
     return sbmDoctorCreateAndSaveResolvedRequest_(context);
   } catch (e) {
     try { sbmLog_('DoctorSingleCaseRequest', 'Error', String(e)); } catch (ignore) {}
-    sbmAlert_('SIMS Doctor 外来診療依頼を作成できません', String(e && e.message ? e.message : e));
+    sbmAlert_('SIMS Article Doctor診断依頼を作成できません', String(e && e.message ? e.message : e));
     return {ok:false, error:String(e)};
   }
 }
@@ -11436,7 +11434,7 @@ function sbmDoctorShowCopyDialog_(payload, jsonText) {
     'let mergeCompletionCaseId="";function showMergeUserActions(r){const sec=document.getElementById("mergeUserActionSection");if(!sec)return;mergeCompletionCaseId=String(r.caseId||"");const ctx=r.completionContext||{},p=ctx.primary||{},abs=Array.isArray(ctx.absorbed)?ctx.absorbed:[];document.getElementById("mergeUserActionTarget").textContent="次の操作：統合先 "+String(p.articleId||"")+(abs.length?" ／ 吸収 "+abs.map(x=>String(x.articleId||"")).filter(Boolean).join("・"):"" );const links=document.getElementById("mergeUserArticleLinks");links.innerHTML="";function addLink(label,url){if(!url)return;const a=document.createElement("a");a.className="link-button";a.target="_blank";a.rel="noopener noreferrer";a.href=url;a.textContent=label;links.appendChild(a)}addLink("統合先記事を開く",String(p.articleUrl||""));abs.forEach(function(x,i){addLink("吸収記事"+(abs.length>1?" "+(i+1):"")+"を開く",String(x.articleUrl||""))});sec.classList.remove("hidden");scrollNextAction("mergeUserActionSection","mergeUserCompleteButton")}function completeMergeUserActions(){const st=document.getElementById("mergeUserStatus"),b=document.getElementById("mergeUserCompleteButton");const checks={articlePublished:document.getElementById("mergeUserPublished").checked,redirectDone:document.getElementById("mergeUserRedirect").checked,redirectUnavailable:document.getElementById("mergeUserRedirectUnavailable").checked};if(!checks.articlePublished||(!checks.redirectDone&&!checks.redirectUnavailable)){st.className="status error";st.textContent="統合原稿の公開と、301設定または「301設定不可・検索対象外化」のどちらかを確認してください。";return}b.disabled=true;b.textContent="登録中...";st.className="status";st.textContent="改善履歴とモニター状態を登録しています…";google.script.run.withSuccessHandler(function(r){if(!r||!r.ok){b.disabled=false;b.textContent="処置完了として登録";st.className="status error";st.textContent=r&&r.message?r.message:"登録できませんでした。";return}b.textContent="登録しました";st.className="status ok";st.textContent=r.message||"モニター中へ移しました。";scrollNextAction("mergeUserActionSection","mergeUserCompleteButton")}).withFailureHandler(function(e){b.disabled=false;b.textContent="処置完了として登録";st.className="status error";st.textContent=e&&e.message?e.message:String(e)}).sbmDoctorCompleteSiteDiagnosisMergeTreatment(mergeCompletionCaseId,checks)}' +
     'function registerMergeResult(){const result=document.getElementById("mergeResult").value.trim();const st=document.getElementById("mergeStatus");if(!result){st.className="status error";st.textContent="Mergeの回答全文、または処置結果JSONを貼り付けてください。";return}const b=document.getElementById("mergeRegisterButton");b.disabled=true;b.textContent="登録中...";st.className="status";st.textContent="Merge処置結果をSBMへ登録しています…";google.script.run.withSuccessHandler(function(r){if(!r||!r.ok){b.disabled=false;b.textContent="Merge処置結果を登録";st.className="status error";st.textContent=r&&r.message?r.message:"処理に失敗しました。";return}b.textContent="登録しました";st.className="status ok";st.textContent=r.message||"Merge処置結果を登録しました。";progress(5);if(r.mergedArticleReady){showMergeUserActions(r)}else{scrollNextAction("mergeSection","mergeRegisterButton")}}).withFailureHandler(function(e){b.disabled=false;b.textContent="Merge処置結果を登録";st.className="status error";st.textContent=e&&e.message?e.message:String(e)}).sbmDoctorRegisterMergeTreatmentResultFromDialog(result)}' +
     '</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(720), 'SIMS Doctor 精密診断');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(820).setHeight(720), 'SIMS Article Doctor 精密診断');
 }
 
 function sbmDoctorEscapeHtml_(value) {
@@ -12444,8 +12442,8 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(candidateContext){
   }
   var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL','候補キー'];
   cand.setHiddenGridlines(true);
-  cand.getRange('A1:H1').merge().setValue('SIMS Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
-  cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Doctorメニューの「4．チェックした記事のDoctor依頼文を作る」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
+  cand.getRange('A1:H1').merge().setValue('SIMS Article Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
+  cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Article Doctorメニューの「4．選択記事をArticle Doctorに診断依頼」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
   var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm),title=String(r[hm['記事タイトル']-1]||''),sev=sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),key=String(id)+'|'+sbmNormalizeUrl_(url)+'|'+title;return [false,sev,title,m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url,key];});
   if(out.length)cand.getRange(7,1,out.length,headers.length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
@@ -12598,7 +12596,9 @@ function sbmDoctorCreateAndSaveResolvedRequest_(context){
 function sbmDoctorCreateRequestFromDetailedCandidate(){
   try{
     sbmDoctorAssertSafeToExport_();
-    var ss=SpreadsheetApp.getActiveSpreadsheet(),sh=ss.getSheetByName('Doctor_精密診断候補');
+    var ss=SpreadsheetApp.getActiveSpreadsheet(),active=ss.getActiveSheet();
+    if(!active||active.getName()!=='Doctor_精密診断候補')throw new Error('精密診断候補シートを開き、対象記事を1件選択してください。');
+    var sh=active;
     if(!sh)throw new Error('精密診断候補がありません。先にブログ健康診断を完了してください。');
     var col=sbmDoctorReferralHeaderMap_(sh),last=sh.getLastRow();
     if(last<7)throw new Error('診断対象の記事がありません。');
@@ -12633,7 +12633,7 @@ function sbmDoctorCreateRequestFromDetailedCandidate(){
       sh.deleteRow(row);
     }
     return result;
-  }catch(e){sbmAlert_('Doctor診断依頼を作成できません',String(e.message||e));}
+  }catch(e){sbmAlert_('Article Doctor診断依頼を作成できません',String(e.message||e));}
 }
 
 function sbmDoctorOpenTreatmentGuide(){
