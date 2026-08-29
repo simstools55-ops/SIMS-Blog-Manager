@@ -1,6 +1,6 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.17.0",
+  "current_version": "5.18.0",
   "release_status": "MINOR",
-  "notes": "Separates owner/site-specific knowledge from the distributable product and replaces hard-coded blog-title normalization with configured BlogName while preserving existing contracts and data compatibility."
+  "notes": "Adds Article Doctor Personal Knowledge candidate ingestion with replay-safe confirmation tracking and clarifies Site Doctor candidate UI while preserving existing contracts and sheet names."
 }

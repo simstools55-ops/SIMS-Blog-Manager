@@ -94,6 +94,7 @@ RELEASE-AUDIT-v5.15.0.txt
 RELEASE-AUDIT-v5.16.0.txt
 RELEASE-AUDIT-v5.16.1.txt
 RELEASE-AUDIT-v5.17.0.txt
+RELEASE-AUDIT-v5.18.0.txt
 RELEASE-NOTES-v5.10.10.md
 RELEASE-NOTES-v5.10.11.md
 RELEASE-NOTES-v5.10.12.md
@@ -132,6 +133,7 @@ RELEASE-NOTES-v5.15.0.md
 RELEASE-NOTES-v5.16.0.md
 RELEASE-NOTES-v5.16.1.md
 RELEASE-NOTES-v5.17.0.md
+RELEASE-NOTES-v5.18.0.md
 RELEASE_NOTES-v5.10.1.md
 RELEASE_NOTES-v5.10.2.md
 RELEASE_NOTES-v5.10.3.md
@@ -642,6 +644,7 @@ scripts/release_audit.py
 shared/.gitignore
 shared/CHANGELOG.md
 shared/COMPATIBILITY_MATRIX.md
+shared/FILE_MANIFEST.txt
 shared/LICENSE
 shared/PERSONAL_KNOWLEDGE_SEPARATION_BACKPORT.md
 shared/PLATFORM_MANIFEST.json
@@ -682,6 +685,7 @@ shared/RELEASE_NOTES_v3.2.0.md
 shared/RELEASE_NOTES_v3.3.0.md
 shared/RELEASE_NOTES_v3.4.0.md
 shared/RELEASE_NOTES_v3.5.0.md
+shared/SHA256SUMS.txt
 shared/SNAPSHOT_MANIFEST.json
 shared/VERSION
 shared/architecture/CLAUDE_OPERATIONS.md
@@ -1180,6 +1184,7 @@ tests/product5150_personal_knowledge_separation_test.js
 tests/product5160_personal_knowledge_runtime_bridge_test.js
 tests/product5161_personal_knowledge_drive_storage_test.js
 tests/product5170_personal_knowledge_writer_test.js
+tests/product5180_personal_knowledge_article_doctor_integration_test.js
 tests/product5610_mapping_guard_test.js
 tests/product5611_operations_test.js
 tests/product5612_home_monitor_test.js

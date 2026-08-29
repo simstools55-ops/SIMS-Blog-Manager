@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.17.0
+ * SIMS-Blog-Manager Product v5.18.0
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.17.0';
+const SBM_VERSION = '5.18.0';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -1412,6 +1412,7 @@ function sbmPersonalKnowledgeNormalizeCandidate_(candidate) {
     source_type:String(c.source_type || 'INFERENCE').trim().toUpperCase(),
     evidence_refs:Array.isArray(c.evidence_refs) ? c.evidence_refs.map(String) : [],
     proposed_at:String(c.proposed_at || new Date().toISOString()),
+    confirmation_event_id:String(c.confirmation_event_id||c.source_event_id||'').trim(),
     explicit_user_confirmation:!!c.explicit_user_confirmation,
     deterministic_state:!!c.deterministic_state
   };
@@ -1472,13 +1473,17 @@ function sbmPersonalKnowledgeWriteCandidate_(candidate) {
 
     if (existing) {
       existing.last_confirmed_at = now;
-      existing.confirmation_count = Number(existing.confirmation_count || 1) + 1;
       existing.confidence = Math.max(Number(existing.confidence || 0), c.confidence);
+      existing.evidence_refs = Array.from(new Set((existing.evidence_refs || []).concat(c.evidence_refs || [])));
+      var eventId=String(c.confirmation_event_id||'').trim();
+      if(!Array.isArray(existing.confirmation_event_ids)) existing.confirmation_event_ids=[];
+      var isIndependent=!eventId || existing.confirmation_event_ids.indexOf(eventId)<0;
+      if(eventId && isIndependent) existing.confirmation_event_ids.push(eventId);
+      if(isIndependent) existing.confirmation_count = Number(existing.confirmation_count || 1) + 1;
       if (existing.status === 'CANDIDATE' && existing.confirmation_count >= 2) {
         existing.status = 'ACCEPTED';
         existing.admission_reason = 'REPEATED_INDEPENDENT_CONFIRMATION';
       }
-      existing.evidence_refs = Array.from(new Set((existing.evidence_refs || []).concat(c.evidence_refs || [])));
     } else {
       doc.items.push({
         knowledge_id:'PK-' + Utilities.getUuid(),
@@ -1495,6 +1500,7 @@ function sbmPersonalKnowledgeWriteCandidate_(candidate) {
         created_at:now,
         last_confirmed_at:now,
         confirmation_count:1,
+        confirmation_event_ids:c.confirmation_event_id?[String(c.confirmation_event_id)]:[],
         admission_reason:admission.reason
       });
     }
@@ -10428,8 +10434,8 @@ function onOpen() {
     .addItem('2．サイト健康診断書を開く','sbmDoctorOpenHealthReport')
     .addItem('3．精密診断候補を見る','sbmDoctorOpenDetailedCandidates')
     .addItem('4．選択記事をArticle Doctorに診断依頼','sbmDoctorCreateRequestFromDetailedCandidate')
-    .addItem('5．Site Doctor診断結果の処置を進める','sbmDoctorRegisterSiteDiagnosisResult')
     .addSeparator()
+    .addItem('Site Doctor診断結果の処置を進める','sbmDoctorRegisterSiteDiagnosisResult')
     .addItem('Merge済み吸収記事を補正','sbmRepairCompletedMergeAbsorbedArticles')
     .addToUi();
 
@@ -12798,8 +12804,8 @@ function sbmDoctorRebuildCandidateViewFromSnapshot_(candidateContext){
   }
   var headers=['選択','重症度','記事タイトル','傾向','クリック','表示','順位','CTR','記事ID','記事URL','候補キー'];
   cand.setHiddenGridlines(true);
-  cand.getRange('A1:H1').merge().setValue('SIMS Article Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
-  cand.getRange('A2:H2').merge().setValue('詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Article Doctorメニューの「4．選択記事をArticle Doctorに診断依頼」を実行してください。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
+  cand.getRange('A1:H1').merge().setValue('SIMS Site Doctor　精密診断候補').setBackground('#0b5d3b').setFontColor('#ffffff').setFontSize(16).setFontWeight('bold').setVerticalAlignment('middle');
+  cand.getRange('A2:H2').merge().setValue('Site Doctor健康診断で抽出された、詳しい診断が必要な未処理記事だけを表示しています。1件選び、SIMS Site Doctorメニューの「4．選択記事をArticle Doctorに診断依頼」を実行してください。候補抽出はSite Doctor、1記事の精密診断はArticle Doctorが担当します。').setBackground('#eef5ee').setWrap(true).setVerticalAlignment('middle');
   cand.getRange(6,1,1,headers.length).setValues([headers]).setFontWeight('bold').setBackground('#0b5d3b').setFontColor('#ffffff');
   var out=selectedRows.map(function(r){var code=String(r[hm['一次検査コード']-1]||''),id=String(r[hm['記事ID']-1]||''),url=String(r[hm['記事URL']-1]||''),m=sbmDoctorCandidateMetrics_(code,r,hm),title=String(r[hm['記事タイトル']-1]||''),sev=sbmDoctorSeverityForRow_(code,String(r[hm['優先度']-1]||''),r,hm),key=String(id)+'|'+sbmNormalizeUrl_(url)+'|'+title;return [false,sev,title,m.trend,m.clicks,m.impressions,m.position,m.ctr,id,url,key];});
   if(out.length)cand.getRange(7,1,out.length,headers.length).setValues(out);else cand.getRange('A7').setValue('今回、精密診断を優先する未処理記事はありません。');
@@ -13548,6 +13554,10 @@ function sbmDoctorRegisterResultAndBuildNext(requestJsonText,doctorResultText){
     if(String(n.caseId)!==sourceCase)throw new Error('CaseIDが一致しません。別の記事の診断結果が貼り付けられています。\n依頼：'+sourceCase+'\n結果：'+n.caseId);
     var resultArticle=String(doctor.article_id||doctor.article&&doctor.article.article_id||'');if(resultArticle&&sourceArticle&&resultArticle!==sourceArticle)throw new Error('ArticleIDが一致しません。別の記事の診断結果です。');
     var saved=sbmDoctorStoreCaseResult_(doctor,n);
+    // v5.18.0: Article Doctorの再利用可能な学習候補をPersonal Knowledgeへ非同期的に取り込む。
+    // 失敗しても診断結果登録・紹介状生成は止めない。
+    var pkIngest=sbmPersonalKnowledgeIngestPayload_(doctor,'SIMS Article Doctor');
+    if(pkIngest && pkIngest.error){sbmLog_('PersonalKnowledgeWriter','Warning','Article Doctor candidate ingest error count: '+pkIngest.error);}
     if(n.locked)return {ok:true,message:'Article Doctor診断結果を登録しました。',nextTitle:'現在は処置を開始しません',nextMessage:'既存の改善効果を測定中です。測定完了後に再診してください。',nextRequest:''};
     if(n.mergeReady){var mreq=sbmDoctorBuildMergeTreatmentRequest_(source,doctor,n),mtext=JSON.stringify(mreq,null,2);sbmDoctorSaveGeneratedMergeRequest_(n.caseId,mreq);return {ok:true,message:'Article Doctor診断結果を登録し、Merge紹介状／Merge Packageを作成しました。',route:'MERGE',nextTitle:'③ 次はSIMS Mergeです',nextMessage:'下のMerge Packageをすべてコピーし、SIMS Mergeへそのまま貼り付けてください。統合対象記事の本文・GSC Evidence・Article Doctorの統合方向をSBMが同梱しています。',nextRequest:mtext};}
     if(n.writerReady){var req=sbmDoctorBuildWriterTreatmentRequest_(source,doctor,n),text=JSON.stringify(req,null,2);sbmDoctorSaveGeneratedWriterRequest_(n.caseId,req);return {ok:true,message:'Article Doctor診断結果を登録し、Writer紹介状を作成しました。',route:'WRITER',nextTitle:'③ 次はSIMS Writerです',nextMessage:'下の紹介状をすべてコピーし、SIMS Writerへそのまま貼り付けてください。記事本文・クエリ・内部リンク候補・Article Doctorの治療方針を含んでいます。',nextRequest:text};}

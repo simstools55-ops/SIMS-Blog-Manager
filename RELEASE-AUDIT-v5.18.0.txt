@@ -1,0 +1,7 @@
+SIMS Blog Manager v5.18.0 Release Audit
+- Article Doctor knowledge candidate ingestion: added
+- Non-blocking Personal Knowledge failure: preserved
+- Duplicate replay independent-confirmation guard: added
+- Site Doctor candidate UI wording: corrected
+- Site Doctor result action numbering: removed
+- Legacy identifiers/contracts/sheet names: preserved
