@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.18.2  
+> **Current product:** SIMS-Blog-Manager v5.18.3  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.18.2`
+- Product Version: `5.18.3`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `PATCH`
-- Main feature: Article Doctor単票結果の取込回帰を修正し、Site Doctor追跡IDの有無に応じて安全に検証・Personal Knowledge学習へ接続します。
+- Main feature: Personal Knowledgeの初期化失敗を可視化し、候補が無言でREJECTされる経路を修正。接続確認機能とCloud Loggingを追加します。
 
-> Current release: SIMS-Blog-Manager Product v5.18.2
+> Current release: SIMS-Blog-Manager Product v5.18.3
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
@@ -31,7 +31,7 @@
 
 Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
-# SIMS-Blog-Manager v5.18.2
+# SIMS-Blog-Manager v5.18.3
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 

@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.18.2';
+const SBM_VERSION = '5.18.3';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -1406,18 +1406,31 @@ function sbmPersonalKnowledgeEnsureSite_(hint) {
   return siteId;
 }
 
+function sbmPersonalKnowledgeLog_(status, detail) {
+  var text = String(detail || '');
+  try { sbmLog_('PersonalKnowledge', status || 'Info', text); } catch (e) {}
+  try {
+    if (String(status || '').toUpperCase() === 'WARNING' || String(status || '').toUpperCase() === 'ERROR') console.warn('[SIMS Personal Knowledge] ' + text);
+    else console.log('[SIMS Personal Knowledge] ' + text);
+  } catch (e2) {}
+}
+
 function sbmPersonalKnowledgeGetContext_(hint) {
   try {
     var siteId = sbmPersonalKnowledgeEnsureSite_(hint);
-    return {
+    var out = {
       available:!!siteId,
       schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,
       site_id:siteId || ''
     };
+    if (out.available) sbmPersonalKnowledgeLog_('Info','Context ready: site_id=' + out.site_id);
+    else sbmPersonalKnowledgeLog_('Warning','Context unavailable: site identity could not be resolved.');
+    return out;
   } catch (e) {
     // Personal Knowledge failure must never block normal SBM operation.
-    sbmLog_('PersonalKnowledge','Warning',String(e && e.message || e));
-    return {available:false,schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,site_id:'',error:String(e && e.message || e)};
+    var msg = String(e && e.message || e);
+    sbmPersonalKnowledgeLog_('Warning','Context bootstrap failed: ' + msg);
+    return {available:false,schema_version:SBM_PERSONAL_KNOWLEDGE_SCHEMA_VERSION,site_id:'',error:msg};
   }
 }
 
@@ -1568,8 +1581,13 @@ function sbmPersonalKnowledgeExtractCandidates_(payload, sourceProduct, identity
   if (Array.isArray(o.knowledge_candidates)) raw = o.knowledge_candidates;
   else if (Array.isArray(o.knowledge_candidate)) raw = o.knowledge_candidate;
   else if (o.knowledge_candidate && typeof o.knowledge_candidate === 'object') raw = [o.knowledge_candidate];
+  if (!raw.length) return [];
   // Prefer the trusted SBM request/site context over an empty AI-produced site_id.
   var ctx = sbmPersonalKnowledgeGetContext_(identityHint || o);
+  var needsSite = raw.some(function(x){ return String(x && x.scope || 'SITE').toUpperCase() === 'SITE' && !String(x && x.site_id || '').trim(); });
+  if (needsSite && (!ctx.available || !ctx.site_id)) {
+    throw new Error('PK_CONTEXT_UNAVAILABLE: ' + String(ctx.error || 'Personal Knowledge site identity could not be resolved.'));
+  }
   return raw.map(function(x){
     var c = Object.assign({},x);
     if (!c.source_product) c.source_product = sourceProduct || 'SIMS';
@@ -1579,9 +1597,44 @@ function sbmPersonalKnowledgeExtractCandidates_(payload, sourceProduct, identity
 }
 
 function sbmPersonalKnowledgeIngestPayload_(payload, sourceProduct, identityHint) {
-  var candidates = sbmPersonalKnowledgeExtractCandidates_(payload,sourceProduct,identityHint);
-  if (!candidates.length) return {ok:true,total:0,written:0,results:[]};
-  return sbmPersonalKnowledgeSubmitCandidates_(candidates);
+  try {
+    var candidates = sbmPersonalKnowledgeExtractCandidates_(payload,sourceProduct,identityHint);
+    if (!candidates.length) return {ok:true,total:0,written:0,candidate:0,accepted:0,rejected:0,error:0,results:[],message:'No Personal Knowledge candidates.'};
+    var out = sbmPersonalKnowledgeSubmitCandidates_(candidates);
+    out.message = 'Personal Knowledge: received=' + out.total + ', written=' + out.written + ', candidate=' + out.candidate + ', accepted=' + out.accepted + ', rejected=' + out.rejected + ', error=' + out.error;
+    sbmPersonalKnowledgeLog_(out.ok ? 'Info' : 'Warning', out.message);
+    return out;
+  } catch (e) {
+    var msg = String(e && e.message || e);
+    sbmPersonalKnowledgeLog_('Warning','Ingest failed: ' + msg);
+    return {ok:false,total:0,written:0,candidate:0,accepted:0,rejected:0,error:1,results:[],message:msg};
+  }
+}
+
+function sbmPersonalKnowledgeCheckAndInitialize_(hint) {
+  try {
+    var root = sbmPersonalKnowledgeEnsureRoot_();
+    var ctx = sbmPersonalKnowledgeGetContext_(hint);
+    if (!ctx.available || !ctx.site_id) throw new Error(ctx.error || 'Personal Knowledge site identity could not be resolved.');
+    var check = sbmPersonalKnowledgeJsonFile_(root, SBM_PERSONAL_KNOWLEDGE_MARKER_FILE, null);
+    if (!check || check.format !== 'SIMS_PERSONAL_EDITORIAL_KNOWLEDGE') throw new Error('Personal Knowledge MANIFEST.json verification failed.');
+    var result = {ok:true,root_id:root.getId(),root_name:root.getName(),site_id:ctx.site_id,schema_version:ctx.schema_version};
+    sbmPersonalKnowledgeLog_('Info','Self-check passed: root_id=' + result.root_id + ', site_id=' + result.site_id);
+    return result;
+  } catch (e) {
+    var msg=String(e && e.message || e);
+    sbmPersonalKnowledgeLog_('Warning','Self-check failed: ' + msg);
+    return {ok:false,message:msg};
+  }
+}
+
+function sbmPersonalKnowledgeCheckAndInitializeMenu() {
+  var r = sbmPersonalKnowledgeCheckAndInitialize_();
+  if (r && r.ok) {
+    sbmAlert_('Personal Knowledge 接続確認', '接続・初期化は正常です。\n\nDriveフォルダー：' + r.root_name + '\nPersonal Knowledge Site ID：' + r.site_id + '\nSchema：' + r.schema_version + '\n\nこの操作は通常運用では不要です。');
+  } else {
+    sbmAlert_('Personal Knowledge 接続確認', 'Personal Knowledgeを初期化できませんでした。\n\n詳細：' + String(r && r.message || '原因不明') + '\n\nApps ScriptのDrive権限と appsscript.json の oauthScopes を確認してください。');
+  }
 }
 
 function sbmEnsureSiteIdentity_() {
@@ -10417,6 +10470,7 @@ function onOpen() {
     .addItem('Creatorで作った新記事を登録','sbmOpenCreatorPublicationRegisterDialog')
     .addItem('シートの作成・修復','sbmInitializeSheets')
     .addItem('詳細設定を開く','sbmOpenUserSettings')
+    .addItem('Personal Knowledge接続を確認','sbmPersonalKnowledgeCheckAndInitializeMenu')
     .addSeparator()
     .addItem('バージョン情報','sbmShowVersionInfo')
     .addToUi();
@@ -14284,17 +14338,17 @@ function sbmDoctorProcessSiteDiagnosisSingleResult_(o){
     var mreq=sbmDoctorBuildMergeTreatmentRequest_(source,o,n);
     if(isSiteDiagnosis)mreq.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
     sbmDoctorSaveGeneratedMergeRequest_(id.caseId,mreq);
-    return {ok:true,route:'MERGE',mergeReady:true,writerReady:false,message:'Merge紹介状／Package作成済み',request:JSON.stringify(mreq,null,2),mergeRequest:JSON.stringify(mreq,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,personalKnowledge:pkIngest,route:'MERGE',mergeReady:true,writerReady:false,message:'Merge紹介状／Package作成済み',request:JSON.stringify(mreq,null,2),mergeRequest:JSON.stringify(mreq,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
   }
   if(n.writerReady){
     var req=sbmDoctorBuildWriterTreatmentRequest_(source,o,n);
     if(isSiteDiagnosis)req.site_diagnosis_context={site_diagnosis_batch_id:id.siteDiagnosisBatchId,site_diagnosis_case_id:id.siteDiagnosisCaseId,case_id:id.caseId};
     sbmDoctorSaveGeneratedWriterRequest_(id.caseId,req);
-    return {ok:true,route:'WRITER',writerReady:true,mergeReady:false,message:'Writer紹介状作成済み',request:JSON.stringify(req,null,2),writerRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,personalKnowledge:pkIngest,route:'WRITER',writerReady:true,mergeReady:false,message:'Writer紹介状作成済み',request:JSON.stringify(req,null,2),writerRequest:JSON.stringify(req,null,2),caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
   }
   if(n.monitor){try{sbmSetArticleWorkStateByIdentity_(id.articleId,id.articleUrl,'👀 モニター中');}catch(ignoreMonitor){}
-    return {ok:true,route:'MONITOR',writerReady:false,mergeReady:false,message:'経過観察',caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};}
-  return {ok:true,route:'OTHER',writerReady:false,mergeReady:false,message:saved.label,caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
+    return {ok:true,personalKnowledge:pkIngest,route:'MONITOR',writerReady:false,mergeReady:false,message:'経過観察',caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};}
+  return {ok:true,personalKnowledge:pkIngest,route:'OTHER',writerReady:false,mergeReady:false,message:saved.label,caseId:id.caseId,siteDiagnosisCaseId:id.siteDiagnosisCaseId||'',articleUrl:id.articleUrl,articleTitle:String(article['記事タイトル']||article['H1タイトル']||'')};
 }
 
 function sbmDoctorExtractCaseResultsFromAnswer_(rawText){
@@ -14500,7 +14554,8 @@ function sbmDoctorSubmitSiteDiagnosisResult(rawText){
     var format=String(o.format||'');
     if(format==='SIMS_DOCTOR_CASE_RESULT_V2'){
       var single=sbmDoctorProcessSiteDiagnosisSingleResult_(o);
-      single.message='Site Doctor診断結果をSBMへ登録しました。\nCaseID：'+single.caseId+'\n状態：'+single.message;
+      single.message='Article Doctor診断結果をSBMへ登録しました。\nCaseID：'+single.caseId+'\n状態：'+single.message;
+      if(single.personalKnowledge){var pk=single.personalKnowledge;single.message+='\nPersonal Knowledge：'+(pk.ok?('候補'+Number(pk.total||0)+'件 / 保存'+Number(pk.written||0)+'件'):('保存できませんでした（'+String(pk.message||'原因不明')+'）'));}
       if(single.request)single.actions=[{route:single.route,request:single.request,caseId:single.caseId,articleUrl:single.articleUrl,articleTitle:single.articleTitle||'',keyword:single.keyword||''}];
       return single;
     }

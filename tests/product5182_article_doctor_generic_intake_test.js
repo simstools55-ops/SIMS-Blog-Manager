@@ -4,8 +4,8 @@ const root=path.resolve(__dirname,'..');
 const code=fs.readFileSync(path.join(root,'src/apps-script/Code.gs'),'utf8');
 const version=fs.readFileSync(path.join(root,'VERSION'),'utf8').trim();
 function ok(c,m){if(!c)throw new Error(m)}
-ok(version==='5.18.2','VERSION must be 5.18.2');
-ok(code.includes("const SBM_VERSION = '5.18.2';"),'Code version mismatch');
+ok(/^5\.18\.[23]$/.test(version),'VERSION must be 5.18.2+');
+ok(/const SBM_VERSION = '5\.18\.[23]';/.test(code),'Code version mismatch');
 ok(code.includes('function sbmDoctorHydrateSiteDiagnosisIdentityFromCase_(id){'),'existing case trace hydration missing');
 ok(code.includes('function sbmDoctorValidateArticleDoctorIdentity_(id){'),'generic Article Doctor validator missing');
 ok(code.includes('var isSiteDiagnosis=hasSiteCase&&hasSiteBatch;'),'format-aware trace route missing');

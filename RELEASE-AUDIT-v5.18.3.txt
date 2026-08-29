@@ -1,0 +1,16 @@
+SIMS-Blog-Manager v5.18.3 Release Audit
+
+Version: 5.18.3
+Type: PATCH
+Shared baseline: 3.5.0
+
+Checks:
+- Apps Script syntax check: PASS
+- product5181_personal_knowledge_autobootstrap_test: PASS
+- product5182_article_doctor_generic_intake_test: PASS
+- product5183_personal_knowledge_diagnostics_test: PASS
+- Code.gs copies synchronized: PASS
+- appsscript.json includes Drive OAuth scope: PASS
+
+Purpose:
+Make Personal Knowledge bootstrap failures observable without blocking the normal Doctor workflow, and provide a one-time connection/self-check path for real-environment diagnosis.

@@ -1,3 +1,11 @@
+# CHANGELOG
+
+## 5.18.3
+- Personal Knowledge bootstrap errors are surfaced to the registration dialog and Cloud Logging.
+- Added a non-routine Personal Knowledge connection/self-check command.
+- Prevent silent SITE candidate rejection when PK context initialization itself fails.
+- Correct single Article Doctor result completion label in the Site Doctor intake dialog.
+
 ## v5.18.2 - 2026-08-30
 
 - Article Doctor単票結果をSite Doctor追跡IDなしで安全に受理する回帰修正。
