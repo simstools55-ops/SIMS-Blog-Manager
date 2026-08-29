@@ -1,18 +1,18 @@
 # SIMS-Blog-Manager
 
-> **Current product:** SIMS-Blog-Manager v5.14.9  
+> **Current product:** SIMS-Blog-Manager v5.14.10  
 > **Version policy:** `vX.Y.Z` (major.minor.patch)  
 > **Shared Editorial Knowledge:** v3.5.0
 
 ## Current release
 
-- Product Version: `5.14.9`
+- Product Version: `5.14.10`
 - Shared Version: `3.5.0`
 - Repository Type: `Product`
 - Release type: `PATCH`
 - Main feature: 単一選択チェックボックス統一、noindex等の可逆な管理対象外処理、301非対応ブログのMerge吸収記事除外を追加しました。
 
-> Current release: SIMS-Blog-Manager Product v5.14.9
+> Current release: SIMS-Blog-Manager Product v5.14.10
 
 ## Product 5.6.12 — 改善推移指標・Homeモニター表示
 
@@ -31,13 +31,13 @@
 
 Search Consoleのページデータを記事DBへ渡す配列にH1タイトル用の空欄を追加し、数値4項目の列ずれを修正しました。異常値を検出した場合はDB更新を停止します。
 
-# SIMS-Blog-Manager v5.14.9
+# SIMS-Blog-Manager v5.14.10
 
 Google Search Consoleのデータを使い、改善する記事の選定、改善結果の記録、7日・14日・21日・28日の改善推移確認をGoogleスプレッドシートで管理する製品です。
 
 ## 正式バージョン
 
-`5.14.9`
+`5.14.10`
 
 ## Creatorで作った新記事の登録
 

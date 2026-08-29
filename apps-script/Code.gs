@@ -1,10 +1,10 @@
 /**
- * SIMS-Blog-Manager Product v5.14.9
+ * SIMS-Blog-Manager Product v5.14.10
  * SIMS-Core Slim Edition for blog SEO improvement management.
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.14.9';
+const SBM_VERSION = '5.14.10';
 // 改善履歴にモニタリングサイクル状態を正式導入。ACTIVE / REVIEW_REQUIRED / SUPERSEDED / COMPLETED でPDCAを管理し、推測フィルタ依存を廃止。
 // Product v5.10.10: Creator-route handoff support; repository/distribution Code.gs synchronization release.
 const QUERY_ROW_LIMIT = 200;
@@ -7277,8 +7277,33 @@ function sbmOpenSelectedArticleManagementDialog(){
   var html='<!doctype html><html><head><base target="_top"><style>body{font-family:Arial,"Noto Sans JP",sans-serif;padding:18px;color:#202124}h2{font-size:18px;margin:0 0 8px;color:#174ea6}.meta{background:#f8f9fa;border-radius:8px;padding:10px 12px;line-height:1.55;margin:8px 0 14px}.lead{margin:8px 0}.choice,.confirm{display:block;border:1px solid #dadce0;border-radius:8px;padding:11px 12px;margin:8px 0}.confirm{background:#fff8e1}.notice{background:#fce8e6;color:#8a1c13;border-radius:8px;padding:12px;line-height:1.6}.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}button{border:0;border-radius:6px;padding:9px 16px;cursor:pointer}.primary{background:#1a73e8;color:#fff}.secondary{background:#f1f3f4}.status{margin-top:10px;white-space:pre-wrap;font-size:13px}.err{color:#b31412}.ok{color:#188038}</style></head><body><h2>記事の管理状態を変更</h2><div class="meta">'+
     sbmDoctorEscapeHtml_((id?id+'　':'')+title)+'<br>'+sbmDoctorEscapeHtml_(url)+'<br>現在：'+sbmDoctorEscapeHtml_(String(rec['作業状態']||'')+' / '+String(rec['記事ステータス']||'')+' / '+String(rec['管理フラグ']||''))+'</div>'+options+
     '<div class="actions"><button class="secondary" onclick="google.script.host.close()">閉じる</button>'+(locked?'':'<button id="submit" class="primary" onclick="submitState()">登録</button>')+'</div><div id="status" class="status"></div><script>document.querySelectorAll(".one").forEach(function(x){x.addEventListener("change",function(){if(!this.checked)return;document.querySelectorAll(".one").forEach(function(y){if(y!==x)y.checked=false})})});function submitState(){var action="";["restore","noindex","unpublished","other"].forEach(function(id){var e=document.getElementById(id);if(e&&e.checked)action=id});var st=document.getElementById("status");if(!action){st.className="status err";st.textContent="処置を1つ選択してください。";return}var confirmId=action==="restore"?"restoreConfirmed":"excludeConfirmed",c=document.getElementById(confirmId);if(!c||!c.checked){st.className="status err";st.textContent="ブログ側の状態確認にもチェックしてください。";return}var b=document.getElementById("submit");b.disabled=true;b.textContent="登録中…";google.script.run.withSuccessHandler(function(r){b.disabled=false;b.textContent="登録";if(!r||!r.ok){st.className="status err";st.textContent=r&&r.message?r.message:"登録できませんでした。";return}st.className="status ok";st.textContent=r.message||"登録しました。";setTimeout(function(){google.script.host.close()},900)}).withFailureHandler(function(e){b.disabled=false;b.textContent="登録";st.className="status err";st.textContent=e&&e.message?e.message:String(e)}).sbmApplyArticleManagementState({articleId:'+JSON.stringify(id)+',articleUrl:'+JSON.stringify(url)+',action:action,confirmed:true})}</script></body></html>';
-  SpreadsheetApp.getUi().showModalDialog(sbmEnsureCloseButton_(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(520)),'記事の管理状態');
+  SpreadsheetApp.getUi().showModalDialog(HtmlService.createHtmlOutput(html).setWidth(620).setHeight(520),'記事の管理状態');
 }
+function sbmRemoveArticleFromOperationalViews_(articleId,url){
+  var ss=SpreadsheetApp.getActiveSpreadsheet(),norm=sbmNormalizeUrl_(url||'');
+  // Doctor候補: 一括読込後、該当行だけ削除。候補は最大10件なのでSpreadsheet呼出しを最小化する。
+  var cand=ss.getSheetByName('Doctor_精密診断候補');
+  if(cand&&cand.getLastRow()>=7){
+    var hm=sbmDoctorReferralHeaderMapNoRepair_(cand),idCol=hm['記事ID'],urlCol=hm['記事URL'],last=cand.getLastRow(),n=last-6;
+    if(n>0){
+      var ids=idCol?cand.getRange(7,idCol,n,1).getDisplayValues():[],urls=urlCol?cand.getRange(7,urlCol,n,1).getDisplayValues():[];
+      for(var i=n-1;i>=0;i--){
+        var id=idCol?String(ids[i][0]||''):'',u=urlCol?sbmNormalizeUrl_(urls[i][0]||''):'';
+        if((articleId&&id===String(articleId))||(norm&&u===norm))cand.deleteRow(i+7);
+      }
+    }
+  }
+  // 今日の改善: 既に表示中ならその行だけ除去。シート全体の再生成はしない。
+  var today=ss.getSheetByName(SBM_SHEETS.TODAY);
+  if(today&&today.getLastRow()>1){
+    var th=sbmHeaderMap_(today),uCol=th['記事URL']||th['URL'];
+    if(uCol){
+      var tn=today.getLastRow()-1,vals=today.getRange(2,uCol,tn,1).getDisplayValues();
+      for(var j=tn-1;j>=0;j--){if(norm&&sbmNormalizeUrl_(vals[j][0]||'')===norm)today.deleteRow(j+2);}
+    }
+  }
+}
+
 function sbmApplyArticleManagementState(payload){
   try{
     payload=payload||{};if(payload.confirmed!==true)throw new Error('ブログ側の状態確認が必要です。');
@@ -7299,10 +7324,11 @@ function sbmApplyArticleManagementState(payload){
       try{sbmDoctorRemoveCandidateArticle_(String(article['ArticleID']||''),String(article['記事URL']||''));}catch(ignoreCandidate){}
     }
     sh.getRange(rowNo,1,1,row.length).setValues([row]);
-    // 派生ビューは記事管理を正本として再構築し、管理対象外記事を改善・内部リンク・Doctor候補へ戻さない。
-    try{sbmBuildTodayQueue_();}catch(eToday){try{sbmLog_('ArticleManagementToday','Warning',String(eToday));}catch(ignoreLog){}}
-    try{sbmUpdateEffectivenessCore_(false);}catch(eEffect){try{sbmLog_('ArticleManagementEffect','Warning',String(eEffect));}catch(ignoreLog2){}}
-    try{sbmRefreshHome_();}catch(ignoreHome){}
+    // v5.14.10: 1記事の状態変更で全体再構築を行わない。
+    // 重いToday/効果測定/Homeの再生成は次回の日次処理へ委ね、必要な操作ビューだけ即時除外する。
+    if(action!=='restore'){
+      try{sbmRemoveArticleFromOperationalViews_(String(article['ArticleID']||''),String(article['記事URL']||''));}catch(eView){try{sbmLog_('ArticleManagementView','Warning',String(eView));}catch(ignoreLog){}}
+    }
     return {ok:true,message:action==='restore'?'通常の改善管理対象へ戻しました。次回の日次処理以降、改善・Doctor・内部リンク等の候補として再評価されます。':'「'+(action==='noindex'?'noindex':action==='unpublished'?'非公開・公開停止':'その他')+'」として管理対象外へ移しました。改善・Doctor・内部リンク等の候補から除外します。'};
   }catch(e){return {ok:false,message:String(e&&e.message?e.message:e)};}
 }
