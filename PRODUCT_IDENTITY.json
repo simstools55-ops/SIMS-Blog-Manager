@@ -2,5 +2,6 @@
   "product_name": "SIMS-Blog-Manager",
   "current_version": "5.19.0",
   "release_status": "MINOR",
-  "notes": "Refines Personal Knowledge transient-metric admission, speeds Home opening with a lightweight refresh, and refreshes daily-update status correctly on startup/day rollover."
+  "notes": "Refines Personal Knowledge transient-metric admission, speeds Home opening with a lightweight refresh, and refreshes daily-update status correctly on startup/day rollover.",
+  "version": "5.19.1"
 }
