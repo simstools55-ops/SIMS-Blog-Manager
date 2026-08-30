@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.19.1';
+const SBM_VERSION = '5.19.2';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -6153,10 +6153,33 @@ function sbmAnalyzeImprovementFeedback(raw) {
   }
 }
 
+function sbmFindExistingImprovementFeedback_(data) {
+  var rows=sbmRowsAsObjects_(SBM_SHEETS.FEEDBACK_HISTORY)||[];
+  var targetId=String(data&&data.article_id||'').trim();
+  var targetUrl=sbmNormalizeUrl_(data&&data.article_url||'');
+  var targetRaw=String(data&&data.raw_json||'').trim();
+  for(var i=rows.length-1;i>=0;i--){
+    var r=rows[i]||{};
+    var sameArticle=(targetId && String(r['ArticleID']||'').trim()===targetId) ||
+      (targetUrl && sbmNormalizeUrl_(r['記事URL']||'')===targetUrl);
+    if(!sameArticle) continue;
+    var raw=String(r['AI改善結果JSON']||'').trim();
+    if(targetRaw && raw===targetRaw){
+      return {found:true,historyId:String(r['改善履歴ID']||''),rowNumber:r._rowNumber||0};
+    }
+  }
+  return {found:false,historyId:'',rowNumber:0};
+}
+
 function sbmRegisterImprovementFeedback(data, options) {
   try {
     options = options || {};
     data = sbmNormalizeImprovementFeedback_(JSON.stringify(data));
+    // v5.19.2: 同一Writer回答の再送は冪等に扱う。タイムアウト後の再試行で履歴を二重作成しない。
+    var existing=sbmFindExistingImprovementFeedback_(data);
+    if(existing.found){
+      return {ok:true,alreadyRegistered:true,historyId:existing.historyId||'',message:'このWriter回答はすでに登録済みです。\n改善履歴の二重登録は行いませんでした。'+(existing.historyId?'\n改善履歴ID：'+existing.historyId:'')};
+    }
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sh = ss.getSheetByName(SBM_SHEETS.ARTICLE_DB);
     if (!sh || sh.getLastRow() < 2) throw new Error('記事DBがありません。');
@@ -6182,7 +6205,8 @@ function sbmRegisterImprovementFeedback(data, options) {
     set('作業状態','👀 モニター中');
     var oldNote=String(get('備考')||'').trim();
     var note='改善結果登録 '+sbmNowText_()+'：'+data.summary;
-    set('備考',oldNote?oldNote+'\n'+note:note);
+    // タイムアウトで記事DB更新だけ完了していた場合も同じ概要の備考を重複させない。
+    if(!oldNote || oldNote.indexOf('：'+data.summary)<0) set('備考',oldNote?oldNote+'\n'+note:note);
     sh.getRange(rowIndex+2,1,1,headers.length).setValues([row]);
     var historyId = sbmAppendImprovementHistory_(data,row,before,{deferDerivedRefresh:true});
     sbmAppendLegacyImprovementLog_(data,row,before);
@@ -6191,7 +6215,7 @@ function sbmRegisterImprovementFeedback(data, options) {
     catch(ePkWriter){sbmLog_('PersonalKnowledgeWriter','Warning','Writer candidate ingest failed: '+String(ePkWriter&&ePkWriter.message||ePkWriter));}
     sbmSetSetting_('LastImprovementRegisteredAt',sbmNowText_(),'最後に改善結果を登録した日時');
     try { sbmMarkTodayImprovementCompleted_(data.article_id, data.article_url); } catch (e) {}
-    // v5.19.1: 登録待ち時間を短縮。全シート再装飾・全記事の効果再計算は同期処理から外す。
+    // v5.19.2: 登録待ち時間を短縮。全シート再装飾・全記事の効果再計算は同期処理から外す。
     // 記事DB・改善履歴・Personal Knowledge・日次完了状態はこの時点で確定済み。
     // 改善の推移は次回の日次処理/明示更新で再計算し、Homeは保存済みデータから軽量更新する。
     if(!options.deferDerivedRefresh){
@@ -6754,7 +6778,7 @@ function sbmAppendImprovementHistory_(data,row,before,options) {
     'Feedback Format':data.format||'','Writer Version':data.writer_version||''
   };
   sh.appendRow(SBM_HISTORY_HEADERS_V2.map(function(h){return record[h]!==undefined?record[h]:'';}));
-  // v5.19.1: 1件登録のたびに履歴シート全体を再装飾しない。既存行の書式を新規行へ複製する。
+  // v5.19.2: 1件登録のたびに履歴シート全体を再装飾しない。既存行の書式を新規行へ複製する。
   try{var lr=sh.getLastRow();if(lr>2)sh.getRange(lr-1,1,1,sh.getLastColumn()).copyFormatToRange(sh,1,sh.getLastColumn(),lr,lr);}catch(eHistoryFormat){}
   if(!options.deferDerivedRefresh){try{sbmUpdateEffectivenessCore_(false);}catch(e){}}
   return historyId;
@@ -10506,10 +10530,11 @@ function onOpen() {
   ui.createMenu('記事改善スタート')
     .addItem('1．今日の改善を開く','sbmOpenTodayImprovement')
     .addItem('2．選択記事の改善詳細を見る','sbmOpenSelectedImprovementNavi')
-    .addItem('3．今日の改善の表示件数を設定','sbmSetTodayDisplayCount')
+    .addItem('3．Writer回答を登録・再登録','sbmOpenImprovementFeedbackDialog')
+    .addItem('4．今日の改善の表示件数を設定','sbmSetTodayDisplayCount')
     .addToUi();
 
-  // 結果登録は独立メニューにせず、今日の改善またはDoctor精密診断の作業フロー内で行います。
+  // v5.19.2: タイムアウト/ダイアログ終了後でもWriter回答を安全に再登録できる復旧入口を常設する。
 
   // 改善中の記事と4週間の測定状況をここへ統合します。
   ui.createMenu('推移確認')
@@ -12342,7 +12367,7 @@ function sbmDoctorClassifySiteArticleShift_(current,previous){
   return 'STABLE';
 }
 function sbmDoctorFetchSiteImpactSummary_(){
-  // v5.19.1: サイト全体Impactは記事ごとに同じため短時間キャッシュし、依頼作成時の重複GSC取得を避ける。
+  // v5.19.2: サイト全体Impactは記事ごとに同じため短時間キャッシュし、依頼作成時の重複GSC取得を避ける。
   var cache=null,cacheKey='SBM_DOCTOR_SITE_IMPACT_V1';
   try{cache=CacheService.getScriptCache();var cached=cache.get(cacheKey);if(cached)return JSON.parse(cached);}catch(eCacheRead){}
   var property=sbmGetSetting_('SearchConsoleProperty','');
