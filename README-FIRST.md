@@ -1,8 +1,8 @@
-# SIMS-Blog-Manager v5.18.4
+# SIMS-Blog-Manager v5.19.0
 
 ## 今回の変更
 
-### v5.18.4 Home軽量化・日次状態修正・Personal Knowledge判定精密化
+### v5.19.0 Home軽量化・日次状態修正・Personal Knowledge判定精密化
 - Homeを開く操作では、Doctor再照合や効果測定の再計算を行わず、保存済みデータから軽量に表示更新します。
 - SBM起動時はHome全体を再集計せず、日次処理の状態だけを再判定します。前日の「本日完了」が翌日に残る問題を修正しました。
 - 日付比較はSIMS標準タイムゾーン `Asia/Tokyo` を明示使用します。
@@ -26,11 +26,11 @@
 
 ## 正式版
 
-**v5.18.4**
+**v5.19.0**
 
 ## 推奨コミットメッセージ
 
-`fix(sbm): refine knowledge admission and home daily status (v5.18.4)`
+`fix(sbm): refine knowledge admission and home daily status (v5.19.0)`
 
-## v5.18.4 更新時の注意
+## v5.19.0 更新時の注意
 `distribution/Code.gs` とあわせて `distribution/appsscript.json` も既存Apps Scriptプロジェクトへ同期してください。Drive権限の再承認が表示された場合は許可してください。

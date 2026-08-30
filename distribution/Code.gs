@@ -4,7 +4,7 @@
  * End-user distribution file: paste this entire file into Code.gs/Code.js.
  */
 
-const SBM_VERSION = '5.18.4';
+const SBM_VERSION = '5.19.0';
 // User-facing naming: Article Doctor / Site Doctor. Legacy Doctor/SiteDiagnosis identifiers remain for compatibility.
 const SBM_PRODUCT_NAMING_COMPAT = 'ARTICLE_DOCTOR_SITE_DOCTOR_V1';
 // Personal Knowledge v1.0 Drive-file storage. Existing SIMS SiteID remains unchanged for contract compatibility.
@@ -6186,6 +6186,9 @@ function sbmRegisterImprovementFeedback(data, options) {
     sh.getRange(rowIndex+2,1,1,headers.length).setValues([row]);
     var historyId = sbmAppendImprovementHistory_(data,row,before,{deferDerivedRefresh:true});
     sbmAppendLegacyImprovementLog_(data,row,before);
+    var pkIngest={ok:true,total:0,written:0,candidate:0,accepted:0,rejected:0,error:0};
+    try{pkIngest=sbmPersonalKnowledgeIngestPayload_(data,'SIMS Writer',{site_id:data.site_id||'',article_id:data.article_id||'',article_url:data.article_url||''});}
+    catch(ePkWriter){sbmLog_('PersonalKnowledgeWriter','Warning','Writer candidate ingest failed: '+String(ePkWriter&&ePkWriter.message||ePkWriter));}
     sbmSetSetting_('LastImprovementRegisteredAt',sbmNowText_(),'最後に改善結果を登録した日時');
     try { sbmMarkTodayImprovementCompleted_(data.article_id, data.article_url); } catch (e) {}
     // 結果登録を唯一の確定ポイントにし、記事管理・改善履歴・改善の推移を同じトランザクションで同期します。
@@ -6194,7 +6197,7 @@ function sbmRegisterImprovementFeedback(data, options) {
       try{sbmUpdateEffectivenessCore_(false);}catch(eEffectSync){sbmLog_('FeedbackEffectSync','Warning',String(eEffectSync));}
       try{sbmRefreshHome_();}catch(e){}
     }
-    return {ok:true,historyId:historyId||'',message:'改善結果を登録しました。\n・記事管理を「モニター中」に更新しました\n・改善履歴を作成しました\n・改善の推移へ反映しました\n・今日の改善を完了表示にしました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'};
+    return {ok:true,historyId:historyId||'',message:'改善結果を登録しました。\n・記事管理を「モニター中」に更新しました\n・改善履歴を作成しました\n・改善の推移へ反映しました\n・今日の改善を完了表示にしました\n・'+data.recommended_review_days+'日後を効果確認予定に設定しました'+(pkIngest.total?'\n・Personal Knowledge：候補'+pkIngest.total+'件 / 保存'+pkIngest.written+'件':'')};
   } catch(e) { return {ok:false,message:String(e.message||e)}; }
 }
 
@@ -6560,6 +6563,7 @@ function sbmNormalizeImprovementFeedback_(raw) {
     kept_sections: Array.isArray(obj.kept_sections) ? obj.kept_sections.map(String) : (Array.isArray(obj.protected_elements) ? obj.protected_elements.map(String) : []),
     summary: summaryText,
     warnings: warnings,
+    knowledge_candidates: Array.isArray(obj.knowledge_candidates) ? obj.knowledge_candidates : (obj.knowledge_candidate ? (Array.isArray(obj.knowledge_candidate) ? obj.knowledge_candidate : [obj.knowledge_candidate]) : []),
     estimated_minutes: minutes,
     recommended_review_days: days,
     raw_json: (typeof obj.raw_json === 'string' && obj.raw_json.trim()) ? obj.raw_json : JSON.stringify(obj)
@@ -15211,13 +15215,16 @@ function sbmDoctorStoreWriterTreatmentResult_(o){
   }else{
     rec.values[rec.hm['状態コード']-1]='TREATMENT_FAILED';rec.values[rec.hm['状態']-1]='治療結果受付失敗';
   }
+  var pkWriterResult={ok:true,total:0,written:0,candidate:0,accepted:0,rejected:0,error:0};
+  try{pkWriterResult=sbmPersonalKnowledgeIngestPayload_(o,'SIMS Writer',{site_id:o.site_id||'',article_id:o.article_id||'',article_url:o.article_url||(rec.hm['記事URL']?rec.values[rec.hm['記事URL']-1]:'')});}
+  catch(ePkWriterResult){sbmLog_('PersonalKnowledgeWriter','Warning','Writer treatment candidate ingest failed: '+String(ePkWriterResult&&ePkWriterResult.message||ePkWriterResult));}
   rec.values[rec.hm['更新日時']-1]=sbmNowText_();rec.sheet.getRange(rec.row,1,1,rec.values.length).setValues([rec.values]);
   if(String(rec.values[rec.hm['状態コード']-1]||'')==='MONITORING'){
     try{sbmDoctorRemoveCandidateArticle_(o.article_id,o.article_url||rec.values[rec.hm['記事URL']-1]);}catch(eRemoveDone){}
     // Caseへ改善履歴IDを書いた後に、派生画面をここで1回だけ再生成します。
     try{sbmDoctorSyncImprovementRoutesFromCases_();sbmUpdateEffectivenessCore_(false);sbmRefreshHome_();}catch(eFinalEffect){sbmLog_('DoctorFinalMonitoringSync','Warning',String(eFinalEffect));}
   }
-  return {caseId:String(o.case_id||''),status:String(rec.values[rec.hm['状態']-1]||'')};
+  return {caseId:String(o.case_id||''),status:String(rec.values[rec.hm['状態']-1]||''),personalKnowledge:pkWriterResult};
 }
 function sbmDoctorRegisterWriterTreatmentResultFromDialog(raw){
   try{
@@ -15227,7 +15234,7 @@ function sbmDoctorRegisterWriterTreatmentResultFromDialog(raw){
     catch(eExtract){throw new Error('Writer結果を抽出できませんでした。回答内に SIMS_WRITER_TREATMENT_RESULT_V1 が含まれることを確認してください。');}
     try{o=JSON.parse(text);}catch(e){throw new Error('Writer結果JSONを読み取れませんでした。回答全文、または結果JSONをそのまま貼り付けてください。');}
     var saved=sbmDoctorStoreWriterTreatmentResult_(o);
-    return {ok:true,message:'Writer処置結果を登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status};
+    return {ok:true,message:'Writer処置結果を登録しました。\nCaseID：'+saved.caseId+'\n状態：'+saved.status+(saved.personalKnowledge&&saved.personalKnowledge.total?'\nPersonal Knowledge：候補'+saved.personalKnowledge.total+'件 / 保存'+saved.personalKnowledge.written+'件':'')};
   }catch(e2){return {ok:false,message:String(e2&&e2.message?e2.message:e2)};}
 }
 function sbmDoctorRegisterWriterTreatmentResult(){
