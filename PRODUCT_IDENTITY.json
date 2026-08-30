@@ -1,7 +1,7 @@
 {
   "product_name": "SIMS-Blog-Manager",
-  "current_version": "5.19.0",
+  "current_version": "5.20.0",
   "release_status": "MINOR",
-  "notes": "Refines Personal Knowledge transient-metric admission, speeds Home opening with a lightweight refresh, and refreshes daily-update status correctly on startup/day rollover.",
-  "version": "5.19.2"
+  "notes": "Audits registration paths and removes blocking full-sheet recalculation, route-wide synchronization, full Home rebuilds, and Creator Article DB restyling from synchronous registration.",
+  "version": "5.20.0"
 }
